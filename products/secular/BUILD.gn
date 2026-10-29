@@ -4,6 +4,7 @@
 
 import("//products/build/component/component_id_index.gni")
 import("//products/build/components.gni")
+import("//products/build/dist/renamed_binary.gni")
 import("//products/build/zbi/kernel_cmdline.gni")
 import("//products/build/zbi/zbi.gni")
 import("//products/build/zbi/zbi_input.gni")
@@ -130,12 +131,21 @@ component_id_index_config("component_id_index") {
   deps = [ ":empty_component_id_index" ]
 }
 
+# Keep the root component_manager off zxsh's PATH (`/boot/bin`). userboot
+# still launches it from BOOTFS via userboot.next.
+renamed_binary("component_manager_bootfs") {
+  dest = "libexec/component_manager"
+  source = "$root_out_dir/component_manager"
+  source_deps = [ "//userspace/sys/component_manager:bin" ]
+}
+
 zbi_input("bootfs_files") {
   deps = [
     ":component_id_index",
+    ":component_manager_bootfs",
     "//products/build/info/bootfs:minimum_utc_stamp",
+    "//userspace/secular/bin/iokit:cat",
     "//userspace/sys/bin/psutils:bootfs_binaries",
-    "//userspace/sys/component_manager:bin",
     "//userspace/sys/component_manager:component_manager_bootfs_config",
     "//userspace/zircon/bin/zxsh:sh",
   ]
@@ -147,6 +157,7 @@ kernel_cmdline("cmdline") {
     "kernel.enable-debugging-syscalls=true",
     "kernel.enable-serial-syscalls=true",
     "netsvc.disable=true",
+    "userboot.next=libexec/component_manager+--boot",
   ]
 }
 

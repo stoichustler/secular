@@ -22,7 +22,7 @@ build_arch() {
 
   ensure_jiri_generated_commit_info "$root"
 
-  secular_stage "BLD: preflight (ARCH:$arch)"
+  secular_stage "preflight (ARCH:$arch)"
   "$script_dir/preflight.sh" --root "$root" "$arch" || return $?
   if [[ ! -f "$out_dir/build.ninja" ]]; then
     "$script_dir/configure.sh" "$arch" || return $?
@@ -36,7 +36,7 @@ build_arch() {
   }
 
   cd "$root"
-  secular_stage "BLD: compile image (ARCH:$arch)"
+  secular_stage "compile image (ARCH:$arch)"
   "$ninja_bin" -C "$out_rel" -k 0 \
     "${targets[@]}" 2>&1 |
     tee "$out_rel/logs/build.log"
@@ -59,7 +59,7 @@ build_arch() {
     --out-dir "$out_dir" \
     --gn "$gn_bin" \
     --write "$out_dir/artifacts.env" || return $?
-  secular_stage "BLD: complete (ARCH:$arch, ARTIFACTS:$out_dir/artifacts.env)"
+  secular_stage "complete (ARCH:$arch, ARTIFACTS:$out_dir/artifacts.env)"
 }
 
 case "$1" in

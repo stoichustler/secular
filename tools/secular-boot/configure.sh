@@ -30,7 +30,7 @@ host_python="$(command -v python3)" || die "missing host python3"
 # Host clang/python/gn/ninja come from the SDK linux-amd64 tree. rustc still
 # needs a merged host+target rustlib; that view is linux-amd64 too.
 mapped="${SECULAR_PREBUILT:-$root/out/sdk-prebuilt}"
-secular_stage "CFG: map SDK rust sysroot (ARCH:$arch)"
+secular_stage "map SDK rust sysroot (ARCH:$arch)"
 "$host_python" "$python3" --sdk "$sdk_root" --dest "$mapped"
 mapped="$(realpath "$mapped")"
 export SECULAR_PREBUILT="$mapped"
@@ -86,11 +86,11 @@ fi
 trap - EXIT
 
 if [[ "$need_gen" -eq 1 ]]; then
-  secular_stage "CFG: generate GN graph (ARCH:$arch, OUT:$out_dir)"
+  secular_stage "generate GN graph (ARCH:$arch, OUT:$out_dir)"
   gn_bin="$(resolve_tool "$root" "$arch" gn)" || die "missing: gn"
   cd "$root"
   "$gn_bin" gen "out/$out_name" --fail-on-unused-args
 else
-  secular_stage "CFG: reuse GN graph (ARCH:$arch, OUT:$out_dir)"
+  secular_stage "reuse GN graph (ARCH:$arch, OUT:$out_dir)"
 fi
-secular_stage "CFG: complete (ARCH:$arch)"
+secular_stage "complete (ARCH:$arch)"

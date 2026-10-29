@@ -2,10 +2,8 @@
 # Use of this source code is governed by a BSD-style license that can be
 # found in the LICENSE file.
 
+# Put secular and secular-sdk in the same directory.
 export SECULAR_SDK ?= $(realpath ../secular-sdk)
-# Aliases accepted by the boot scripts.
-export SMOS_SDK ?= $(SECULAR_SDK)
-export SMOS_SDK_ROOT ?= $(SECULAR_SDK)
 
 ARCH ?= arm64
 TOOLCHAIN_PATH ?= tools/secular-boot

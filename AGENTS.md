@@ -113,10 +113,27 @@ not source.
 | `products/bundles/` | Assembly / bringup bundles |
 | `products/manifests/` | Third-party pin manifests |
 | `tools/secular-boot/` | configure / build / run / verify |
+| `tools/ai-coding/` | Project-only Grok/Codex skills, rules, and agent defs |
 
 Do not restore deleted Fuchsia products (`core`, `terminal`, `workbench`,
 `starnix`, UI, graphics, connectivity stacks) without an explicit scope
 change.
+
+## Agent skills (Grok / Codex)
+
+`tools/ai-coding/` is this repository's only skills library. Grok and Codex
+must use it at session start. Do **not** recreate `.agents/`, `.grok/`, or
+`.codex/` as a second copy.
+
+| Path | Contents |
+| --- | --- |
+| `tools/ai-coding/skills/<name>/SKILL.md` | Task skills |
+| `tools/ai-coding/rules/` | Extra coding rules |
+| `tools/ai-coding/agents/` | Named subagent prompts |
+| `tools/ai-coding/skills.json` | Skill index |
+
+When a task matches a skill, read that `SKILL.md` before acting. New Secular
+skills go under `tools/ai-coding/skills/<name>/`.
 
 ## Agent workflow
 

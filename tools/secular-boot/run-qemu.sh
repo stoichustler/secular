@@ -14,14 +14,14 @@ arch="$1"
 shift
 require_arch "$arch" || exit $?
 out_name="secular-boot-$arch"
-secular_stage "RUN: validate invocation (ARCH:$arch)"
+secular_stage "validate invocation (ARCH:$arch)"
 
 if [[ "$#" -gt 0 ]]; then
   [[ "$1" == "--" ]] || die "QEMU arguments must follow --"
   shift
 fi
 
-secular_stage "RUN: validate host tools (ARCH:$arch)"
+secular_stage "validate host tools (ARCH:$arch)"
 "$script_dir/preflight.sh" --root "$root" "$arch"
 artifacts="$root/out/$out_name/artifacts.env"
 [[ -f "$artifacts" ]] || die "missing artifacts: $artifacts (run build.sh $arch)"
@@ -57,7 +57,7 @@ export PREBUILT_DIR="$sdk/prebuilt"
 bios="$PREBUILT_DIR/firmware/arm-trusted-firmware-qemu-bios/qemu_fw.bios"
 [[ -f "$bios" ]] || die "missing ATF QEMU BIOS: $bios"
 
-secular_stage "RUN: launch QEMU (ARCH:$arch)"
+secular_stage "launch QEMU (ARCH:$arch)"
 exec "$runner" \
   -a "$arch" \
   -t "$QEMU_KERNEL" \

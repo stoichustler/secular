@@ -149,7 +149,7 @@ void lk_main(PhysHandoff* handoff) {
 
   // At this point, the kernel command line and serial are set up.
 
-  dprintf(INFO, "\nwelcome to Zircon\n\n");
+  dprintf(INFO, "\nwelcome to secular 🅢 \n\n");
 
   // Now that the platform clock driver is ready, convert the entry sample.
   timeline_physboot_handoff.Set(platform_convert_early_ticks(handoff_time));

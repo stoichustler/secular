@@ -1,9 +1,9 @@
-" BEAU / SMOS host Vimrc (not shipped in the target image).
+" BEAU / Secular host Vimrc (not shipped in the target image).
 "
-" Source of truth: sdk/smos/vim/.vimrc
-" Install:         install -Dm644 sdk/smos/vim/.vimrc ~/.vimrc
+" Source of truth: sdk/secular/vim/.vimrc
+" Install:         install -Dm644 sdk/secular/vim/.vimrc ~/.vimrc
 " Reload:          :source $MYVIMRC
-" Related notes:   sdk/smos/vim/vim.md
+" Related notes:   sdk/secular/vim/vim.md
 "
 " This file is reload-safe: jobs, timers, and popups from a previous
 " :source are stopped before their script-local state is recreated.

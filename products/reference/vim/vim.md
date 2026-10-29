@@ -1,6 +1,6 @@
 # Vim 开发环境
 
-本文说明如何在 Linux 主机上安装 Vim，并将它用于 SMOS 的 Zircon、C/C++、Rust、汇编、GN 和 Markdown 文件。Vim 运行在主机上；它不会被打包进 SMOS，也不依赖目标 QEMU 镜像。
+本文说明如何在 Linux 主机上安装 Vim，并将它用于 Secular 的 Zircon、C/C++、Rust、汇编、GN 和 Markdown 文件。Vim 运行在主机上；它不会被打包进 Secular，也不依赖目标 QEMU 镜像。
 
 ## 版本与目录约定
 
@@ -91,21 +91,20 @@ vim --clean --not-a-term -Nu NONE -n +'quit'
 
 最后一条命令用于检查 Vim 可以在无配置、无终端交互的情况下启动；如果只看到版本信息且退出码为 0，说明基础安装正常。
 
-## 安装 SMOS 配置
+## 安装 Secular 配置
 
-从 SMOS 仓库根目录执行。安装前先备份现有配置；`.vimrc` 会创建 `~/.vim/swap` 和 `~/.vim/undo`，不会把恢复文件写入源码树：
+从 Secular 仓库根目录执行。安装前先备份现有配置；`.vimrc` 会创建 `~/.vim/swap` 和 `~/.vim/undo`，不会把恢复文件写入源码树：
 
 ```sh
-cd /home/beau/clot/smos
 [ -f "$HOME/.vimrc" ] && cp "$HOME/.vimrc" "$HOME/.vimrc.bak.$(date +%Y%m%d%H%M%S)"
-install -Dm644 sdk/smos/vim/.vimrc "$HOME/.vimrc"
+install -Dm644 products/reference/vim/.vimrc "$HOME/.vimrc"
 ```
 
 配置中的几个常用命令：
 
 | 命令 | 用途 |
 | --- | --- |
-| `:BEAUStyle` | SMOS/Hypervisor 风格：8 列 tab |
+| `:BEAUStyle` | Secular/Hypervisor 风格：8 列 tab |
 | `:GOOGLEStyle` | Google C++ 风格：2 个空格 |
 | `:LINUXStyle` | Linux 内核风格：8 列 tab |
 | `:NERDTreeToggle` | 打开或关闭文件树 |

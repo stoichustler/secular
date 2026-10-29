@@ -1,0 +1,18 @@
+# Copyright 2026 The Fuchsia Authors. All rights reserved.
+# Use of this source code is governed by a BSD-style license that can be
+# found in the LICENSE file.
+
+import("//products/build/rust/rustc_binary.gni")
+
+rustc_binary("cat") {
+  output_name = "cat"
+  edition = "2024"
+  source_root = "src/cat.rs"
+  sources = [ "src/cat.rs" ]
+  configs += [ "//products/build/config/rust:bootfs" ]
+  with_unit_tests = true
+}
+
+group("iokit") {
+  deps = [ ":cat" ]
+}

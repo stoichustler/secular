@@ -1,0 +1,19 @@
+{
+  "entries": [
+    { "path": "tools/ai-coding/skills/crash-triage-pathfinder" },
+    { "path": "tools/ai-coding/skills/flake-triage" },
+    { "path": "tools/ai-coding/skills/fuchsia-commit-message-auditor" },
+    { "path": "tools/ai-coding/skills/fuchsia-cpp-guidelines" },
+    { "path": "tools/ai-coding/skills/fuchsia-gerrit-cli" },
+    { "path": "tools/ai-coding/skills/fx-test-remote" },
+    { "path": "tools/ai-coding/skills/fx-worktree" },
+    { "path": "tools/ai-coding/skills/improve-test-coverage-rust" },
+    { "path": "tools/ai-coding/skills/issues-cli" },
+    { "path": "tools/ai-coding/skills/manage-emulator" },
+    { "path": "tools/ai-coding/skills/port-gn-config-to-bazel-build-flags" },
+    { "path": "tools/ai-coding/skills/report-ai-bug" },
+    { "path": "tools/ai-coding/skills/rust_best_practices" },
+    { "path": "tools/ai-coding/skills/starnix-guidelines" },
+    { "path": "tools/ai-coding/skills/triage-recent-regression" }
+  ]
+}
