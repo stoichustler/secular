@@ -1,0 +1,57 @@
+# Copyright 2025 The Fuchsia Authors
+#
+# Use of this source code is governed by a MIT-style
+# license that can be found in the LICENSE file or at
+# https://opensource.org/licenses/MIT
+
+import("//products/build/cpp/library_headers.gni")
+import("//products/build/rust/rustc_library.gni")
+import("//zircon/kernel/kernel_test_deps.gni")
+
+library_headers("dump_headers") {
+  headers = [ "lib/dump/depth_printer.h" ]
+  public_deps = [ "//zircon/system/ulib/zircon-internal" ]
+}
+
+source_set("dump") {
+  sources = [ "dump.cc" ]
+  public_deps = [ ":dump_headers" ]
+}
+
+kernel_test_deps("dump-rs.test_deps") {
+  visibility = [ ":*" ]
+  public_deps = [
+    "//zircon/kernel/lib/unittest:unittest-rs",
+    "//zircon/system/ulib/fbl/rust:fbl",
+  ]
+}
+
+rustc_library("dump-rs") {
+  edition = "2024"
+  name = "dump"
+  sources = [
+    "src/depth_printer.rs",
+    "src/lib.rs",
+  ]
+  deps = [
+    ":dump-rs.test_deps",
+    "//userspace/lib/kprint",
+  ]
+}
+
+group("tests") {
+  testonly = true
+}
+
+group("kernel-tests") {
+  testonly = true
+  deps = [ "tests" ]
+}
+
+group("phys-tests") {
+  testonly = true
+}
+
+group("boot_tests") {
+  testonly = true
+}

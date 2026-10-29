@@ -1,0 +1,59 @@
+# Copyright 2026 The Fuchsia Authors. All rights reserved.
+# Use of this source code is governed by a BSD-style license that can be
+# found in the LICENSE file.
+
+load("//products/build/bazel/rules/rust:rustc_library.bzl", "rustc_library")
+
+package(default_applicable_licenses = ["//:license"])
+
+# The unit tests (`:block-client_test`) stay in BUILD.gn because they
+# depend on //userspace/storage/lib/block_server and
+# //userspace/storage/lib/ramdevice_client, which have no Bazel build yet.
+rustc_library(
+    name = "block-client",
+    srcs = [
+        "src/cache.rs",
+        "src/lib.rs",
+    ],
+    edition = "2024",
+    target_compatible_with = ["@platforms//os:fuchsia"],
+    visibility = [
+        "//userspace/storage/benchmarks/fuchsia:__pkg__",
+        "//userspace/storage/gpt/component:__pkg__",
+        "//userspace/storage/lib/fs_management/rust:__pkg__",
+        "//userspace/storage/lib/storage_device:__pkg__",
+        "//vendor/google:__subpackages__",
+    ],
+    deps = [
+        "//sdk/fidl/fuchsia.storage.block:fuchsia.storage.block_rust",
+        "//sdk/rust/zx",
+        "//userspace/lib/fidl/rust/fidl",
+        "//userspace/lib/fuchsia-async",
+        "//userspace/lib/fuchsia-sync",
+        "//userspace/storage/lib/block_protocol",
+        "//userspace/storage/lib/trace",
+        "//third_party/rust_crates/vendor:anyhow",
+        "//third_party/rust_crates/vendor:futures",
+        "//third_party/rust_crates/vendor:linked-hash-map",
+        "//third_party/rust_crates/vendor:log",
+    ],
+)
+
+rustc_library(
+    name = "fake-block-client",
+    srcs = ["src/fake_block_client.rs"],
+    crate_root = "src/fake_block_client.rs",
+    edition = "2024",
+    target_compatible_with = ["@platforms//os:fuchsia"],
+    visibility = [
+        "//userspace/storage/fvm:__pkg__",
+        "//userspace/storage/lib/storage_device:__pkg__",
+        "//vendor/google:__subpackages__",
+    ],
+    deps = [
+        ":block-client",
+        "//sdk/fidl/fuchsia.storage.block:fuchsia.storage.block_rust",
+        "//sdk/rust/zx",
+        "//userspace/lib/fuchsia-sync",
+    ],
+)

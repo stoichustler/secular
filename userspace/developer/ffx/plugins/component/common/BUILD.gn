@@ -1,0 +1,46 @@
+# Copyright 2020 The Fuchsia Authors. All rights reserved.
+# Use of this source code is governed by a BSD-style license that can be
+# found in the LICENSE file.
+
+import("//products/build/rust/rustc_library.gni")
+
+rustc_library("ffx_component") {
+  name = "ffx_component"
+  version = "0.1.0"
+  edition = "2024"
+  if (is_host) {
+    with_unit_tests = true
+  }
+
+  deps = [
+    "//sdk/fidl/fuchsia.sys2:fuchsia.sys2_rust_fdomain",
+    "//userspace/developer/ffx/lib/errors:lib",
+    "//userspace/lib/fuchsia-url",
+    "//userspace/sys/lib/component_debug:component_debug_fdomain",
+    "//userspace/sys/lib/moniker",
+    "//third_party/rust_crates:anyhow",
+  ]
+  sources = [
+    "src/format.rs",
+    "src/lib.rs",
+    "src/rcs.rs",
+  ]
+
+  if (is_host) {
+    deps += [
+      "//sdk/fidl/fuchsia.developer.remotecontrol:fuchsia.developer.remotecontrol_rust_fdomain",
+      "//sdk/fidl/fuchsia.pkg:fuchsia.pkg_rust_fdomain",
+      "//userspace/developer/ffx/lib/pkg",
+      "//userspace/developer/ffx/lib/rcs:lib",
+      "//userspace/lib/fdomain/client",
+      "//userspace/lib/fuchsia-async",
+      "//third_party/rust_crates:async-trait",
+      "//third_party/rust_crates:futures",
+    ]
+    test_deps = [
+      "//userspace/developer/ffx/lib/target/holders:lib",
+      "//userspace/lib/fdomain/local",
+    ]
+    sources += [ "src/server.rs" ]
+  }
+}

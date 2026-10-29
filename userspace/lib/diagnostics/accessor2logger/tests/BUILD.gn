@@ -1,0 +1,35 @@
+# Copyright 2020 The Fuchsia Authors. All rights reserved.
+# Use of this source code is governed by a BSD-style license that can be
+# found in the LICENSE file.
+
+import("//products/build/components.gni")
+import("//products/build/test.gni")
+
+test("stream_cpp_unittests") {
+  sources = [ "log_message_unittest.cc" ]
+  deps = [
+    "//sdk/lib/async-loop:async-loop-cpp",
+    "//sdk/lib/async-loop:async-loop-default",
+    "//sdk/lib/stdcompat",
+    "//userspace/lib/diagnostics/accessor2logger",
+    "//userspace/lib/fsl",
+    "//userspace/lib/fxl",
+    "//userspace/lib/fxl/test:gtest_main",
+    "//userspace/lib/testing/loop_fixture",
+    "//third_party/googletest:gmock",
+  ]
+}
+
+fuchsia_unittest_package("stream-cpp-tests") {
+  deps = [ ":stream_cpp_unittests" ]
+  test_specs = {
+    log_settings = {
+      max_severity = "ERROR"
+    }
+  }
+}
+
+group("tests") {
+  testonly = true
+  deps = [ ":stream-cpp-tests" ]
+}

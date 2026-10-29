@@ -1,0 +1,33 @@
+# Copyright 2024 The Fuchsia Authors. All rights reserved.
+# Use of this source code is governed by a BSD-style license that can be
+# found in the LICENSE file.
+
+import("//products/build/components.gni")
+import("//products/build/test.gni")
+
+test("power_framework_test_realm_test_cpp_bin") {
+  sources = [ "test.cc" ]
+  deps = [
+    "//sdk/fidl/fuchsia.hardware.power.suspend:fuchsia.hardware.power.suspend_cpp",
+    "//sdk/fidl/fuchsia.power.broker:fuchsia.power.broker_cpp",
+    "//sdk/fidl/fuchsia.power.suspend:fuchsia.power.suspend_cpp",
+    "//sdk/fidl/fuchsia.power.system:fuchsia.power.system_cpp",
+    "//sdk/lib/fidl/cpp:cpp_base",
+    "//userspace/lib/fxl/test:gtest_main",
+    "//userspace/lib/testing/loop_fixture",
+    "//userspace/power/system-activity-governor/fake/fidl:test.sagcontrol_cpp",
+    "//userspace/power/testing/client/cpp",
+    "//userspace/power/testing/fake-suspend:test.suspendcontrol_cpp",
+  ]
+}
+
+fuchsia_unittest_package("power_framework_test_realm_test_cpp") {
+  manifest = "meta/test.cml"
+  deps = [ ":power_framework_test_realm_test_cpp_bin" ]
+  subpackages = [ "//userspace/power/testing/client:power-framework" ]
+}
+
+group("tests") {
+  testonly = true
+  deps = [ ":power_framework_test_realm_test_cpp" ]
+}

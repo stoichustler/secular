@@ -1,0 +1,96 @@
+# Copyright 2020 The Fuchsia Authors. All rights reserved.
+# Use of this source code is governed by a BSD-style license that can be
+# found in the LICENSE file.
+
+import("//products/build/components.gni")
+import("//products/build/rust/rustc_library.gni")
+
+rustc_library("lib") {
+  name = "detect"
+  edition = "2024"
+  with_unit_tests = true
+
+  visibility = [
+    "//userspace/diagnostics/detect/*",
+    "//userspace/diagnostics/launcher/*",
+  ]
+
+  deps = [
+    ":triage-detect-config",
+    "fidl:fuchsia.diagnostics.test_rust",
+    "//sdk/fidl/fuchsia.feedback:fuchsia.feedback_rust",
+    "//sdk/rust/zx",
+    "//userspace/diagnostics/lib/inspect-fetcher",
+    "//userspace/diagnostics/lib/triage",
+    "//userspace/lib/diagnostics/inspect/contrib/rust",
+    "//userspace/lib/diagnostics/inspect/derive",
+    "//userspace/lib/diagnostics/inspect/runtime/rust",
+    "//userspace/lib/diagnostics/inspect/rust",
+    "//userspace/lib/fuchsia-async",
+    "//userspace/lib/fuchsia-component",
+    "//userspace/lib/injectable-time",
+    "//third_party/rust_crates:anyhow",
+    "//third_party/rust_crates:argh",
+    "//third_party/rust_crates:futures",
+    "//third_party/rust_crates:glob",
+    "//third_party/rust_crates:log",
+    "//third_party/rust_crates:serde",
+    "//third_party/rust_crates:serde_derive",
+    "//third_party/rust_crates:serde_json5",
+  ]
+
+  test_deps = [
+    "//userspace/lib/fidl/rust/fidl",
+    "//userspace/lib/fuchsia",
+    "//third_party/rust_crates:assert_matches",
+    "//third_party/rust_crates:maplit",
+    "//third_party/rust_crates:static_assertions",
+  ]
+
+  sources = [
+    "src/delay_tracker.rs",
+    "src/diagnostics.rs",
+    "src/lib.rs",
+    "src/snapshot.rs",
+    "src/test_invoker.rs",
+    "src/triage_shim.rs",
+  ]
+
+  configs += [ "//products/build/config/rust/lints:clippy_warn_all" ]
+}
+
+fuchsia_component_manifest("triage-detect-manifest") {
+  manifest = "meta/triage_detect.cml"
+  component_name = "triage-detect"
+}
+
+fuchsia_structured_config_rust_lib("triage-detect-config") {
+  cm_label = ":triage-detect-manifest"
+}
+
+fuchsia_component("component") {
+  cm_label = ":triage-detect-manifest"
+  deps = [ "//userspace/diagnostics/launcher:bin" ]
+}
+
+fuchsia_package("triage-detect") {
+  deps = [ ":component" ]
+}
+
+fuchsia_unittest_package("triage-detect-tests") {
+  deps = [ ":lib_test" ]
+
+  test_specs = {
+    log_settings = {
+      max_severity = "ERROR"
+    }
+  }
+}
+
+group("tests") {
+  testonly = true
+  deps = [
+    ":triage-detect-tests",
+    "//userspace/diagnostics/detect/integration:tests",
+  ]
+}

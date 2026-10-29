@@ -1,0 +1,29 @@
+# Copyright 2026 The Fuchsia Authors. All rights reserved.
+# Use of this source code is governed by a BSD-style license that can be
+# found in the LICENSE file.
+
+load("//products/build/bazel/platforms:constraints.bzl", "HOST_OS_CONSTRAINTS")
+
+package(default_applicable_licenses = ["//:license"])
+
+# Assembly host tests defined in Bazel. These are exported to `fx test` and
+# infra builders through `:bazel_tests` in BUILD.gn.
+test_suite(
+    name = "host_tests",
+    target_compatible_with = HOST_OS_CONSTRAINTS,
+    tests = [
+        "//userspace/lib/assembly/base_package:base_package_test",
+        "//userspace/lib/assembly/blob_size:blob_size_test",
+        "//userspace/lib/assembly/blobfs:blobfs_test",
+        "//userspace/lib/assembly/constants:constants_test",
+        "//userspace/lib/assembly/container:container_test",
+        "//userspace/lib/assembly/image_assembly_config:image_assembly_config_test",
+        "//userspace/lib/assembly/images_config:images_config_test",
+        "//userspace/lib/assembly/package_copy:package_copy_test",
+        "//userspace/lib/assembly/package_list:package_list_test",
+        "//userspace/lib/assembly/package_utils:package_utils_test",
+        "//userspace/lib/assembly/product_input_bundle:product_input_bundle_test",
+        "//userspace/lib/assembly/test_util:test_util_test",
+        "//userspace/lib/assembly/update_packages_manifest:update_packages_manifest_test",
+    ],
+)

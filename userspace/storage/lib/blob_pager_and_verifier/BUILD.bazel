@@ -1,0 +1,80 @@
+# Copyright 2026 The Fuchsia Authors. All rights reserved.
+# Use of this source code is governed by a BSD-style license that can be
+# found in the LICENSE file.
+
+load("//products/build/bazel/rules/rust:rustc_library.bzl", "rustc_library")
+load("//products/build/bazel/rules/rust:rustc_test.bzl", "rustc_test")
+
+package(default_applicable_licenses = ["//:license"])
+
+rustc_library(
+    name = "blob_pager_and_verifier",
+    srcs = [
+        "src/delivery.rs",
+        "src/lib.rs",
+        "src/profile.rs",
+    ],
+    edition = "2024",
+    visibility = [
+        "//userspace/storage:__subpackages__",
+        "//userspace/sys/pkg/bin/pkg-cache:__pkg__",
+    ],
+    deps = [
+        "//sdk/fidl/fuchsia.io:fuchsia.io_rust",
+        "//sdk/fidl/fuchsia.storage.block:fuchsia.storage.block_rust",
+        "//sdk/rust/zx",
+        "//userspace/lib/fidl/rust/fidl",
+        "//userspace/lib/fuchsia-async",
+        "//userspace/lib/fuchsia-sync",
+        "//userspace/storage/fidl/fuchsia.storage.mapping:fuchsia.storage.mapping_rust",
+        "//userspace/storage/lib/mapping",
+        "//userspace/storage/lib/profile",
+        "//userspace/storage/lib/ptr_slice",
+        "//userspace/storage/lib/vfs/rust:vfs",
+        "//userspace/storage/lib/vmo-blob",
+        "//userspace/storage/lib/vmo-fifo",
+        "//userspace/sys/pkg/lib/fuchsia-hash",
+        "//userspace/sys/pkg/lib/fuchsia-merkle",
+        "//third_party/rust_crates/vendor:anyhow",
+        "//third_party/rust_crates/vendor:async-channel",
+        "//third_party/rust_crates/vendor:event-listener",
+        "//third_party/rust_crates/vendor:futures",
+        "//third_party/rust_crates/vendor:linked-hash-map",
+        "//third_party/rust_crates/vendor:log",
+    ],
+)
+
+rustc_test(
+    name = "blob_pager_and_verifier_test",
+    srcs = [
+        "src/delivery.rs",
+        "src/lib.rs",
+        "src/profile.rs",
+    ],
+    edition = "2024",
+    deps = [
+        "//sdk/fidl/fuchsia.io:fuchsia.io_rust",
+        "//sdk/fidl/fuchsia.storage.block:fuchsia.storage.block_rust",
+        "//sdk/rust/zx",
+        "//userspace/lib/fidl/rust/fidl",
+        "//userspace/lib/fuchsia",
+        "//userspace/lib/fuchsia-async",
+        "//userspace/lib/fuchsia-sync",
+        "//userspace/storage/fidl/fuchsia.storage.mapping:fuchsia.storage.mapping_rust",
+        "//userspace/storage/lib/mapping",
+        "//userspace/storage/lib/profile",
+        "//userspace/storage/lib/ptr_slice",
+        "//userspace/storage/lib/vfs/rust:vfs",
+        "//userspace/storage/lib/vmo-blob",
+        "//userspace/storage/lib/vmo-fifo",
+        "//userspace/sys/pkg/lib/fuchsia-hash",
+        "//userspace/sys/pkg/lib/fuchsia-merkle",
+        "//third_party/rust_crates/vendor:anyhow",
+        "//third_party/rust_crates/vendor:async-channel",
+        "//third_party/rust_crates/vendor:event-listener",
+        "//third_party/rust_crates/vendor:futures",
+        "//third_party/rust_crates/vendor:linked-hash-map",
+        "//third_party/rust_crates/vendor:log",
+        "//third_party/rust_crates/vendor:test-case",
+    ],
+)

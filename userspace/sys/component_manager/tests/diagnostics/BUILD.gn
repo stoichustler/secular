@@ -1,0 +1,68 @@
+# Copyright 2021 The Fuchsia Authors. All rights reserved.
+# Use of this source code is governed by a BSD-style license that can be
+# found in the LICENSE file.
+
+import("//products/build/components.gni")
+import("//products/build/rust/rustc_binary.gni")
+import("//products/build/rust/rustc_library.gni")
+import("//products/build/rust/rustc_test.gni")
+
+rustc_binary("reporter_bin") {
+  name = "reporter"
+  edition = "2024"
+  source_root = "reporter.rs"
+  testonly = true
+  deps = [
+    "//sdk/fidl/fuchsia.io:fuchsia.io_rust",
+    "//sdk/fidl/fuchsia.sys2:fuchsia.sys2_rust",
+    "//userspace/lib/diagnostics/reader/rust",
+    "//userspace/lib/diagnostics/testing/diagnostics-assertions/rust:diagnostics-assertions",
+    "//userspace/lib/fidl/rust/fidl",
+    "//userspace/lib/fuchsia",
+    "//userspace/lib/fuchsia-component",
+    "//userspace/lib/fuchsia-fs",
+  ]
+
+  sources = [ "reporter.rs" ]
+}
+
+rustc_test("bin") {
+  name = "diagnostics_integration_test"
+  edition = "2024"
+  source_root = "integration_test.rs"
+  deps = [
+    "//sdk/fidl/fuchsia.component:fuchsia.component_rust",
+    "//userspace/lib/fuchsia",
+    "//userspace/lib/fuchsia-component-test",
+    "//userspace/sys/lib/component-events",
+  ]
+
+  sources = [ "integration_test.rs" ]
+}
+
+fuchsia_component("reporter") {
+  testonly = true
+  deps = [ ":reporter_bin" ]
+  manifest = "meta/reporter.cml"
+}
+
+fuchsia_component("component-manager-inspect") {
+  testonly = true
+  manifest = "meta/component-manager-inspect.cml"
+}
+
+fuchsia_unittest_package("diagnostics-integration-test") {
+  manifest = "meta/diagnostics-integration-test.cml"
+  deps = [
+    ":bin",
+    ":component-manager-inspect",
+    ":reporter",
+    "//userspace/diagnostics/archivist:archivist-for-embedding-bundle",
+    "//userspace/sys/component_manager:component-manager-realm-builder-debug-cmp",
+  ]
+}
+
+group("tests") {
+  testonly = true
+  deps = [ ":diagnostics-integration-test" ]
+}

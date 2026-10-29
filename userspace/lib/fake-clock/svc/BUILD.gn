@@ -1,0 +1,56 @@
+# Copyright 2019 The Fuchsia Authors. All rights reserved.
+# Use of this source code is governed by a BSD-style license that can be
+# found in the LICENSE file.
+
+import("//products/build/components.gni")
+import("//products/build/rust/rustc_binary.gni")
+import("//products/build/testing/environments.gni")
+
+rustc_binary("fake_clock_svc") {
+  edition = "2024"
+  with_unit_tests = true
+
+  deps = [
+    "//sdk/rust/zx",
+    "//userspace/lib/fake-clock/fidl:fidl_rust",
+    "//userspace/lib/fake-clock/named-timer:fidl_rust",
+    "//userspace/lib/fidl/rust/fidl",
+    "//userspace/lib/fuchsia",
+    "//userspace/lib/fuchsia-async",
+    "//userspace/lib/fuchsia-component",
+    "//userspace/lib/fuchsia-sync",
+    "//third_party/rust_crates:anyhow",
+    "//third_party/rust_crates:futures",
+    "//third_party/rust_crates:log",
+    "//third_party/rust_crates:rand",
+  ]
+
+  test_deps = [
+    "//userspace/lib/fake-clock/named-timer",
+    "//userspace/lib/fuchsia",
+  ]
+
+  sources = [ "src/main.rs" ]
+}
+
+fuchsia_component("svc") {
+  testonly = true
+  component_name = "fake_clock"
+  manifest = "meta/fake_clock.cml"
+  deps = [ ":fake_clock_svc" ]
+}
+
+# Useful for subpackaging in tests.
+fuchsia_package("pkg") {
+  testonly = true
+  package_name = "fake_clock"
+  deps = [ ":svc" ]
+}
+
+fuchsia_unittest_package("tests") {
+  package_name = "fake_clock_test"
+  deps = [ ":fake_clock_svc_test" ]
+  test_specs = {
+    environments = [ emu_env ]
+  }
+}

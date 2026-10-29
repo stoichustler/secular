@@ -1,0 +1,51 @@
+# Copyright 2026 The Fuchsia Authors. All rights reserved.
+# Use of this source code is governed by a BSD-style license that can be
+# found in the LICENSE file.
+
+load("//products/build/bazel/rules/rust:defs.bzl", "rustc_library")
+load("//products/build/bazel/rules/testing:fx_unittest_package.bzl", "fx_unittest_package")
+
+package(default_applicable_licenses = ["//:license"])
+
+rustc_library(
+    name = "detect-stall",
+    srcs = [
+        "src/lib.rs",
+        "src/stream.rs",
+    ],
+    edition = "2024",
+    # @bazel2gn:skip
+    test_deps = [
+        "//sdk/fidl/fuchsia.io:fuchsia.io_rust",
+        "//userspace/lib/fuchsia",
+        "//userspace/lib/fuchsia-component/tests:fuchsia.component.client.test_rust",
+        "//third_party/rust_crates/vendor:assert_matches",
+    ],
+    # TODO(https://fxbug.dev/326626515): Avoid widely taking on users until we
+    # get some experience stopping some components.
+    visibility = [
+        "//userspace/connectivity/policy/http-client:__pkg__",
+        "//userspace/devices/bin/driver-index:__pkg__",
+        "//userspace/hwinfo:__pkg__",
+        "//userspace/lib/fuchsia-component/server:__pkg__",
+        "//userspace/sys/component_manager/tests/stop_with_escrow:__pkg__",
+        "//userspace/sys/pkg/bin/null-update-checker:__pkg__",
+        "//userspace/sys/pkg/bin/system-update-committer:__pkg__",
+    ],
+    # @bazel2gn:skip
+    with_unit_tests = True,
+    deps = [
+        "//sdk/rust/zx",
+        "//userspace/lib/fidl/rust/fidl",
+        "//userspace/lib/fuchsia-async",
+        "//userspace/lib/fuchsia-sync",
+        "//third_party/rust_crates/vendor:futures",
+        "//third_party/rust_crates/vendor:pin-project-lite",
+    ],
+)
+
+# @bazel2gn:skip
+fx_unittest_package(
+    name = "detect-stall-unittests",
+    unit_tests = [":detect-stall_test"],
+)

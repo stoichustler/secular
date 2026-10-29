@@ -1,0 +1,26 @@
+# Copyright 2026 The Fuchsia Authors. All rights reserved.
+# Use of this source code is governed by a BSD-style license that can be
+# found in the LICENSE file.
+
+import("//products/build/go/go_library.gni")
+
+if (is_host) {
+  go_library("gopkg") {
+    sources = [
+      "aliases.go",
+      "bits.go",
+      "consts.go",
+      "elementslice.go",
+      "elementstr.go",
+      "enums.go",
+      "library.go",
+      "properties.go",
+      "protocol.go",
+      "summary.go",
+      "symboltable.go",
+      "wraparoundtype.go",
+    ]
+    importpath = "go.fuchsia.dev/fuchsia/tools/fidl/lib/summarize"
+    deps = [ "//tools/fidl/lib/fidlgen" ]
+  }
+}

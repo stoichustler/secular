@@ -1,0 +1,19 @@
+# Copyright 2021 The Fuchsia Authors. All rights reserved.
+# Use of this source code is governed by a BSD-style license that can be
+# found in the LICENSE file.
+
+import("//userspace/lib/fostr/build/fostr_fidl.gni")
+
+fostr_fidl("fuchsia.ui.composition") {
+  fidl_target = "//sdk/fidl/fuchsia.ui.composition"
+
+  public_deps = [
+    "//userspace/lib/fostr/fidl/fuchsia.io",
+    "//userspace/lib/fostr/fidl/fuchsia.math",
+    "//userspace/lib/fostr/fidl/fuchsia.scenic.scheduling",
+    "//userspace/lib/fostr/fidl/fuchsia.sysmem",
+    "//userspace/lib/fostr/fidl/fuchsia.sysmem2",
+    "//userspace/lib/fostr/fidl/fuchsia.ui.pointer",
+    "//userspace/lib/fostr/fidl/fuchsia.ui.views",
+  ]
+}

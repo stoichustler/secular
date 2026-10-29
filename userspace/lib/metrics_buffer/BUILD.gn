@@ -1,0 +1,57 @@
+# Copyright 2021 The Fuchsia Authors. All rights reserved.
+# Use of this source code is governed by a BSD-style license that can be
+# found in the LICENSE file.
+
+import("//products/build/components.gni")
+import("//products/build/testing/cc_test_executable.gni")
+
+source_set("metrics_buffer") {
+  sources = [
+    "metrics_buffer.cc",
+    "metrics_buffer.h",
+    "metrics_impl.cc",
+    "metrics_impl.h",
+  ]
+  public_deps = [
+    "//sdk/fidl/fuchsia.io:fuchsia.io_cpp_hlcpp_conversion",
+    "//sdk/fidl/fuchsia.metrics:fuchsia.metrics_cpp",
+    "//sdk/lib/async-loop:async-loop-cpp",
+    "//sdk/lib/async-loop:async-loop-default",
+    "//sdk/lib/component/incoming/cpp",
+    "//sdk/lib/driver/logging/cpp",
+    "//sdk/lib/sys/cpp",
+  ]
+
+  visibility = [
+    ":metrics_buffer_unittests",
+    "//userspace/lib",
+    "//userspace/media/drivers/amlogic_decoder:sources",
+    "//userspace/media/lib/codec_impl:*",
+    "//userspace/sysmem/server:sysmem_common_srcs",
+  ]
+}
+
+cc_test_executable("metrics_buffer_unittests") {
+  testonly = true
+
+  sources = [ "metrics_buffer_unittests.cc" ]
+
+  deps = [
+    ":metrics_buffer",
+    "//sdk/fidl/fuchsia.metrics:fuchsia.metrics_cpp",
+    "//sdk/fidl/fuchsia.metrics:fuchsia.metrics_hlcpp",
+    "//sdk/lib/fdio",
+    "//sdk/lib/vfs/cpp",
+    "//userspace/lib/fxl/test:gtest_main",
+    "//third_party/googletest:gtest",
+  ]
+}
+
+fuchsia_unittest_package("metrics_buffer_tests") {
+  deps = [ ":metrics_buffer_unittests" ]
+}
+
+group("tests") {
+  testonly = true
+  deps = [ ":metrics_buffer_tests" ]
+}

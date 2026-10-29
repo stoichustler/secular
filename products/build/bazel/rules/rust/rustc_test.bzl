@@ -1,0 +1,70 @@
+# Copyright 2025 The Fuchsia Authors. All rights reserved.
+# Use of this source code is governed by a BSD-style license that can be
+# found in the LICENSE file.
+
+"""A macro for defining a Rust test with Fuchsia-specific lint config by default."""
+
+load("@fuchsia_rules_common//build_flags:rust.bzl", "BUILD_FLAGS_RUST_MACRO_ATTRS", "wrap_rust_macro_args_with_build_flags")
+load("@rules_rust//rust:defs.bzl", "rust_test")
+load(
+    "//products/build/bazel/rules/rust:common.bzl",
+    "with_fuchsia_rust_stdlib_link_deps",
+    "with_fuchsia_rust_tags",
+    "with_fuchsia_rust_test_aspect_hints",
+    "with_fuchsia_rustc_flags",
+)
+
+def _rustc_test_impl(
+        name,
+        lint_config,
+        disable_clippy,
+        rustc_flags,
+        build_flags,
+        **kwargs):
+    if lint_config == None:
+        lint_config = "//products/build/config/rust/lints:clippy_warn_default"
+
+    kwargs["tags"] = with_fuchsia_rust_tags(kwargs.get("tags"), disable_clippy)
+    kwargs["rustc_flags"] = with_fuchsia_rustc_flags(rustc_flags)
+    kwargs["link_deps"] = with_fuchsia_rust_stdlib_link_deps(kwargs.get("link_deps"))
+    kwargs["aspect_hints"] = with_fuchsia_rust_test_aspect_hints(kwargs.get("aspect_hints"))
+
+    wrapped_kwargs = wrap_rust_macro_args_with_build_flags(
+        kwargs = kwargs,
+        name = name,
+        rust_rule_name = "rust_test",
+        build_flags = build_flags,
+        target_type = "rust_executable",
+    )
+
+    rust_test(
+        name = name,
+        lint_config = lint_config,
+        **wrapped_kwargs
+    )
+
+rustc_test = macro(
+    doc = """Define a rust_test() target with Fuchsia-specific features
+
+    Applies Fuchsia-specific Rust flags.
+
+    lint_config is set to "//products/build/config/rust/lints:clippy_warn_default",
+    unless specified by the user.
+
+    IMPORTANT: The resulting Bazel test target is *not* visible to Fuchsia test
+    runners. It must be exposed via a secondary mechanism. For example using
+    wrap_host_rust_test() for host build configurations, or using it in a test
+    component for Fuchsia ones. Note that `args` set here reach the test binary
+    under `bazel test`, but Bazel does not record them in providers, so
+    wrap_host_rust_test() cannot see them; repeat them in its `test_args`.
+    """,
+    implementation = _rustc_test_impl,
+    inherit_attrs = rust_test,
+    attrs = {
+        "disable_clippy": attr.bool(
+            doc = "If true, disables clippy lints on this target.",
+            default = False,
+            configurable = False,
+        ),
+    } | BUILD_FLAGS_RUST_MACRO_ATTRS,
+)

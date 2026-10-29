@@ -1,0 +1,381 @@
+# Copyright 2019 The Fuchsia Authors
+#
+# Use of this source code is governed by a MIT-style
+# license that can be found in the LICENSE file or at
+# https://opensource.org/licenses/MIT
+
+import("//products/build/config/compiler_config.gni")
+import("//products/build/cpp/library_headers.gni")
+import("//products/build/toolchain/toolchain_environment.gni")
+import("//products/build/toolchain/zircon/zircon_toolchain_suite.gni")
+import("//zircon/kernel/kernel_bindgen_crate.gni")
+import("//zircon/kernel/kernel_rust_mod.gni")
+
+if (toolchain_environment == "kernel.phys" ||
+    toolchain_environment == "kernel") {
+  # These set the ABI contract between C++ and assembly code.
+  # This is kept consistent between the kernel proper and phys
+  # so (pure PIC) code should be callable from the kernel proper.
+  compiler_config("abi") {
+    compiler_configs = [
+      ":integer-register-abi",
+      ":percpu-abi",
+      ":thread-pointer-abi",
+
+      # Don't use the outline atomics since we don't have the helper functions.
+      # TODO(mcgrathr): use code-patching to define the outcalls for the kernel
+      "//products/build/config/arm64:no-outline-atomics",
+    ]
+  }
+
+  # Don't use any FP / vector registers in kernel code.  They usually still
+  # hold the user-mode values while running in kernel mode.
+  compiler_config("integer-register-abi") {
+    c_family_flags = [ "-mgeneral-regs-only" ]
+    rust_target_features = [
+      "-fp-armv8",
+      "-neon",
+      "-sve",
+      "-sve2",
+      "-aes",
+      "-sha2",
+    ]
+    if (toolchain_environment == "kernel") {
+      rust_target_edits = [
+        {
+          key = "abi"
+          action = "set"
+          value = "softfloat"
+        },
+        {
+          key = "rustc-abi"
+          action = "set"
+          value = "softfloat"
+        },
+      ]
+    }
+  }
+
+  # Reserve a register (x20) to be called percpu_ptr in <lib/arch/asm.h>.
+  # The compiler must never touch it except via our inline assembly.
+  compiler_config("percpu-abi") {
+    c_family_flags = [ "-ffixed-x20" ]
+    rust_target_features = [ "+reserve-x20" ]
+  }
+
+  # Use the right thread-pointer ABI for the kernel (TPIDR_EL1).  This affects
+  # `__builtin_thread_pointer()`; would affect ELF TLS if it were used; and
+  # affects the ABI implicitly used by stack-protector.
+  compiler_config("thread-pointer-abi") {
+    c_family_flags = [ "-mtp=el1" ]
+    rust_target_features = [ "+tpidr-el1" ]
+  }
+
+  # This is used pervasively throughout the kernel on arm64.
+  config("kernel") {
+    defines = [ "ARCH_ARM64" ]
+
+    # For #include <arch/foo.h>.
+    include_dirs = [ "include" ]
+
+    configs = [
+      # <arch/current_thread.h> has #include <lib/arch/intrin.h>.
+      "//zircon/kernel/lib/arch/arm64:headers.config",
+    ]
+  }
+
+  source_set("arm64") {
+    public_deps = [ ":headers" ]
+
+    sources = [
+      "arch.cc",
+      "arm64_ffi.cc",
+      "asid_allocator.cc",
+      "asm.S",
+      "cache-ops.S",
+      "coresight.cc",
+      "crashlog.cc",
+      "dap.cc",
+      "debugger.cc",
+      "exceptions.S",
+      "exceptions_c.cc",
+      "fpu_asm.S",
+      "handoff.cc",
+      "mmu.cc",
+      "mp.cc",
+      "perf_mon.cc",
+      "registers.cc",
+      "secondary.S",
+      "secondary.cc",
+      "smccc.S",
+      "spinlock.cc",
+      "thread.cc",
+      "uspace_entry.S",
+    ]
+    deps = [
+      "user-copy",
+      "//sdk/lib/fit",
+      "//userspace/lib/lazy_init",
+      "//zircon/kernel/dev/coresight",
+      "//zircon/kernel/dev/interrupt/gic/common",
+      "//zircon/kernel/dev/iommu/arm_smmu",
+      "//zircon/kernel/dev/iommu/stub",
+      "//zircon/kernel/dev/psci",
+      "//zircon/kernel/lib/arch",
+      "//zircon/kernel/lib/boot-options",
+      "//zircon/kernel/lib/code-patching",
+      "//zircon/kernel/lib/console",
+      "//zircon/kernel/lib/counters",
+      "//zircon/kernel/lib/crashlog",
+      "//zircon/kernel/lib/heap",
+      "//zircon/kernel/lib/init",
+      "//zircon/kernel/lib/instrumentation",
+      "//zircon/kernel/lib/ktl",
+      "//zircon/kernel/lib/page",
+      "//zircon/kernel/lib/page_cache",
+      "//zircon/kernel/lib/perfmon",
+      "//zircon/kernel/lib/syscalls",
+      "//zircon/kernel/lib/thread-stack",
+      "//zircon/kernel/lib/userabi:headers",
+      "//zircon/kernel/object",
+      "//zircon/kernel/phys/handoff",
+      "//zircon/kernel/platform:headers",
+      "//zircon/kernel/vm",
+      "//zircon/system/ulib/bitmap",
+      "//zircon/system/ulib/fbl",
+      "//zircon/system/ulib/pretty",
+      "//zircon/system/ulib/zx",
+    ]
+  }
+
+  library_headers("headers") {
+    headers = [
+      # <arch/arm64/hypervisor.h> has #include <lib/id_allocator.h>.
+      "//zircon/kernel/lib/id_allocator:headers",
+
+      # <arch/arm64/hypervisor/el2_state.h> has #include <lib/page/size.h>
+      "//zircon/kernel/lib/page:headers",
+    ]
+  }
+
+  kernel_bindgen_crate("arch-arm64-vm-bindings") {
+    headers = [ "include/arch/vm.h" ]
+    cpp = true
+    non_rust_deps = [ ":headers" ]
+    raw_lines = [ "#![no_std]" ]
+    var_allowlist = [
+      "kTbiBit",
+      "kTbiMask",
+      "kHighVABit",
+      "kUserBitMask",
+    ]
+    expect_lints = [ "non_upper_case_globals" ]
+    notice_year = 2026
+  }
+
+  kernel_bindgen_crate("arch-arm64-aspace-bindings") {
+    headers = [
+      "include/arch/kernel_aspace.h",
+      "include/arch/arm64/mmu.h",
+    ]
+    cpp = true
+    non_rust_deps = [
+      ":headers",
+      "//zircon/kernel/lib/ktl:headers",
+    ]
+    raw_lines = [ "#![no_std]" ]
+    var_allowlist = [
+      "KERNEL_ASPACE_BASE",
+      "KERNEL_ASPACE_SIZE",
+      "MMU_GUEST_SIZE_SHIFT",
+      "USER_ASPACE_BASE",
+      "USER_ASPACE_SIZE",
+      "USER_RESTRICTED_ASPACE_SIZE",
+    ]
+    notice_year = 2026
+  }
+
+  kernel_bindgen_crate("arm64-crashlog-bindings") {
+    headers = [ "include/arch/crashlog_regs.h" ]
+    cpp = true
+    non_rust_deps = [ ":headers" ]
+    notice_year = 2026
+    raw_lines = [ "#![no_std]" ]
+    type_allowlist = [ "crashlog_regs_t" ]
+    opaque_types = [ "iframe_t" ]
+    explicit_padding = false
+  }
+
+  kernel_bindgen_crate("arm64-feature-bindings") {
+    headers = [ "include/arch/arm64/feature.h" ]
+    cpp = true
+    non_rust_deps = [
+      ":headers",
+      "//zircon/kernel/lib/ktl:headers",
+    ]
+    notice_year = 2026
+    raw_lines = [ "#![no_std]" ]
+    type_allowlist = [
+      "arm64_asid_width",
+      "arm64_cache_features",
+      "arm64_microarch",
+      "arm64_mmu_features",
+    ]
+
+    # Every value of these types that Rust reads was produced by Rust: the
+    # width fields of arm64_mmu_features, and the arm64_microarch that
+    # midr_to_microarch returns. C++ never stores into a location Rust reads
+    # as these enums.
+    rustified_enum = [
+      "arm64_asid_width",
+      "arm64_microarch",
+    ]
+    explicit_padding = false
+    expect_lints = [ "non_camel_case_types" ]
+  }
+
+  kernel_bindgen_crate("arm64-mp-bindings") {
+    headers = [ "include/arch/arm64/mp.h" ]
+    cpp = true
+    non_rust_deps = [
+      ":headers",
+      "//zircon/kernel/lib/ktl:headers",
+    ]
+    notice_year = 2026
+    raw_lines = [ "#![no_std]" ]
+    explicit_padding = false
+    type_allowlist = [ "arm64_percpu" ]
+    var_allowlist = [ "PERCPU_IN_RESTRICTED_MODE" ]
+    expect_lints = [
+      "non_camel_case_types",
+      "non_upper_case_globals",
+    ]
+  }
+
+  kernel_bindgen_crate("arm64-restricted-bindings") {
+    headers = [ "include/arch/restricted.h" ]
+    cpp = true
+    non_rust_deps = [ ":headers" ]
+    notice_year = 2026
+    raw_lines = [ "#![no_std]" ]
+    type_allowlist = [ "ArchSavedNormalState" ]
+    explicit_padding = false
+    std_derives = [
+      "default",
+      "eq",
+      "partialeq",
+    ]
+    expect_lints = []
+  }
+
+  kernel_bindgen_crate("arm64-thread-bindings") {
+    headers = [ "include/arch/arch_thread.h" ]
+    cpp = true
+    non_rust_deps = [ ":headers" ]
+    notice_year = 2026
+    raw_lines = [ "#![no_std]" ]
+    type_allowlist = [ "arch_thread" ]
+    var_allowlist = [
+      "ARM64_DFR_RUN_ACCESS_FAULT_HANDLER_BIT",
+      "ARM64_DFR_RUN_FAULT_HANDLER_BIT",
+      "ARM64_MAX_HW_BREAKPOINTS",
+      "ARM64_MAX_HW_WATCHPOINTS",
+      "CURRENT_MDSCR_OFFSET",
+      "CURRENT_PERCPU_PTR_OFFSET",
+      "FPSTATE_FFR_OFFSET",
+      "FPSTATE_FPCR_OFFSET",
+      "FPSTATE_FPSR_OFFSET",
+      "FPSTATE_P_REGS_OFFSET",
+      "FPSTATE_REGS_OFFSET",
+    ]
+    explicit_padding = false
+    expect_lints = [ "non_camel_case_types" ]
+  }
+
+  kernel_bindgen_crate("arm64-user-copy-bindings") {
+    headers = [ "user-copy/user-copy.h" ]
+    cpp = true
+    non_rust_deps = [ ":headers" ]
+    deps = [ "//sdk/rust/zx-types" ]
+    notice_year = 2026
+    raw_lines = [
+      "#![no_std]",
+      "pub type zx_status_t = zx_types::zx_status_t;",
+      "pub type zx_vaddr_t = zx_types::zx_vaddr_t;",
+    ]
+    type_blocklist = [ "zx_.*" ]
+    type_allowlist = [
+      "Arm64UserCopyCaptureFaultsRet",
+      "Arm64UserCopyRet",
+    ]
+    explicit_padding = false
+    expect_lints = [ "non_camel_case_types" ]
+  }
+
+  kernel_rust_mod("arch-arm64-rs") {
+    output_name = "arch_arm64"
+    source_root = "src/mod.rs"
+    sources = [
+      "src/cache.rs",
+      "src/crashlog.rs",
+      "src/feature.rs",
+      "src/fpu.rs",
+      "src/mod.rs",
+      "src/mp.rs",
+      "src/periphmap.rs",
+      "src/registers.rs",
+      "src/restricted.rs",
+      "src/smccc.rs",
+      "src/spinlock.rs",
+      "src/sysreg.rs",
+      "src/thread.rs",
+      "src/uarch.rs",
+      "src/user_copy.rs",
+      "src/vm.rs",
+    ]
+    deps = [
+      ":arch-arm64-aspace-bindings",
+      ":arch-arm64-vm-bindings",
+      ":arm64-crashlog-bindings",
+      ":arm64-feature-bindings",
+      ":arm64-mp-bindings",
+      ":arm64-restricted-bindings",
+      ":arm64-thread-bindings",
+      ":arm64-user-copy-bindings",
+      "//sdk/rust/zx-status",
+      "//sdk/rust/zx-types",
+      "//userspace/lib/kprint",
+      "//userspace/lib/lockdep/rust:lockdep",
+      "//userspace/lib/regio",
+      "//zircon/kernel/arch:arch-types-bindings",
+      "//zircon/kernel/lib/arch:arch-rs",
+      "//zircon/kernel/lib/debug",
+      "//zircon/kernel/lib/init:init_rust",
+      "//zircon/kernel/lib/libc:rust",
+      "//zircon/kernel/lib/user_copy",
+      "//zircon/kernel/phys/handoff:handoff-rs",
+      "//zircon/system/ulib/mmio-ptr:mmio-ptr-rs",
+    ]
+    test_deps = [ "//zircon/kernel/lib/unittest:unittest-rs" ]
+  }
+
+  source_set("tests") {
+    testonly = true
+    sources = [
+      "asid_allocator_tests.cc",
+      "mmu_tests.cc",
+    ]
+    deps = [
+      "//zircon/kernel/lib/arch",
+      "//zircon/kernel/lib/ktl",
+      "//zircon/kernel/lib/unittest",
+      "//zircon/kernel/vm",
+      "//zircon/system/ulib/bitmap",
+    ]
+  }
+
+  group("kernel-tests") {
+    testonly = true
+    deps = [ ":tests" ]
+  }
+}

@@ -1,0 +1,30 @@
+# Copyright 2024 The Fuchsia Authors. All rights reserved.
+# Use of this source code is governed by a BSD-style license that can be
+# found in the LICENSE file.
+
+import("//products/build/components.gni")
+import("//tools/cmc/build/expect_includes.gni")
+
+group("tests") {
+  testonly = true
+  deps = [
+    "cpp/tests",
+    "rust/tests",
+  ]
+}
+
+expect_includes("client_includes") {
+  includes = [ "meta/client.shard.cml" ]
+}
+
+fuchsia_package_with_single_component("power-framework") {
+  testonly = true
+  manifest = "meta/power_framework_test_realm.cml"
+  subpackages = [
+    "//userspace/power/system-activity-governor:config-use-suspender",
+    "//userspace/power/system-activity-governor/fake:package",
+    "//userspace/power/broker:package",
+    "//userspace/power/testing/fake-suspend:fake-suspend-pkg",
+    "//userspace/power/testing/fake-shutdown-shim:package",
+  ]
+}

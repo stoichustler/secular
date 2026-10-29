@@ -1,0 +1,165 @@
+# Copyright 2017 The Fuchsia Authors. All rights reserved.
+# Use of this source code is governed by a BSD-style license that can be
+# found in the LICENSE file.
+
+import("//products/build/config/clang/clang.gni")
+import("//products/build/config/compiler_config.gni")
+import("//products/build/config/sysroot.gni")
+
+# LINT.IfChange(compiler)
+config("compiler") {
+  configs = [
+    ":sysroot",
+    ":target",
+    ":clang_defaults",
+
+    # Default host toolchains to using 16 CGU (and large RBE workers by
+    # extension)
+    "//products/build/config/rust:codegen_units_16",
+  ]
+
+  rustflags = [ "-Clinker=$rebased_clang_prefix/clang++" ]
+  if (secular_boot_build) {
+    # CIPD linux sysroot has no libgcc_s; compiler-rt supplies builtins.
+    rustflags += [
+      "-Cdefault-linker-libraries=no",
+      "-Clink-arg=-lpthread",
+      "-Clink-arg=-ldl",
+      "-Clink-arg=-lm",
+      "-Clink-arg=-lc",
+    ]
+  } else {
+    rustflags += [ "-Cdefault-linker-libraries" ]
+  }
+}
+
+# LINT.ThenChange(//products/build/config/linux/BUILD.bazel:compiler)
+
+# LINT.IfChange(default_pie)
+config("default-pie") {
+  if (!toolchain_variant.is_pic_default) {
+    # Rust links are always PIE on Linux.  C/C++ static library code that is
+    # linked into Rust programs must be compiled as PIE too.  Since there's no
+    # good way to distinguish code going into Rust links from other code, just
+    # do it for everything.
+    cflags = [ "-fPIE" ]
+    asmflags = cflags
+
+    # Since we're compiling as PIE, link as PIE too.
+    # This makes `#ifdef __PIE__` checks comport with link-time behavior.
+    ldflags = cflags + [ "-pie" ]
+
+    rustflags = []
+    foreach(flag, ldflags) {
+      rustflags += [ "-Clink-arg=$flag" ]
+    }
+  }
+}
+
+# LINT.ThenChange(//products/build/config/linux/BUILD.bazel:default_pie)
+
+# LINT.IfChange(implicit_host_libs)
+compiler_config("implicit-host-libs") {
+  ldflags = [
+    # Use static C++ standard library.
+    "-static-libstdc++",
+  ]
+  linker_flags = [
+    # Set rpath to find dynamically linked libraries placed next to executables
+    # in the host build directory.
+    "-rpath=\$ORIGIN/",
+  ]
+
+  # rustc 1.8x+ surfaces unused clang++ driver flags via `linker_messages`.
+  # `-static-libstdc++` is unused when rustc links with
+  # `-Cdefault-linker-libraries=no` (no C++ stdlib on the rust link line).
+  rustflags = []
+  if (!secular_boot_build) {
+    foreach(flag, ldflags) {
+      rustflags += [ "-Clink-arg=$flag" ]
+    }
+  }
+}
+
+# LINT.ThenChange(//products/build/config/linux/BUILD.bazel:implicit_host_libs)
+
+# LINT.IfChange(sysroot)
+config("sysroot") {
+  cflags = [ "--sysroot=" + rebase_path(sysroot, root_build_dir) ]
+  ldflags = cflags
+  asmflags = cflags
+
+  # The CIPD linux sysroot keeps libgcc_s in the Debian multiarch dir.
+  # Host rustc still passes -lgcc_s when linking proc-macros.
+  if (current_cpu == "x64") {
+    ldflags +=
+        [ "-L" + rebase_path("$sysroot/lib/x86_64-linux-gnu", root_build_dir) ]
+  } else if (current_cpu == "arm64") {
+    ldflags +=
+        [ "-L" + rebase_path("$sysroot/lib/aarch64-linux-gnu", root_build_dir) ]
+  }
+
+  rustflags = []
+  foreach(flag, ldflags) {
+    rustflags += [ "-Clink-arg=$flag" ]
+  }
+}
+
+# LINT.ThenChange(//products/build/config/linux/BUILD.bazel:sysroot)
+
+# LINT.IfChange(target)
+config("target") {
+  cflags = [ "--target=$current_target_tuple" ]
+  asmflags = cflags
+  ldflags = cflags
+
+  rustflags = []
+  foreach(flag, ldflags) {
+    rustflags += [ "-Clink-arg=$flag" ]
+  }
+}
+
+# LINT.ThenChange(//products/build/config/linux/BUILD.bazel:target)
+
+# These flags are enabled by default in Fuchsia's Clang toolchain, but we set
+# them explicitly to support other Clang toolchains and Clang-based tools.
+# LINT.IfChange(clang_defaults)
+config("clang_defaults") {
+  cflags_cc = [
+    # Use libc++ as the C++ standard library.
+    "-stdlib=libc++",
+  ]
+  ldflags = [
+    # Use libc++ as the C++ standard library.
+    "-stdlib=libc++",
+
+    "--start-no-unused-arguments",
+
+    # Use libunwind as the unwinder.
+    "-unwindlib=libunwind",
+
+    # Use compiler-rt as the compiler runtime.
+    "-rtlib=compiler-rt",
+
+    "--end-no-unused-arguments",
+
+    # Use lld as the linker.
+    "-fuse-ld=lld",
+
+    # Generate build ID for all binaries.
+    "-Wl,--build-id",
+  ]
+
+  rustflags = []
+  foreach(flag, ldflags) {
+    rustflags += [ "-Clink-arg=$flag" ]
+  }
+
+  # On RISC-V the linker uses base address that's below the base allowed by
+  # Zircon (0x200000). See b/311221240. Specify the base address to
+  # workaround this issue.
+  if (current_cpu == "riscv64") {
+    ldflags += [ "-Wl,--image-base=0x200000" ]
+  }
+}
+# LINT.ThenChange(//products/build/config/linux/BUILD.bazel:clang_defaults)

@@ -1,0 +1,38 @@
+# Copyright 2022 The Fuchsia Authors. All rights reserved.
+# Use of this source code is governed by a BSD-style license that can be
+# found in the LICENSE file.
+
+import("//products/build/components.gni")
+import("//products/build/rust/rustc_library.gni")
+
+rustc_library("isolated-ota-env") {
+  testonly = true
+  edition = "2024"
+  deps = [
+    "//sdk/fidl/fuchsia.io:fuchsia.io_rust",
+    "//sdk/fidl/fuchsia.paver:fuchsia.paver_rust",
+    "//userspace/lib/fdio/rust:fdio",
+    "//userspace/lib/fidl/rust/fidl",
+    "//userspace/lib/fuchsia-async",
+    "//userspace/lib/fuchsia-component",
+    "//userspace/lib/fuchsia-component-test",
+    "//userspace/lib/fuchsia-url",
+    "//userspace/sys/lib/fidl-fuchsia-pkg-ext",
+    "//userspace/sys/pkg/lib/fuchsia-merkle",
+    "//userspace/sys/pkg/lib/fuchsia-pkg-testing",
+    "//userspace/sys/pkg/lib/fuchsia-pkg-testing/certs",
+    "//userspace/sys/pkg/lib/isolated-ota",
+    "//userspace/sys/pkg/testing/mock-omaha-server-fuchsia",
+    "//userspace/sys/pkg/testing/mock-paver",
+    "//userspace/sys/pkg/tests/pkg-resolver:empty-repo",
+    "//third_party/rust_crates:anyhow",
+    "//third_party/rust_crates:futures",
+    "//third_party/rust_crates:http",
+    "//third_party/rust_crates:mock-omaha-server",
+    "//third_party/rust_crates:serde_json",
+    "//third_party/rust_crates:tempfile",
+  ]
+
+  sources = [ "src/lib.rs" ]
+  configs += [ "//products/build/config/rust/lints:clippy_warn_all" ]
+}

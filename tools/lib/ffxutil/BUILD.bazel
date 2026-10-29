@@ -1,0 +1,62 @@
+# Copyright 2026 The Fuchsia Authors. All rights reserved.
+# Use of this source code is governed by a BSD-style license that can be
+# found in the LICENSE file.
+
+load("@io_bazel_rules_go//go:def.bzl", "go_library")
+load("//products/build/bazel/platforms:constraints.bzl", "HOST_OS_CONSTRAINTS")
+load("//products/build/bazel/rules/host_tests:host_go_test.bzl", "host_go_test")
+
+package(default_applicable_licenses = ["//:license"])
+
+go_library(
+    name = "ffxutil",
+    srcs = [
+        "emu.go",
+        "ffx.go",
+        "flash.go",
+        "mock.go",
+        "repository.go",
+        "test.go",
+    ],
+    importpath = "go.fuchsia.dev/fuchsia/tools/lib/ffxutil",
+    target_compatible_with = HOST_OS_CONSTRAINTS,
+    visibility = [
+        "//userspace/connectivity/network/testing/conformance/ffx:__pkg__",
+        "//userspace/testing/host-target-testing/ffx:__pkg__",
+        "//userspace/tests/early-boot-coverage/host-test:__pkg__",
+        "//third_party/network-conformance/orchestrator:__pkg__",
+        "//tools:__subpackages__",
+    ],
+    deps = [
+        ":constants",
+        "//tools/botanist:constants",
+        "//tools/build",
+        "//tools/lib/jsonutil",
+        "//tools/lib/logger",
+        "//tools/lib/retry",
+        "//tools/lib/subprocess",
+    ],
+)
+
+go_library(
+    name = "constants",
+    srcs = [
+        "constants/constants.go",
+    ],
+    importpath = "go.fuchsia.dev/fuchsia/tools/lib/ffxutil/constants",
+    target_compatible_with = HOST_OS_CONSTRAINTS,
+    visibility = ["//tools/testing/testrunner:__pkg__"],
+)
+
+host_go_test(
+    name = "ffxutil_tests",
+    srcs = [
+        "ffx_test.go",
+    ],
+    embed = [":ffxutil"],
+    target_compatible_with = HOST_OS_CONSTRAINTS,
+    visibility = ["//tools:__pkg__"],
+    deps = [
+        "//tools/lib/clock",
+    ],
+)

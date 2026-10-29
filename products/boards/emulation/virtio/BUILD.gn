@@ -1,0 +1,46 @@
+# Copyright 2023 The Fuchsia Authors. All rights reserved.
+# Use of this source code is governed by a BSD-style license that can be
+# found in the LICENSE file.
+
+import("//products/build/assembly/board_input_bundle.gni")
+import("//products/build/info/info.gni")
+
+# Drivers required for virtio support.
+#
+# These drivers are used when Fuchsia is running as a guest in a hypervisor
+# such as QEMU.
+board_input_bundle("virtio") {
+  drivers = [
+    {
+      package_target = "//userspace/connectivity/ethernet/drivers/virtio:package"
+      package_set = "bootfs"
+      driver_components = [ "meta/virtio_netdevice.cm" ]
+    },
+    {
+      package_target = "//userspace/devices/block/drivers/virtio:virtio_block_package"
+      package_set = "bootfs"
+      driver_components = [ "meta/virtio_block.cm" ]
+    },
+    {
+      package_target = "//userspace/devices/block/drivers/virtio:virtio_scsi_package"
+      package_set = "bootfs"
+      driver_components = [ "meta/virtio_scsi.cm" ]
+    },
+    {
+      package_target = "//userspace/devices/misc/drivers/virtio-rng:package"
+      package_set = "bootfs"
+      driver_components = [ "meta/virtio_rng.cm" ]
+    },
+    {
+      package_target = "//userspace/devices/misc/drivers/virtio-socket:package"
+      package_set = "bootfs"
+      driver_components = [ "meta/virtio_socket.cm" ]
+    },
+    {
+      package_target = "//userspace/devices/serial/drivers/virtio-console:package"
+      package_set = "bootfs"
+      driver_components = [ "meta/virtio_console.cm" ]
+    },
+  ]
+  version = build_info_version
+}

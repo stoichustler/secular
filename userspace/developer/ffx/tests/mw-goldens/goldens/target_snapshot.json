@@ -1,0 +1,90 @@
+{
+    "$schema": "http://json-schema.org/draft-07/schema#",
+    "title": "CommandStatus",
+    "oneOf": [
+        {
+            "description": "Snapshot captured in specified file.",
+            "type": "object",
+            "properties": {
+                "snapshot": {
+                    "type": "object",
+                    "properties": {
+                        "output_file": {
+                            "type": "string"
+                        }
+                    },
+                    "required": [
+                        "output_file"
+                    ]
+                }
+            },
+            "required": [
+                "snapshot"
+            ],
+            "additionalProperties": false
+        },
+        {
+            "description": "Annotations",
+            "type": "object",
+            "properties": {
+                "annotations": {
+                    "type": "object",
+                    "properties": {
+                        "annotations": {
+                            "type": "string"
+                        }
+                    },
+                    "required": [
+                        "annotations"
+                    ]
+                }
+            },
+            "required": [
+                "annotations"
+            ],
+            "additionalProperties": false
+        },
+        {
+            "description": "Unexpected error with string.",
+            "type": "object",
+            "properties": {
+                "unexpected_error": {
+                    "type": "object",
+                    "properties": {
+                        "message": {
+                            "type": "string"
+                        }
+                    },
+                    "required": [
+                        "message"
+                    ]
+                }
+            },
+            "required": [
+                "unexpected_error"
+            ],
+            "additionalProperties": false
+        },
+        {
+            "description": "A known kind of error that can be reported usefully to the user",
+            "type": "object",
+            "properties": {
+                "user_error": {
+                    "type": "object",
+                    "properties": {
+                        "message": {
+                            "type": "string"
+                        }
+                    },
+                    "required": [
+                        "message"
+                    ]
+                }
+            },
+            "required": [
+                "user_error"
+            ],
+            "additionalProperties": false
+        }
+    ]
+}

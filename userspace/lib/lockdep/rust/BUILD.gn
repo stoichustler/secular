@@ -1,0 +1,39 @@
+# Copyright 2026 The Fuchsia Authors. All rights reserved.
+# Use of this source code is governed by a BSD-style license that can be
+# found in the LICENSE file.
+
+import("//products/build/rust/rustc_library.gni")
+import("//zircon/kernel/params.gni")
+
+source_set("lock_class_registration") {
+  sources = [ "lock_class_registration.cc" ]
+  if (is_kernel) {
+    deps = [
+      "//zircon/kernel/lib/init",
+      "//zircon/kernel/lib/lockdep",
+    ]
+  } else {
+    deps = [ "//userspace/lib/lockdep" ]
+  }
+}
+
+rustc_library("lockdep") {
+  name = "lockdep"
+  edition = "2024"
+  sources = [ "src/lib.rs" ]
+
+  deps = [
+    ":lock_class_registration",
+    "//userspace/lib/kstring",
+    "//userspace/lib/zr",
+  ]
+
+  if (is_kernel) {
+    if (enable_lock_dep) {
+      features = [ "lock_dep" ]
+    } else if (enable_lock_dep_metadata_only || lock_name_tracing_enabled ||
+               scheduler_lock_spin_tracing_enabled) {
+      features = [ "lock_metadata_only" ]
+    }
+  }
+}

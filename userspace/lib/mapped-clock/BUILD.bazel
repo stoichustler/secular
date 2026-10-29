@@ -1,0 +1,42 @@
+# Copyright 2026 The Fuchsia Authors. All rights reserved.
+# Use of this source code is governed by a BSD-style license that can be
+# found in the LICENSE file.
+
+load("//products/build/bazel/rules/rust:defs.bzl", "rustc_library", "rustc_test")
+load("//products/build/bazel/rules/testing:fx_unittest_package.bzl", "fx_unittest_package")
+
+package(default_applicable_licenses = ["//:license"])
+
+# Use in BUILD as `//userspace/lib/mapped-clock:lib`.
+# Use in rust code as `use mapped_clock::...`
+rustc_library(
+    name = "lib",
+    srcs = ["src/lib.rs"],
+    crate_name = "mapped_clock",
+    edition = "2024",
+    visibility = [
+        "//userspace/lib/mapped-clock/benchmarks:__pkg__",
+        "//userspace/starnix/kernel/core:__pkg__",
+    ],
+    deps = [
+        "//sdk/rust/zx",
+        "//sdk/rust/zx-status",
+        "//third_party/rust_crates/vendor:log",
+    ],
+)
+
+# @bazel2gn:skip
+rustc_test(
+    name = "lib_test",
+    crate = ":lib",
+    edition = "2024",
+    visibility = ["//visibility:private"],
+    deps = ["//userspace/lib/fuchsia-runtime"],
+)
+
+# @bazel2gn:skip
+fx_unittest_package(
+    name = "mapped-clock-tests",
+    unit_tests = [":lib_test"],
+    visibility = ["//visibility:public"],
+)

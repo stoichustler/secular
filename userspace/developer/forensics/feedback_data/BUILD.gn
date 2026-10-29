@@ -1,0 +1,145 @@
+# Copyright 2019 The Fuchsia Authors. All rights reserved.
+# Use of this source code is governed by a BSD-style license that can be
+# found in the LICENSE file.
+
+visibility = [ "//userspace/developer/forensics/*" ]
+
+###############################################################################
+# SOURCES
+###############################################################################
+source_set("constants") {
+  sources = [ "constants.h" ]
+
+  public_deps = [
+    "//userspace/developer/forensics/utils:storage_size",
+    "//userspace/developer/forensics/utils/cobalt",
+  ]
+}
+
+source_set("data_provider") {
+  public = [ "data_provider.h" ]
+
+  sources = [
+    "data_provider.cc",
+    "data_provider.h",
+  ]
+
+  public_deps = [
+    ":inspect_budget",
+    ":metadata",
+    "//sdk/fidl/fuchsia.feedback:fuchsia.feedback_hlcpp",
+    "//sdk/lib/async:async-cpp",
+    "//sdk/lib/async-loop:async-loop-cpp",
+    "//sdk/lib/sys/cpp",
+    "//sdk/lib/vfs/cpp",
+    "//userspace/developer/forensics/feedback/annotations",
+    "//userspace/developer/forensics/feedback/attachments",
+    "//userspace/developer/forensics/utils/cobalt",
+    "//userspace/developer/forensics/utils/redact",
+    "//userspace/lib/timekeeper:system",
+    "//zircon/system/ulib/zx",
+  ]
+
+  deps = [
+    ":constants",
+    "//sdk/lib/syslog/cpp",
+    "//userspace/developer/forensics/utils:archive",
+    "//userspace/lib/fsl",
+    "//userspace/lib/uuid",
+  ]
+}
+
+source_set("errors") {
+  sources = [ "errors.h" ]
+
+  public_deps = [
+    "//sdk/lib/syslog/cpp",
+    "//userspace/developer/forensics/utils:errors",
+  ]
+}
+
+source_set("inspect_budget") {
+  sources = [
+    "inspect_data_budget.cc",
+    "inspect_data_budget.h",
+  ]
+
+  public_deps = [
+    "//userspace/developer/forensics/utils:archive",
+    "//userspace/developer/forensics/utils:inspect_node_manager",
+    "//userspace/developer/forensics/utils/cobalt",
+    "//zircon/system/ulib/inspect",
+  ]
+
+  deps = [
+    ":constants",
+    "//sdk/lib/syslog/cpp",
+  ]
+}
+
+source_set("log_buffer") {
+  sources = [
+    "log_buffer.cc",
+    "log_buffer.h",
+  ]
+
+  public_deps = [
+    ":log_source",
+    "//sdk/lib/fit",
+    "//userspace/developer/forensics/utils:storage_size",
+    "//userspace/developer/forensics/utils/redact",
+    "//zircon/system/ulib/zx",
+  ]
+
+  deps = [
+    ":constants",
+    "//sdk/fidl/fuchsia.logger:fuchsia.logger_hlcpp",
+    "//userspace/developer/forensics/utils:logs",
+    "//userspace/lib/fxl",
+  ]
+}
+
+source_set("log_source") {
+  sources = [
+    "log_source.cc",
+    "log_source.h",
+  ]
+
+  public_deps = [
+    "//sdk/fidl/fuchsia.diagnostics:fuchsia.diagnostics_hlcpp",
+    "//sdk/fidl/fuchsia.logger:fuchsia.logger_hlcpp",
+    "//sdk/lib/async",
+    "//sdk/lib/async:async-cpp",
+    "//sdk/lib/sys/cpp",
+    "//userspace/lib/fxl",
+  ]
+
+  deps = [
+    ":constants",
+    "//sdk/lib/syslog/cpp",
+    "//userspace/lib/diagnostics/accessor2logger",
+  ]
+}
+
+source_set("metadata") {
+  sources = [
+    "metadata.cc",
+    "metadata.h",
+    "metadata_schema.h",
+  ]
+
+  public_deps = [
+    "//sdk/lib/fit-promise",
+    "//userspace/developer/forensics/feedback/attachments",
+    "//userspace/developer/forensics/utils:utc_time_provider",
+    "//userspace/developer/forensics/utils/redact",
+  ]
+
+  deps = [
+    ":constants",
+    ":errors",
+    "//userspace/developer/forensics/feedback/annotations",
+    "//userspace/developer/forensics/utils:errors",
+    "//third_party/rapidjson",
+  ]
+}

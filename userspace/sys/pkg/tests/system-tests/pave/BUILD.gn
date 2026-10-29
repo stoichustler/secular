@@ -1,0 +1,24 @@
+# Copyright 2022 The Fuchsia Authors. All rights reserved.
+# Use of this source code is governed by a BSD-style license that can be
+# found in the LICENSE file.
+
+import("//products/build/go/go_library.gni")
+import("//products/build/go/go_test.gni")
+import("//products/build/host.gni")
+import("//products/build/images/vbmeta.gni")
+import("//products/build/testing/environments.gni")
+import("//products/build/testing/host_test_data.gni")
+import("//userspace/sys/pkg/tests/system-tests/system-tests.gni")
+
+if (is_host) {
+  go_library("pave") {
+    testonly = true
+    deps = [
+      "//userspace/testing/host-target-testing/artifacts",
+      "//userspace/testing/host-target-testing/device",
+      "//userspace/testing/host-target-testing/ffx",
+      "//tools/lib/logger",
+    ]
+    sources = [ "pave.go" ]
+  }
+}

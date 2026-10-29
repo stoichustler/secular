@@ -1,0 +1,78 @@
+# Copyright 2023 The Fuchsia Authors. All rights reserved.
+# Use of this source code is governed by a BSD-style license that can be
+# found in the LICENSE file.
+
+import("//products/build/component/config.gni")
+import("//products/build/components.gni")
+import("//products/build/fidl/fidl.gni")
+import("//products/build/rust/rustc_binary.gni")
+
+group("tests") {
+  testonly = true
+  deps = [ ":system-activity-governor-test" ]
+}
+
+rustc_test("bin") {
+  edition = "2024"
+  source_root = "src/main.rs"
+  sources = [ source_root ]
+  name = "system_activity_governor_test"
+  deps = [
+    "//sdk/fidl/fuchsia.hardware.power.statecontrol:fuchsia.hardware.power.statecontrol_rust",
+    "//sdk/fidl/fuchsia.hardware.power.suspend:fuchsia.hardware.power.suspend_rust",
+    "//sdk/fidl/fuchsia.power.broker:fuchsia.power.broker_rust",
+    "//sdk/fidl/fuchsia.power.observability:fuchsia.power.observability_rust",
+    "//sdk/fidl/fuchsia.power.suspend:fuchsia.power.suspend_rust",
+    "//sdk/fidl/fuchsia.power.system:fuchsia.power.system_rust",
+    "//sdk/rust/zx",
+    "//userspace/developer/forensics/public/fakes:fuchsia.feedback.testing_rust",
+    "//userspace/lib/diagnostics/hierarchy/rust:diagnostics-hierarchy",
+    "//userspace/lib/diagnostics/reader/rust",
+    "//userspace/lib/diagnostics/testing/diagnostics-assertions/rust:diagnostics-assertions",
+    "//userspace/lib/fake-clock/fidl:fidl_rust",
+    "//userspace/lib/fidl/rust/fidl",
+    "//userspace/lib/fuchsia",
+    "//userspace/lib/fuchsia-async",
+    "//userspace/lib/fuchsia-component",
+    "//userspace/lib/test_util",
+    "//userspace/power/broker/client",
+    "//userspace/power/system-activity-governor/integration/testing/fidl:test.systemactivitygovernor_rust",
+    "//userspace/power/testing/fake-suspend:test.suspendcontrol_rust",
+    "//userspace/testing/realm_proxy/client",
+    "//third_party/rust_crates:anyhow",
+    "//third_party/rust_crates:futures",
+    "//third_party/rust_crates:log",
+    "//third_party/rust_crates:serde_json",
+    "//third_party/rust_crates:test-case",
+  ]
+}
+
+fuchsia_component("test-suite-component") {
+  testonly = true
+  component_name = "test-suite"
+  manifest = "meta/test-suite.cml"
+  deps = [ ":bin" ]
+}
+
+fuchsia_package("test-suite") {
+  testonly = true
+  deps = [ ":test-suite-component" ]
+}
+
+fuchsia_component("test-root") {
+  testonly = true
+  manifest = "meta/test-root.cml"
+}
+
+fuchsia_test_package("system-activity-governor-test") {
+  test_specs = {
+    log_settings = {
+      max_severity = "ERROR"
+    }
+  }
+  test_components = [ ":test-root" ]
+  subpackages = [
+    "../testing/realm-factory",
+    ":test-suite",
+  ]
+}

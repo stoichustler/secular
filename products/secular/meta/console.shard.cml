@@ -1,0 +1,149 @@
+// Copyright 2026 The Fuchsia Authors. All rights reserved.
+// Use of this source code is governed by a BSD-style license that can be
+// found in the LICENSE file.
+
+// Reduced console graph for the Secular bringup image. Offers that the
+// upstream console.shard.cml makes to missing children (driver_manager,
+// fshost, virtcon, pkg-cache, ...) are omitted so CMC can compile this
+// without the rest of the Fuchsia product.
+{
+    children: [
+        {
+            name: "console",
+            url: "fuchsia-boot:///console#meta/console.cm",
+            startup: "eager",
+        },
+        {
+            name: "console-launcher",
+            url: "fuchsia-boot:///console-launcher#meta/console-launcher.cm",
+            startup: "eager",
+        },
+    ],
+    offer: [
+        {
+            config: [
+                "fuchsia.console.shell",
+                "fuchsia.console.use_virtio_console",
+                "fuchsia.netsvc.disable",
+                "fuchsia.netsvc.netboot",
+                "fuchsia.TERM",
+                "fuchsia.zircon.autorun.boot",
+                "fuchsia.zircon.autorun.system",
+            ],
+            from: "#kernel-args-forwarder/boot_args",
+            to: "#console-launcher",
+            availability: "optional",
+            source_availability: "unknown",
+        },
+        {
+            config: "fuchsia.virtcon.Disable",
+            from: "void",
+            to: "#console-launcher",
+            availability: "optional",
+        },
+        {
+            protocol: "fuchsia.hardware.pty.Device",
+            from: "#console",
+            as: "console",
+            to: "#console-launcher",
+        },
+        {
+            protocol: [
+                "fuchsia.boot.FactoryItems",
+                "fuchsia.boot.Items",
+                "fuchsia.boot.ReadOnlyLog",
+                "fuchsia.boot.WriteOnlyLog",
+                "fuchsia.exception.Handler",
+                "fuchsia.kernel.RootJob",
+                "fuchsia.kernel.RootJobForInspect",
+                "fuchsia.kernel.Stats",
+                "fuchsia.process.Launcher",
+            ],
+            from: "parent",
+            to: "#console-launcher",
+        },
+        {
+            protocol: [
+                "fuchsia.kernel.DebugResource",
+                "fuchsia.kernel.InfoResource",
+                "fuchsia.kernel.ProfileResource",
+                "fuchsia.kernel.TracingResource",
+                "fuchsia.kernel.VmexResource",
+            ],
+            from: "parent",
+            to: "#console-launcher",
+        },
+        {
+            protocol: [
+                "fuchsia.sys2.ConfigOverride.root",
+                "fuchsia.sys2.LifecycleController.root",
+                "fuchsia.sys2.RealmExplorer.root",
+                "fuchsia.sys2.RealmQuery.root",
+                "fuchsia.sys2.RouteValidator.root",
+            ],
+            from: "parent",
+            to: "#console-launcher",
+        },
+        {
+            directory: "boot",
+            from: "parent",
+            to: "#console-launcher",
+            rights: [ "rx*" ],
+        },
+        {
+            protocol: [
+                "fuchsia.boot.WriteOnlyLog",
+                "fuchsia.kernel.DebugResource",
+                "fuchsia.kernel.TracingResource",
+            ],
+            from: "parent",
+            to: "#console",
+        },
+        {
+            protocol: "fuchsia.hardware.pty.Device",
+            from: "#ptysvc",
+            to: "#console-launcher",
+            source_availability: "unknown",
+        },
+        {
+            protocol: "fuchsia.hardware.power.statecontrol.Admin",
+            from: "#shutdown_shim",
+            to: "#console-launcher",
+        },
+        {
+            protocol: [
+                "fuchsia.kernel.Counter",
+                "fuchsia.kernel.DebugBroker",
+            ],
+            from: "#kernel_debug_broker",
+            to: "#console-launcher",
+        },
+        {
+            dictionary: "diagnostics",
+            from: "self",
+            to: [
+                "#console",
+                "#console-launcher",
+            ],
+        },
+        {
+            protocol: [
+                "fuchsia.diagnostics.LogSettings",
+                "fuchsia.diagnostics.system.SerialLogControl",
+            ],
+            from: "#archivist",
+            to: [
+                "#console",
+                "#console-launcher",
+            ],
+        },
+        {
+            protocol: [
+                "fuchsia.diagnostics.ArchiveAccessor",
+                "fuchsia.diagnostics.host.ArchiveAccessor",
+            ],
+            from: "#archivist/diagnostics-accessors",
+            to: "#console-launcher",
+        },
+    ],
+}

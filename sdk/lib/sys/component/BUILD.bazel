@@ -1,0 +1,28 @@
+# Copyright 2026 The Fuchsia Authors. All rights reserved.
+# Use of this source code is governed by a BSD-style license that can be
+# found in the LICENSE file.
+
+load("//products/build/bazel/rules/components:cml_shard.bzl", "cml_shard")
+
+package(default_applicable_licenses = ["//:license"])
+
+cml_shard(
+    name = "realm_builder_base_no_diagnostics.shard",
+    shard = "realm_builder_base_no_diagnostics.shard.cml",
+)
+
+cml_shard(
+    name = "realm_builder_no_diagnostics.shard",
+    includes = [":realm_builder_base_no_diagnostics.shard"],
+    shard = "realm_builder_no_diagnostics.shard.cml",
+)
+
+cml_shard(
+    name = "realm_builder.shard",
+    includes = [":realm_builder_no_diagnostics.shard"],
+    shard = "realm_builder.shard.cml",
+    visibility = [
+        "//userspace/lib/fuchsia-component-test:__pkg__",
+        "//userspace/lib/fuchsia-rseq:__pkg__",
+    ],
+)

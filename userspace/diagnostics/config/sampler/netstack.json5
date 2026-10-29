@@ -1,0 +1,933 @@
+{
+    project_id: 1,
+    data_sets: [
+        {
+            metrics: [
+                {
+                    event_codes: [],
+                    metric_name: "socket_count_max",
+                    metric_type: "Integer",
+                    selector: "core/network/netstack:Networking\\ Stat\\ Counters:SocketCount",
+                },
+                {
+                    event_codes: [],
+                    metric_name: "sockets_created",
+                    metric_type: "Occurrence",
+                    selector: "core/network/netstack:Networking\\ Stat\\ Counters:SocketsCreated",
+                },
+                {
+                    event_codes: [],
+                    metric_name: "sockets_destroyed",
+                    metric_type: "Occurrence",
+                    selector: "core/network/netstack:Networking\\ Stat\\ Counters:SocketsDestroyed",
+                },
+                {
+                    event_codes: [],
+                    metric_name: "packets_sent",
+                    metric_type: "Occurrence",
+                    selector: "core/network/netstack:Networking\\ Stat\\ Counters/NICs/Tx:Packets",
+                },
+                {
+                    event_codes: [],
+                    metric_name: "packets_received",
+                    metric_type: "Occurrence",
+                    selector: "core/network/netstack:Networking\\ Stat\\ Counters/NICs/Rx:Packets",
+                },
+                {
+                    event_codes: [],
+                    metric_name: "bytes_sent",
+                    metric_type: "Occurrence",
+                    selector: "core/network/netstack:Networking\\ Stat\\ Counters/NICs/Tx:Bytes",
+                },
+                {
+                    event_codes: [],
+                    metric_name: "bytes_received",
+                    metric_type: "Occurrence",
+                    selector: "core/network/netstack:Networking\\ Stat\\ Counters/NICs/Rx:Bytes",
+                },
+                {
+                    event_codes: [],
+                    metric_name: "tcp_connections_established_total",
+                    metric_type: "Integer",
+                    selector: "core/network/netstack:Networking\\ Stat\\ Counters/TCP:CurrentEstablished",
+                },
+                {
+                    event_codes: [],
+                    metric_name: "tcp_connections_closed",
+                    metric_type: "Occurrence",
+                    selector: "core/network/netstack:Networking\\ Stat\\ Counters/TCP:EstablishedClosed",
+                },
+                {
+                    event_codes: [],
+                    metric_name: "tcp_connections_reset",
+                    metric_type: "Occurrence",
+                    selector: "core/network/netstack:Networking\\ Stat\\ Counters/TCP:EstablishedResets",
+                },
+                {
+                    event_codes: [],
+                    metric_name: "tcp_connections_timed_out",
+                    metric_type: "Occurrence",
+                    selector: "core/network/netstack:Networking\\ Stat\\ Counters/TCP:EstablishedTimedout",
+                },
+                {
+                    event_codes: [
+                        "no_configuration",
+                    ],
+                    metric_name: "dhcp_v6_configuration",
+                    metric_type: "Occurrence",
+                    selector: "core/network/netstack:Networking\\ Stat\\ Counters/DHCPv6:NoConfiguration",
+                },
+                {
+                    event_codes: [
+                        "managed_address",
+                    ],
+                    metric_name: "dhcp_v6_configuration",
+                    metric_type: "Occurrence",
+                    selector: "core/network/netstack:Networking\\ Stat\\ Counters/DHCPv6:ManagedAddress",
+                },
+                {
+                    event_codes: [
+                        "other_configurations",
+                    ],
+                    metric_name: "dhcp_v6_configuration",
+                    metric_type: "Occurrence",
+                    selector: "core/network/netstack:Networking\\ Stat\\ Counters/DHCPv6:OtherConfiguration",
+                },
+                {
+                    event_codes: [
+                        "no_global_slaac_or_dhcpv6_managed_address",
+                    ],
+                    metric_name: "available_dynamic_ipv6_address_config",
+                    metric_type: "Occurrence",
+                    selector: "core/network/netstack:Networking\\ Stat\\ Counters/IPv6AddressConfig:NoGlobalSLAACOrDHCPv6ManagedAddress",
+                },
+                {
+                    event_codes: [
+                        "global_slaac_only",
+                    ],
+                    metric_name: "available_dynamic_ipv6_address_config",
+                    metric_type: "Occurrence",
+                    selector: "core/network/netstack:Networking\\ Stat\\ Counters/IPv6AddressConfig:GlobalSLAACOnly",
+                },
+                {
+                    event_codes: [
+                        "dhcpv6_managed_address_only",
+                    ],
+                    metric_name: "available_dynamic_ipv6_address_config",
+                    metric_type: "Occurrence",
+                    selector: "core/network/netstack:Networking\\ Stat\\ Counters/IPv6AddressConfig:DHCPv6ManagedAddressOnly",
+                },
+                {
+                    event_codes: [
+                        "global_slaac_and_dhcpv6_managed_address",
+                    ],
+                    metric_name: "available_dynamic_ipv6_address_config",
+                    metric_type: "Occurrence",
+                    selector: "core/network/netstack:Networking\\ Stat\\ Counters/IPv6AddressConfig:GlobalSLAACAndDHCPv6ManagedAddress",
+                },
+                {
+                    event_codes: [
+                        "get",
+                        "accept_conn",
+                    ],
+                    metric_name: "socket_option_operation_max",
+                    metric_type: "Integer",
+                    selector: "core/network/netstack:Networking\\ Stat\\ Counters/MaxSocketOptionStats:GetAcceptConn",
+                },
+                {
+                    event_codes: [
+                        "set",
+                        "add_ip_membership",
+                    ],
+                    metric_name: "socket_option_operation_max",
+                    metric_type: "Integer",
+                    selector: "core/network/netstack:Networking\\ Stat\\ Counters/MaxSocketOptionStats:AddIpMembership",
+                },
+                {
+                    event_codes: [
+                        "set",
+                        "add_ipv6membership",
+                    ],
+                    metric_name: "socket_option_operation_max",
+                    metric_type: "Integer",
+                    selector: "core/network/netstack:Networking\\ Stat\\ Counters/MaxSocketOptionStats:AddIpv6Membership",
+                },
+                {
+                    event_codes: [
+                        "get",
+                        "bind_to_device",
+                    ],
+                    metric_name: "socket_option_operation_max",
+                    metric_type: "Integer",
+                    selector: "core/network/netstack:Networking\\ Stat\\ Counters/MaxSocketOptionStats:GetBindToDevice",
+                },
+                {
+                    event_codes: [
+                        "set",
+                        "bind_to_device",
+                    ],
+                    metric_name: "socket_option_operation_max",
+                    metric_type: "Integer",
+                    selector: "core/network/netstack:Networking\\ Stat\\ Counters/MaxSocketOptionStats:SetBindToDevice",
+                },
+                {
+                    event_codes: [
+                        "get",
+                        "broadcast",
+                    ],
+                    metric_name: "socket_option_operation_max",
+                    metric_type: "Integer",
+                    selector: "core/network/netstack:Networking\\ Stat\\ Counters/MaxSocketOptionStats:GetBroadcast",
+                },
+                {
+                    event_codes: [
+                        "set",
+                        "broadcast",
+                    ],
+                    metric_name: "socket_option_operation_max",
+                    metric_type: "Integer",
+                    selector: "core/network/netstack:Networking\\ Stat\\ Counters/MaxSocketOptionStats:SetBroadcast",
+                },
+                {
+                    event_codes: [
+                        "set",
+                        "drop_ip_membership",
+                    ],
+                    metric_name: "socket_option_operation_max",
+                    metric_type: "Integer",
+                    selector: "core/network/netstack:Networking\\ Stat\\ Counters/MaxSocketOptionStats:DropIpMembership",
+                },
+                {
+                    event_codes: [
+                        "set",
+                        "drop_ipv6_membership",
+                    ],
+                    metric_name: "socket_option_operation_max",
+                    metric_type: "Integer",
+                    selector: "core/network/netstack:Networking\\ Stat\\ Counters/MaxSocketOptionStats:DropIpv6Membership",
+                },
+                {
+                    event_codes: [
+                        "get",
+                        "error",
+                    ],
+                    metric_name: "socket_option_operation_max",
+                    metric_type: "Integer",
+                    selector: "core/network/netstack:Networking\\ Stat\\ Counters/MaxSocketOptionStats:GetError",
+                },
+                {
+                    event_codes: [
+                        "get",
+                        "ip_multicast_interface",
+                    ],
+                    metric_name: "socket_option_operation_max",
+                    metric_type: "Integer",
+                    selector: "core/network/netstack:Networking\\ Stat\\ Counters/MaxSocketOptionStats:GetIpMulticastInterface",
+                },
+                {
+                    event_codes: [
+                        "set",
+                        "ip_multicast_interface",
+                    ],
+                    metric_name: "socket_option_operation_max",
+                    metric_type: "Integer",
+                    selector: "core/network/netstack:Networking\\ Stat\\ Counters/MaxSocketOptionStats:SetIpMulticastInterface",
+                },
+                {
+                    event_codes: [
+                        "get",
+                        "ip_multicast_loopback",
+                    ],
+                    metric_name: "socket_option_operation_max",
+                    metric_type: "Integer",
+                    selector: "core/network/netstack:Networking\\ Stat\\ Counters/MaxSocketOptionStats:GetIpMulticastLoopback",
+                },
+                {
+                    event_codes: [
+                        "set",
+                        "ip_multicast_loopback",
+                    ],
+                    metric_name: "socket_option_operation_max",
+                    metric_type: "Integer",
+                    selector: "core/network/netstack:Networking\\ Stat\\ Counters/MaxSocketOptionStats:SetIpMulticastLoopback",
+                },
+                {
+                    event_codes: [
+                        "get",
+                        "ip_multicast_ttl",
+                    ],
+                    metric_name: "socket_option_operation_max",
+                    metric_type: "Integer",
+                    selector: "core/network/netstack:Networking\\ Stat\\ Counters/MaxSocketOptionStats:GetIpMulticastTtl",
+                },
+                {
+                    event_codes: [
+                        "set",
+                        "ip_multicast_ttl",
+                    ],
+                    metric_name: "socket_option_operation_max",
+                    metric_type: "Integer",
+                    selector: "core/network/netstack:Networking\\ Stat\\ Counters/MaxSocketOptionStats:SetIpMulticastTtl",
+                },
+                {
+                    event_codes: [
+                        "get",
+                        "ip_packet_info",
+                    ],
+                    metric_name: "socket_option_operation_max",
+                    metric_type: "Integer",
+                    selector: "core/network/netstack:Networking\\ Stat\\ Counters/MaxSocketOptionStats:GetIpPacketInfo",
+                },
+                {
+                    event_codes: [
+                        "set",
+                        "ip_packet_info",
+                    ],
+                    metric_name: "socket_option_operation_max",
+                    metric_type: "Integer",
+                    selector: "core/network/netstack:Networking\\ Stat\\ Counters/MaxSocketOptionStats:SetIpPacketInfo",
+                },
+                {
+                    event_codes: [
+                        "get",
+                        "ip_receive_ttl",
+                    ],
+                    metric_name: "socket_option_operation_max",
+                    metric_type: "Integer",
+                    selector: "core/network/netstack:Networking\\ Stat\\ Counters/MaxSocketOptionStats:GetIpReceiveTtl",
+                },
+                {
+                    event_codes: [
+                        "set",
+                        "ip_receive_ttl",
+                    ],
+                    metric_name: "socket_option_operation_max",
+                    metric_type: "Integer",
+                    selector: "core/network/netstack:Networking\\ Stat\\ Counters/MaxSocketOptionStats:SetIpReceiveTtl",
+                },
+                {
+                    event_codes: [
+                        "get",
+                        "ip_receive_type_of_service",
+                    ],
+                    metric_name: "socket_option_operation_max",
+                    metric_type: "Integer",
+                    selector: "core/network/netstack:Networking\\ Stat\\ Counters/MaxSocketOptionStats:GetIpReceiveTypeOfService",
+                },
+                {
+                    event_codes: [
+                        "set",
+                        "ip_receive_type_of_service",
+                    ],
+                    metric_name: "socket_option_operation_max",
+                    metric_type: "Integer",
+                    selector: "core/network/netstack:Networking\\ Stat\\ Counters/MaxSocketOptionStats:SetIpReceiveTypeOfService",
+                },
+                {
+                    event_codes: [
+                        "get",
+                        "ip_ttl",
+                    ],
+                    metric_name: "socket_option_operation_max",
+                    metric_type: "Integer",
+                    selector: "core/network/netstack:Networking\\ Stat\\ Counters/MaxSocketOptionStats:GetIpTtl",
+                },
+                {
+                    event_codes: [
+                        "set",
+                        "ip_ttl",
+                    ],
+                    metric_name: "socket_option_operation_max",
+                    metric_type: "Integer",
+                    selector: "core/network/netstack:Networking\\ Stat\\ Counters/MaxSocketOptionStats:SetIpTtl",
+                },
+                {
+                    event_codes: [
+                        "get",
+                        "ip_type_of_service",
+                    ],
+                    metric_name: "socket_option_operation_max",
+                    metric_type: "Integer",
+                    selector: "core/network/netstack:Networking\\ Stat\\ Counters/MaxSocketOptionStats:GetIpTypeOfService",
+                },
+                {
+                    event_codes: [
+                        "set",
+                        "ip_type_of_service",
+                    ],
+                    metric_name: "socket_option_operation_max",
+                    metric_type: "Integer",
+                    selector: "core/network/netstack:Networking\\ Stat\\ Counters/MaxSocketOptionStats:SetIpTypeOfService",
+                },
+                {
+                    event_codes: [
+                        "get",
+                        "ipv6_multicast_hops",
+                    ],
+                    metric_name: "socket_option_operation_max",
+                    metric_type: "Integer",
+                    selector: "core/network/netstack:Networking\\ Stat\\ Counters/MaxSocketOptionStats:GetIpv6MulticastHops",
+                },
+                {
+                    event_codes: [
+                        "set",
+                        "ipv6_multicast_hops",
+                    ],
+                    metric_name: "socket_option_operation_max",
+                    metric_type: "Integer",
+                    selector: "core/network/netstack:Networking\\ Stat\\ Counters/MaxSocketOptionStats:SetIpv6MulticastHops",
+                },
+                {
+                    event_codes: [
+                        "get",
+                        "ipv6_multicast_interface",
+                    ],
+                    metric_name: "socket_option_operation_max",
+                    metric_type: "Integer",
+                    selector: "core/network/netstack:Networking\\ Stat\\ Counters/MaxSocketOptionStats:GetIpv6MulticastInterface",
+                },
+                {
+                    event_codes: [
+                        "set",
+                        "ipv6_multicast_interface",
+                    ],
+                    metric_name: "socket_option_operation_max",
+                    metric_type: "Integer",
+                    selector: "core/network/netstack:Networking\\ Stat\\ Counters/MaxSocketOptionStats:SetIpv6MulticastInterface",
+                },
+                {
+                    event_codes: [
+                        "get",
+                        "ipv6_multicast_loopback",
+                    ],
+                    metric_name: "socket_option_operation_max",
+                    metric_type: "Integer",
+                    selector: "core/network/netstack:Networking\\ Stat\\ Counters/MaxSocketOptionStats:GetIpv6MulticastLoopback",
+                },
+                {
+                    event_codes: [
+                        "set",
+                        "ipv6_multicast_loopback",
+                    ],
+                    metric_name: "socket_option_operation_max",
+                    metric_type: "Integer",
+                    selector: "core/network/netstack:Networking\\ Stat\\ Counters/MaxSocketOptionStats:SetIpv6MulticastLoopback",
+                },
+                {
+                    event_codes: [
+                        "get",
+                        "ipv6_only",
+                    ],
+                    metric_name: "socket_option_operation_max",
+                    metric_type: "Integer",
+                    selector: "core/network/netstack:Networking\\ Stat\\ Counters/MaxSocketOptionStats:GetIpv6Only",
+                },
+                {
+                    event_codes: [
+                        "set",
+                        "ipv6_only",
+                    ],
+                    metric_name: "socket_option_operation_max",
+                    metric_type: "Integer",
+                    selector: "core/network/netstack:Networking\\ Stat\\ Counters/MaxSocketOptionStats:SetIpv6Only",
+                },
+                {
+                    event_codes: [
+                        "get",
+                        "ipv6_receive_hop_limit",
+                    ],
+                    metric_name: "socket_option_operation_max",
+                    metric_type: "Integer",
+                    selector: "core/network/netstack:Networking\\ Stat\\ Counters/MaxSocketOptionStats:GetIpv6ReceiveHopLimit",
+                },
+                {
+                    event_codes: [
+                        "set",
+                        "ipv6_receive_hop_limit",
+                    ],
+                    metric_name: "socket_option_operation_max",
+                    metric_type: "Integer",
+                    selector: "core/network/netstack:Networking\\ Stat\\ Counters/MaxSocketOptionStats:SetIpv6ReceiveHopLimit",
+                },
+                {
+                    event_codes: [
+                        "get",
+                        "ipv6_receive_packet_info",
+                    ],
+                    metric_name: "socket_option_operation_max",
+                    metric_type: "Integer",
+                    selector: "core/network/netstack:Networking\\ Stat\\ Counters/MaxSocketOptionStats:GetIpv6ReceivePacketInfo",
+                },
+                {
+                    event_codes: [
+                        "set",
+                        "ipv6_receive_packet_info",
+                    ],
+                    metric_name: "socket_option_operation_max",
+                    metric_type: "Integer",
+                    selector: "core/network/netstack:Networking\\ Stat\\ Counters/MaxSocketOptionStats:SetIpv6ReceivePacketInfo",
+                },
+                {
+                    event_codes: [
+                        "get",
+                        "ipv6_receive_traffic_class",
+                    ],
+                    metric_name: "socket_option_operation_max",
+                    metric_type: "Integer",
+                    selector: "core/network/netstack:Networking\\ Stat\\ Counters/MaxSocketOptionStats:GetIpv6ReceiveTrafficClass",
+                },
+                {
+                    event_codes: [
+                        "set",
+                        "ipv6_receive_traffic_class",
+                    ],
+                    metric_name: "socket_option_operation_max",
+                    metric_type: "Integer",
+                    selector: "core/network/netstack:Networking\\ Stat\\ Counters/MaxSocketOptionStats:SetIpv6ReceiveTrafficClass",
+                },
+                {
+                    event_codes: [
+                        "get",
+                        "ipv6_traffic_class",
+                    ],
+                    metric_name: "socket_option_operation_max",
+                    metric_type: "Integer",
+                    selector: "core/network/netstack:Networking\\ Stat\\ Counters/MaxSocketOptionStats:GetIpv6TrafficClass",
+                },
+                {
+                    event_codes: [
+                        "set",
+                        "ipv6_traffic_class",
+                    ],
+                    metric_name: "socket_option_operation_max",
+                    metric_type: "Integer",
+                    selector: "core/network/netstack:Networking\\ Stat\\ Counters/MaxSocketOptionStats:SetIpv6TrafficClass",
+                },
+                {
+                    event_codes: [
+                        "get",
+                        "ipv6_unicast_hops",
+                    ],
+                    metric_name: "socket_option_operation_max",
+                    metric_type: "Integer",
+                    selector: "core/network/netstack:Networking\\ Stat\\ Counters/MaxSocketOptionStats:GetIpv6UnicastHops",
+                },
+                {
+                    event_codes: [
+                        "set",
+                        "ipv6_unicast_hops",
+                    ],
+                    metric_name: "socket_option_operation_max",
+                    metric_type: "Integer",
+                    selector: "core/network/netstack:Networking\\ Stat\\ Counters/MaxSocketOptionStats:SetIpv6UnicastHops",
+                },
+                {
+                    event_codes: [
+                        "get",
+                        "keep_alive",
+                    ],
+                    metric_name: "socket_option_operation_max",
+                    metric_type: "Integer",
+                    selector: "core/network/netstack:Networking\\ Stat\\ Counters/MaxSocketOptionStats:GetKeepAlive",
+                },
+                {
+                    event_codes: [
+                        "set",
+                        "keep_alive",
+                    ],
+                    metric_name: "socket_option_operation_max",
+                    metric_type: "Integer",
+                    selector: "core/network/netstack:Networking\\ Stat\\ Counters/MaxSocketOptionStats:SetKeepAlive",
+                },
+                {
+                    event_codes: [
+                        "get",
+                        "linger",
+                    ],
+                    metric_name: "socket_option_operation_max",
+                    metric_type: "Integer",
+                    selector: "core/network/netstack:Networking\\ Stat\\ Counters/MaxSocketOptionStats:GetLinger",
+                },
+                {
+                    event_codes: [
+                        "set",
+                        "linger",
+                    ],
+                    metric_name: "socket_option_operation_max",
+                    metric_type: "Integer",
+                    selector: "core/network/netstack:Networking\\ Stat\\ Counters/MaxSocketOptionStats:SetLinger",
+                },
+                {
+                    event_codes: [
+                        "get",
+                        "no_check",
+                    ],
+                    metric_name: "socket_option_operation_max",
+                    metric_type: "Integer",
+                    selector: "core/network/netstack:Networking\\ Stat\\ Counters/MaxSocketOptionStats:GetNoCheck",
+                },
+                {
+                    event_codes: [
+                        "set",
+                        "no_check",
+                    ],
+                    metric_name: "socket_option_operation_max",
+                    metric_type: "Integer",
+                    selector: "core/network/netstack:Networking\\ Stat\\ Counters/MaxSocketOptionStats:SetNoCheck",
+                },
+                {
+                    event_codes: [
+                        "get",
+                        "out_of_band_inline",
+                    ],
+                    metric_name: "socket_option_operation_max",
+                    metric_type: "Integer",
+                    selector: "core/network/netstack:Networking\\ Stat\\ Counters/MaxSocketOptionStats:GetOutOfBandInline",
+                },
+                {
+                    event_codes: [
+                        "set",
+                        "out_of_band_inline",
+                    ],
+                    metric_name: "socket_option_operation_max",
+                    metric_type: "Integer",
+                    selector: "core/network/netstack:Networking\\ Stat\\ Counters/MaxSocketOptionStats:SetOutOfBandInline",
+                },
+                {
+                    event_codes: [
+                        "get",
+                        "receive_buffer",
+                    ],
+                    metric_name: "socket_option_operation_max",
+                    metric_type: "Integer",
+                    selector: "core/network/netstack:Networking\\ Stat\\ Counters/MaxSocketOptionStats:GetReceiveBuffer",
+                },
+                {
+                    event_codes: [
+                        "set",
+                        "receive_buffer",
+                    ],
+                    metric_name: "socket_option_operation_max",
+                    metric_type: "Integer",
+                    selector: "core/network/netstack:Networking\\ Stat\\ Counters/MaxSocketOptionStats:SetReceiveBuffer",
+                },
+                {
+                    event_codes: [
+                        "get",
+                        "reuse_address",
+                    ],
+                    metric_name: "socket_option_operation_max",
+                    metric_type: "Integer",
+                    selector: "core/network/netstack:Networking\\ Stat\\ Counters/MaxSocketOptionStats:GetReuseAddress",
+                },
+                {
+                    event_codes: [
+                        "set",
+                        "reuse_address",
+                    ],
+                    metric_name: "socket_option_operation_max",
+                    metric_type: "Integer",
+                    selector: "core/network/netstack:Networking\\ Stat\\ Counters/MaxSocketOptionStats:SetReuseAddress",
+                },
+                {
+                    event_codes: [
+                        "get",
+                        "reuse_port",
+                    ],
+                    metric_name: "socket_option_operation_max",
+                    metric_type: "Integer",
+                    selector: "core/network/netstack:Networking\\ Stat\\ Counters/MaxSocketOptionStats:GetReusePort",
+                },
+                {
+                    event_codes: [
+                        "set",
+                        "reuse_port",
+                    ],
+                    metric_name: "socket_option_operation_max",
+                    metric_type: "Integer",
+                    selector: "core/network/netstack:Networking\\ Stat\\ Counters/MaxSocketOptionStats:SetReusePort",
+                },
+                {
+                    event_codes: [
+                        "get",
+                        "send_buffer",
+                    ],
+                    metric_name: "socket_option_operation_max",
+                    metric_type: "Integer",
+                    selector: "core/network/netstack:Networking\\ Stat\\ Counters/MaxSocketOptionStats:GetSendBuffer",
+                },
+                {
+                    event_codes: [
+                        "set",
+                        "send_buffer",
+                    ],
+                    metric_name: "socket_option_operation_max",
+                    metric_type: "Integer",
+                    selector: "core/network/netstack:Networking\\ Stat\\ Counters/MaxSocketOptionStats:SetSendBuffer",
+                },
+                {
+                    event_codes: [
+                        "get",
+                        "tcp_congestion",
+                    ],
+                    metric_name: "socket_option_operation_max",
+                    metric_type: "Integer",
+                    selector: "core/network/netstack:Networking\\ Stat\\ Counters/MaxSocketOptionStats:GetTcpCongestion",
+                },
+                {
+                    event_codes: [
+                        "set",
+                        "tcp_congestion",
+                    ],
+                    metric_name: "socket_option_operation_max",
+                    metric_type: "Integer",
+                    selector: "core/network/netstack:Networking\\ Stat\\ Counters/MaxSocketOptionStats:SetTcpCongestion",
+                },
+                {
+                    event_codes: [
+                        "get",
+                        "tcp_cork",
+                    ],
+                    metric_name: "socket_option_operation_max",
+                    metric_type: "Integer",
+                    selector: "core/network/netstack:Networking\\ Stat\\ Counters/MaxSocketOptionStats:GetTcpCork",
+                },
+                {
+                    event_codes: [
+                        "set",
+                        "tcp_cork",
+                    ],
+                    metric_name: "socket_option_operation_max",
+                    metric_type: "Integer",
+                    selector: "core/network/netstack:Networking\\ Stat\\ Counters/MaxSocketOptionStats:SetTcpCork",
+                },
+                {
+                    event_codes: [
+                        "get",
+                        "tcp_defer_accept",
+                    ],
+                    metric_name: "socket_option_operation_max",
+                    metric_type: "Integer",
+                    selector: "core/network/netstack:Networking\\ Stat\\ Counters/MaxSocketOptionStats:GetTcpDeferAccept",
+                },
+                {
+                    event_codes: [
+                        "set",
+                        "tcp_defer_accept",
+                    ],
+                    metric_name: "socket_option_operation_max",
+                    metric_type: "Integer",
+                    selector: "core/network/netstack:Networking\\ Stat\\ Counters/MaxSocketOptionStats:SetTcpDeferAccept",
+                },
+                {
+                    event_codes: [
+                        "get",
+                        "tcp_info",
+                    ],
+                    metric_name: "socket_option_operation_max",
+                    metric_type: "Integer",
+                    selector: "core/network/netstack:Networking\\ Stat\\ Counters/MaxSocketOptionStats:GetTcpInfo",
+                },
+                {
+                    event_codes: [
+                        "get",
+                        "tcp_keep_alive_count",
+                    ],
+                    metric_name: "socket_option_operation_max",
+                    metric_type: "Integer",
+                    selector: "core/network/netstack:Networking\\ Stat\\ Counters/MaxSocketOptionStats:GetTcpKeepAliveCount",
+                },
+                {
+                    event_codes: [
+                        "set",
+                        "tcp_keep_alive_count",
+                    ],
+                    metric_name: "socket_option_operation_max",
+                    metric_type: "Integer",
+                    selector: "core/network/netstack:Networking\\ Stat\\ Counters/MaxSocketOptionStats:SetTcpKeepAliveCount",
+                },
+                {
+                    event_codes: [
+                        "get",
+                        "tcp_keep_alive_idle",
+                    ],
+                    metric_name: "socket_option_operation_max",
+                    metric_type: "Integer",
+                    selector: "core/network/netstack:Networking\\ Stat\\ Counters/MaxSocketOptionStats:GetTcpKeepAliveIdle",
+                },
+                {
+                    event_codes: [
+                        "set",
+                        "tcp_keep_alive_idle",
+                    ],
+                    metric_name: "socket_option_operation_max",
+                    metric_type: "Integer",
+                    selector: "core/network/netstack:Networking\\ Stat\\ Counters/MaxSocketOptionStats:SetTcpKeepAliveIdle",
+                },
+                {
+                    event_codes: [
+                        "get",
+                        "tcp_keep_alive_interval",
+                    ],
+                    metric_name: "socket_option_operation_max",
+                    metric_type: "Integer",
+                    selector: "core/network/netstack:Networking\\ Stat\\ Counters/MaxSocketOptionStats:GetTcpKeepAliveInterval",
+                },
+                {
+                    event_codes: [
+                        "set",
+                        "tcp_keep_alive_interval",
+                    ],
+                    metric_name: "socket_option_operation_max",
+                    metric_type: "Integer",
+                    selector: "core/network/netstack:Networking\\ Stat\\ Counters/MaxSocketOptionStats:SetTcpKeepAliveInterval",
+                },
+                {
+                    event_codes: [
+                        "get",
+                        "tcp_linger",
+                    ],
+                    metric_name: "socket_option_operation_max",
+                    metric_type: "Integer",
+                    selector: "core/network/netstack:Networking\\ Stat\\ Counters/MaxSocketOptionStats:GetTcpLinger",
+                },
+                {
+                    event_codes: [
+                        "set",
+                        "tcp_linger",
+                    ],
+                    metric_name: "socket_option_operation_max",
+                    metric_type: "Integer",
+                    selector: "core/network/netstack:Networking\\ Stat\\ Counters/MaxSocketOptionStats:SetTcpLinger",
+                },
+                {
+                    event_codes: [
+                        "get",
+                        "tcp_max_segment",
+                    ],
+                    metric_name: "socket_option_operation_max",
+                    metric_type: "Integer",
+                    selector: "core/network/netstack:Networking\\ Stat\\ Counters/MaxSocketOptionStats:GetTcpMaxSegment",
+                },
+                {
+                    event_codes: [
+                        "set",
+                        "tcp_max_segment",
+                    ],
+                    metric_name: "socket_option_operation_max",
+                    metric_type: "Integer",
+                    selector: "core/network/netstack:Networking\\ Stat\\ Counters/MaxSocketOptionStats:SetTcpMaxSegment",
+                },
+                {
+                    event_codes: [
+                        "get",
+                        "tcp_no_delay",
+                    ],
+                    metric_name: "socket_option_operation_max",
+                    metric_type: "Integer",
+                    selector: "core/network/netstack:Networking\\ Stat\\ Counters/MaxSocketOptionStats:GetTcpNoDelay",
+                },
+                {
+                    event_codes: [
+                        "set",
+                        "tcp_no_delay",
+                    ],
+                    metric_name: "socket_option_operation_max",
+                    metric_type: "Integer",
+                    selector: "core/network/netstack:Networking\\ Stat\\ Counters/MaxSocketOptionStats:SetTcpNoDelay",
+                },
+                {
+                    event_codes: [
+                        "get",
+                        "tcp_quick_ack",
+                    ],
+                    metric_name: "socket_option_operation_max",
+                    metric_type: "Integer",
+                    selector: "core/network/netstack:Networking\\ Stat\\ Counters/MaxSocketOptionStats:GetTcpQuickAck",
+                },
+                {
+                    event_codes: [
+                        "set",
+                        "tcp_quick_ack",
+                    ],
+                    metric_name: "socket_option_operation_max",
+                    metric_type: "Integer",
+                    selector: "core/network/netstack:Networking\\ Stat\\ Counters/MaxSocketOptionStats:SetTcpQuickAck",
+                },
+                {
+                    event_codes: [
+                        "get",
+                        "tcp_syn_count",
+                    ],
+                    metric_name: "socket_option_operation_max",
+                    metric_type: "Integer",
+                    selector: "core/network/netstack:Networking\\ Stat\\ Counters/MaxSocketOptionStats:GetTcpSynCount",
+                },
+                {
+                    event_codes: [
+                        "set",
+                        "tcp_syn_count",
+                    ],
+                    metric_name: "socket_option_operation_max",
+                    metric_type: "Integer",
+                    selector: "core/network/netstack:Networking\\ Stat\\ Counters/MaxSocketOptionStats:SetTcpSynCount",
+                },
+                {
+                    event_codes: [
+                        "get",
+                        "tcp_user_timeout",
+                    ],
+                    metric_name: "socket_option_operation_max",
+                    metric_type: "Integer",
+                    selector: "core/network/netstack:Networking\\ Stat\\ Counters/MaxSocketOptionStats:GetTcpUserTimeout",
+                },
+                {
+                    event_codes: [
+                        "set",
+                        "tcp_user_timeout",
+                    ],
+                    metric_name: "socket_option_operation_max",
+                    metric_type: "Integer",
+                    selector: "core/network/netstack:Networking\\ Stat\\ Counters/MaxSocketOptionStats:SetTcpUserTimeout",
+                },
+                {
+                    event_codes: [
+                        "get",
+                        "tcp_window_clamp",
+                    ],
+                    metric_name: "socket_option_operation_max",
+                    metric_type: "Integer",
+                    selector: "core/network/netstack:Networking\\ Stat\\ Counters/MaxSocketOptionStats:GetTcpWindowClamp",
+                },
+                {
+                    event_codes: [
+                        "set",
+                        "tcp_window_clamp",
+                    ],
+                    metric_name: "socket_option_operation_max",
+                    metric_type: "Integer",
+                    selector: "core/network/netstack:Networking\\ Stat\\ Counters/MaxSocketOptionStats:SetTcpWindowClamp",
+                },
+                {
+                    event_codes: [
+                        "get",
+                        "timestamp",
+                    ],
+                    metric_name: "socket_option_operation_max",
+                    metric_type: "Integer",
+                    selector: "core/network/netstack:Networking\\ Stat\\ Counters/MaxSocketOptionStats:GetTimestamp",
+                },
+                {
+                    event_codes: [
+                        "set",
+                        "timestamp",
+                    ],
+                    metric_name: "socket_option_operation_max",
+                    metric_type: "Integer",
+                    selector: "core/network/netstack:Networking\\ Stat\\ Counters/MaxSocketOptionStats:SetTimestamp",
+                },
+            ],
+            poll_rate_sec: 600,
+        },
+    ],
+}

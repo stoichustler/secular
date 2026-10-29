@@ -1,0 +1,15 @@
+# Copyright 2019 The Fuchsia Authors. All rights reserved.
+# Use of this source code is governed by a BSD-style license that can be
+# found in the LICENSE file.
+
+import("//products/build/bazel/bazel_test_suite.gni")
+
+bazel_test_suite("closure-queue-test-pkg") {
+  target_tests =
+      [ "//zircon/system/ulib/closure-queue/test:closure-queue-test-pkg" ]
+}
+
+group("tests") {
+  testonly = true
+  deps = [ ":closure-queue-test-pkg" ]
+}

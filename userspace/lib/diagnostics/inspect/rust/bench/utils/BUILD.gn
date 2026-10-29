@@ -1,0 +1,48 @@
+# Copyright 2024 The Fuchsia Authors. All rights reserved.
+# Use of this source code is governed by a BSD-style license that can be
+# found in the LICENSE file.
+
+import("//products/build/components.gni")
+import("//products/build/rust/rustc_library.gni")
+
+rustc_library("fuchsia_inspect_bench_utils") {
+  edition = "2024"
+  with_unit_tests = true
+
+  visibility = [
+    "//userspace/lib/diagnostics/hierarchy/rust/bench/*",
+    "//userspace/lib/diagnostics/inspect/rust/bench/*",
+  ]
+
+  source_root = "src/lib.rs"
+
+  deps = [
+    "//sdk/fidl/fuchsia.inspect:fuchsia.inspect_rust",
+    "//userspace/developer/fuchsia-criterion",
+    "//userspace/lib/diagnostics/inspect/runtime/rust",
+    "//userspace/lib/diagnostics/inspect/rust",
+    "//userspace/lib/fidl/rust/fidl",
+    "//userspace/lib/fuchsia-async",
+    "//third_party/rust_crates:anyhow",
+    "//third_party/rust_crates:futures",
+    "//third_party/rust_crates:rand",
+  ]
+
+  sources = [ "src/lib.rs" ]
+
+  test_deps = [
+    "//userspace/lib/diagnostics/testing/diagnostics-assertions/rust:diagnostics-assertions",
+    "//userspace/lib/fuchsia",
+  ]
+
+  configs += [ "//products/build/config/rust/lints:clippy_warn_all" ]
+}
+
+fuchsia_unittest_package("inspect-bench-utils-unittests") {
+  deps = [ ":fuchsia_inspect_bench_utils_test" ]
+}
+
+group("tests") {
+  testonly = true
+  deps = [ ":inspect-bench-utils-unittests" ]
+}

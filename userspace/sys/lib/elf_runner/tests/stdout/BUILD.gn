@@ -1,0 +1,45 @@
+# Copyright 2021 The Fuchsia Authors. All rights reserved.
+# Use of this source code is governed by a BSD-style license that can be
+# found in the LICENSE file.
+
+import("//products/build/components.gni")
+import("//products/build/rust/rustc_binary.gni")
+
+group("stdout") {
+  testonly = true
+  deps = [ ":elf_runner_stdout_test" ]
+}
+
+rustc_test("test") {
+  edition = "2024"
+  name = "elf_runner_stdout"
+
+  deps = [
+    "//sdk/fidl/fuchsia.component:fuchsia.component_rust",
+    "//userspace/lib/diagnostics/data/rust",
+    "//userspace/lib/diagnostics/reader/rust",
+    "//userspace/lib/fuchsia",
+    "//userspace/lib/fuchsia-async",
+    "//userspace/lib/fuchsia-component-test",
+    "//third_party/rust_crates:assert_matches",
+    "//third_party/rust_crates:futures",
+    "//third_party/rust_crates:test-case",
+  ]
+
+  sources = [ "src/lib.rs" ]
+}
+
+fuchsia_component("stdout_integration_test") {
+  testonly = true
+  manifest = "meta/stdout.cml"
+  deps = [ ":test" ]
+}
+
+fuchsia_test_package("elf_runner_stdout_test") {
+  test_components = [ ":stdout_integration_test" ]
+
+  deps = [
+    "cpp",
+    "rust",
+  ]
+}

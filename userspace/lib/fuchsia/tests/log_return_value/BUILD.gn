@@ -1,0 +1,45 @@
+# Copyright 2022 The Fuchsia Authors. All rights reserved.
+# Use of this source code is governed by a BSD-style license that can be
+# found in the LICENSE file.
+
+import("//products/build/components.gni")
+import("//products/build/rust/rustc_binary.gni")
+import("//products/build/rust/rustc_test.gni")
+
+rustc_test("bin") {
+  output_name = "log_return_value_test"
+  edition = "2024"
+  testonly = true
+  deps = [
+    "//userspace/lib/diagnostics/data/rust",
+    "//userspace/lib/diagnostics/reader/rust",
+    "//userspace/lib/fuchsia",
+    "//userspace/lib/fuchsia-async",
+    "//third_party/rust_crates:futures-util",
+  ]
+
+  sources = [ "src/lib.rs" ]
+}
+
+fuchsia_component("log_return_value_test") {
+  testonly = true
+  manifest = "meta/log_return_value_test.cml"
+  deps = [ ":bin" ]
+}
+
+fuchsia_test_package("log_return_value_test_package") {
+  deps =
+      [ "//userspace/lib/fuchsia/tests/log_return_value/exit-with-error:component" ]
+  test_specs = {
+    log_settings = {
+      max_severity = "ERROR"
+    }
+  }
+  test_components = [ ":log_return_value_test" ]
+}
+
+group("tests") {
+  testonly = true
+
+  deps = [ ":log_return_value_test_package" ]
+}

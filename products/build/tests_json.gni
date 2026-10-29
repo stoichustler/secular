@@ -1,0 +1,108 @@
+# Copyright 2025 The Fuchsia Authors. All rights reserved.
+# Use of this source code is governed by a BSD-style license that can be
+# found in the LICENSE file.
+
+import("//products/build/testing/device_types.gni")
+import("//products/build/testing/environments.gni")
+import("//products/build/testing/platforms.gni")
+
+# Pretends to generate the tests.json and makes it available as a build api.
+#
+# Parameters:
+#
+#   pb_test_groups (optional; default = [])
+#     A list of product_bundle_test_group targets.
+#     These targets declare a set of tests and a product bundle to run them on.
+#     The test specs will be modified to point to the product bundle.
+#
+template("tests_json") {
+  # Ensure this template is only used in approved locations.
+  # This ensures that they are resolved by gn-gen.
+  # See root_patterns in the //.gn file.
+  _valid_dirs = [ "//:*" ]
+  if (!label_matches(":$target_name", _valid_dirs)) {
+    assert(false,
+           "tests_json can only be used in these directories: $_valid_dirs")
+  }
+
+  _product_bundle_test_groups = []
+  if (defined(invoker.pb_test_groups)) {
+    _product_bundle_test_groups += invoker.pb_test_groups
+  }
+
+  files = {
+    output = "${root_build_dir}/tests.json"
+    product_bundle_test_groups =
+        "${target_out_dir}/${target_name}/product_bundle_test_groups.json"
+    environments = "${target_out_dir}/${target_name}/all_test_environments.json"
+    default_environments =
+        "${target_out_dir}/${target_name}/default_test_environments.json"
+  }
+
+  targets = {
+    product_bundle_test_groups = "${target_name}_product_bundle_test_groups"
+    environments = "${target_name}_environments"
+    default_environments = "${target_name}_default_environments"
+  }
+
+  generated_file(targets.product_bundle_test_groups) {
+    testonly = true
+    data_keys = [ "pb_test_groups" ]
+    deps = _product_bundle_test_groups
+    outputs = [ files.product_bundle_test_groups ]
+    output_conversion = "json"
+  }
+
+  _allowed_device_types = allowed_device_types
+  _allowed_host_device_types = allowed_host_device_types
+
+  # All the environments and platform constants, so that build_tests_json.py
+  # can validate and resolve test environments.
+  generated_file(targets.environments) {
+    testonly = true
+    outputs = [ files.environments ]
+    output_conversion = "json"
+
+    contents = {
+      platforms = test_platforms
+      host_env = {
+        dimensions = {
+          cpu = host_cpu
+          os = "Linux"
+        }
+      }
+    }
+  }
+
+  # The builder-set defaults for test environments and allowed device types.
+  generated_file(targets.default_environments) {
+    testonly = true
+    outputs = [ files.default_environments ]
+    output_conversion = "json"
+
+    contents = {
+      target_cpu = target_cpu
+      default_environments = basic_envs
+      allowed_device_types = []
+      allowed_device_types = _allowed_device_types
+      allowed_host_device_types = []
+      allowed_host_device_types = _allowed_host_device_types
+    }
+  }
+
+  action(target_name) {
+    deps = [
+      ":${targets.default_environments}",
+      ":${targets.environments}",
+      ":${targets.product_bundle_test_groups}",
+    ]
+    testonly = true
+    script = "//products/build/scripts/no_op.sh"
+    outputs = [ files.output ]
+    args = rebase_path(outputs, root_build_dir)
+    metadata = {
+      build_api_modules = [ "tests" ]
+      build_api_client_info = [ "tests=tests.json" ]
+    }
+  }
+}

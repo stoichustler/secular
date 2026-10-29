@@ -1,0 +1,70 @@
+# Copyright 2026 The Fuchsia Authors. All rights reserved.
+# Use of this source code is governed by a BSD-style license that can be
+# found in the LICENSE file.
+
+import("//products/build/components.gni")
+import("//products/build/rust/rustc_test.gni")
+import("//products/build/testing/environments.gni")
+
+rustc_test("fxfs_mapper_integration_test_bin") {
+  edition = "2024"
+  output_name = "fxfs_mapper_integration_test"
+  source_root = "src/mapper_integration_test.rs"
+  sources = [ "src/mapper_integration_test.rs" ]
+  deps = [
+    "//sdk/fidl/fuchsia.io:fuchsia.io_rust",
+    "//sdk/fidl/fuchsia.storage.block:fuchsia.storage.block_rust",
+    "//sdk/fidl/fuchsia.storage.partitions:fuchsia.storage.partitions_rust",
+    "//sdk/rust/zx",
+    "//userspace/lib/fidl/rust/fidl",
+    "//userspace/lib/fuchsia",
+    "//userspace/lib/fuchsia-async",
+    "//userspace/lib/fuchsia-component",
+    "//userspace/lib/fuchsia-runtime",
+    "//userspace/storage/fidl/fuchsia.fs.startup:fuchsia.fs.startup_rust",
+    "//userspace/storage/fidl/fuchsia.storage.mapping:fuchsia.storage.mapping_rust",
+    "//userspace/storage/fxfs/fidl/fuchsia.fxfs:fuchsia.fxfs_rust",
+    "//userspace/storage/lib/blob_pager_and_verifier",
+    "//userspace/storage/lib/blob_writer:blob-writer",
+    "//userspace/storage/lib/block_client/rust",
+    "//userspace/storage/lib/block_matcher",
+    "//userspace/storage/lib/block_server/vmo_backed:test_vmo_backed_block_server",
+    "//userspace/storage/lib/delivery_blob",
+    "//userspace/storage/lib/fs_management/rust:fs_management",
+    "//userspace/storage/lib/mapping",
+    "//userspace/storage/lib/profile",
+    "//userspace/storage/lib/vmo-fifo",
+    "//userspace/sys/pkg/lib/fuchsia-merkle",
+    "//third_party/rust_crates:anyhow",
+    "//third_party/rust_crates:log",
+    "//third_party/rust_crates:test-case",
+  ]
+}
+
+fuchsia_test_component("fxfs-mapper-integration-test-component") {
+  component_name = "fxfs-mapper-integration-test"
+  manifest = "meta/fxfs_mapper_integration_test.cml"
+  deps = [ ":fxfs_mapper_integration_test_bin" ]
+  test_type = "storage"
+}
+
+fuchsia_test_package("fxfs-mapper-integration-test") {
+  test_components = [ ":fxfs-mapper-integration-test-component" ]
+  test_specs = {
+    environments = [
+      emu_env,
+      sorrel_env,
+    ]
+  }
+  deps = [
+    "//userspace/storage/crypt/fxfs",
+    "//userspace/storage/fvm:fvm-component",
+    "//userspace/storage/fxfs:fxfs_component",
+    "//userspace/storage/gpt/component",
+  ]
+}
+
+group("tests") {
+  testonly = true
+  deps = [ ":fxfs-mapper-integration-test" ]
+}

@@ -1,0 +1,36 @@
+# Copyright 2024 The Fuchsia Authors. All rights reserved.
+# Use of this source code is governed by a BSD-style license that can be
+# found in the LICENSE file.
+
+# This library contains declarations of operations supported by Scudo on
+# Fuchsia.
+
+import("//products/build/rust/rustc_library.gni")
+
+source_set("scudo") {
+  public = [ "mallopt.h" ]
+  visibility = [
+    # Please discuss with the owners before adding a dependency.
+    "//userspace/developer/forensics/*",
+    "//userspace/developer/memory/metrics:*",
+  ]
+}
+
+rustc_library("rust") {
+  name = "scudo"
+  visibility = [
+    # Please discuss with the owners before adding a dependency.
+    "//userspace/devices/bin/driver-host/*",
+
+    # Depends on this crate for mallopt binding
+    "//userspace/performance/memory/attribution/monitor/*",
+    "//userspace/sys/component_manager/*",
+
+    # Purges memory after all drivers that can be loaded are loaded on boot-up.
+    "//userspace/devices/bin/driver_manager_rust/*",
+  ]
+  edition = "2024"
+  with_unit_tests = false
+  source_root = "lib.rs"
+  sources = [ "lib.rs" ]
+}

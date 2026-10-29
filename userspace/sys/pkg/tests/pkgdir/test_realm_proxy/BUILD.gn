@@ -1,0 +1,92 @@
+# Copyright 2023 The Fuchsia Authors. All rights reserved.
+# Use of this source code is governed by a BSD-style license that can be
+# found in the LICENSE file.
+
+import("//products/build/components.gni")
+import("//products/build/fidl/fidl.gni")
+import("//products/build/rust/rustc_binary.gni")
+
+rustc_binary("bin") {
+  testonly = true
+  name = "test_realm_proxy"
+  visibility = [ ":*" ]
+  edition = "2024"
+  sources = [ "src/main.rs" ]
+  deps = [
+    "fidl:fuchsia.pkg.test_rust",
+    "//sdk/fidl/fuchsia.component.sandbox:fuchsia.component.sandbox_rust",
+    "//sdk/fidl/fuchsia.io:fuchsia.io_rust",
+    "//sdk/fidl/fuchsia.testing.harness:fuchsia.testing.harness_rust",
+    "//sdk/rust/zx",
+    "//userspace/lib/fidl/rust/fidl",
+    "//userspace/lib/fuchsia",
+    "//userspace/lib/fuchsia-component",
+    "//userspace/storage/lib/vfs/rust:vfs",
+    "//userspace/sys/pkg/lib/blobfs",
+    "//userspace/sys/pkg/lib/fuchsia-hash",
+    "//userspace/sys/pkg/lib/fuchsia-pkg-testing",
+    "//userspace/sys/pkg/lib/package-directory",
+    "//userspace/sys/pkg/testing/blobfs-ramdisk",
+    "//userspace/testing/realm_proxy",
+    "//third_party/rust_crates:anyhow",
+    "//third_party/rust_crates:futures",
+    "//third_party/rust_crates:log",
+  ]
+}
+
+rustc_binary("bin-fxblob") {
+  testonly = true
+  name = "test_realm_proxy_fxblob"
+  visibility = [ ":*" ]
+  edition = "2024"
+  sources = [ "src/main.rs" ]
+  deps = [
+    "fidl:fuchsia.pkg.test_rust",
+    "//sdk/fidl/fuchsia.component.sandbox:fuchsia.component.sandbox_rust",
+    "//sdk/fidl/fuchsia.io:fuchsia.io_rust",
+    "//sdk/fidl/fuchsia.testing.harness:fuchsia.testing.harness_rust",
+    "//sdk/rust/zx",
+    "//userspace/lib/fidl/rust/fidl",
+    "//userspace/lib/fuchsia",
+    "//userspace/lib/fuchsia-component",
+    "//userspace/storage/fxfs:fxfs_component",
+    "//userspace/storage/lib/vfs/rust:vfs",
+    "//userspace/sys/pkg/lib/blobfs",
+    "//userspace/sys/pkg/lib/fuchsia-hash",
+    "//userspace/sys/pkg/lib/fuchsia-pkg-testing",
+    "//userspace/sys/pkg/lib/package-directory",
+    "//userspace/sys/pkg/testing/blobfs-ramdisk",
+    "//userspace/testing/realm_proxy",
+    "//third_party/rust_crates:anyhow",
+    "//third_party/rust_crates:futures",
+    "//third_party/rust_crates:log",
+  ]
+
+  features = [ "use_fxblob" ]
+}
+
+fuchsia_component("test_realm_proxy_component") {
+  testonly = true
+  visibility = [ ":*" ]
+  component_name = "default"
+  manifest = "meta/default.cml"
+  deps = [ ":bin" ]
+}
+
+fuchsia_component("test_realm_proxy_component_fxblob") {
+  testonly = true
+  visibility = [ ":*" ]
+  component_name = "default"
+  manifest = "meta/default-fxblob.cml"
+  deps = [ ":bin-fxblob" ]
+}
+
+fuchsia_package("test_realm_proxy") {
+  testonly = true
+  deps = [ ":test_realm_proxy_component" ]
+}
+
+fuchsia_package("test_realm_proxy_fxblob") {
+  testonly = true
+  deps = [ ":test_realm_proxy_component_fxblob" ]
+}

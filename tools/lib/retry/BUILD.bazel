@@ -1,0 +1,37 @@
+# Copyright 2026 The Fuchsia Authors. All rights reserved.
+# Use of this source code is governed by a BSD-style license that can be
+# found in the LICENSE file.
+
+load("@io_bazel_rules_go//go:def.bzl", "go_library")
+load("//products/build/bazel/platforms:constraints.bzl", "HOST_OS_CONSTRAINTS")
+load("//products/build/bazel/rules/host_tests:host_go_test.bzl", "host_go_test")
+
+package(default_applicable_licenses = ["//:license"])
+
+go_library(
+    name = "retry",
+    srcs = [
+        "backoff.go",
+        "clock.go",
+        "retry.go",
+    ],
+    importpath = "go.fuchsia.dev/fuchsia/tools/lib/retry",
+    target_compatible_with = HOST_OS_CONSTRAINTS,
+    visibility = [
+        "//userspace/sys/pkg/lib/repo:__pkg__",
+        "//userspace/testing/host-target-testing/cli:__pkg__",
+        "//userspace/testing/host-target-testing/device:__pkg__",
+        "//tools:__subpackages__",
+    ],
+)
+
+host_go_test(
+    name = "retry_tests",
+    srcs = [
+        "backoff_test.go",
+        "retry_test.go",
+    ],
+    embed = [":retry"],
+    target_compatible_with = HOST_OS_CONSTRAINTS,
+    visibility = ["//tools:__pkg__"],
+)

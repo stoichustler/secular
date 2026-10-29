@@ -1,0 +1,31 @@
+# Copyright 2026 The Fuchsia Authors. All rights reserved.
+# Use of this source code is governed by a BSD-style license that can be
+# found in the LICENSE file.
+
+load("@io_bazel_rules_go//go:def.bzl", "go_library")
+load("//products/build/bazel/platforms:constraints.bzl", "HOST_OS_CONSTRAINTS")
+load("//products/build/bazel/rules/host_tests:host_go_test.bzl", "host_go_test")
+
+package(default_applicable_licenses = ["//:license"])
+
+go_library(
+    name = "cache",
+    srcs = [
+        "cache.go",
+        "filecache.go",
+    ],
+    importpath = "go.fuchsia.dev/fuchsia/tools/lib/cache",
+    target_compatible_with = HOST_OS_CONSTRAINTS,
+    visibility = ["//tools:__subpackages__"],
+)
+
+host_go_test(
+    name = "cache_tests",
+    srcs = [
+        "cache_test.go",
+        "filecache_test.go",
+    ],
+    embed = [":cache"],
+    target_compatible_with = HOST_OS_CONSTRAINTS,
+    visibility = ["//tools:__pkg__"],
+)

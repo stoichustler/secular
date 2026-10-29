@@ -1,0 +1,44 @@
+# Copyright 2026 The Fuchsia Authors. All rights reserved.
+# Use of this source code is governed by a BSD-style license that can be
+# found in the LICENSE file.
+
+load("@io_bazel_rules_go//go:def.bzl", "go_library")
+load("//products/build/bazel/platforms:constraints.bzl", "HOST_OS_CONSTRAINTS")
+load("//products/build/bazel/rules/host_tests:host_go_test.bzl", "host_go_test")
+
+package(default_applicable_licenses = ["//:license"])
+
+go_library(
+    name = "syslog",
+    srcs = [
+        "syslog.go",
+    ],
+    importpath = "go.fuchsia.dev/fuchsia/tools/lib/syslog",
+    target_compatible_with = HOST_OS_CONSTRAINTS,
+    visibility = ["//tools:__subpackages__"],
+    deps = [
+        ":constants",
+        "//tools/lib/ffxutil",
+        "//tools/lib/logger",
+        "//tools/lib/retry",
+        "//tools/net/sshutil",
+    ],
+)
+
+go_library(
+    name = "constants",
+    srcs = [
+        "constants/constants.go",
+    ],
+    importpath = "go.fuchsia.dev/fuchsia/tools/lib/syslog/constants",
+    target_compatible_with = HOST_OS_CONSTRAINTS,
+    visibility = ["//visibility:private"],
+)
+
+host_go_test(
+    name = "syslog_tests",
+    srcs = ["syslog_test.go"],
+    embed = [":syslog"],
+    target_compatible_with = HOST_OS_CONSTRAINTS,
+    visibility = ["//tools:__pkg__"],
+)

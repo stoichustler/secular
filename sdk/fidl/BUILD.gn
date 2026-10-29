@@ -1,0 +1,219 @@
+# Copyright 2022 The Fuchsia Authors. All rights reserved.
+# Use of this source code is governed by a BSD-style license that can be
+# found in the LICENSE file.
+
+import("//products/build/fidl/toolchain.gni")
+import("//products/build/sdk/sdk_collection.gni")
+import("//products/build/sdk/sdk_molecule.gni")
+import("fidl_category_lists.gni")
+
+# How Category Compatibility Checking Works.
+#
+# LINT.IfChange(category_compatibility_checks)
+# Category compatibility checking is performed in `IdkGenerator` using prebuild
+# info, which is added by each `sdk_atom() target, for a given IDK collection.
+# As a result, category compatibility checks are only performed if the
+# `sdk_atom()` target, which often ends in "_sdk", is in the build dependency
+# graph of the IDK collection. Directly using, for example, a FIDL library does
+# not require a dependency on the "_sdk" target and thus would not trigger
+# category compatibility checks for the library.
+#
+# Atoms in the IDK are all referenced by the "_sdk" target and thus covered by
+# category compatibility checks. All non-FIDL atoms can only be in the "partner"
+# category, and all atoms in the "partner" category are assumed to be in the
+# IDK.
+#
+# For FIDL, the ":fidl" target in this file depends on the "_sdk" target for all
+# FIDL libraries in the partner category. For all other
+# categories, the ":<category>_fidl_libraries_non_sdk_molecule" target depends
+# on the "_sdk" target for all FIDL libraries in the category. For libraries
+# other than "compat_test", ":fidl" takes a `non_sdk_deps` on these molecules,
+# ensuring that the "_sdk" targets for all FIDL libraries in those categories
+# are in the dependency tree and thus that their category compatibility will be
+# checked.
+#
+# The outlier is "compat_test" and
+# ":compat_test_fidl_libraries_non_sdk_molecule". Because the latter contains
+# test-only FIDL libraries, it cannot be a dependency of ":fidl" or even the
+# real IDK collection (see https://fxbug.dev/42070088). To address this gap,
+# there is a collection specifically to provide coverage for all FIDL libraries
+# in an SDK category, ":fidl_category_check_collection".
+# LINT.ThenChange(//products/build/sdk/generate_prebuild_idk/idk_generator.py:fidl_category_checks)
+# LINT.IfChange(ensure_compatibility_checks)
+# "//:default" depends on ":compatibility_tests", which depends on this
+# collection, ensuring the category compatibility checks are performed for all
+# FIDL libraries in an SDK category during default builds. (This collection's
+# dependency on ":all_fidl_libraries_with_categories" also ensures that *FIDL*
+# compatibility tests are performed for all such FIDL libraries.)
+# LINT.ThenChange(//BUILD.gn:fidl_compatibility_checks)
+
+sdk_collection("fidl_category_check_collection") {
+  visibility = [ ":compatibility_tests" ]
+  testonly = true
+  deps = [ ":all_fidl_libraries_with_categories" ]
+
+  # Ensure IdkGenerator.GenerateMetaFileContents() can complete successfully.
+  # The category of the collection is not currently compared to the atoms it
+  # contains
+  category = "partner"
+}
+
+# Lists of FIDL libraries in SDK categories are defined in
+# fidl_category_lists.gni.
+_partner_idk_stable_fidl_libraries_targets_list =
+    partner_idk_stable_fidl_libraries_targets_list
+_partner_idk_unstable_fidl_libraries_targets_list =
+    partner_idk_unstable_fidl_libraries_targets_list
+
+# Fuchsia IDL (FIDL) files defining much of the API for the SDK.
+sdk_molecule("fidl") {
+  visibility = [
+    ":*",
+    "//products/build/fidl:sdk_fidl",
+    "//sdk:*",
+    "//vendor/*",
+  ]
+
+  deps = []
+  foreach(fidl_library_path,
+          _partner_idk_stable_fidl_libraries_targets_list +
+              _partner_idk_unstable_fidl_libraries_targets_list) {
+    deps += [ "${fidl_library_path}_sdk($fidl_toolchain)" ]
+  }
+
+  # Ensure that the API compatibility tests run on all libraries that require
+  # compatibility but are not in the IDK.
+  non_sdk_deps = [
+    # "partner" is covered above.
+    # ":compat_test_fidl_libraries_non_sdk_molecule" is covered in
+    # "compatibility_tests". It cannot be here because it is "testonly = true".
+    ":host_tool_fidl_libraries_non_sdk_molecule",
+    ":prebuilt_fidl_libraries_non_sdk_molecule",
+  ]
+}
+
+group("sdk_partner_stable_libs_allowlist") {
+  visibility = _partner_idk_stable_fidl_libraries_targets_list
+}
+
+group("sdk_partner_unstable_libs_allowlist") {
+  visibility = _partner_idk_unstable_fidl_libraries_targets_list
+}
+
+_prebuilt_fidl_libraries_targets_list = prebuilt_fidl_libraries_targets_list
+
+# Do NOT depend on this molecule from another SDK atom's `deps`. It is only
+# to be used in `non_sdk_deps` of the "fidl" target to ensure a) there are no
+# category violations and b) that compatibility tests are run.
+sdk_molecule("prebuilt_fidl_libraries_non_sdk_molecule") {
+  visibility = [ ":fidl" ]
+
+  deps = []
+  foreach(fidl_library_path, _prebuilt_fidl_libraries_targets_list) {
+    deps += [ "${fidl_library_path}_sdk($fidl_toolchain)" ]
+  }
+}
+
+group("sdk_prebuilt_libs_allowlist") {
+  visibility = _prebuilt_fidl_libraries_targets_list
+}
+
+_host_tool_fidl_libraries_targets_list = host_tool_fidl_libraries_targets_list
+
+# Do NOT depend on this molecule from another SDK atom's `deps`. It is only
+# to be used in `non_sdk_deps` of the "fidl" target to ensure a) there are no
+# category violations and b) that compatibility tests are run.
+sdk_molecule("host_tool_fidl_libraries_non_sdk_molecule") {
+  visibility = [ ":fidl" ]
+
+  deps = []
+  foreach(fidl_library_path, _host_tool_fidl_libraries_targets_list) {
+    deps += [ "${fidl_library_path}_sdk($fidl_toolchain)" ]
+  }
+}
+
+group("sdk_host_tool_libs_allowlist") {
+  visibility = _host_tool_fidl_libraries_targets_list
+}
+
+_compat_test_fidl_libraries_targets_list =
+    compat_test_fidl_libraries_targets_list
+
+# Do NOT depend on this molecule from another SDK atom's `deps`. It is only to
+# be used in `non_sdk_deps` of the "compatibility_tests" target to ensure
+# a) there are no category violations and b) that compatibility tests are run.
+sdk_molecule("compat_test_fidl_libraries_non_sdk_molecule") {
+  testonly = true
+  visibility = [
+    ":all_fidl_libraries_with_categories",
+    ":fidl",
+  ]
+
+  deps = []
+  foreach(fidl_library_path, _compat_test_fidl_libraries_targets_list) {
+    deps += [ "${fidl_library_path}_sdk($fidl_toolchain)" ]
+  }
+}
+
+group("sdk_compat_test_libs_allowlist") {
+  visibility = _compat_test_fidl_libraries_targets_list
+}
+
+# Ensure the lists are mutually exclusive.
+assert(
+    _partner_idk_stable_fidl_libraries_targets_list +
+        _partner_idk_unstable_fidl_libraries_targets_list +
+        _prebuilt_fidl_libraries_targets_list +
+        _host_tool_fidl_libraries_targets_list +
+        _compat_test_fidl_libraries_targets_list -
+        _partner_idk_unstable_fidl_libraries_targets_list -
+        _prebuilt_fidl_libraries_targets_list -
+        _host_tool_fidl_libraries_targets_list -
+        _compat_test_fidl_libraries_targets_list ==
+        _partner_idk_stable_fidl_libraries_targets_list,
+    "A FIDL library appears in more than one SDK category list. If adding a library to a category, remove it from the other.")
+
+group("tests") {
+  testonly = true
+  deps = [ ":compatibility_tests" ]
+}
+
+# LINT.IfChange(compatibility_tests)
+# Runs the build-time FIDL compatibility tests and category compatibility checks
+# for all FIDL libraries that need them.
+# This includes all libraries in the Fuchsia IDK plus others that are not in the
+# IDK but have a category.
+group("compatibility_tests") {
+  visibility = [
+    ":tests",
+    "//:default",
+    "//sdk:generate_compatibility_goldens",
+    "//sdk:plasa_manifest",
+  ]
+  testonly = true
+  deps = [
+    # Runs FIDL compatibility tests by depending on molecules that depend on the
+    # "_sdk" targets for all libraries in a category.
+    ":all_fidl_libraries_with_categories",
+
+    # Runs the category compatibility checks by building a collection. See the
+    # comment at the top of this file.
+    ":fidl_category_check_collection",
+  ]
+}
+
+# LINT.ThenChange(//sdk/updating_golden_files.md:fidl)
+
+group("all_fidl_libraries_with_categories") {
+  visibility = [ ":*" ]
+  testonly = true
+
+  deps = [
+    ":fidl",
+
+    # Libraries that cannot be a dependency of ":fidl" because some libraries
+    # in the category are `testonly = true` and thus cannot be dependencies of a
+    # production target such as ":fidl".
+    ":compat_test_fidl_libraries_non_sdk_molecule",
+  ]
+}

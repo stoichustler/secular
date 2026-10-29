@@ -1,0 +1,28 @@
+# Copyright 2026 The Fuchsia Authors. All rights reserved.
+# Use of this source code is governed by a BSD-style license that can be
+# found in the LICENSE file.
+
+import("//products/build/go/go_library.gni")
+
+if (is_host) {
+  go_library("codegen") {
+    sources = [
+      "codegen.go",
+      "ir.go",
+    ]
+    deps = [ "//tools/fidl/lib/fidlgen" ]
+    embedsrcs = [
+      "alias.tmpl",
+      "bits.tmpl",
+      "const.tmpl",
+      "driver_protocol.tmpl",
+      "enum.tmpl",
+      "protocol.tmpl",
+      "service.tmpl",
+      "sourcefile.tmpl",
+      "struct.tmpl",
+      "table.tmpl",
+      "union.tmpl",
+    ]
+  }
+}

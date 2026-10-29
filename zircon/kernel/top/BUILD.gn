@@ -1,0 +1,100 @@
+# Copyright 2019 The Fuchsia Authors
+#
+# Use of this source code is governed by a MIT-style
+# license that can be found in the LICENSE file or at
+# https://opensource.org/licenses/MIT
+
+import("//products/build/zircon/zircon_cpu.gni")
+import("//zircon/kernel/kernel_rust_mod.gni")
+import("//zircon/kernel/params.gni")
+
+group("top") {
+  deps = [
+    ":debug",
+    ":handoff",
+    ":main",
+    ":rust_panic",
+    ":top_rust",
+    "//zircon/kernel/arch:arch-rs",
+    "//zircon/kernel/arch:ffi",
+    "//zircon/kernel/arch/$zircon_cpu",
+    "//zircon/kernel/kernel",
+    "//zircon/kernel/kernel:kernel-rs",
+    "//zircon/kernel/lib/flow-id",  # Used by <kernel/thread.h>.
+  ]
+}
+
+source_set("debug") {
+  sources = [ "debug.cc" ]
+  deps = [
+    "//zircon/kernel/dev/hw_rng",
+    "//zircon/kernel/lib/crashlog",
+    "//zircon/kernel/platform",
+  ]
+}
+
+source_set("handoff") {
+  sources = [
+    "handoff.cc",
+    "handoff_ffi.cc",
+  ]
+  deps = [
+    "//userspace/lib/zbitl",
+    "//zircon/kernel/lib/arch",
+    "//zircon/kernel/lib/boot-options",
+    "//zircon/kernel/lib/code-patching:self-test",
+    "//zircon/kernel/lib/counters",
+    "//zircon/kernel/lib/init",
+    "//zircon/kernel/lib/thread-stack",
+    "//zircon/kernel/object",
+    "//zircon/kernel/phys/handoff",
+    "//zircon/kernel/platform",
+    "//zircon/kernel/vm",
+    "//zircon/system/ulib/fbl",
+  ]
+}
+
+source_set("main") {
+  sources = [ "main.cc" ]
+  deps = [
+    "//zircon/kernel/dev:init",
+    "//zircon/kernel/lib/arch",
+    "//zircon/kernel/lib/console",
+    "//zircon/kernel/lib/console:console_rs",
+    "//zircon/kernel/lib/counters",
+    "//zircon/kernel/lib/counters:counters-rs",
+    "//zircon/kernel/lib/cxxabi-dynamic-init:headers",
+    "//zircon/kernel/lib/heap",
+    "//zircon/kernel/lib/init",
+    "//zircon/kernel/lib/jtrace",
+    "//zircon/kernel/lib/lockdep:lockdep-rs",
+    "//zircon/kernel/lib/lockup_detector",
+    "//zircon/kernel/lib/thread_sampler",
+    "//zircon/kernel/lib/userabi",
+    "//zircon/kernel/phys/handoff",
+    "//zircon/kernel/platform",
+    "//zircon/kernel/platform:platform-rs",
+    "//zircon/kernel/vm",
+    "//zircon/kernel/vm:vm-rs",
+  ]
+}
+
+kernel_rust_mod("rust_panic") {
+  sources = [ "rust_panic.rs" ]
+}
+
+kernel_rust_mod("top_rust") {
+  output_name = "top"
+  source_root = "mod.rs"
+  sources = [
+    "debug.rs",
+    "init.rs",
+    "mod.rs",
+    "version.rs",
+    "version_ffi.rs",
+  ]
+  deps = [
+    "//userspace/lib/kprint",
+    "//zircon/kernel/lib/init:init_rust",
+  ]
+}

@@ -1,0 +1,17 @@
+# Copyright 2021 The Fuchsia Authors. All rights reserved.
+# Use of this source code is governed by a BSD-style license that can be
+# found in the LICENSE file.
+
+import("//userspace/lib/fostr/build/fostr_fidl.gni")
+
+fostr_fidl("fuchsia.video") {
+  fidl_target = "//sdk/fidl/fuchsia.video"
+
+  deps = [
+    "//userspace/lib/fostr/fidl/fuchsia.images2",
+    "//userspace/lib/fostr/fidl/fuchsia.math",
+    "//userspace/lib/fostr/fidl/fuchsia.media2",
+    "//userspace/lib/fostr/fidl/fuchsia.mediastreams",
+    "//userspace/lib/fostr/fidl/fuchsia.ui.views",
+  ]
+}

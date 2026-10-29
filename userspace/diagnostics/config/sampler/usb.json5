@@ -1,0 +1,34 @@
+{
+    project_id: 22,
+    data_sets: [
+        {
+            metrics: [
+                {
+                    event_codes: [],
+                    metric_name: "disconnects",
+                    metric_type: "Occurrence",
+                    selector: "bootstrap/*-drivers\\:*:[name=dwc3]root/dwc3:DEVT_DISCONNECT",
+                },
+                {
+                    event_codes: [],
+                    metric_name: "erratic_errors",
+                    metric_type: "Occurrence",
+                    selector: "bootstrap/*-drivers\\:*:[name=dwc3]root/dwc3:ERRATIC_ERROR",
+                },
+                {
+                    event_codes: [],
+                    metric_name: "suspends",
+                    metric_type: "Occurrence",
+                    selector: "bootstrap/*-drivers\\:*:[name=dwc3]root/dwc3:DEVT_SUSPEND_ENTRY",
+                },
+                {
+                    event_codes: [],
+                    metric_name: "resets",
+                    metric_type: "Occurrence",
+                    selector: "bootstrap/*-drivers\\:*:[name=dwc3]root/dwc3:DEVT_USB_RESET",
+                },
+            ],
+            poll_rate_sec: 3600,
+        },
+    ],
+}

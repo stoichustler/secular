@@ -1,0 +1,59 @@
+# Copyright 2026 The Fuchsia Authors. All rights reserved.
+# Use of this source code is governed by a BSD-style license that can be
+# found in the LICENSE file.
+
+load("//products/build/bazel/platforms:constraints.bzl", "HOST_OS_CONSTRAINTS")
+load("//products/build/bazel/rules/host_tests:host_rustc_test.bzl", "host_rustc_test")
+load("//products/build/bazel/rules/rust:rustc_library.bzl", "rustc_library")
+
+package(default_applicable_licenses = ["//:license"])
+
+rustc_library(
+    name = "lib",
+    srcs = [
+        "src/lib.rs",
+        "src/watcher.rs",
+    ],
+    crate_name = "manual_targets",
+    edition = "2024",
+    proc_macro_deps = [
+        "//third_party/rust_crates/vendor:async-trait",
+    ],
+    target_compatible_with = HOST_OS_CONSTRAINTS,
+    visibility = [
+        "//userspace/developer/ffx/lib/diagnostics/checks:__pkg__",
+        "//userspace/developer/ffx/lib/discovery:__pkg__",
+        "//userspace/developer/ffx/lib/target:__pkg__",
+        "//userspace/developer/ffx/plugins/target/add:__pkg__",
+        "//userspace/developer/ffx/plugins/target/remove:__pkg__",
+    ],
+    deps = [
+        "//userspace/developer/ffx/config:lib",
+        "//userspace/developer/ffx/lib/addr:lib",
+        "//userspace/developer/ffx/lib/fastboot/interface:lib",
+        "//userspace/developer/ffx/lib/fastboot/transport/interface:lib",
+        "//userspace/developer/ffx/lib/netext:lib",
+        "//userspace/developer/ffx/lib/timeout:lib",
+        "//userspace/lib/fuchsia-async",
+        "//third_party/rust_crates/vendor:async-channel",
+        "//third_party/rust_crates/vendor:async-lock",
+        "//third_party/rust_crates/vendor:log",
+        "//third_party/rust_crates/vendor:serde_json",
+        "//third_party/rust_crates/vendor:thiserror",
+        "//third_party/rust_crates/vendor:tokio",
+    ],
+)
+
+host_rustc_test(
+    name = "lib_test",
+    crate = ":lib",
+    edition = "2024",
+    visibility = ["//userspace/developer/ffx:__pkg__"],
+    deps = [
+        "//userspace/lib/fuchsia",
+        "//third_party/rust_crates/vendor:anyhow",
+        "//third_party/rust_crates/vendor:futures",
+        "//third_party/rust_crates/vendor:pretty_assertions",
+        "//third_party/rust_crates/vendor:serial_test",
+    ],
+)

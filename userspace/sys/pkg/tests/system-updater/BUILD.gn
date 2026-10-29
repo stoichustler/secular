@@ -1,0 +1,110 @@
+# Copyright 2019 The Fuchsia Authors. All rights reserved.
+# Use of this source code is governed by a BSD-style license that can be
+# found in the LICENSE file.
+
+import("//products/build/components.gni")
+import("//products/build/rust/rustc_test.gni")
+
+rustc_test("driver") {
+  name = "system_updater_test"
+  edition = "2024"
+
+  deps = [
+    "//sdk/fidl/fuchsia.feedback:fuchsia.feedback_rust",
+    "//sdk/fidl/fuchsia.hardware.power.statecontrol:fuchsia.hardware.power.statecontrol_rust",
+    "//sdk/fidl/fuchsia.io:fuchsia.io_rust",
+    "//sdk/fidl/fuchsia.logger:fuchsia.logger_rust",
+    "//sdk/fidl/fuchsia.metrics:fuchsia.metrics_rust",
+    "//sdk/fidl/fuchsia.net.http:fuchsia.net.http_rust",
+    "//sdk/fidl/fuchsia.paver:fuchsia.paver_rust",
+    "//sdk/fidl/fuchsia.pkg:fuchsia.pkg_rust",
+    "//sdk/fidl/fuchsia.pkg.garbagecollector:fuchsia.pkg.garbagecollector_rust",
+    "//sdk/fidl/fuchsia.pkg.internal:fuchsia.pkg.internal_rust",
+    "//sdk/fidl/fuchsia.storage.blobfs:fuchsia.storage.blobfs_rust",
+    "//sdk/rust/zx",
+    "//userspace/lib/fidl/rust/fidl",
+    "//userspace/lib/fuchsia",
+    "//userspace/lib/fuchsia-async",
+    "//userspace/lib/fuchsia-component",
+    "//userspace/lib/fuchsia-component-test",
+    "//userspace/lib/fuchsia-fs",
+    "//userspace/lib/fuchsia-sync",
+    "//userspace/lib/fuchsia-url",
+    "//userspace/storage/fxfs/fidl/fuchsia.fxfs:fuchsia.fxfs_rust",
+    "//userspace/sys/lib/cm_rust",
+    "//userspace/sys/lib/fidl-fuchsia-pkg-ext",
+    "//userspace/sys/pkg/fidl/fuchsia.update.installer:fuchsia.update.installer_rust",
+    "//userspace/sys/pkg/lib/fidl-fuchsia-update-installer-ext",
+    "//userspace/sys/pkg/lib/fuchsia-hash",
+    "//userspace/sys/pkg/lib/fuchsia-merkle",
+    "//userspace/sys/pkg/lib/fuchsia-pkg-testing",
+    "//userspace/sys/pkg/lib/metrics:cobalt_sw_delivery_registry_rustlib",
+    "//userspace/sys/pkg/lib/update-package",
+    "//userspace/sys/pkg/testing/blobfs-ramdisk",
+    "//userspace/sys/pkg/testing/mock-crash-reporter:lib",
+    "//userspace/sys/pkg/testing/mock-metrics",
+    "//userspace/sys/pkg/testing/mock-paver",
+    "//userspace/sys/pkg/testing/mock-reboot",
+    "//userspace/sys/pkg/testing/mock-resolver",
+    "//third_party/rust_crates:anyhow",
+    "//third_party/rust_crates:assert_matches",
+    "//third_party/rust_crates:chrono",
+    "//third_party/rust_crates:futures",
+    "//third_party/rust_crates:hex",
+    "//third_party/rust_crates:http",
+    "//third_party/rust_crates:maplit",
+    "//third_party/rust_crates:pretty_assertions",
+    "//third_party/rust_crates:ring",
+    "//third_party/rust_crates:serde_json",
+    "//third_party/rust_crates:tempfile",
+    "//third_party/rust_crates:test-case",
+    "//third_party/rust_crates:thiserror",
+  ]
+
+  sources = [
+    "src/board.rs",
+    "src/cancel.rs",
+    "src/cobalt_metrics.rs",
+    "src/commits_images.rs",
+    "src/epoch.rs",
+    "src/fetch_packages.rs",
+    "src/history.rs",
+    "src/lib.rs",
+    "src/mode_force_recovery.rs",
+    "src/mode_normal.rs",
+    "src/ota_manifest.rs",
+    "src/overwrites_blobs.rs",
+    "src/progress_reporting.rs",
+    "src/reboot_controller.rs",
+    "src/retained_packages.rs",
+    "src/update_package.rs",
+    "src/verify_existing_blobs.rs",
+    "src/writes_firmware.rs",
+    "src/writes_images.rs",
+  ]
+  configs += [ "//products/build/config/rust/lints:clippy_warn_all" ]
+}
+
+fuchsia_component("system-updater-test") {
+  testonly = true
+  manifest = "meta/system-updater-test.cml"
+  deps = [ ":driver" ]
+}
+
+fuchsia_test_package("system-updater-integration-tests") {
+  test_components = [ ":system-updater-test" ]
+  deps = [
+    "//userspace/storage/testing:storage_driver_test_realm",
+    "//userspace/sys/pkg/bin/system-updater:isolated-v2",
+  ]
+  test_specs = {
+    log_settings = {
+      max_severity = "ERROR"
+    }
+  }
+}
+
+group("hermetic_tests") {
+  testonly = true
+  public_deps = [ ":system-updater-integration-tests" ]
+}

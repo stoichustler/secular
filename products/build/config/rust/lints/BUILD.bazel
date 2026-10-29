@@ -1,0 +1,164 @@
+# Copyright 2025 The Fuchsia Authors. All rights reserved.
+# Use of this source code is governed by a BSD-style license that can be
+# found in the LICENSE file.
+
+load("@fuchsia_rules_common//build_flags:build_flags.bzl", "build_flags")
+load("@rules_rust//rust:defs.bzl", "rust_lint_config")
+
+package(
+    default_applicable_licenses = ["//:license"],
+    default_visibility = ["//visibility:public"],
+)
+
+# LINT.IfChange(allow_default)
+build_flags(
+    name = "allow_default",
+    rustflags = ["-Aunknown_lints"],
+)
+# LINT.ThenChange(//products/build/config/rust/lints/BUILD.gn:allow_default)
+
+# TODO(https://fxbug.dev/42055130): Delete this config when all unused
+# dependencies are removed.
+#
+# PLEASE DO NOT USE.
+# LINT.IfChange(allow_unused_crate_dependencies)
+build_flags(
+    name = "allow_unused_crate_dependencies",
+    rustflags = ["-Aunused_crate_dependencies"],
+    # Please do not add to this list.
+    visibility = [
+        "//products/build:__subpackages__",
+        "//examples:__subpackages__",
+        "//sdk:__subpackages__",
+        "//userspace:__subpackages__",
+        "//tools:__subpackages__",
+        "//vendor:__subpackages__",
+        "//zircon:__subpackages__",
+    ],
+)
+# LINT.ThenChange(//products/build/config/rust/lints/BUILD.gn:allow_unused_crate_dependencies)
+
+# LINT.IfChange(deny_default)
+build_flags(
+    name = "deny_default",
+    rustflags = [
+        "-Dderef_nullptr",
+        "-Dinvalid_value",
+        "-Dunused_must_use",
+    ],
+)
+# LINT.ThenChange(//products/build/config/rust/lints/BUILD.gn:deny_default)
+
+# LINT.IfChange(deny_unused_results)
+build_flags(
+    name = "deny_unused_results",
+    rustflags = ["-Dunused_results"],
+)
+# LINT.ThenChange(//products/build/config/rust/lints/BUILD.gn:deny_unused_results)
+
+# LINT.IfChange(toolchain_roll_exceptions)
+build_flags(
+    name = "toolchain_roll_exceptions",
+    rustflags = [
+        "-Arenamed_and_removed_lints",
+        "-Anon_local_definitions",
+        "-Amismatched_lifetime_syntaxes",
+        "-Arustdoc::redundant_explicit_links",
+    ],
+)
+# LINT.ThenChange(//products/build/config/rust/lints/BUILD.gn:toolchain_roll_exceptions)
+
+# LINT.IfChange(warn_default)
+build_flags(
+    name = "warn_default",
+    rustflags = [
+        "-Wmissing_unsafe_on_extern",
+        "-Wunsafe_attr_outside_unsafe",
+        "-Wunused_crate_dependencies",
+    ],
+)
+# LINT.ThenChange(//products/build/config/rust/lints/BUILD.gn:warn_default)
+
+_CLIPPY_WARN_DEFAULT = {
+    # Allow everything by default, except for the ones explicitly configured.
+    # LINT.IfChange(clippy_warn_default)
+    "all": "allow",
+    "await_holding_lock": "warn",
+    "clear_with_drain": "warn",
+    "confusing_method_to_numeric_cast": "warn",
+    "correctness": "warn",
+    "expect_fun_call": "warn",
+    "fn_to_numeric_cast_with_truncation": "warn",
+    "into_iter_on_ref": "warn",
+    "large_enum_variant": "warn",
+    "large_futures": "warn",
+    "missing_safety_doc": "warn",
+    "or_fun_call": "warn",
+    "unnecessary_mut_passed": "warn",
+    # LINT.ThenChange(//products/build/config/rust/lints/BUILD.gn:clippy_warn_default)
+}
+
+_CLIPPY_WARN_PRODUCTION = _CLIPPY_WARN_DEFAULT | {
+    # LINT.IfChange(clippy_warn_production)
+    "collection_is_never_read": "warn",
+    "needless_collect": "warn",
+    "perf": "warn",
+    "redundant_clone": "warn",
+    "set_contains_or_insert": "warn",
+    "unnecessary_lazy_evaluations": "warn",
+    # LINT.ThenChange(//products/build/config/rust/lints/BUILD.gn:clippy_warn_production)
+}
+
+# The same rustc lint configs are applied to all Rust targets.
+_RUSTC_LINT_CONFIGS = {
+    # LINT.IfChange(rustc_allow_default)
+    "unknown_lints": "allow",
+    # LINT.ThenChange(//products/build/config/rust/lints/BUILD.gn:allow_default)
+
+    # LINT.IfChange(rustc_warn_default)
+    "missing_unsafe_on_extern": "warn",
+    "unsafe_attr_outside_unsafe": "warn",
+    "unused_crate_dependencies": "warn",
+    # LINT.ThenChange(//products/build/config/rust/lints/BUILD.gn:warn_default)
+
+    # LINT.IfChange(rustc_deny_default)
+    "deref_nullptr": "deny",
+    "invalid_value": "deny",
+    "unused_must_use": "deny",
+    # LINT.ThenChange(//products/build/config/rust/lints/BUILD.gn:deny_default)
+
+    # LINT.IfChange(rustc_toolchain_roll_exceptions)
+    "mismatched_lifetime_syntaxes": "allow",
+    "non_local_definitions": "allow",
+    "renamed_and_removed_lints": "allow",
+    "rustdoc::redundant_explicit_links": "allow",
+    # LINT.ThenChange(//products/build/config/rust/lints/BUILD.gn:toolchain_roll_exceptions)
+}
+
+rust_lint_config(
+    name = "clippy_warn_default",
+    clippy = _CLIPPY_WARN_DEFAULT,
+    rustc = _RUSTC_LINT_CONFIGS,
+)
+
+rust_lint_config(
+    name = "clippy_warn_production",
+    clippy = _CLIPPY_WARN_PRODUCTION,
+    rustc = _RUSTC_LINT_CONFIGS,
+)
+
+rust_lint_config(
+    name = "clippy_warn_all",
+    # In Bazel, `lint_config` replaces default lint configs rather than
+    # appending as GN does.
+    #
+    # We bake `_CLIPPY_WARN_PRODUCTION` in because `clippy::all` only covers
+    # default groups (correctness, style, complexity, perf, suspicious) and
+    # omits nursery and pedantic lints enabled by our default configs (e.g.
+    # `collection_is_never_read`, `large_futures`).
+    # See https://doc.rust-lang.org/clippy/index.html
+    clippy = _CLIPPY_WARN_PRODUCTION | {
+        "all": "warn",
+    },
+    rustc = _RUSTC_LINT_CONFIGS,
+)

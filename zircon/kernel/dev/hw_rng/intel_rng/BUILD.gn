@@ -1,0 +1,25 @@
+# Copyright 2019 The Fuchsia Authors
+#
+# Use of this source code is governed by a MIT-style
+# license that can be found in the LICENSE file or at
+# https://opensource.org/licenses/MIT
+
+import("//zircon/kernel/kernel_rust_mod.gni")
+
+kernel_rust_mod("intel_rng-rs") {
+  output_name = "intel_rng"
+  source_root = "intel_rng.rs"
+  sources = [ "intel_rng.rs" ]
+  deps = [
+    "//sdk/rust/zx-status",
+    "//userspace/lib/zr",
+    "//zircon/kernel/lib/init:init_rust",
+  ]
+}
+
+group("intel_rng") {
+  deps = [
+    ":intel_rng-rs",
+    "//zircon/kernel/dev/hw_rng",
+  ]
+}

@@ -1,0 +1,92 @@
+# Copyright 2026 The Fuchsia Authors. All rights reserved.
+# Use of this source code is governed by a BSD-style license that can be
+# found in the LICENSE file.
+
+load(
+    "@bazel_skylib//rules:common_settings.bzl",
+    "bool_flag",
+    "int_flag",
+    "string_flag",
+)
+
+package(default_applicable_licenses = ["//:license"])
+
+# If the build configuration has coverage enabled.
+bool_flag(
+    name = "is_coverage",
+    build_setting_default = False,
+    visibility = ["//visibility:public"],
+)
+
+# If the build configuration has profiling enabled.
+bool_flag(
+    name = "is_profile",
+    build_setting_default = False,
+    visibility = ["//visibility:public"],
+)
+
+# LINT.IfChange(dwarf_version)
+int_flag(
+    name = "dwarf_version",
+    build_setting_default = 5,
+    visibility = ["//visibility:public"],
+)
+# LINT.ThenChange(//products/build/config/compiler.gni:dwarf_version)
+
+# LINT.IfChange(compress_debuginfo)
+string_flag(
+    name = "compress_debuginfo",
+    build_setting_default = "",
+    visibility = ["//visibility:public"],
+)
+# LINT.ThenChange(//products/build/config/compiler.gni:compress_debuginfo)
+
+# LINT.IfChange(debuginfo)
+string_flag(
+    name = "debuginfo",
+    build_setting_default = "debug",
+    values = [
+        "none",
+        "backtrace",
+        "debug",
+    ],
+    visibility = ["//visibility:public"],
+)
+# LINT.ThenChange(
+#   //products/build/bazel/config/bazel_args.gni:debuginfo,
+#   //products/build/bazel/config/select/debuginfo/BUILD.bazel:debuginfo,
+#   //products/build/config/compiler.gni:debuginfo,
+# )
+
+# LINT.IfChange(valid_optimize_values)
+# The platform-specific "optimize" variable.
+string_flag(
+    name = "optimize",
+    build_setting_default = "none",
+    values = [
+        "none",
+        "debug",
+        "minimal",
+        "sanitizer",
+        "profile",
+        "coverage",
+        "moderate",
+        "moderate_lto",
+        "moderate_thinlto",
+        "size",
+        "size_lto",
+        "size_thinlto",
+        "speed",
+        "speed_lto",
+        "speed_thinlto",
+
+        # TODO(https://fxbug.dev/517626589): remove this when default is changed
+        "size_thinlto_clang",
+    ],
+    visibility = ["//visibility:public"],
+)
+# LINT.ThenChange(
+#   //products/build/bazel/config/bazel_args.gni:valid_optimize_values,
+#   //products/build/bazel/config/select/optimize/BUILD.bazel:valid_optimize_values,
+#   //products/build/config/compilation_modes.gni:valid_optimize_values,
+# )

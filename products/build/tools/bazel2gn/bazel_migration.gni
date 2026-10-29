@@ -1,0 +1,33 @@
+# Copyright 2024 The Fuchsia Authors. All rights reserved.
+# Use of this source code is governed by a BSD-style license that can be
+# found in the LICENSE file.
+
+# All GN templates and global variables supported by bazel2gn are imported here,
+# so converted GN files can import this file, to keep bazel2gn simple.
+#
+# NOTE: This will cause most BUILD.gn files converted from BUILD.bazel file to
+# import more gni files than they need. This should be OK because all these
+# templates are commonly used in Fuchsia's GN build anyways. If this causes
+# noticeable regressions in `gn gen` time or ninja build time, we can improve
+# bazel2gn to be able to generate the correct import statements instead.
+
+import("//products/build/compiled_action.gni")
+import("//products/build/components/fuchsia_structured_config.gni")
+import("//products/build/components/fuchsia_unittest_package.gni")
+import("//products/build/cpp/sdk_source_set.gni")
+import("//products/build/fidl/fidl.gni")
+import("//products/build/go/go_binary.gni")
+import("//products/build/go/go_library.gni")
+import("//products/build/go/go_test.gni")
+import("//products/build/rust/rustc_binary.gni")
+import("//products/build/rust/rustc_bindgen.gni")
+import("//products/build/rust/rustc_dylib.gni")
+import("//products/build/rust/rustc_library.gni")
+import("//products/build/rust/rustc_macro.gni")
+import("//products/build/sdk/sdk_host_tool.gni")
+import("//products/build/zircon/zx_library.gni")
+import("//userspace/developer/ffx/build/ffx_plugin.gni")
+import("//userspace/developer/ffx/build/ffx_tool.gni")
+import("//third_party/cobalt/metrics_registry.gni")
+import("//tools/fidl/measure-tape/measure_tape.gni")
+import("//tools/protobuf/rust_proto_library.gni")

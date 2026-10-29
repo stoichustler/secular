@@ -1,0 +1,44 @@
+# Copyright 2025 The Fuchsia Authors. All rights reserved.
+# Use of this source code is governed by a BSD-style license that can be
+# found in the LICENSE file.
+
+import("//products/build/components.gni")
+import("//products/build/rust/rustc_test.gni")
+
+rustc_test("builtin_dispatcher_component_bin") {
+  name = "builtin_dispatcher_component_test"
+  edition = "2024"
+  source_root = "builtin_dispatcher_component.rs"
+  deps = [
+    "//examples/components/routing/fidl:echo_rust",
+    "//sdk/fidl/fuchsia.component:fuchsia.component_rust",
+    "//userspace/lib/fidl/rust/fidl",
+    "//userspace/lib/fuchsia",
+    "//userspace/lib/fuchsia-async",
+    "//userspace/lib/fuchsia-component",
+    "//userspace/lib/fuchsia-component-test",
+    "//userspace/sys/lib/cm_rust",
+    "//userspace/sys/lib/cm_types",
+    "//userspace/sys/lib/component-events",
+    "//third_party/rust_crates:anyhow",
+    "//third_party/rust_crates:futures",
+  ]
+
+  sources = [ "builtin_dispatcher_component.rs" ]
+}
+
+fuchsia_unittest_component("builtin_dispatcher_component_test_component") {
+  component_name = "builtin_dispatcher_component_test"
+  deps = [ ":builtin_dispatcher_component_bin" ]
+}
+
+fuchsia_test_package("builtin_dispatcher_component_test") {
+  test_components = [ ":builtin_dispatcher_component_test_component" ]
+  deps = [ "//userspace/sys/component_manager:component-manager-realm-builder-cmp" ]
+}
+
+group("tests") {
+  testonly = true
+
+  deps = [ ":builtin_dispatcher_component_test" ]
+}

@@ -1,0 +1,43 @@
+# Copyright 2026 The Fuchsia Authors. All rights reserved.
+# Use of this source code is governed by a BSD-style license that can be
+# found in the LICENSE file.
+
+load("//products/build/bazel/rules/rust:rustc_library.bzl", "rustc_library")
+load("//products/build/bazel/rules/rust:rustc_test.bzl", "rustc_test")
+load("//products/build/bazel/rules/testing:fx_unittest_package.bzl", "fx_unittest_package")
+
+package(default_applicable_licenses = ["//:license"])
+
+rustc_library(
+    name = "bounded-node",
+    srcs = ["src/lib.rs"],
+    edition = "2024",
+    lint_config = "//products/build/config/rust/lints:clippy_warn_all",
+    visibility = [
+        "//userspace/sys/pkg/bin/omaha-client:__pkg__",
+        "//userspace/sys/pkg/bin/system-updater:__pkg__",
+        "//userspace/sys/pkg/lib:__pkg__",
+    ],
+    deps = [
+        "//userspace/lib/diagnostics/inspect/contrib/rust",
+        "//userspace/lib/diagnostics/inspect/rust:fuchsia-inspect",
+    ],
+)
+
+# @bazel2gn:skip
+rustc_test(
+    name = "bounded-node_test",
+    crate = ":bounded-node",
+    edition = "2024",
+    lint_config = "//products/build/config/rust/lints:clippy_warn_all",
+    deps = [
+        "//userspace/lib/diagnostics/testing/diagnostics-assertions/rust:diagnostics-assertions",
+        "//userspace/lib/fuchsia",
+    ],
+)
+
+# @bazel2gn:skip
+fx_unittest_package(
+    name = "bounded-node-tests",
+    unit_tests = [":bounded-node_test"],
+)

@@ -1,0 +1,134 @@
+// Copyright 2026 The Fuchsia Authors. All rights reserved.
+// Use of this source code is governed by a BSD-style license that can be
+// found in the LICENSE file.
+
+/// Google On-Device Power Monitor (ODPM) interface.
+@available(added=HEAD)
+library fuchsia.hardware.google.odpm;
+
+using zx;
+
+const MAX_RAIL_NAME_SIZE uint32 = 256;
+
+/// Maximum number of actively-monitored power rails.
+const MAX_RAILS uint32 = 32;
+
+/// An arbitrary, human-readable string that uniquely identifies a power rail.
+alias RailName = string:MAX_RAIL_NAME_SIZE;
+
+type RailMetadata = table {
+    /// Canonical identifier for the rail (e.g. "cpu_big", "gpu").
+    1: name RailName;
+    /// Hardware channel index.
+    2: channel_id uint32;
+    /// Schematic name of the rail (e.g. "S2M_VDD_CPU2").
+    3: schematic_name RailName;
+};
+
+type MeasurementType = flexible enum {
+    /// Average measurement over a time interval (default).
+    AVERAGE = 1;
+    /// Instantaneous snapshot.
+    INSTANTANEOUS = 2;
+    /// Cumulative measurement over a time interval.
+    CUMULATIVE = 3;
+};
+
+type Options = table {
+    /// Specifies the type of measurement desired.
+    /// Defaults to `AVERAGE` if omitted.
+    1: measurement_type MeasurementType;
+};
+
+type PowerReading = table {
+    /// Hardware channel index.
+    1: channel_id uint32;
+    /// Measured power in microwatts.
+    2: power_uw int32;
+    /// Measurement time interval (omitted if unknown).
+    3: interval zx.Duration;
+    /// Time when the reading was taken.
+    4: timestamp zx.Time;
+};
+
+type CurrentReading = table {
+    /// Hardware channel index.
+    1: channel_id uint32;
+    /// Measured current in microamperes.
+    2: current_ua int32;
+    /// Measurement time interval (omitted if unknown).
+    3: interval zx.Duration;
+    /// Time when the reading was taken.
+    4: timestamp zx.Time;
+};
+
+type EnergyReading = table {
+    /// Hardware channel index.
+    1: channel_id uint32;
+    /// Measured energy in microjoules.
+    2: energy_uj int64;
+    /// Measurement time interval (omitted if unknown).
+    3: interval zx.Duration;
+    /// Time when the reading was taken.
+    4: timestamp zx.Time;
+};
+
+/// Minimum allowed hardware polling interval (10 ms).
+const MIN_POLL_INTERVAL zx.Duration = 10000000;
+
+/// Configuration options for the ODPM driver hardware polling loop.
+type PollingConfig = table {
+    /// Driver's baseline polling interval. Must be at least `MIN_POLL_INTERVAL`.
+    1: poll_interval zx.Duration;
+    /// Number of hardware polls per Inspect/trace time-series entry.
+    2: polls_per_series_entry uint32;
+};
+
+/// Provides power and power-related measurements for all actively-monitored rails,
+/// as well as configuration for the ODPM driver's hardware polling loop.
+open protocol OdpmDevice {
+    /// Returns metadata for all actively-monitored rails.
+    flexible GetRailMetadata() -> (struct {
+        rails vector<RailMetadata>:MAX_RAILS;
+    }) error zx.Status;
+
+    /// Returns the power consumption for all actively-monitored rails.
+    /// Returns `ZX_ERR_NOT_SUPPORTED` if the requested measurement type is not supported.
+    /// Returns `ZX_ERR_UNAVAILABLE` if the hardware read fails.
+    /// Returns `ZX_ERR_INTERNAL` if internal rail state is inconsistent.
+    flexible GetPowerWatts(Options) -> (struct {
+        readings vector<PowerReading>:MAX_RAILS;
+    }) error zx.Status;
+
+    /// Returns the current for all actively-monitored rails.
+    /// Returns `ZX_ERR_NOT_SUPPORTED` if the requested measurement type is not supported.
+    /// Returns `ZX_ERR_UNAVAILABLE` if the hardware read fails.
+    /// Returns `ZX_ERR_INTERNAL` if internal rail state is inconsistent.
+    flexible GetCurrentAmperes(Options) -> (struct {
+        readings vector<CurrentReading>:MAX_RAILS;
+    }) error zx.Status;
+
+    /// Returns the energy consumption for all actively-monitored rails.
+    /// Returns `ZX_ERR_NOT_SUPPORTED` if the requested measurement type is not supported.
+    /// Returns `ZX_ERR_UNAVAILABLE` if the hardware read fails.
+    /// Returns `ZX_ERR_INTERNAL` if internal rail state is inconsistent.
+    flexible GetEnergyJoules(Options) -> (struct {
+        readings vector<EnergyReading>:MAX_RAILS;
+    }) error zx.Status;
+
+    /// Overrides polling configuration parameters. Any omitted fields in `PollingConfig`
+    /// remain unchanged.
+    /// Returns `ZX_ERR_INVALID_ARGS` if `poll_interval` is less than `MIN_POLL_INTERVAL` or
+    /// `polls_per_series_entry` == 0.
+    flexible SetPollingConfig(PollingConfig) -> () error zx.Status;
+
+    /// Retrieves the current polling configuration parameters.
+    flexible GetPollingConfig() -> (PollingConfig) error zx.Status;
+
+    /// Resets polling configuration parameters to the driver's default values.
+    flexible ResetPollingConfig() -> () error zx.Status;
+};
+
+service Service {
+    device client_end:OdpmDevice;
+};

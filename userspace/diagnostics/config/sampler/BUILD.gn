@@ -1,0 +1,43 @@
+# Copyright 2021 The Fuchsia Authors. All rights reserved.
+# Use of this source code is governed by a BSD-style license that can be
+# found in the LICENSE file.
+
+import("//userspace/diagnostics/build/sampler/generate_configs.gni")
+
+generate_sampler_config("default-config") {
+  cobalt_registry =
+      "$root_gen_dir/src/cobalt/bin/app/global_metrics_registry.pb"
+  deps = [ "//userspace/cobalt/bin/app:global_metrics_registry_gen" ]
+
+  fire_project_templates = [
+    "//userspace/diagnostics/config/sampler/fire/projects/cpu.json5",
+    "//userspace/diagnostics/config/sampler/fire/projects/crashes.json5",
+    "//userspace/diagnostics/config/sampler/fire/projects/escrow.json5",
+    "//userspace/diagnostics/config/sampler/fire/projects/minfs.json5",
+  ]
+
+  fire_component_configs =
+      [ "//userspace/diagnostics/config/sampler/fire/components.json5" ]
+
+  project_configs = [
+    "//userspace/diagnostics/config/sampler/archivist.json5",
+    "//userspace/diagnostics/config/sampler/bt_hci_broadcom.json5",
+    "//userspace/diagnostics/config/sampler/bt_host.json5",
+    "//userspace/diagnostics/config/sampler/fshost.json5",
+    "//userspace/diagnostics/config/sampler/netstack.json5",
+    "//userspace/diagnostics/config/sampler/netstack3.json5",
+    "//userspace/diagnostics/config/sampler/odpm.json5",
+    "//userspace/diagnostics/config/sampler/power_metrics_recorder.json5",
+    "//userspace/diagnostics/config/sampler/setui.json5",
+    "//userspace/diagnostics/config/sampler/system-update-committer.json5",
+    "//userspace/diagnostics/config/sampler/usb.json5",
+    "//userspace/diagnostics/config/sampler/connectivity_wlan.json5",
+    "//userspace/diagnostics/config/sampler/ftl.json5",
+    "//userspace/diagnostics/config/sampler/fvm.json5",
+    "//userspace/diagnostics/config/sampler/radar.json5",
+    "//userspace/diagnostics/config/sampler/sdmmc.json5",
+    "//userspace/diagnostics/config/sampler/sysmem.json5",
+  ]
+
+  output = "${target_gen_dir}/default_sampler_config.json5"
+}

@@ -1,0 +1,78 @@
+# Copyright 2023 The Fuchsia Authors. All rights reserved.
+# Use of this source code is governed by a BSD-style license that can be
+# found in the LICENSE file.
+
+import("//products/build/rust/rustc_library.gni")
+import("//userspace/developer/ffx/build/ffx_tool.gni")
+
+rustc_library("lib") {
+  name = "ffx_tool_profiler"
+  edition = "2024"
+  with_unit_tests = true
+
+  sources = [
+    "src/args.rs",
+    "src/lib.rs",
+  ]
+
+  deps = [
+    "//sdk/fidl/fuchsia.cpu.profiler:fuchsia.cpu.profiler_rust_fdomain",
+    "//sdk/fidl/fuchsia.test.manager:fuchsia.test.manager_rust_fdomain",
+    "//userspace/developer/ffx/config:lib",
+    "//userspace/developer/ffx/lib/errors:lib",
+    "//userspace/developer/ffx/lib/fho:lib",
+    "//userspace/developer/ffx/lib/profiler",
+    "//userspace/developer/ffx/lib/target/holders:lib",
+    "//userspace/developer/ffx/lib/writer:lib",
+    "//userspace/lib/fdomain/client",
+    "//userspace/lib/fidl/rust/fidl",
+    "//userspace/lib/fuchsia-async",
+    "//third_party/rust_crates:anyhow",
+    "//third_party/rust_crates:argh",
+    "//third_party/rust_crates:async-fs",
+    "//third_party/rust_crates:async-trait",
+    "//third_party/rust_crates:blocking",
+    "//third_party/rust_crates:futures",
+    "//third_party/rust_crates:log",
+    "//third_party/rust_crates:schemars",
+    "//third_party/rust_crates:serde",
+    "//third_party/rust_crates:tempfile",
+    "//third_party/rust_crates:termion",
+  ]
+
+  test_deps = [
+    "//userspace/developer/ffx/lib/profiler:perfetto_trace_rust_proto",
+    "//userspace/lib/fdomain/local",
+    "//userspace/lib/fuchsia",
+    "//userspace/performance/lib/fxt/rust",
+    "//third_party/rust_crates:prost",
+  ]
+}
+
+ffx_tool("ffx_profiler") {
+  edition = "2024"
+  output_name = "ffx-profiler"
+  deps = [
+    ":lib",
+    "//userspace/developer/ffx/lib/fho:lib",
+    "//userspace/lib/fuchsia-async",
+  ]
+  sources = [ "src/main.rs" ]
+  data_deps = [ "//tools/symbolizer" ]
+}
+
+group("profiler") {
+  public_deps = [
+    ":ffx_profiler",
+    ":ffx_profiler_host_tool",
+  ]
+}
+
+group("bin") {
+  public_deps = [ ":ffx_profiler_versioned" ]
+}
+
+group("tests") {
+  testonly = true
+  deps = [ ":lib_test" ]
+}

@@ -1,0 +1,31 @@
+{
+    security_policy: {
+        job_policy: {
+            main_process_critical: [
+                "/bootstrap/fshost",
+            ],
+        },
+        capability_policy: [
+            {
+                source_moniker: "/bootstrap/fshost",
+                source: "component",
+                source_name: "bin",
+                capability: "directory",
+                target_monikers: [
+                    "/bootstrap/console-launcher",
+                    "/bootstrap/fshost",
+                ],
+            },
+            {
+                source_moniker: "/bootstrap/fshost",
+                source: "component",
+                source_name: "tmp",
+                capability: "directory",
+                target_monikers: [
+                    "/bootstrap/netsvc",
+                    "/core",
+                ],
+            },
+        ],
+    },
+}

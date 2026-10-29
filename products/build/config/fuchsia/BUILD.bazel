@@ -1,0 +1,104 @@
+# Copyright 2026 The Fuchsia Authors. All rights reserved.
+# Use of this source code is governed by a BSD-style license that can be
+# found in the LICENSE file.
+
+load("@fuchsia_rules_common//build_flags:build_flags.bzl", "build_flags")
+load("@fuchsia_rules_common//build_flags:compiler_build_flags.bzl", "compiler_build_flags")
+load("//products/build/bazel/config/derived:compilation_modes.bzl", "is_release")
+
+package(default_applicable_licenses = ["//:license"])
+
+# LINT.IfChange(dynamic_rust_standard_library)
+build_flags(
+    name = "dynamic_rust_standard_library",
+    rustflags = ["-Cprefer-dynamic"],
+    visibility = ["//visibility:public"],
+)
+# LINT.ThenChange(//products/build/config/fuchsia/BUILD.gn:dynamic_rust_standard_library)
+
+# LINT.IfChange(large_rust_stack)
+# Configure a larger (2MB) stack size for Rust binaries.
+#
+# Currently, threads created by Rust's libstd have a hardcoded default stack
+# size of 2MB on Fuchsia. This can create overflows when moving code to the
+# main thread, whose default stack size is 256kB. To remove this wrinkle, the
+# default stack size is changed to 2MB for Rust binaries.
+build_flags(
+    name = "large_rust_stack",
+    rustflags = ["-Clink-args=-Wl,-zstack-size=0x200000"],
+    visibility = ["//visibility:public"],
+)
+# LINT.ThenChange(//products/build/config/fuchsia/BUILD.gn:large_rust_stack)
+
+# LINT.IfChange(shared_library_config)
+build_flags(
+    name = "shared_library_config",
+    cflags = ["-fPIC"],
+    ldflags = ["-fPIC"],
+    # NOTE: commented out because build_flags() does not support asmflags.
+    # asmflags = ["-fPIC"],
+    visibility = ["//visibility:public"],
+)
+
+# LINT.ThenChange(BUILD.gn:shared_library_config)
+
+# LINT.IfChange(fdio_config)
+build_flags(
+    name = "fdio_config",
+    # This config is only a marker that is used to signal that a given executable
+    # should link with fdio. With fdio now getting built in this very build, there
+    # need to be a proper dependency.
+    # See the override of the `executable` template in
+    # //products/build/config/BUILDCONFIG.gni where that build edge is added.
+    visibility = ["//visibility:public"],
+)
+# LINT.ThenChange(//products/build/config/fuchsia/BUILD.gn:fdio_config)
+
+# LINT.IfChange(executable_config)
+build_flags(
+    name = "executable_config",
+    visibility = ["//visibility:public"],
+)
+# LINT.ThenChange(BUILD.gn:executable_config)
+
+# LINT.IfChange(zircon_asserts)
+build_flags(
+    name = "enable_zircon_asserts",
+    defines = ["ZX_ASSERT_LEVEL=2"],
+    visibility = ["//visibility:public"],
+)
+
+build_flags(
+    name = "zircon_asserts",
+    subflags = [":enable_zircon_asserts"] if not is_release else [],
+    visibility = ["//visibility:public"],
+)
+# LINT.ThenChange(//products/build/config/fuchsia/BUILD.gn:zircon_asserts)
+
+# LINT.IfChange(no_cpp_standard_library)
+build_flags(
+    name = "no_cpp_standard_library",
+    ldflags = ["-nostdlib++"],
+    visibility = ["//visibility:public"],
+)
+# LINT.ThenChange(//products/build/config/fuchsia/BUILD.gn:no_cpp_standard_library)
+
+# LINT.IfChange(static-pie-config)
+# This config is also used by Linux binaries, such as
+# //userspace/starnix/containers/default_init.
+# TODO(https://fxbug.dev/484422864): Prevent this from being used by host Linux
+# targets.
+compiler_build_flags(
+    name = "static-pie-config",
+    cflags = [
+        "-fno-sanitize=all",
+        "-fno-stack-protector",
+    ],
+    ldflags = [
+        "-nostdlib",
+        "-nostartfiles",
+    ],
+    linker_flags = ["-no-dynamic-linker"],
+    visibility = ["//:__subpackages__"],
+)
+# LINT.ThenChange(//products/build/config/fuchsia/BUILD.gn:static-pie-config)

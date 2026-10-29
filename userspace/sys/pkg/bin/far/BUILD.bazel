@@ -1,0 +1,35 @@
+# Copyright 2026 The Fuchsia Authors. All rights reserved.
+# Use of this source code is governed by a BSD-style license that can be
+# found in the LICENSE file.
+
+load("@rules_cc//cc:defs.bzl", "cc_binary")
+load("//products/build/bazel/platforms:constraints.bzl", "HOST_OS_CONSTRAINTS")
+load("//products/build/tools/bazel2gn/bazel_rules:defs.bzl", "install_host_tools")
+
+package(default_applicable_licenses = ["//:license"])
+
+# @bazel2gn:raw_attribute:output_name = "far"
+cc_binary(
+    name = "bin",
+    srcs = ["main.cc"],
+    visibility = [
+        "//products/build/packages:__pkg__",
+        "//sdk:__pkg__",
+        "//userspace/sys/pkg/tests/far:__pkg__",
+    ],
+    deps = [
+        "//userspace/lib/fxl:fxl_cli",
+        "//userspace/sys/pkg/lib/far/cpp:far",
+    ],
+)
+
+install_host_tools(
+    name = "host",
+    implementation_deps = [":bin"],
+    target_compatible_with = HOST_OS_CONSTRAINTS,
+    tool_output_names = ["far"],
+    visibility = [
+        "//products/bundles/tools:__pkg__",
+        "//sdk/bundles:__pkg__",
+    ],
+)

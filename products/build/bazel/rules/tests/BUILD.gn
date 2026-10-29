@@ -1,0 +1,69 @@
+# Copyright 2026 The Fuchsia Authors. All rights reserved.
+# Use of this source code is governed by a BSD-style license that can be
+# found in the LICENSE file.
+
+import("//products/build/bazel/bazel_build_action.gni")
+import("//products/build/bazel/bazel_test_suite.gni")
+
+visibility = [ ":*" ]
+
+# Exports the Bazel device tests defined in this directory tree to `tests.json`,
+# making them visible to `fx test` and infra builders.
+bazel_test_suite("bazel_tests") {
+  visibility += [ "//products/build/bazel:*" ]
+  target_tests = [ "//products/build/bazel/rules/packages/tests:example_test" ]
+}
+
+# All the test targets defined in this file.
+group("all") {
+  testonly = true
+  deps = [
+    ":quick_tests",
+    ":tests",
+  ]
+  visibility += [
+    # Ensures the test targets are always available.
+    "//:root_targets",
+
+    # A small number of build bots build all the tests, accepting the bazel
+    # action overhead. These bots should run all the GN build test targets even
+    # if some underlying Bazel targets are subsets of others. Building all the
+    # GN Bazel action targets ensures, for example, that they are configured
+    # with all the necessary Bazel inputs.
+    "//products/bundles/buildbot/*",
+  ]
+}
+
+bazel_build_action("tests") {
+  testonly = true
+  bazel_target = ":tests"
+  copy_outputs = [
+    {
+      bazel = "{{BAZEL_TARGET_OUT_DIR}}/tests.bazel_stamp"
+      ninja = "tests.bazel_stamp"
+    },
+  ]
+  bazel_config = "fuchsia_platform"
+  deps = [
+    # The following are currently needed by `fx_package()`.
+    # TODO(b/519244675): Remove once `package-tool` is migrated to Bazel.
+    "//userspace/sys/pkg/bin/package-tool:bazel_input($host_toolchain)",
+  ]
+}
+
+bazel_build_action("quick_tests") {
+  testonly = true
+  bazel_target = ":quick_tests"
+  copy_outputs = [
+    {
+      bazel = "{{BAZEL_TARGET_OUT_DIR}}/quick_tests.bazel_stamp"
+      ninja = "quick_tests.bazel_stamp"
+    },
+  ]
+  bazel_config = "fuchsia_platform"
+  deps = [
+    # The following are currently needed by `fx_package()`.
+    # TODO(b/519244675): Remove once `package-tool` is migrated to Bazel.
+    "//userspace/sys/pkg/bin/package-tool:bazel_input($host_toolchain)",
+  ]
+}

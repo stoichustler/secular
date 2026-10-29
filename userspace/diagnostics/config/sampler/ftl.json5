@@ -1,0 +1,256 @@
+{
+    project_id: 3676913920,
+    data_sets: [
+        {
+            metrics: [
+                {
+                    event_codes: [
+                        "BLOCK_READ",
+                    ],
+                    metric_name: "ftl_block_operation_events",
+                    metric_type: "Occurrence",
+                    selector: "bootstrap/*-drivers\\:*:[name=ftl]root/ftl:block.read.count",
+                },
+                {
+                    event_codes: [
+                        "BLOCK_WRITE",
+                    ],
+                    metric_name: "ftl_block_operation_events",
+                    metric_type: "Occurrence",
+                    selector: "bootstrap/*-drivers\\:*:[name=ftl]root/ftl:block.write.count",
+                },
+                {
+                    event_codes: [
+                        "BLOCK_FLUSH",
+                    ],
+                    metric_name: "ftl_block_operation_events",
+                    metric_type: "Occurrence",
+                    selector: "bootstrap/*-drivers\\:*:[name=ftl]root/ftl:block.flush.count",
+                },
+                {
+                    event_codes: [
+                        "BLOCK_TRIM",
+                    ],
+                    metric_name: "ftl_block_operation_events",
+                    metric_type: "Occurrence",
+                    selector: "bootstrap/*-drivers\\:*:[name=ftl]root/ftl:block.trim.count",
+                },
+                {
+                    event_codes: [
+                        "NAND_READ",
+                        "BLOCK_READ",
+                    ],
+                    metric_name: "ftl_nand_operation_events",
+                    metric_type: "Occurrence",
+                    selector: "bootstrap/*-drivers\\:*:[name=ftl]root/ftl:block.read.issued_page_read.count",
+                },
+                {
+                    event_codes: [
+                        "NAND_WRITE",
+                        "BLOCK_READ",
+                    ],
+                    metric_name: "ftl_nand_operation_events",
+                    metric_type: "Occurrence",
+                    selector: "bootstrap/*-drivers\\:*:[name=ftl]root/ftl:block.read.issued_page_write.count",
+                },
+                {
+                    event_codes: [
+                        "NAND_ERASE",
+                        "BLOCK_READ",
+                    ],
+                    metric_name: "ftl_nand_operation_events",
+                    metric_type: "Occurrence",
+                    selector: "bootstrap/*-drivers\\:*:[name=ftl]root/ftl:block.read.issued_block_erase.count",
+                },
+                {
+                    event_codes: [
+                        "NAND_READ",
+                        "BLOCK_WRITE",
+                    ],
+                    metric_name: "ftl_nand_operation_events",
+                    metric_type: "Occurrence",
+                    selector: "bootstrap/*-drivers\\:*:[name=ftl]root/ftl:block.write.issued_page_read.count",
+                },
+                {
+                    event_codes: [
+                        "NAND_WRITE",
+                        "BLOCK_WRITE",
+                    ],
+                    metric_name: "ftl_nand_operation_events",
+                    metric_type: "Occurrence",
+                    selector: "bootstrap/*-drivers\\:*:[name=ftl]root/ftl:block.write.issued_page_write.count",
+                },
+                {
+                    event_codes: [
+                        "NAND_ERASE",
+                        "BLOCK_WRITE",
+                    ],
+                    metric_name: "ftl_nand_operation_events",
+                    metric_type: "Occurrence",
+                    selector: "bootstrap/*-drivers\\:*:[name=ftl]root/ftl:block.write.issued_block_erase.count",
+                },
+                {
+                    event_codes: [
+                        "NAND_READ",
+                        "BLOCK_FLUSH",
+                    ],
+                    metric_name: "ftl_nand_operation_events",
+                    metric_type: "Occurrence",
+                    selector: "bootstrap/*-drivers\\:*:[name=ftl]root/ftl:block.flush.issued_page_read.count",
+                },
+                {
+                    event_codes: [
+                        "NAND_WRITE",
+                        "BLOCK_FLUSH",
+                    ],
+                    metric_name: "ftl_nand_operation_events",
+                    metric_type: "Occurrence",
+                    selector: "bootstrap/*-drivers\\:*:[name=ftl]root/ftl:block.flush.issued_page_write.count",
+                },
+                {
+                    event_codes: [
+                        "NAND_ERASE",
+                        "BLOCK_FLUSH",
+                    ],
+                    metric_name: "ftl_nand_operation_events",
+                    metric_type: "Occurrence",
+                    selector: "bootstrap/*-drivers\\:*:[name=ftl]root/ftl:block.flush.issued_block_erase.count",
+                },
+                {
+                    event_codes: [
+                        "NAND_READ",
+                        "BLOCK_TRIM",
+                    ],
+                    metric_name: "ftl_nand_operation_events",
+                    metric_type: "Occurrence",
+                    selector: "bootstrap/*-drivers\\:*:[name=ftl]root/ftl:block.trim.issued_page_read.count",
+                },
+                {
+                    event_codes: [
+                        "NAND_WRITE",
+                        "BLOCK_TRIM",
+                    ],
+                    metric_name: "ftl_nand_operation_events",
+                    metric_type: "Occurrence",
+                    selector: "bootstrap/*-drivers\\:*:[name=ftl]root/ftl:block.trim.issued_page_write.count",
+                },
+                {
+                    event_codes: [
+                        "NAND_ERASE",
+                        "BLOCK_TRIM",
+                    ],
+                    metric_name: "ftl_nand_operation_events",
+                    metric_type: "Occurrence",
+                    selector: "bootstrap/*-drivers\\:*:[name=ftl]root/ftl:block.trim.issued_block_erase.count",
+                },
+                {
+                    event_codes: [],
+                    metric_name: "ftl_wear_count_migrated",
+                    metric_type: "Integer",
+                    selector: "bootstrap/*-drivers\\:*:[name=ftl]root/ftl:nand.erase_block.max_wear",
+                },
+                {
+                    event_codes: [],
+                    metric_name: "nand_read_ecc_bit_flips",
+                    metric_type: "IntHistogram",
+                    selector: "bootstrap/*-drivers\\:*:[name=nand]root/nand:read_ecc_bit_flips",
+                },
+                {
+                    event_codes: [],
+                    metric_name: "nand_read_attempts_per_read",
+                    metric_type: "IntHistogram",
+                    selector: "bootstrap/*-drivers\\:*:[name=nand]root/nand:read_attempts",
+                },
+                {
+                    event_codes: [],
+                    metric_name: "nand_read_attempt_failures",
+                    metric_type: "Occurrence",
+                    selector: "bootstrap/*-drivers\\:*:[name=nand]root/nand:read_internal_failure",
+                },
+                {
+                    event_codes: [],
+                    metric_name: "nand_read_attempts_exhausted",
+                    metric_type: "Occurrence",
+                    selector: "bootstrap/*-drivers\\:*:[name=nand]root/nand:read_failure",
+                },
+                {
+                    event_codes: [
+                        "INITIAL",
+                    ],
+                    metric_name: "ftl_bad_blocks",
+                    metric_type: "Integer",
+                    selector: "bootstrap/*-drivers\\:*:[name=ftl]root/ftl:nand.initial_bad_blocks",
+                },
+                {
+                    event_codes: [
+                        "RUNNING",
+                    ],
+                    metric_name: "ftl_bad_blocks",
+                    metric_type: "Integer",
+                    selector: "bootstrap/*-drivers\\:*:[name=ftl]root/ftl:nand.running_bad_blocks",
+                },
+                {
+                    event_codes: [
+                        "TOTAL",
+                    ],
+                    metric_name: "ftl_bad_blocks",
+                    metric_type: "Integer",
+                    selector: "bootstrap/*-drivers\\:*:[name=ftl]root/ftl:nand.total_bad_blocks",
+                },
+                {
+                    event_codes: [
+                        "Reason 0 (invalid page)",
+                    ],
+                    metric_name: "ftl_map_block_end_page_failures",
+                    metric_type: "Occurrence",
+                    selector: "bootstrap/*-drivers\\:*:[name=ftl]root/ftl:nand.map_block_end_page_failure_reason.0",
+                },
+                {
+                    event_codes: [
+                        "Reason 1 (erased page)",
+                    ],
+                    metric_name: "ftl_map_block_end_page_failures",
+                    metric_type: "Occurrence",
+                    selector: "bootstrap/*-drivers\\:*:[name=ftl]root/ftl:nand.map_block_end_page_failure_reason.1",
+                },
+                {
+                    event_codes: [
+                        "Reason 2 (uncorrectable ecc error)",
+                    ],
+                    metric_name: "ftl_map_block_end_page_failures",
+                    metric_type: "Occurrence",
+                    selector: "bootstrap/*-drivers\\:*:[name=ftl]root/ftl:nand.map_block_end_page_failure_reason.2",
+                },
+                {
+                    event_codes: [
+                        "Reason 3 (bad block-count)",
+                    ],
+                    metric_name: "ftl_map_block_end_page_failures",
+                    metric_type: "Occurrence",
+                    selector: "bootstrap/*-drivers\\:*:[name=ftl]root/ftl:nand.map_block_end_page_failure_reason.3",
+                },
+                {
+                    event_codes: [
+                        "Reason 4 (bad map page number)",
+                    ],
+                    metric_name: "ftl_map_block_end_page_failures",
+                    metric_type: "Occurrence",
+                    selector: "bootstrap/*-drivers\\:*:[name=ftl]root/ftl:nand.map_block_end_page_failure_reason.4",
+                },
+                {
+                    event_codes: [],
+                    metric_name: "ftl_worn_blocks",
+                    metric_type: "Integer",
+                    selector: "bootstrap/*-drivers\\:*:[name=ftl]root/ftl:nand.worn_blocks_detected",
+                },
+                {
+                    event_codes: [],
+                    metric_name: "ftl_projected_bad_blocks",
+                    metric_type: "Integer",
+                    selector: "bootstrap/*-drivers\\:*:[name=ftl]root/ftl:nand.projected_bad_blocks",
+                },
+            ],
+            poll_rate_sec: 1800,
+        },
+    ],
+}

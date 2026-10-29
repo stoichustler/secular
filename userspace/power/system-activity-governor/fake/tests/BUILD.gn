@@ -1,0 +1,48 @@
+# Copyright 2024 The Fuchsia Authors. All rights reserved.
+# Use of this source code is governed by a BSD-style license that can be
+# found in the LICENSE file.
+
+import("//products/build/components.gni")
+import("//products/build/fidl/fidl.gni")
+import("//products/build/rust/rustc_binary.gni")
+
+rustc_test("bin") {
+  name = "fake_system_activity_governor_test"
+  testonly = true
+  edition = "2024"
+  deps = [
+    "//sdk/fidl/fuchsia.power.broker:fuchsia.power.broker_rust",
+    "//sdk/fidl/fuchsia.power.system:fuchsia.power.system_rust",
+    "//userspace/lib/fidl/rust/fidl",
+    "//userspace/lib/fuchsia",
+    "//userspace/lib/fuchsia-async",
+    "//userspace/lib/fuchsia-component-test",
+    "//userspace/power/broker/client",
+    "//userspace/power/system-activity-governor/fake/fidl:test.sagcontrol_rust",
+    "//userspace/sys/lib/cm_rust",
+    "//third_party/rust_crates:anyhow",
+    "//third_party/rust_crates:futures",
+    "//third_party/rust_crates:log",
+  ]
+
+  sources = [ "src/lib.rs" ]
+}
+
+fuchsia_unittest_package("fake-system-activity-governor-test") {
+  manifest = "meta/test.cml"
+  deps = [
+    ":bin",
+    "//userspace/power/broker:component",
+    "//userspace/power/testing/fake-shutdown-shim",
+    "//userspace/power/testing/fake-suspend",
+  ]
+  subpackages = [ "//userspace/power/system-activity-governor/fake:package" ]
+  test_specs = {
+    environments = basic_envs
+  }
+}
+
+group("tests") {
+  testonly = true
+  deps = [ ":fake-system-activity-governor-test" ]
+}

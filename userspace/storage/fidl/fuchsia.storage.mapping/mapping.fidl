@@ -1,0 +1,65 @@
+// Copyright 2026 The Fuchsia Authors. All rights reserved.
+// Use of this source code is governed by a BSD-style license that can be
+// found in the LICENSE file.
+@available(added=HEAD)
+library fuchsia.storage.mapping;
+
+using fuchsia.storage.block;
+using zx;
+
+@discoverable
+open protocol FileMapper {
+    /// Opens a child `MapperSession` backed by the file identified by `file_token`
+    /// (obtained from `fuchsia.io/Node.GetToken`).
+    flexible OpenSession(resource struct {
+        file_token zx.Handle:EVENT;
+        mapping_vmo zx.Handle:VMO;
+        session server_end:fuchsia.storage.block.MapperSession;
+    }) -> () error zx.Status;
+};
+
+@discoverable
+open protocol MappingProvider {
+    /// Establishes a new mapping session, returning the mapping VMO.
+    flexible OpenSession(resource struct {
+        session server_end:MappingSession;
+    }) -> (resource struct {
+        mapping_vmo zx.Handle:VMO;
+    }) error zx.Status;
+};
+
+open protocol MappingSession {
+    /// Registers a node's extents in the mapping session, returning its uncompressed size in bytes.
+    ///
+    /// The filesystem resolves the `identifier` to locate the node on disk and transmits its
+    /// extent mappings to the block driver associated with `key`.
+    flexible Open(struct {
+        /// Session-unique numeric handle allocated by the client. The filesystem associates
+        /// the node's disk extents with this key when communicating with the block driver.
+        key uint64;
+        /// Content identifier for the node (e.g. 32-byte blob Merkle root hash) used by the
+        /// filesystem to look up its extents on disk.
+        identifier vector<uint8>:MAX;
+    }) -> (struct {
+        size uint64;
+    }) error zx.Status;
+
+    /// Unregisters a node's extents from the session by its session-unique key.
+    flexible Close(struct {
+        key uint64;
+    }) -> () error zx.Status;
+
+    /// Reads the named profile from the volume into a VMO, or returns `ZX_ERR_NOT_FOUND` if the
+    /// profile does not exist.
+    flexible GetProfile(struct {
+        name string:MAX;
+    }) -> (resource struct {
+        profile_vmo zx.Handle:VMO;
+    }) error zx.Status;
+
+    /// Writes `profile_vmo` as the named profile on the volume.
+    flexible WriteProfile(resource struct {
+        name string:MAX;
+        profile_vmo zx.Handle:VMO;
+    }) -> () error zx.Status;
+};

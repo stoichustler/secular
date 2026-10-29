@@ -1,0 +1,65 @@
+// Copyright 2018 The Fuchsia Authors. All rights reserved.
+// Use of this source code is governed by a BSD-style license that can be
+// found in the LICENSE file.
+
+//! A futures-rs executor designed specifically for Fuchsia.
+//!
+//! # Example:
+//! A simple, singlethreaded print server:
+//!
+//! ```no_run
+//! #[fuchsia_async::run_singlethreaded]
+//! async fn main() {
+//!     let op = say_world();
+//!
+//!     // This println! will happen first
+//!     println!("Hello...");
+//!
+//!     // Calling `.await` on `op` starts executing `say_world`.
+//!     op.await;
+//! }
+//!
+//!
+//! async fn say_world() {
+//!     println!("...world");
+//! }
+//! ```
+
+#![warn(missing_docs)]
+#![warn(clippy::all)]
+#![deny(clippy::await_holding_lock)]
+#![deny(clippy::await_holding_refcell_ref)]
+
+mod runtime;
+pub use self::runtime::*;
+
+mod handle;
+#[cfg(target_os = "fuchsia")]
+pub use self::handle::channel::{Channel, RecvMsg};
+#[cfg(target_os = "fuchsia")]
+pub use self::handle::on_signals::OnSignalsRef;
+#[cfg(target_os = "fuchsia")]
+pub use self::handle::socket::Socket;
+
+/// Asynchronous networking abstractions.
+pub mod net;
+
+#[cfg(target_os = "fuchsia")]
+pub use self::handle::{
+    fifo::{Fifo, FifoEntry},
+    on_interrupt::OnInterrupt,
+    on_signals::OnSignals,
+    rwhandle::{
+        DefaultRWHandleSpec, RWHandle, RWHandleSpec, ReadableHandle, ReadableState, WritableHandle,
+        WritableState,
+    },
+};
+
+#[cfg(target_os = "fuchsia")]
+pub use runtime::instrument;
+
+pub use fuchsia_async_macro::{run, run_singlethreaded, run_until_stalled};
+
+pub mod condition;
+/// Testing support for repeated runs
+pub mod test_support;

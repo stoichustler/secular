@@ -1,0 +1,32 @@
+# Copyright 2026 The Fuchsia Authors. All rights reserved.
+# Use of this source code is governed by a BSD-style license that can be
+# found in the LICENSE file.
+
+load("//products/build/bazel/platforms:constraints.bzl", "HOST_OS_CONSTRAINTS")
+load("//products/build/bazel/rules/rust:defs.bzl", "rustc_library")
+
+package(default_applicable_licenses = ["//:license"])
+
+rustc_library(
+    name = "package_copy",
+    srcs = [
+        "src/lib.rs",
+        "src/package_copy.rs",
+    ],
+    crate_name = "assembly_package_copy",
+    edition = "2024",
+    target_compatible_with = HOST_OS_CONSTRAINTS,
+    # @bazel2gn:skip
+    test_deps = ["//third_party/rust_crates/vendor:tempfile"],
+    version = "0.1.0",
+    visibility = ["//userspace/lib/assembly:__subpackages__"],
+    # @bazel2gn:skip
+    with_host_unit_tests = True,
+    deps = [
+        "//userspace/lib/assembly/util",
+        "//userspace/sys/pkg/lib/fuchsia-merkle",
+        "//userspace/sys/pkg/lib/fuchsia-pkg",
+        "//third_party/rust_crates/vendor:anyhow",
+        "//third_party/rust_crates/vendor:camino",
+    ],
+)

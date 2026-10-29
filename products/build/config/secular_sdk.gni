@@ -1,0 +1,42 @@
+# Copyright 2026 The Fuchsia Authors. All rights reserved.
+# Use of this source code is governed by a BSD-style license that can be
+# found in the LICENSE file.
+
+# Imported first from BUILDCONFIG.gn so toolchain discovery can resolve
+# clang/python/rust against the external SDK instead of in-tree prebuilt/.
+declare_args() {
+  # Absolute root of the standalone Secular SDK. Empty preserves the
+  # upstream in-tree prebuilt layout for non-Secular consumers.
+  secular_sdk_root = ""
+
+  # Prebuilt root used by GN. When SECULAR_SDK is set this is
+  # ${secular_sdk_root}/prebuilt (linux-amd64 CIPD layout). Empty falls
+  # back to //prebuilt.
+  secular_prebuilt_root = ""
+
+  # Host directory name under secular_prebuilt_root. The standalone SDK
+  # uses linux-amd64; upstream Fuchsia prebuilts use linux-x64.
+  secular_host_platform = ""
+
+  # Restricts the root target to the compact console image.
+  secular_boot_build = false
+
+  # Compact products omit the in-tree ICU checkout.
+  secular_without_icu = true
+}
+
+if (secular_prebuilt_root == "") {
+  if (secular_sdk_root == "") {
+    secular_prebuilt_root = "//prebuilt"
+  } else {
+    secular_prebuilt_root = "${secular_sdk_root}/prebuilt"
+  }
+}
+
+if (secular_host_platform == "") {
+  if (secular_sdk_root != "") {
+    secular_host_platform = "linux-amd64"
+  } else {
+    secular_host_platform = "${host_os}-${host_cpu}"
+  }
+}

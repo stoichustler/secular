@@ -1,0 +1,15 @@
+# Copyright 2026 The Fuchsia Authors. All rights reserved.
+# Use of this source code is governed by a BSD-style license that can be
+# found in the LICENSE file.
+
+import("//products/build/go/go_library.gni")
+
+if (is_host) {
+  go_library("coding_tables") {
+    sources = [ "ir.go" ]
+    deps = [
+      "//third_party/golibs:golang.org/x/exp/slices",
+      "//tools/fidl/lib/fidlgen_cpp",
+    ]
+  }
+}

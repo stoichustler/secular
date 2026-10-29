@@ -1,0 +1,40 @@
+# Copyright 2026 The Fuchsia Authors. All rights reserved.
+# Use of this source code is governed by a BSD-style license that can be
+# found in the LICENSE file.
+
+load("//products/build/bazel/rules/fidl:fidl_library.bzl", "fidl_library")
+load("//tools/fidl/measure-tape:measure_tape.bzl", "measure_tape")
+
+package(default_applicable_licenses = ["//:license"])
+
+fidl_library(
+    name = "fuchsia.memory.attribution",
+    srcs = [
+        "attribution.fidl",
+        "pager.fidl",
+    ],
+    api_area = "Diagnostics",
+    # TODO(https://fxbug.dev/307580082): This protocol is under construction.
+    visibility = [
+        "//examples/components/runner/colocated:__subpackages__",
+        "//userspace/developer/memory:__subpackages__",
+        "//userspace/devices/bin/driver_manager:__subpackages__",
+        "//userspace/devices/bin/driver_manager_rust:__subpackages__",
+        "//userspace/performance/memory:__subpackages__",
+        "//userspace/starnix:__subpackages__",
+        "//userspace/storage/fxfs:__subpackages__",
+        "//userspace/sys/component_manager:__subpackages__",
+        "//userspace/sys/lib/elf_runner:__subpackages__",
+    ],
+    deps = [
+        "//zircon/vdso/zx",
+    ],
+)
+
+measure_tape(
+    name = "measure_tape_for_attribution",
+    fidls = [":fuchsia.memory.attribution"],
+    target_binding = "rust",
+    target_types = ["fuchsia.memory.attribution/AttributionUpdate"],
+    visibility = ["//userspace/performance/memory/attribution/server:__pkg__"],
+)

@@ -1,0 +1,20 @@
+// Copyright 2026 The Fuchsia Authors. All rights reserved.
+// Use of this source code is governed by a BSD-style license that can be
+// found in the LICENSE file.
+
+// Satisfy bootstrap.cml's expose of #boot-drivers and its offer from
+// #devfs-with-pkg without the full driver-framework graph.
+{
+    children: [
+        {
+            name: "devfs-with-pkg",
+            url: "fuchsia-boot:///devfs#meta/devfs-pkg.cm",
+        },
+    ],
+    collections: [
+        {
+            name: "boot-drivers",
+            durability: "transient",
+        },
+    ],
+}

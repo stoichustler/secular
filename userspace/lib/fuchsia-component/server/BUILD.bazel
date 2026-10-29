@@ -1,0 +1,53 @@
+# Copyright 2026 The Fuchsia Authors. All rights reserved.
+# Use of this source code is governed by a BSD-style license that can be
+# found in the LICENSE file.
+
+load("//products/build/bazel/rules/rust:defs.bzl", "rustc_library")
+
+package(default_applicable_licenses = ["//:license"])
+
+# NOTE: `fuchsia-component-server-unittests` remains in BUILD.gn and
+# `with_unit_tests` / `test_deps` are synced via bazel2gn because `server`
+# depends on `//userspace/storage/lib/vfs/rust:vfs` (`rustc_dylib("vfs_dylib")`).
+# `@rules_rust` puts both `src/storage/lib/vfs/rust/libvfs-<hash>.so` and its
+# `_solib_*` symlink into `default_runfiles`, causing `fx_packaged_binary` +
+# `fx_package` to fail with:
+# "Multiple files are being installed into the package at lib/libvfs-<hash>.so".
+rustc_library(
+    name = "server",
+    srcs = [
+        "src/lib.rs",
+        "src/service.rs",
+        "src/until_stalled.rs",
+    ],
+    crate_name = "fuchsia_component_server",
+    edition = "2024",
+    test_deps = [
+        "//userspace/lib/fuchsia",
+        "//userspace/lib/fuchsia-component/directory",
+        "//userspace/lib/fuchsia-component/tests:fuchsia.component.client.test_rust",
+        "//userspace/lib/fuchsia-fs",
+        "//userspace/lib/fuchsia-sync",
+        "//userspace/lib/test_util",
+        "//third_party/rust_crates/vendor:assert_matches",
+    ],
+    visibility = ["//userspace/lib/fuchsia-component:__pkg__"],
+    with_unit_tests = True,
+    deps = [
+        "//sdk/fidl/fuchsia.io:fuchsia.io_rust",
+        "//sdk/rust/zx",
+        "//userspace/lib/detect-stall",
+        "//userspace/lib/fdio/rust:fdio",
+        "//userspace/lib/fidl/rust/fidl",
+        "//userspace/lib/fidl/rust_next/fidl_next",
+        "//userspace/lib/fuchsia-async",
+        "//userspace/lib/fuchsia-component/client",
+        "//userspace/lib/fuchsia-runtime",
+        "//userspace/storage/lib/vfs/rust:vfs",
+        "//third_party/rust_crates/vendor:anyhow",
+        "//third_party/rust_crates/vendor:futures",
+        "//third_party/rust_crates/vendor:log",
+        "//third_party/rust_crates/vendor:pin-project",
+        "//third_party/rust_crates/vendor:thiserror",
+    ],
+)

@@ -1,0 +1,45 @@
+# Copyright 2026 The Fuchsia Authors. All rights reserved.
+# Use of this source code is governed by a BSD-style license that can be
+# found in the LICENSE file.
+
+load("@fuchsia_build_config//:defs.bzl", "build_config")
+load("@rules_python//python:py_binary.bzl", "py_binary")
+load("//products/build/bazel/rules:cipd_prebuilt.bzl", "cipd_prebuilt_file")
+load(":cargo_toml_gen.bzl", "cargo_toml_gen")
+
+package(
+    default_applicable_licenses = ["//:license"],
+)
+
+py_binary(
+    name = "generate_cargo",
+    srcs = [
+        "generate_cargo.py",
+    ],
+    main = "generate_cargo.py",
+)
+
+# Used by `rustc_bindgen_golden()` in //products/build/bazel/rules/rust:rustc_bindgen.bzl.
+cipd_prebuilt_file(
+    name = "bindgen",
+    path = "//prebuilt/third_party/rust_bindgen/%s/bindgen" % build_config.host_tag,
+    visibility = ["//products/build/bazel/rules/rust:__pkg__"],
+)
+
+# Used by `rustc_bindgen_golden()` in //products/build/bazel/rules/rust:rustc_bindgen.bzl.
+py_binary(
+    name = "new_bindgen",
+    srcs = ["new-bindgen.py"],
+    # new-bindgen.py looks for rustfmt.toml at the root of the source tree,
+    # relative to its own location.
+    data = ["//:rustfmt.toml"],
+    main = "new-bindgen.py",
+    visibility = ["//products/build/bazel/rules/rust:__pkg__"],
+)
+
+cargo_toml_gen(
+    name = "cargo_toml_gen",
+    api_level_cfg_flags = "@gn_targets//products/build/rust:api_level_cfg_flags",
+    cargo_toml = "//third_party/rust_crates:Cargo.toml",
+    project_json = "@gn_targets//tools/gn_desc:gn_project_json",
+)

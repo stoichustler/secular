@@ -1,0 +1,28 @@
+{
+    project_id: 12,
+    data_sets: [
+        {
+            metrics: [
+                {
+                    event_codes: [],
+                    metric_name: "radar_timeout_error_per_million",
+                    metric_type: "Integer",
+                    selector: "bootstrap/*-drivers\\:*:[name=selina]root/selina:timeout_error_rate",
+                },
+                {
+                    event_codes: [],
+                    metric_name: "radar_fifo_overflow_error_per_million",
+                    metric_type: "Integer",
+                    selector: "bootstrap/*-drivers\\:*:[name=selina]root/selina:fifo_overflow_error_rate",
+                },
+                {
+                    event_codes: [],
+                    metric_name: "radar_other_error",
+                    metric_type: "Integer",
+                    selector: "bootstrap/*-drivers\\:*:[name=selina]root/selina:other_error_rate",
+                },
+            ],
+            poll_rate_sec: 1800,
+        },
+    ],
+}

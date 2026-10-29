@@ -1,0 +1,62 @@
+# Copyright 2023 The Fuchsia Authors. All rights reserved.
+# Use of this source code is governed by a BSD-style license that can be
+# found in the LICENSE file.
+
+import("//products/build/components.gni")
+import("//products/build/rust/rustc_library.gni")
+
+rustc_library("fidl_fuchsia_posix_socket_ext") {
+  with_unit_tests = true
+  edition = "2024"
+  deps = [
+    "//sdk/fidl/fuchsia.posix.socket:fuchsia.posix.socket_rust",
+    "//sdk/fidl/fuchsia.posix.socket.packet:fuchsia.posix.socket.packet_rust",
+    "//sdk/rust/zx",
+    "//userspace/lib/fdio/rust:fdio",
+    "//userspace/lib/fidl/rust/fidl",
+    "//third_party/rust_crates:socket2",
+  ]
+
+  test_deps = [
+    "//sdk/fidl/fuchsia.hardware.network:fuchsia.hardware.network_rust",
+    "//sdk/fidl/fuchsia.net:fuchsia.net_rust",
+    "//sdk/fidl/fuchsia.posix.socket:fuchsia.posix.socket_rust",
+    "//sdk/fidl/fuchsia.posix.socket.packet:fuchsia.posix.socket.packet_rust",
+    "//sdk/rust/zx",
+    "//userspace/connectivity/lib/net-declare",
+    "//userspace/connectivity/lib/net-types",
+    "//userspace/connectivity/lib/packet-formats",
+    "//userspace/connectivity/network/lib/sockaddr",
+    "//userspace/connectivity/network/testing/netemul/network-context/fidl:network_rust",
+    "//userspace/connectivity/network/testing/netemul/rust:lib",
+    "//userspace/connectivity/network/tests/integration/common:netstack_testing_common",
+    "//userspace/connectivity/network/tests/integration/macros:netstack_testing_macros",
+    "//userspace/lib/fidl/rust/fidl",
+    "//userspace/lib/fuchsia",
+    "//userspace/lib/network/fidl_fuchsia_net_ext",
+    "//third_party/rust_crates:libc",
+  ]
+
+  sources = [ "src/lib.rs" ]
+
+  configs += [ "//products/build/config/rust/lints:deny_unused_results" ]
+  configs += [ "//products/build/config/rust/lints:clippy_warn_all" ]
+}
+
+fuchsia_test_component("fidl-fuchsia-posix-socket-ext-test") {
+  manifest = "meta/fidl-fuchsia-posix-socket-ext-test.cml"
+  deps = [
+    ":fidl_fuchsia_posix_socket_ext_test",
+    "//userspace/connectivity/network/netstack3:component-debug",
+    "//userspace/connectivity/network/testing/netemul/service:netemul-sandbox",
+  ]
+}
+
+fuchsia_test_package("fidl-fuchsia-posix-socket-ext-tests") {
+  test_components = [ ":fidl-fuchsia-posix-socket-ext-test" ]
+}
+
+group("tests") {
+  testonly = true
+  public_deps = [ ":fidl-fuchsia-posix-socket-ext-tests" ]
+}

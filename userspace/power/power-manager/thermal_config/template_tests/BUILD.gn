@@ -1,0 +1,39 @@
+# Copyright 2021 The Fuchsia Authors. All rights reserved.
+# Use of this source code is governed by a BSD-style license that can be
+# found in the LICENSE file.
+
+import("//products/build/components.gni")
+import("//products/build/rust/rustc_test.gni")
+import("//userspace/power/power-manager/thermal_config/thermal_config.gni")
+
+rustc_test("thermal-template-output-test") {
+  edition = "2024"
+  deps = [
+    "//userspace/power/power-manager/thermal_config/parser",
+    "//third_party/rust_crates:anyhow",
+  ]
+
+  sources = [ "src/lib.rs" ]
+
+  test_deps = [ "//userspace/lib/fuchsia" ]
+}
+
+thermal_config("config") {
+  testonly = true
+  config_file = "../test_configs/valid_test_config.json5"
+  output = "test_config.json"
+}
+
+fuchsia_unittest_package("thermal-template-output-test-pkg") {
+  manifest = "meta/thermal-template-output-test.cml"
+  deps = [
+    ":config",
+    ":thermal-template-output-test",
+  ]
+  test_type = "system"
+}
+
+group("tests") {
+  testonly = true
+  deps = [ ":thermal-template-output-test-pkg" ]
+}

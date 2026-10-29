@@ -1,0 +1,60 @@
+# Copyright 2019 The Fuchsia Authors. All rights reserved.
+# Use of this source code is governed by a BSD-style license that can be
+# found in the LICENSE file.
+
+import("//products/build/components.gni")
+import("//products/build/test.gni")
+
+static_library("transaction") {
+  sources = [
+    "buffered_operations_builder.cc",
+    "transaction_handler.cc",
+  ]
+  public = [
+    "buffered_operations_builder.h",
+    "transaction_handler.h",
+  ]
+  public_deps = [
+    "//userspace/storage/lib/buffer",
+    "//userspace/storage/lib/operation",
+  ]
+  deps = [
+    "//userspace/storage/lib/buffer",
+    "//userspace/storage/lib/operation",
+  ]
+
+  if (is_fuchsia) {
+    public += [ "device_transaction_handler.h" ]
+    sources += [ "device_transaction_handler.cc" ]
+    public_deps += [ "//userspace/storage/lib/block_client/cpp:interface" ]
+    deps += [ "//userspace/storage/lib/trace:cpp" ]
+  }
+}
+
+group("tests") {
+  testonly = true
+  deps = [ ":fs-transaction-tests" ]
+}
+
+test("fs-transaction-test") {
+  output_name = "fs_transaction_test"
+  sources = [
+    "buffered_operations_builder_test.cc",
+    "device_transaction_handler_test.cc",
+  ]
+  deps = [
+    ":transaction",
+    "//userspace/lib/fxl/test:gtest_main",
+    "//userspace/storage/lib/block_client/cpp:fake_device",
+    "//userspace/storage/lib/block_client/cpp:interface",
+    "//userspace/storage/lib/buffer",
+    "//userspace/storage/lib/operation",
+    "//third_party/googletest:gtest",
+    "//zircon/system/ulib/zx",
+  ]
+}
+
+fuchsia_unittest_package("fs-transaction-tests") {
+  manifest = "meta/fs_transaction_tests.cml"
+  deps = [ ":fs-transaction-test" ]
+}

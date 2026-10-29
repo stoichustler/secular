@@ -1,0 +1,21 @@
+# Copyright 2026 The Fuchsia Authors. All rights reserved.
+# Use of this source code is governed by a BSD-style license that can be
+# found in the LICENSE file.
+
+load("//products/build/bazel/rules/rust:defs.bzl", "rustc_library")
+
+package(default_applicable_licenses = ["//:license"])
+
+rustc_library(
+    name = "fuchsia-component",
+    srcs = ["src/lib.rs"],
+    edition = "2024",
+    visibility = ["//visibility:public"],
+    deps = [
+        "//userspace/lib/fuchsia-component/client",
+        "//userspace/lib/fuchsia-component/directory",
+        "//userspace/lib/fuchsia-component/escrow",
+        "//userspace/lib/fuchsia-component/runtime",
+        "//userspace/lib/fuchsia-component/server",
+    ],
+)

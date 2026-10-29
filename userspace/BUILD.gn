@@ -1,0 +1,35 @@
+# Copyright 2026 The Fuchsia Authors. All rights reserved.
+# Use of this source code is governed by a BSD-style license that can be
+# found in the LICENSE file.
+
+# Userspace tree. GN labels are //userspace/... . C++ still uses
+# #include "src/..." via the gen-time include alias.
+
+group("tests") {
+  testonly = true
+  deps = [
+    ":e2e_tests",
+    ":tests_no_e2e",
+  ]
+}
+
+group("tests_no_e2e") {
+  testonly = true
+  deps = [
+    "secular:tests",
+    "diagnostics:tests",
+    "lib:tests",
+    "sys:tests",
+    "zircon:tests",
+  ]
+}
+
+group("bazel_tests") {
+  testonly = true
+  deps = []
+}
+
+group("e2e_tests") {
+  testonly = true
+  deps = [ "zircon:e2e_tests" ]
+}

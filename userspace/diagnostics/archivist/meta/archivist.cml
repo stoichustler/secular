@@ -1,0 +1,52 @@
+// Copyright 2022 The Fuchsia Authors. All rights reserved.
+// Use of this source code is governed by a BSD-style license that can be
+// found in the LICENSE file.
+{
+    include: [
+        "//userspace/diagnostics/archivist/meta/common.shard.cml",
+        "//userspace/diagnostics/archivist/meta/config_capabilities.shard.cml",
+    ],
+    program: {
+        main_process_critical: "true",
+        environ: [
+            // TODO(https://fxbug.dev/382623426): revisit this.
+            "SCUDO_OPTIONS=release_to_os_interval_ms=0",
+        ],
+    },
+    use: [
+        {
+            protocol: [
+                "fuchsia.boot.ReadOnlyLog",
+                "fuchsia.component.PersistenceBinder",
+                "fuchsia.component.SamplerBinder",
+            ],
+        },
+        {
+            protocol: [
+                "fuchsia.component.DetectBinder",
+                "fuchsia.component.KernelDebugBrokerBinder",
+            ],
+            availability: "optional",
+        },
+        {
+            directory: "config",
+            from: "parent",
+            rights: [ "r*" ],
+            path: "/config/data",
+            availability: "optional",
+        },
+    ],
+    expose: [
+        {
+            // Note: this route can go away once all support SDK tools for which
+            // we gurantee forward compatibility are defaulting to use /toolbox
+            // instead of /core/toolbox.
+            protocol: "fuchsia.diagnostics.host.ArchiveAccessor",
+            from: "self/diagnostics-accessors",
+        },
+        {
+            dictionary: "diagnostics-accessors",
+            from: "self",
+        },
+    ],
+}

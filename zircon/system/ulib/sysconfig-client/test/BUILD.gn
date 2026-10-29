@@ -1,0 +1,49 @@
+# Copyright 2020 The Fuchsia Authors. All rights reserved.
+# Use of this source code is governed by a BSD-style license that can be
+# found in the LICENSE file.
+
+import("//products/build/components.gni")
+import("//products/build/test.gni")
+
+group("tests") {
+  testonly = true
+  deps = [ ":sysconfig-sync-client-test-package" ]
+}
+
+test("sysconfig-sync-client-test") {
+  sources = [ "sync-client-test.cc" ]
+  include_dirs = [ ".." ]
+  deps = [
+    "//sdk/fidl/fuchsia.driver.test:fuchsia.driver.test_cpp",
+    "//sdk/fidl/fuchsia.hardware.nand:fuchsia.hardware.nand_cpp",
+    "//sdk/lib/async-default",
+    "//sdk/lib/async-loop:async-loop-default",
+    "//sdk/lib/component/incoming/cpp",
+    "//sdk/lib/component/outgoing/cpp",
+    "//sdk/lib/device-watcher/cpp",
+    "//sdk/lib/driver_test_realm/realm_builder/cpp",
+    "//sdk/lib/fdio-caller",
+    "//userspace/devices/bind/fuchsia.platform:fuchsia.platform_cpp",
+    "//userspace/storage/lib/ramdevice_client/cpp",
+    "//userspace/storage/lib/ramdevice_client/cpp:ramdevice-client-test",
+    "//zircon/system/ulib/fbl",
+    "//zircon/system/ulib/inspector",
+    "//zircon/system/ulib/sysconfig-client:sysconfig-sync-client",
+    "//zircon/system/ulib/trace-engine",
+    "//zircon/system/ulib/zxtest",
+  ]
+}
+
+fuchsia_unittest_package("sysconfig-sync-client-test-package") {
+  package_name = "sysconfig-sync-client-test"
+  manifest = "meta/sysconfig-sync-client-test.cml"
+  deps = [
+    ":sysconfig-sync-client-test",
+    "//userspace/devices/board/drivers/integration-test",
+    "//userspace/devices/bus/drivers/platform",
+    "//userspace/devices/nand/drivers/nand",
+    "//userspace/devices/nand/drivers/nandpart",
+    "//userspace/devices/nand/drivers/ram-nand",
+    "//userspace/devices/nand/drivers/skip-block:component",
+  ]
+}

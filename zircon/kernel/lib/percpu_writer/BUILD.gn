@@ -1,0 +1,50 @@
+# Copyright 2025 The Fuchsia Authors
+#
+# Use of this source code is governed by a MIT-style
+# license that can be found in the LICENSE file or at
+# https://opensource.org/licenses/MIT
+
+import("//products/build/cpp/library_headers.gni")
+import("//zircon/kernel/kernel_rust_mod.gni")
+
+library_headers("headers") {
+  headers = [
+    "lib/percpu_writer/buffer.h",
+    "lib/percpu_writer/kernel_aspace_allocator.h",
+  ]
+  public_deps = [ "//zircon/kernel/lib/ktl" ]
+}
+
+kernel_rust_mod("percpu_writer-rs") {
+  sources = [
+    "allocator.rs",
+    "allocator_ffi.rs",
+  ]
+  deps = [ "//zircon/kernel/lib/page:page-rs" ]
+}
+
+source_set("percpu_writer") {
+  deps = [ ":percpu_writer-rs" ]
+
+  public_deps = [
+    ":headers",
+    "//userspace/performance/lib/fxt:headers",
+  ]
+}
+
+group("tests") {
+  testonly = true
+}
+
+group("kernel-tests") {
+  testonly = true
+  deps = [ "tests" ]
+}
+
+group("phys-tests") {
+  testonly = true
+}
+
+group("boot_tests") {
+  testonly = true
+}

@@ -1,0 +1,41 @@
+# Copyright 2026 The Fuchsia Authors. All rights reserved.
+# Use of this source code is governed by a BSD-style license that can be
+# found in the LICENSE file.
+
+load("@platforms//host:constraints.bzl", "HOST_CONSTRAINTS")
+load("//userspace/developer/ffx/build:ffx_tool.bzl", "ffx_tool")
+
+package(
+    default_applicable_licenses = ["//:license"],
+    default_visibility = ["//visibility:public"],
+)
+
+ffx_tool(
+    name = "ffx-efi",
+    srcs = [
+        "src/args.rs",
+        "src/efi_lib.rs",
+        "src/main.rs",
+    ],
+    crate_root = "src/main.rs",
+    edition = "2024",
+    proc_macro_deps = [
+        "//third_party/rust_crates/vendor:async-trait",
+    ],
+    target_compatible_with = HOST_CONSTRAINTS,
+    test_deps = [
+        "//userspace/lib/fuchsia",
+        "//third_party/rust_crates/vendor:tempfile",
+    ],
+    with_host_unit_tests = True,
+    deps = [
+        "//products/build/sdk/meta:rust",
+        "//userspace/developer/ffx/lib/errors:lib",
+        "//userspace/developer/ffx/lib/fho:lib",
+        "//userspace/developer/ffx/lib/writer:lib",
+        "//userspace/lib/fuchsia-async",
+        "//third_party/rust_crates/vendor:anyhow",
+        "//third_party/rust_crates/vendor:argh",
+        "//third_party/rust_crates/vendor:fatfs",
+    ],
+)

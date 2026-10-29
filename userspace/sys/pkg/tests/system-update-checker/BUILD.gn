@@ -1,0 +1,74 @@
+# Copyright 2019 The Fuchsia Authors. All rights reserved.
+# Use of this source code is governed by a BSD-style license that can be
+# found in the LICENSE file.
+
+import("//products/build/components.gni")
+import("//products/build/rust/rustc_test.gni")
+
+rustc_test("driver") {
+  name = "system_update_checker_integration_test"
+  edition = "2024"
+
+  deps = [
+    "//sdk/fidl/fuchsia.io:fuchsia.io_rust",
+    "//sdk/fidl/fuchsia.logger:fuchsia.logger_rust",
+    "//sdk/fidl/fuchsia.paver:fuchsia.paver_rust",
+    "//sdk/fidl/fuchsia.pkg:fuchsia.pkg_rust",
+    "//sdk/fidl/fuchsia.pkg.garbagecollector:fuchsia.pkg.garbagecollector_rust",
+    "//sdk/fidl/fuchsia.pkg.rewrite:fuchsia.pkg.rewrite_rust",
+    "//sdk/fidl/fuchsia.update:fuchsia.update_rust",
+    "//sdk/fidl/fuchsia.update.channel:fuchsia.update.channel_rust",
+    "//sdk/fidl/fuchsia.update.channelcontrol:fuchsia.update.channelcontrol_rust",
+    "//sdk/rust/zx",
+    "//userspace/lib/fidl/rust/fidl",
+    "//userspace/lib/fuchsia",
+    "//userspace/lib/fuchsia-async",
+    "//userspace/lib/fuchsia-component",
+    "//userspace/lib/fuchsia-component-test",
+    "//userspace/lib/fuchsia-fs",
+    "//userspace/lib/fuchsia-sync",
+    "//userspace/sys/lib/cm_rust",
+    "//userspace/sys/pkg/fidl/fuchsia.update.installer:fuchsia.update.installer_rust",
+    "//userspace/sys/pkg/fidl/fuchsia.update.verify:fuchsia.update.verify_rust",
+    "//userspace/sys/pkg/lib/fidl-fuchsia-update-installer-ext",
+    "//userspace/sys/pkg/lib/fuchsia-pkg-testing",
+    "//userspace/sys/pkg/testing/mock-health-verification",
+    "//userspace/sys/pkg/testing/mock-installer",
+    "//userspace/sys/pkg/testing/mock-paver",
+    "//userspace/sys/pkg/testing/mock-resolver",
+    "//userspace/sys/pkg/testing/mock-space",
+    "//third_party/rust_crates:anyhow",
+    "//third_party/rust_crates:assert_matches",
+    "//third_party/rust_crates:futures",
+    "//third_party/rust_crates:pretty_assertions",
+    "//third_party/rust_crates:tempfile",
+  ]
+
+  sources = [ "src/lib.rs" ]
+  configs += [ "//products/build/config/rust/lints:clippy_warn_all" ]
+}
+
+fuchsia_component("system-update-checker-integration-test") {
+  testonly = true
+  manifest = "meta/system-update-checker-integration-test.cml"
+  deps = [ ":driver" ]
+}
+
+fuchsia_test_package("system-update-checker-integration-tests") {
+  test_components = [ ":system-update-checker-integration-test" ]
+  deps = [
+    "//userspace/sys/pkg/bin/system-update-checker:component",
+    "//userspace/sys/pkg/bin/system-update-committer:component",
+  ]
+
+  test_specs = {
+    log_settings = {
+      max_severity = "ERROR"
+    }
+  }
+}
+
+group("hermetic_tests") {
+  testonly = true
+  public_deps = [ ":system-update-checker-integration-tests" ]
+}

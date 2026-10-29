@@ -1,0 +1,9 @@
+// Copyright 2022 The Fuchsia Authors. All rights reserved.
+// Use of this source code is governed by a BSD-style license that can be
+// found in the LICENSE file.
+{
+    include: [
+        "//userspace/diagnostics/archivist/meta/common.shard.cml",
+        "//userspace/diagnostics/archivist/meta/embedded_config_capabilities.shard.cml",
+    ],
+}

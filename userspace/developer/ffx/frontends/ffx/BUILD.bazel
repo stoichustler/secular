@@ -1,0 +1,68 @@
+# Copyright 2026 The Fuchsia Authors. All rights reserved.
+# Use of this source code is governed by a BSD-style license that can be
+# found in the LICENSE file.
+
+# NOTE: We are intentionally not syncing this file to the BUILD.gn from the same
+# directory, to keep this BUILD.bazel file clean and simple. The GN file relies
+# on complexity from //userspace/developer/ffx/config.gni, which we've decided to avoid
+# in the Bazel version.
+
+load("@platforms//host:constraints.bzl", "HOST_CONSTRAINTS")
+load("//products/build/bazel/rules/rust:rustc_binary.bzl", "rustc_binary")
+load("//userspace/developer/ffx/build:ffx_plugin.bzl", "ffx_plugin")
+load("//userspace/developer/ffx/lib/version/build:ffx_apply_version.bzl", "ffx_apply_version")
+
+package(default_applicable_licenses = ["//:license"])
+
+ffx_plugin(
+    name = "ffx_lib",
+    srcs = ["src/lib.rs"],
+    args_deps = [
+        "//userspace/developer/ffx/core:lib",
+        "//third_party/rust_crates/vendor:argh",
+    ],
+    args_srcs = ["src/args.rs"],
+    edition = "2024",
+    plugin_deps = [
+        "//userspace/developer/ffx/plugins/completion:ffx_completion",
+        "//userspace/developer/ffx/plugins/config:ffx_config_plugin",
+        "//userspace/developer/ffx/plugins/sdk:ffx_sdk",
+        "//userspace/developer/ffx/plugins/version:ffx_version",
+    ],
+    sdk_category = "not-yet-specified",
+    version = "0.1.0",
+    deps = [
+        "//userspace/developer/ffx/lib/fho:lib",
+        "//third_party/rust_crates/vendor:anyhow",
+    ],
+)
+
+rustc_binary(
+    name = "ffx_bin_unversioned",
+    srcs = ["src/main.rs"],
+    crate_name = "ffx_unversioned",
+    edition = "2024",
+    proc_macro_deps = [
+        "//third_party/rust_crates/vendor:async-trait",
+    ],
+    target_compatible_with = HOST_CONSTRAINTS,
+    deps = [
+        ":ffx_lib_args",
+        ":ffx_lib_sub_command",
+        ":ffx_lib_suite",
+        "//userspace/developer/ffx/command:lib",
+        "//userspace/developer/ffx/config:lib",
+        "//userspace/developer/ffx/lib/errors:lib",
+        "//userspace/developer/ffx/lib/fho:lib",
+        "//userspace/developer/ffx/lib/traceable_error:lib",
+        "//userspace/lib/fuchsia-async",
+        "//third_party/rust_crates/vendor:argh",
+        "//third_party/rust_crates/vendor:log",
+    ],
+)
+
+ffx_apply_version(
+    name = "ffx",
+    unversioned_binary = ":ffx_bin_unversioned",
+    visibility = ["//visibility:public"],
+)

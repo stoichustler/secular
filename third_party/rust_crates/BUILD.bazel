@@ -1,0 +1,106 @@
+# Copyright 2025 The Fuchsia Authors. All rights reserved.
+# Use of this source code is governed by a BSD-style license that can be
+# found in the LICENSE file.
+
+package(default_applicable_licenses = ["//:license"])
+
+exports_files([
+    "Cargo.toml",
+    "Cargo.lock",
+])
+
+# Visibility allowlists for restricted third-party Rust crates in Bazel.
+#
+# //third_party/rust_crates/visibility.gni has the GN allowlists, and explains
+# why each crate is restricted. These lists only contain packages with Bazel
+# targets that use the crate: when migrating such a target to Bazel, add its
+# package here, and remove it from visibility.gni once no GN targets in the
+# package use the crate.
+#
+# postprocess_crates_vendor.py restricts the crate aliases in
+# //third_party/rust_crates/vendor to these package_groups, so each name must
+# match the group_visibility variable name in Cargo.toml.
+
+# LINT.IfChange
+package_group(
+    name = "md5_visibility",
+    packages = [
+        "//userspace/connectivity/wlan/lib/rsn",
+    ],
+)
+
+package_group(
+    name = "sha1_visibility",
+    packages = [
+        "//userspace/connectivity/wlan/lib/rsn",
+    ],
+)
+
+package_group(
+    name = "once_cell_visibility",
+    packages = [
+        "//userspace/lib/async-utils",
+
+        # Not enforced, matching visibility.gni.
+        "//third_party/...",
+    ],
+)
+
+package_group(
+    name = "zeroize_visibility",
+    packages = [
+        # Matches visibility.gni, which allows all of vendor/ without exposing
+        # internal paths.
+        "//vendor/...",
+    ],
+)
+
+package_group(
+    name = "openssl_visibility",
+    packages = [
+        # Matches visibility.gni, which allows all of vendor/ without exposing
+        # internal paths.
+        "//vendor/...",
+    ],
+)
+
+package_group(
+    name = "bincode_visibility",
+    packages = [
+        "//userspace/storage/ext4/lib/metadata",
+        "//userspace/storage/fxfs",
+        "//userspace/storage/lib/mapping",
+        "//userspace/storage/lib/sparse/rust",
+    ],
+)
+
+package_group(
+    name = "regex_visibility",
+    packages = [
+        "//userspace/connectivity/wlan/lib/ieee80211-testutils",
+        "//userspace/connectivity/wlan/lib/sme",
+        "//userspace/developer/ffx/command",
+        "//userspace/developer/ffx/config",
+        "//userspace/developer/ffx/lib/netext",
+        "//userspace/developer/ffx/lib/target_errors",
+        "//userspace/developer/ffx/lib/trace",
+        "//userspace/developer/ffx/plugins/sdk",
+        "//userspace/developer/ffx/tools/bluetooth/common",
+        "//userspace/lib/analytics/rust",
+        "//userspace/lib/assembly/util",
+        "//userspace/lib/diagnostics/log/rust",
+        "//userspace/lib/diagnostics/testing/diagnostics-assertions/rust",
+        "//userspace/storage/fxfs/unicode",
+        "//userspace/sys/lib/cm_fidl_validator",
+        "//userspace/sys/pkg/lib/fuchsia-pkg",
+        "//tools/fidl/fidldoc",
+        "//tools/gtest_test_parser",
+        "//tools/pretty_serial",
+        "//tools/zedmon/client",
+
+        # Matches visibility.gni, which allows all of vendor/ without exposing
+        # internal paths.
+        "//vendor/...",
+    ],
+)
+# LINT.ThenChange(//third_party/rust_crates/visibility.gni)

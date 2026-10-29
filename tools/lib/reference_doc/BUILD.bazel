@@ -1,0 +1,31 @@
+# Copyright 2026 The Fuchsia Authors. All rights reserved.
+# Use of this source code is governed by a BSD-style license that can be
+# found in the LICENSE file.
+
+load("//products/build/bazel/platforms:constraints.bzl", "HOST_OS_CONSTRAINTS")
+load("//products/build/bazel/rules/host_tests:host_rustc_test.bzl", "host_rustc_test")
+load("//products/build/bazel/rules/rust:defs.bzl", "rustc_library")
+
+package(default_applicable_licenses = ["//:license"])
+
+rustc_library(
+    name = "reference_doc",
+    srcs = ["src/lib.rs"],
+    edition = "2024",
+    proc_macro_deps = [
+        "//tools/lib/reference_doc/macro",
+    ],
+    visibility = [
+        "//tools/cmc:__pkg__",
+        "//tools/lib/cml:__pkg__",
+        "//tools/lib/reference_doc/macro/derive-reference-doc-tests:__pkg__",
+    ],
+)
+
+host_rustc_test(
+    name = "reference_doc_test",
+    crate = ":reference_doc",
+    edition = "2024",
+    target_compatible_with = HOST_OS_CONSTRAINTS,
+    visibility = ["//tools:__pkg__"],
+)

@@ -1,0 +1,22 @@
+# Scripts import yaml from third_party should have these sources added to their
+# `inputs` variable of their corresponding actions. This makes changes in this
+# library correctly trigger rebuilds of those actions in incremental builds.
+third_party_yaml_lib3_srcs = [
+  "//third_party/pyyaml/lib3/yaml/__init__.py",
+  "//third_party/pyyaml/lib3/yaml/composer.py",
+  "//third_party/pyyaml/lib3/yaml/constructor.py",
+  "//third_party/pyyaml/lib3/yaml/cyaml.py",
+  "//third_party/pyyaml/lib3/yaml/dumper.py",
+  "//third_party/pyyaml/lib3/yaml/emitter.py",
+  "//third_party/pyyaml/lib3/yaml/error.py",
+  "//third_party/pyyaml/lib3/yaml/events.py",
+  "//third_party/pyyaml/lib3/yaml/loader.py",
+  "//third_party/pyyaml/lib3/yaml/nodes.py",
+  "//third_party/pyyaml/lib3/yaml/parser.py",
+  "//third_party/pyyaml/lib3/yaml/reader.py",
+  "//third_party/pyyaml/lib3/yaml/representer.py",
+  "//third_party/pyyaml/lib3/yaml/resolver.py",
+  "//third_party/pyyaml/lib3/yaml/scanner.py",
+  "//third_party/pyyaml/lib3/yaml/serializer.py",
+  "//third_party/pyyaml/lib3/yaml/tokens.py",
+]

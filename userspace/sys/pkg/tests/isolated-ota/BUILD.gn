@@ -1,0 +1,81 @@
+# Copyright 2020 The Fuchsia Authors. All rights reserved.
+# Use of this source code is governed by a BSD-style license that can be
+# found in the LICENSE file.
+
+import("//products/build/components.gni")
+import("//products/build/rust/rustc_test.gni")
+
+rustc_test("driver") {
+  name = "isolated-ota-integration-test"
+  edition = "2024"
+
+  deps = [
+    "//sdk/fidl/fuchsia.io:fuchsia.io_rust",
+    "//sdk/fidl/fuchsia.paver:fuchsia.paver_rust",
+    "//sdk/rust/zx",
+    "//userspace/lib/fidl/rust/fidl",
+    "//userspace/lib/fuchsia",
+    "//userspace/lib/fuchsia-async",
+    "//userspace/lib/fuchsia-component-test",
+    "//userspace/lib/fuchsia-fs",
+    "//userspace/lib/fuchsia-sync",
+    "//userspace/lib/fuchsia-url",
+    "//userspace/storage/lib/vfs/rust:vfs",
+    "//userspace/sys/lib/cm_rust",
+    "//userspace/sys/lib/fidl-fuchsia-pkg-ext",
+    "//userspace/sys/pkg/lib/fuchsia-hash",
+    "//userspace/sys/pkg/lib/fuchsia-pkg-testing",
+    "//userspace/sys/pkg/lib/isolated-ota",
+    "//userspace/sys/pkg/lib/isolated-swd",
+    "//userspace/sys/pkg/testing/blobfs-ramdisk",
+    "//userspace/sys/pkg/testing/isolated-ota-env",
+    "//userspace/sys/pkg/testing/mock-paver",
+    "//third_party/rust_crates:anyhow",
+    "//third_party/rust_crates:assert_matches",
+    "//third_party/rust_crates:futures",
+    "//third_party/rust_crates:http",
+    "//third_party/rust_crates:mock-omaha-server",
+    "//third_party/rust_crates:pretty_assertions",
+  ]
+
+  sources = [ "src/lib.rs" ]
+  configs += [ "//products/build/config/rust/lints:clippy_warn_all" ]
+}
+
+fuchsia_test_component("isolated-ota-integration-test") {
+  restricted_features = [ "allow_non_hermetic_packages" ]
+  testonly = true
+  manifest = "meta/isolated-ota-integration-test.cml"
+  deps = [ ":driver" ]
+}
+
+fuchsia_test_package("isolated-ota-integration-tests") {
+  test_components = [ ":isolated-ota-integration-test" ]
+  deps = [
+    "//userspace/connectivity/network/dns:component",
+    "//userspace/connectivity/network/netstack3:component-for-tests",
+    "//userspace/connectivity/policy/http-client:component",
+    "//userspace/storage/testing:storage_driver_test_realm",
+    "//userspace/storage/tools/blobfs-compression",
+    "//userspace/sys/pkg/bin/fake-system-update-committer",
+    "//userspace/sys/pkg/bin/pkg-cache:component",
+    "//userspace/sys/pkg/bin/pkg-resolver:component",
+    "//userspace/sys/pkg/lib/fuchsia-pkg-testing/certs",
+    "//userspace/sys/pkg/lib/isolated-swd:pkg-component",
+    "//userspace/sys/pkg/testing:fake-ssl-certs",
+    "//userspace/sys/pkg/tests/pkg-resolver:empty-repo",
+  ]
+  test_specs = {
+    log_settings = {
+      max_severity = "ERROR"
+    }
+  }
+}
+
+group("non_hermetic_tests") {
+  testonly = true
+  public_deps = [
+    ":isolated-ota-integration-tests",
+    "//userspace/sys/pkg/lib/isolated-swd:isolated-swd-components",
+  ]
+}

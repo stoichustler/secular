@@ -1,0 +1,4 @@
+# pruned
+group("devices") {}
+group("tests") { testonly = true }
+group("e2e_tests") { testonly = true }

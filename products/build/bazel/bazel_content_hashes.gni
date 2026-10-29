@@ -1,0 +1,82 @@
+# Copyright 2024 The Fuchsia Authors. All rights reserved.
+# Use of this source code is governed by a BSD-style license that can be
+# found in the LICENSE file.
+
+import("//products/build/bazel/bazel_workspace.gni")
+import("//products/build/config/clang/clang_prefix.gni")
+import("//products/build/icu/build_config.gni")
+import("//products/build/rust/config.gni")
+
+# The following lists which content hash files need to be generated
+# for the Bazel workspace. Each entry contains the argument to a call
+# to generate_content_hash_file(), except for the "repo_name" key which
+# identifies the name (and target) corresponding to the repository.
+#
+bazel_content_hash_definitions = [
+  {
+    repo_name = "fuchsia_clang"
+    source_paths = [
+      # clang_prefix points to bin under clang root.
+      get_path_info(clang_prefix, "dir"),
+
+      # changes to the following files should trigger repository rules.
+      "//products/build/bazel_sdk/bazel_rules_fuchsia/common/toolchains/clang",
+      "//products/build/bazel_sdk/bazel_rules_fuchsia/fuchsia/workspace/clang_templates/defs.bzl",
+      "//products/build/bazel_sdk/bazel_rules_fuchsia/fuchsia/workspace/clang_templates/fuchsia_clang.BUILD.bazel",
+      "//products/build/bazel_sdk/bazel_rules_fuchsia/fuchsia/workspace/clang_templates/sysroot_defs.bzl.template",
+    ]
+    cipd_name = "clang"
+  },
+  {
+    repo_name = "com_google_googletest"
+    source_paths = [
+      "//third_party/googletest/src",
+      "//products/build/bazel/patches/googletest/fuchsia-support.bundle",
+    ]
+  },
+  {
+    repo_name = "fuchsia_icu_config"
+    source_paths = [
+      icu_root,
+      string_replace(icu_root, "/default", "/latest"),
+    ]
+  },
+  {
+    repo_name = "fuchsia_prebuilt_rust"
+    source_paths = [
+      # rustc_prefix points at the toolchain root.
+      rustc_prefix,
+
+      # changes to the following files should trigger repository rules.
+      "//products/build/bazel/toolchains/rust",
+    ]
+    cipd_name = "rust"
+  },
+  {
+    repo_name = "prebuilt_clang"
+    source_paths = [
+      # clang_prefix points to bin under clang root.
+      get_path_info(clang_prefix, "dir"),
+
+      # changes to the following files should trigger repository rules.
+      "//products/build/bazel_sdk/bazel_rules_fuchsia/common/toolchains/clang",
+      "//products/build/bazel/toolchains/clang",
+    ]
+    cipd_name = "clang"
+  },
+  {
+    repo_name = "prebuilt_llvm"
+    source_paths = [ "${secular_prebuilt_root}/third_party/llvm/${secular_host_platform}" ]
+    cipd_name = "llvm"
+  },
+  {
+    repo_name = "prebuilt_python"
+    source_paths = [ "${secular_prebuilt_root}/third_party/python3/${secular_host_platform}" ]
+    cipd_name = "cpython3"
+    exclude_suffixes = [ ".pyc" ]
+  },
+  {
+    repo_name = "rules_fuchsia"
+    source_paths = [ "//products/build/bazel_sdk/bazel_rules_fuchsia" ]
+  },
+]

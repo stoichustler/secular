@@ -1,0 +1,121 @@
+# Copyright 2026 The Fuchsia Authors. All rights reserved.
+# Use of this source code is governed by a BSD-style license that can be
+# found in the LICENSE file.
+
+load("@rules_cc//cc:cc_library.bzl", "cc_library")
+load("//products/build/bazel/rules/cc:fx_cc_binary.bzl", "fx_cc_binary")
+load(
+    "//products/build/bazel/rules/components:fx_component.bzl",
+    "fx_component",
+    "fx_component_manifest",
+)
+load(
+    "//products/build/bazel/rules/packages:fx_package.bzl",
+    "fx_package",
+)
+load(
+    "//products/build/bazel/rules/packages:fx_packaged_binary.bzl",
+    "fx_packaged_binary",
+)
+load(
+    "//products/build/bazel/rules/testing:fx_unittest_package.bzl",
+    "fx_unittest_package",
+)
+
+package(default_applicable_licenses = ["//:license"])
+
+exports_files(
+    ["meta/build_info.core_shard.cml"],
+    visibility = ["//products/bundles/assembly:__subpackages__"],
+)
+
+cc_library(
+    name = "lib",
+    srcs = ["build_info.cc"],
+    hdrs = ["build_info.h"],
+    deps = [
+        "//sdk/fidl/fuchsia.buildinfo:fuchsia.buildinfo_cpp",
+        "//sdk/lib/async-loop:async-loop-cpp",
+        "//sdk/lib/async-loop:async-loop-default",
+        "//sdk/lib/syslog/cpp",
+        "//userspace/lib/fsl",
+    ],
+)
+
+fx_cc_binary(
+    name = "build_info",
+    srcs = ["main.cc"],
+    tags = ["manual"],
+    deps = [
+        ":lib",
+        "//sdk/lib/async-loop:async-loop-cpp",
+        "//sdk/lib/async-loop:async-loop-default",
+        "//sdk/lib/component/outgoing/cpp",
+        "//sdk/lib/fdio",
+        "//sdk/lib/syslog/cpp",
+    ],
+)
+
+fx_packaged_binary(
+    name = "build_info_packaged_bin",
+    binary = ":build_info",
+    binary_name = "build_info",
+)
+
+fx_component_manifest(
+    name = "build-info-manifest",
+    component_name = "build-info",
+    includes = [
+        "//sdk/lib/syslog:client.shard",
+    ],
+    manifest = "meta/build_info.cml",
+)
+
+fx_component(
+    name = "build-info-component",
+    compiled_manifest = ":build-info-manifest",
+    component_name = "build-info",
+    visibility = [
+        # TODO(https://fxbug.dev/490178129): Remove this visibility when build-info-service package
+        # is added to the Bazel assembly.
+        "//products/build/bazel/rules/tests:__subpackages__",
+    ],
+    deps = [
+        ":build_info_packaged_bin",
+    ],
+)
+
+fx_package(
+    name = "build-info-service",
+    package_name = "build-info-service",
+    components = [
+        ":build-info-component",
+    ],
+    visibility = [
+        # TODO(https://fxbug.dev/490178129): Remove this visibility when build-info-service package
+        # is added to the Bazel assembly.
+        "//products/build/bazel/rules/tests:__subpackages__",
+        "//products/bundles/assembly:__subpackages__",
+    ],
+)
+
+fx_cc_binary(
+    name = "build_info_unittest_bin",
+    testonly = True,
+    srcs = ["build_info_unittest.cc"],
+    tags = ["manual"],
+    deps = [
+        ":lib",
+        "//sdk/lib/vfs/cpp",
+        "//userspace/lib/fxl/test:gtest_main",
+        "//userspace/lib/testing/loop_fixture",
+    ],
+)
+
+fx_unittest_package(
+    name = "build-info-unittest",
+    # Tests may produce ERROR logs when validating behavior in scenarios where
+    # build-info is not present (e.g. not allowlisted).
+    max_log_severity = "ERROR",
+    unit_tests = [":build_info_unittest_bin"],
+)

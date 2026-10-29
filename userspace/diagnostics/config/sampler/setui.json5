@@ -1,0 +1,2828 @@
+{
+    project_id: 16,
+    data_sets: [
+        {
+            metrics: [
+                {
+                    event_codes: [
+                        "Accessibility",
+                    ],
+                    metric_name: "write_failures",
+                    metric_type: "Occurrence",
+                    selector: "core/setui_service:root/stash_failures/accessibility_info:count",
+                },
+                {
+                    event_codes: [
+                        "Audio",
+                    ],
+                    metric_name: "write_failures",
+                    metric_type: "Occurrence",
+                    selector: "core/setui_service:root/stash_failures/audio_info:count",
+                },
+                {
+                    event_codes: [
+                        "AudioPolicy",
+                    ],
+                    metric_name: "write_failures",
+                    metric_type: "Occurrence",
+                    selector: "core/setui_service:root/stash_failures/audio_policy_info:count",
+                },
+                {
+                    event_codes: [
+                        "Display",
+                    ],
+                    metric_name: "write_failures",
+                    metric_type: "Occurrence",
+                    selector: "core/setui_service:root/stash_failures/display_info:count",
+                },
+                {
+                    event_codes: [
+                        "DoNotDisturb",
+                    ],
+                    metric_name: "write_failures",
+                    metric_type: "Occurrence",
+                    selector: "core/setui_service:root/stash_failures/do_not_disturb_info:count",
+                },
+                {
+                    event_codes: [
+                        "FactoryReset",
+                    ],
+                    metric_name: "write_failures",
+                    metric_type: "Occurrence",
+                    selector: "core/setui_service:root/stash_failures/factory_reset_info:count",
+                },
+                {
+                    event_codes: [
+                        "Input",
+                    ],
+                    metric_name: "write_failures",
+                    metric_type: "Occurrence",
+                    selector: "core/setui_service:root/stash_failures/input_info:count",
+                },
+                {
+                    event_codes: [
+                        "Intl",
+                    ],
+                    metric_name: "write_failures",
+                    metric_type: "Occurrence",
+                    selector: "core/setui_service:root/stash_failures/intl_info:count",
+                },
+                {
+                    event_codes: [
+                        "Light",
+                    ],
+                    metric_name: "write_failures",
+                    metric_type: "Occurrence",
+                    selector: "core/setui_service:root/stash_failures/light_info:count",
+                },
+                {
+                    event_codes: [
+                        "NightMode",
+                    ],
+                    metric_name: "write_failures",
+                    metric_type: "Occurrence",
+                    selector: "core/setui_service:root/stash_failures/night_mode_info:count",
+                },
+                {
+                    event_codes: [
+                        "Privacy",
+                    ],
+                    metric_name: "write_failures",
+                    metric_type: "Occurrence",
+                    selector: "core/setui_service:root/stash_failures/privacy_info:count",
+                },
+                {
+                    event_codes: [
+                        "Setup",
+                    ],
+                    metric_name: "write_failures",
+                    metric_type: "Occurrence",
+                    selector: "core/setui_service:root/stash_failures/setup_info:count",
+                },
+                {
+                    event_codes: [
+                        "Accessibility",
+                        "OkSome",
+                    ],
+                    metric_name: "request_responses",
+                    metric_type: "Occurrence",
+                    selector: "core/setui_service:root/response_counts/Accessibility/OkSome:count",
+                },
+                {
+                    event_codes: [
+                        "Accessibility",
+                        "OkNone",
+                    ],
+                    metric_name: "request_responses",
+                    metric_type: "Occurrence",
+                    selector: "core/setui_service:root/response_counts/Accessibility/OkNone:count",
+                },
+                {
+                    event_codes: [
+                        "Accessibility",
+                        "UnimplementedRequest",
+                    ],
+                    metric_name: "request_responses",
+                    metric_type: "Occurrence",
+                    selector: "core/setui_service:root/response_counts/Accessibility/UnimplementedRequest:count",
+                },
+                {
+                    event_codes: [
+                        "Accessibility",
+                        "StorageFailure",
+                    ],
+                    metric_name: "request_responses",
+                    metric_type: "Occurrence",
+                    selector: "core/setui_service:root/response_counts/Accessibility/StorageFailure:count",
+                },
+                {
+                    event_codes: [
+                        "Accessibility",
+                        "InitFailure",
+                    ],
+                    metric_name: "request_responses",
+                    metric_type: "Occurrence",
+                    selector: "core/setui_service:root/response_counts/Accessibility/InitFailure:count",
+                },
+                {
+                    event_codes: [
+                        "Accessibility",
+                        "RestoreFailure",
+                    ],
+                    metric_name: "request_responses",
+                    metric_type: "Occurrence",
+                    selector: "core/setui_service:root/response_counts/Accessibility/RestoreFailure:count",
+                },
+                {
+                    event_codes: [
+                        "Accessibility",
+                        "InvalidArgument",
+                    ],
+                    metric_name: "request_responses",
+                    metric_type: "Occurrence",
+                    selector: "core/setui_service:root/response_counts/Accessibility/InvalidArgument:count",
+                },
+                {
+                    event_codes: [
+                        "Accessibility",
+                        "IncompatibleArguments",
+                    ],
+                    metric_name: "request_responses",
+                    metric_type: "Occurrence",
+                    selector: "core/setui_service:root/response_counts/Accessibility/IncompatibleArguments:count",
+                },
+                {
+                    event_codes: [
+                        "Accessibility",
+                        "ExternalFailure",
+                    ],
+                    metric_name: "request_responses",
+                    metric_type: "Occurrence",
+                    selector: "core/setui_service:root/response_counts/Accessibility/ExternalFailure:count",
+                },
+                {
+                    event_codes: [
+                        "Accessibility",
+                        "UnhandledType",
+                    ],
+                    metric_name: "request_responses",
+                    metric_type: "Occurrence",
+                    selector: "core/setui_service:root/response_counts/Accessibility/UnhandledType:count",
+                },
+                {
+                    event_codes: [
+                        "Accessibility",
+                        "DeliveryError",
+                    ],
+                    metric_name: "request_responses",
+                    metric_type: "Occurrence",
+                    selector: "core/setui_service:root/response_counts/Accessibility/DeliveryError:count",
+                },
+                {
+                    event_codes: [
+                        "Accessibility",
+                        "UnexpectedError",
+                    ],
+                    metric_name: "request_responses",
+                    metric_type: "Occurrence",
+                    selector: "core/setui_service:root/response_counts/Accessibility/UnexpectedError:count",
+                },
+                {
+                    event_codes: [
+                        "Accessibility",
+                        "UndeliverableError",
+                    ],
+                    metric_name: "request_responses",
+                    metric_type: "Occurrence",
+                    selector: "core/setui_service:root/response_counts/Accessibility/UndeliverableError:count",
+                },
+                {
+                    event_codes: [
+                        "Accessibility",
+                        "UnsupportedError",
+                    ],
+                    metric_name: "request_responses",
+                    metric_type: "Occurrence",
+                    selector: "core/setui_service:root/response_counts/Accessibility/UnsupportedError:count",
+                },
+                {
+                    event_codes: [
+                        "Accessibility",
+                        "CommunicationError",
+                    ],
+                    metric_name: "request_responses",
+                    metric_type: "Occurrence",
+                    selector: "core/setui_service:root/response_counts/Accessibility/CommunicationError:count",
+                },
+                {
+                    event_codes: [
+                        "Accessibility",
+                        "IrrecoverableError",
+                    ],
+                    metric_name: "request_responses",
+                    metric_type: "Occurrence",
+                    selector: "core/setui_service:root/response_counts/Accessibility/IrrecoverableError:count",
+                },
+                {
+                    event_codes: [
+                        "Accessibility",
+                        "TimeoutError",
+                    ],
+                    metric_name: "request_responses",
+                    metric_type: "Occurrence",
+                    selector: "core/setui_service:root/response_counts/Accessibility/TimeoutError:count",
+                },
+                {
+                    event_codes: [
+                        "Audio",
+                        "OkSome",
+                    ],
+                    metric_name: "request_responses",
+                    metric_type: "Occurrence",
+                    selector: "core/setui_service:root/response_counts/Audio/OkSome:count",
+                },
+                {
+                    event_codes: [
+                        "Audio",
+                        "OkNone",
+                    ],
+                    metric_name: "request_responses",
+                    metric_type: "Occurrence",
+                    selector: "core/setui_service:root/response_counts/Audio/OkNone:count",
+                },
+                {
+                    event_codes: [
+                        "Audio",
+                        "UnimplementedRequest",
+                    ],
+                    metric_name: "request_responses",
+                    metric_type: "Occurrence",
+                    selector: "core/setui_service:root/response_counts/Audio/UnimplementedRequest:count",
+                },
+                {
+                    event_codes: [
+                        "Audio",
+                        "StorageFailure",
+                    ],
+                    metric_name: "request_responses",
+                    metric_type: "Occurrence",
+                    selector: "core/setui_service:root/response_counts/Audio/StorageFailure:count",
+                },
+                {
+                    event_codes: [
+                        "Audio",
+                        "InitFailure",
+                    ],
+                    metric_name: "request_responses",
+                    metric_type: "Occurrence",
+                    selector: "core/setui_service:root/response_counts/Audio/InitFailure:count",
+                },
+                {
+                    event_codes: [
+                        "Audio",
+                        "RestoreFailure",
+                    ],
+                    metric_name: "request_responses",
+                    metric_type: "Occurrence",
+                    selector: "core/setui_service:root/response_counts/Audio/RestoreFailure:count",
+                },
+                {
+                    event_codes: [
+                        "Audio",
+                        "InvalidArgument",
+                    ],
+                    metric_name: "request_responses",
+                    metric_type: "Occurrence",
+                    selector: "core/setui_service:root/response_counts/Audio/InvalidArgument:count",
+                },
+                {
+                    event_codes: [
+                        "Audio",
+                        "IncompatibleArguments",
+                    ],
+                    metric_name: "request_responses",
+                    metric_type: "Occurrence",
+                    selector: "core/setui_service:root/response_counts/Audio/IncompatibleArguments:count",
+                },
+                {
+                    event_codes: [
+                        "Audio",
+                        "ExternalFailure",
+                    ],
+                    metric_name: "request_responses",
+                    metric_type: "Occurrence",
+                    selector: "core/setui_service:root/response_counts/Audio/ExternalFailure:count",
+                },
+                {
+                    event_codes: [
+                        "Audio",
+                        "UnhandledType",
+                    ],
+                    metric_name: "request_responses",
+                    metric_type: "Occurrence",
+                    selector: "core/setui_service:root/response_counts/Audio/UnhandledType:count",
+                },
+                {
+                    event_codes: [
+                        "Audio",
+                        "DeliveryError",
+                    ],
+                    metric_name: "request_responses",
+                    metric_type: "Occurrence",
+                    selector: "core/setui_service:root/response_counts/Audio/DeliveryError:count",
+                },
+                {
+                    event_codes: [
+                        "Audio",
+                        "UnexpectedError",
+                    ],
+                    metric_name: "request_responses",
+                    metric_type: "Occurrence",
+                    selector: "core/setui_service:root/response_counts/Audio/UnexpectedError:count",
+                },
+                {
+                    event_codes: [
+                        "Audio",
+                        "UndeliverableError",
+                    ],
+                    metric_name: "request_responses",
+                    metric_type: "Occurrence",
+                    selector: "core/setui_service:root/response_counts/Audio/UndeliverableError:count",
+                },
+                {
+                    event_codes: [
+                        "Audio",
+                        "UnsupportedError",
+                    ],
+                    metric_name: "request_responses",
+                    metric_type: "Occurrence",
+                    selector: "core/setui_service:root/response_counts/Audio/UnsupportedError:count",
+                },
+                {
+                    event_codes: [
+                        "Audio",
+                        "CommunicationError",
+                    ],
+                    metric_name: "request_responses",
+                    metric_type: "Occurrence",
+                    selector: "core/setui_service:root/response_counts/Audio/CommunicationError:count",
+                },
+                {
+                    event_codes: [
+                        "Audio",
+                        "IrrecoverableError",
+                    ],
+                    metric_name: "request_responses",
+                    metric_type: "Occurrence",
+                    selector: "core/setui_service:root/response_counts/Audio/IrrecoverableError:count",
+                },
+                {
+                    event_codes: [
+                        "Audio",
+                        "TimeoutError",
+                    ],
+                    metric_name: "request_responses",
+                    metric_type: "Occurrence",
+                    selector: "core/setui_service:root/response_counts/Audio/TimeoutError:count",
+                },
+                {
+                    event_codes: [
+                        "AudioPolicy",
+                        "OkSome",
+                    ],
+                    metric_name: "request_responses",
+                    metric_type: "Occurrence",
+                    selector: "core/setui_service:root/response_counts/AudioPolicy/OkSome:count",
+                },
+                {
+                    event_codes: [
+                        "AudioPolicy",
+                        "OkNone",
+                    ],
+                    metric_name: "request_responses",
+                    metric_type: "Occurrence",
+                    selector: "core/setui_service:root/response_counts/AudioPolicy/OkNone:count",
+                },
+                {
+                    event_codes: [
+                        "AudioPolicy",
+                        "UnimplementedRequest",
+                    ],
+                    metric_name: "request_responses",
+                    metric_type: "Occurrence",
+                    selector: "core/setui_service:root/response_counts/AudioPolicy/UnimplementedRequest:count",
+                },
+                {
+                    event_codes: [
+                        "AudioPolicy",
+                        "StorageFailure",
+                    ],
+                    metric_name: "request_responses",
+                    metric_type: "Occurrence",
+                    selector: "core/setui_service:root/response_counts/AudioPolicy/StorageFailure:count",
+                },
+                {
+                    event_codes: [
+                        "AudioPolicy",
+                        "InitFailure",
+                    ],
+                    metric_name: "request_responses",
+                    metric_type: "Occurrence",
+                    selector: "core/setui_service:root/response_counts/AudioPolicy/InitFailure:count",
+                },
+                {
+                    event_codes: [
+                        "AudioPolicy",
+                        "RestoreFailure",
+                    ],
+                    metric_name: "request_responses",
+                    metric_type: "Occurrence",
+                    selector: "core/setui_service:root/response_counts/AudioPolicy/RestoreFailure:count",
+                },
+                {
+                    event_codes: [
+                        "AudioPolicy",
+                        "InvalidArgument",
+                    ],
+                    metric_name: "request_responses",
+                    metric_type: "Occurrence",
+                    selector: "core/setui_service:root/response_counts/AudioPolicy/InvalidArgument:count",
+                },
+                {
+                    event_codes: [
+                        "AudioPolicy",
+                        "IncompatibleArguments",
+                    ],
+                    metric_name: "request_responses",
+                    metric_type: "Occurrence",
+                    selector: "core/setui_service:root/response_counts/AudioPolicy/IncompatibleArguments:count",
+                },
+                {
+                    event_codes: [
+                        "AudioPolicy",
+                        "ExternalFailure",
+                    ],
+                    metric_name: "request_responses",
+                    metric_type: "Occurrence",
+                    selector: "core/setui_service:root/response_counts/AudioPolicy/ExternalFailure:count",
+                },
+                {
+                    event_codes: [
+                        "AudioPolicy",
+                        "UnhandledType",
+                    ],
+                    metric_name: "request_responses",
+                    metric_type: "Occurrence",
+                    selector: "core/setui_service:root/response_counts/AudioPolicy/UnhandledType:count",
+                },
+                {
+                    event_codes: [
+                        "AudioPolicy",
+                        "DeliveryError",
+                    ],
+                    metric_name: "request_responses",
+                    metric_type: "Occurrence",
+                    selector: "core/setui_service:root/response_counts/AudioPolicy/DeliveryError:count",
+                },
+                {
+                    event_codes: [
+                        "AudioPolicy",
+                        "UnexpectedError",
+                    ],
+                    metric_name: "request_responses",
+                    metric_type: "Occurrence",
+                    selector: "core/setui_service:root/response_counts/AudioPolicy/UnexpectedError:count",
+                },
+                {
+                    event_codes: [
+                        "AudioPolicy",
+                        "UndeliverableError",
+                    ],
+                    metric_name: "request_responses",
+                    metric_type: "Occurrence",
+                    selector: "core/setui_service:root/response_counts/AudioPolicy/UndeliverableError:count",
+                },
+                {
+                    event_codes: [
+                        "AudioPolicy",
+                        "UnsupportedError",
+                    ],
+                    metric_name: "request_responses",
+                    metric_type: "Occurrence",
+                    selector: "core/setui_service:root/response_counts/AudioPolicy/UnsupportedError:count",
+                },
+                {
+                    event_codes: [
+                        "AudioPolicy",
+                        "CommunicationError",
+                    ],
+                    metric_name: "request_responses",
+                    metric_type: "Occurrence",
+                    selector: "core/setui_service:root/response_counts/AudioPolicy/CommunicationError:count",
+                },
+                {
+                    event_codes: [
+                        "AudioPolicy",
+                        "IrrecoverableError",
+                    ],
+                    metric_name: "request_responses",
+                    metric_type: "Occurrence",
+                    selector: "core/setui_service:root/response_counts/AudioPolicy/IrrecoverableError:count",
+                },
+                {
+                    event_codes: [
+                        "AudioPolicy",
+                        "TimeoutError",
+                    ],
+                    metric_name: "request_responses",
+                    metric_type: "Occurrence",
+                    selector: "core/setui_service:root/response_counts/AudioPolicy/TimeoutError:count",
+                },
+                {
+                    event_codes: [
+                        "Display",
+                        "OkSome",
+                    ],
+                    metric_name: "request_responses",
+                    metric_type: "Occurrence",
+                    selector: "core/setui_service:root/response_counts/Display/OkSome:count",
+                },
+                {
+                    event_codes: [
+                        "Display",
+                        "OkNone",
+                    ],
+                    metric_name: "request_responses",
+                    metric_type: "Occurrence",
+                    selector: "core/setui_service:root/response_counts/Display/OkNone:count",
+                },
+                {
+                    event_codes: [
+                        "Display",
+                        "UnimplementedRequest",
+                    ],
+                    metric_name: "request_responses",
+                    metric_type: "Occurrence",
+                    selector: "core/setui_service:root/response_counts/Display/UnimplementedRequest:count",
+                },
+                {
+                    event_codes: [
+                        "Display",
+                        "StorageFailure",
+                    ],
+                    metric_name: "request_responses",
+                    metric_type: "Occurrence",
+                    selector: "core/setui_service:root/response_counts/Display/StorageFailure:count",
+                },
+                {
+                    event_codes: [
+                        "Display",
+                        "InitFailure",
+                    ],
+                    metric_name: "request_responses",
+                    metric_type: "Occurrence",
+                    selector: "core/setui_service:root/response_counts/Display/InitFailure:count",
+                },
+                {
+                    event_codes: [
+                        "Display",
+                        "RestoreFailure",
+                    ],
+                    metric_name: "request_responses",
+                    metric_type: "Occurrence",
+                    selector: "core/setui_service:root/response_counts/Display/RestoreFailure:count",
+                },
+                {
+                    event_codes: [
+                        "Display",
+                        "InvalidArgument",
+                    ],
+                    metric_name: "request_responses",
+                    metric_type: "Occurrence",
+                    selector: "core/setui_service:root/response_counts/Display/InvalidArgument:count",
+                },
+                {
+                    event_codes: [
+                        "Display",
+                        "IncompatibleArguments",
+                    ],
+                    metric_name: "request_responses",
+                    metric_type: "Occurrence",
+                    selector: "core/setui_service:root/response_counts/Display/IncompatibleArguments:count",
+                },
+                {
+                    event_codes: [
+                        "Display",
+                        "ExternalFailure",
+                    ],
+                    metric_name: "request_responses",
+                    metric_type: "Occurrence",
+                    selector: "core/setui_service:root/response_counts/Display/ExternalFailure:count",
+                },
+                {
+                    event_codes: [
+                        "Display",
+                        "UnhandledType",
+                    ],
+                    metric_name: "request_responses",
+                    metric_type: "Occurrence",
+                    selector: "core/setui_service:root/response_counts/Display/UnhandledType:count",
+                },
+                {
+                    event_codes: [
+                        "Display",
+                        "DeliveryError",
+                    ],
+                    metric_name: "request_responses",
+                    metric_type: "Occurrence",
+                    selector: "core/setui_service:root/response_counts/Display/DeliveryError:count",
+                },
+                {
+                    event_codes: [
+                        "Display",
+                        "UnexpectedError",
+                    ],
+                    metric_name: "request_responses",
+                    metric_type: "Occurrence",
+                    selector: "core/setui_service:root/response_counts/Display/UnexpectedError:count",
+                },
+                {
+                    event_codes: [
+                        "Display",
+                        "UndeliverableError",
+                    ],
+                    metric_name: "request_responses",
+                    metric_type: "Occurrence",
+                    selector: "core/setui_service:root/response_counts/Display/UndeliverableError:count",
+                },
+                {
+                    event_codes: [
+                        "Display",
+                        "UnsupportedError",
+                    ],
+                    metric_name: "request_responses",
+                    metric_type: "Occurrence",
+                    selector: "core/setui_service:root/response_counts/Display/UnsupportedError:count",
+                },
+                {
+                    event_codes: [
+                        "Display",
+                        "CommunicationError",
+                    ],
+                    metric_name: "request_responses",
+                    metric_type: "Occurrence",
+                    selector: "core/setui_service:root/response_counts/Display/CommunicationError:count",
+                },
+                {
+                    event_codes: [
+                        "Display",
+                        "IrrecoverableError",
+                    ],
+                    metric_name: "request_responses",
+                    metric_type: "Occurrence",
+                    selector: "core/setui_service:root/response_counts/Display/IrrecoverableError:count",
+                },
+                {
+                    event_codes: [
+                        "Display",
+                        "TimeoutError",
+                    ],
+                    metric_name: "request_responses",
+                    metric_type: "Occurrence",
+                    selector: "core/setui_service:root/response_counts/Display/TimeoutError:count",
+                },
+                {
+                    event_codes: [
+                        "DoNotDisturb",
+                        "OkSome",
+                    ],
+                    metric_name: "request_responses",
+                    metric_type: "Occurrence",
+                    selector: "core/setui_service:root/response_counts/DoNotDisturb/OkSome:count",
+                },
+                {
+                    event_codes: [
+                        "DoNotDisturb",
+                        "OkNone",
+                    ],
+                    metric_name: "request_responses",
+                    metric_type: "Occurrence",
+                    selector: "core/setui_service:root/response_counts/DoNotDisturb/OkNone:count",
+                },
+                {
+                    event_codes: [
+                        "DoNotDisturb",
+                        "UnimplementedRequest",
+                    ],
+                    metric_name: "request_responses",
+                    metric_type: "Occurrence",
+                    selector: "core/setui_service:root/response_counts/DoNotDisturb/UnimplementedRequest:count",
+                },
+                {
+                    event_codes: [
+                        "DoNotDisturb",
+                        "StorageFailure",
+                    ],
+                    metric_name: "request_responses",
+                    metric_type: "Occurrence",
+                    selector: "core/setui_service:root/response_counts/DoNotDisturb/StorageFailure:count",
+                },
+                {
+                    event_codes: [
+                        "DoNotDisturb",
+                        "InitFailure",
+                    ],
+                    metric_name: "request_responses",
+                    metric_type: "Occurrence",
+                    selector: "core/setui_service:root/response_counts/DoNotDisturb/InitFailure:count",
+                },
+                {
+                    event_codes: [
+                        "DoNotDisturb",
+                        "RestoreFailure",
+                    ],
+                    metric_name: "request_responses",
+                    metric_type: "Occurrence",
+                    selector: "core/setui_service:root/response_counts/DoNotDisturb/RestoreFailure:count",
+                },
+                {
+                    event_codes: [
+                        "DoNotDisturb",
+                        "InvalidArgument",
+                    ],
+                    metric_name: "request_responses",
+                    metric_type: "Occurrence",
+                    selector: "core/setui_service:root/response_counts/DoNotDisturb/InvalidArgument:count",
+                },
+                {
+                    event_codes: [
+                        "DoNotDisturb",
+                        "IncompatibleArguments",
+                    ],
+                    metric_name: "request_responses",
+                    metric_type: "Occurrence",
+                    selector: "core/setui_service:root/response_counts/DoNotDisturb/IncompatibleArguments:count",
+                },
+                {
+                    event_codes: [
+                        "DoNotDisturb",
+                        "ExternalFailure",
+                    ],
+                    metric_name: "request_responses",
+                    metric_type: "Occurrence",
+                    selector: "core/setui_service:root/response_counts/DoNotDisturb/ExternalFailure:count",
+                },
+                {
+                    event_codes: [
+                        "DoNotDisturb",
+                        "UnhandledType",
+                    ],
+                    metric_name: "request_responses",
+                    metric_type: "Occurrence",
+                    selector: "core/setui_service:root/response_counts/DoNotDisturb/UnhandledType:count",
+                },
+                {
+                    event_codes: [
+                        "DoNotDisturb",
+                        "DeliveryError",
+                    ],
+                    metric_name: "request_responses",
+                    metric_type: "Occurrence",
+                    selector: "core/setui_service:root/response_counts/DoNotDisturb/DeliveryError:count",
+                },
+                {
+                    event_codes: [
+                        "DoNotDisturb",
+                        "UnexpectedError",
+                    ],
+                    metric_name: "request_responses",
+                    metric_type: "Occurrence",
+                    selector: "core/setui_service:root/response_counts/DoNotDisturb/UnexpectedError:count",
+                },
+                {
+                    event_codes: [
+                        "DoNotDisturb",
+                        "UndeliverableError",
+                    ],
+                    metric_name: "request_responses",
+                    metric_type: "Occurrence",
+                    selector: "core/setui_service:root/response_counts/DoNotDisturb/UndeliverableError:count",
+                },
+                {
+                    event_codes: [
+                        "DoNotDisturb",
+                        "UnsupportedError",
+                    ],
+                    metric_name: "request_responses",
+                    metric_type: "Occurrence",
+                    selector: "core/setui_service:root/response_counts/DoNotDisturb/UnsupportedError:count",
+                },
+                {
+                    event_codes: [
+                        "DoNotDisturb",
+                        "CommunicationError",
+                    ],
+                    metric_name: "request_responses",
+                    metric_type: "Occurrence",
+                    selector: "core/setui_service:root/response_counts/DoNotDisturb/CommunicationError:count",
+                },
+                {
+                    event_codes: [
+                        "DoNotDisturb",
+                        "IrrecoverableError",
+                    ],
+                    metric_name: "request_responses",
+                    metric_type: "Occurrence",
+                    selector: "core/setui_service:root/response_counts/DoNotDisturb/IrrecoverableError:count",
+                },
+                {
+                    event_codes: [
+                        "DoNotDisturb",
+                        "TimeoutError",
+                    ],
+                    metric_name: "request_responses",
+                    metric_type: "Occurrence",
+                    selector: "core/setui_service:root/response_counts/DoNotDisturb/TimeoutError:count",
+                },
+                {
+                    event_codes: [
+                        "FactoryReset",
+                        "OkSome",
+                    ],
+                    metric_name: "request_responses",
+                    metric_type: "Occurrence",
+                    selector: "core/setui_service:root/response_counts/FactoryReset/OkSome:count",
+                },
+                {
+                    event_codes: [
+                        "FactoryReset",
+                        "OkNone",
+                    ],
+                    metric_name: "request_responses",
+                    metric_type: "Occurrence",
+                    selector: "core/setui_service:root/response_counts/FactoryReset/OkNone:count",
+                },
+                {
+                    event_codes: [
+                        "FactoryReset",
+                        "UnimplementedRequest",
+                    ],
+                    metric_name: "request_responses",
+                    metric_type: "Occurrence",
+                    selector: "core/setui_service:root/response_counts/FactoryReset/UnimplementedRequest:count",
+                },
+                {
+                    event_codes: [
+                        "FactoryReset",
+                        "StorageFailure",
+                    ],
+                    metric_name: "request_responses",
+                    metric_type: "Occurrence",
+                    selector: "core/setui_service:root/response_counts/FactoryReset/StorageFailure:count",
+                },
+                {
+                    event_codes: [
+                        "FactoryReset",
+                        "InitFailure",
+                    ],
+                    metric_name: "request_responses",
+                    metric_type: "Occurrence",
+                    selector: "core/setui_service:root/response_counts/FactoryReset/InitFailure:count",
+                },
+                {
+                    event_codes: [
+                        "FactoryReset",
+                        "RestoreFailure",
+                    ],
+                    metric_name: "request_responses",
+                    metric_type: "Occurrence",
+                    selector: "core/setui_service:root/response_counts/FactoryReset/RestoreFailure:count",
+                },
+                {
+                    event_codes: [
+                        "FactoryReset",
+                        "InvalidArgument",
+                    ],
+                    metric_name: "request_responses",
+                    metric_type: "Occurrence",
+                    selector: "core/setui_service:root/response_counts/FactoryReset/InvalidArgument:count",
+                },
+                {
+                    event_codes: [
+                        "FactoryReset",
+                        "IncompatibleArguments",
+                    ],
+                    metric_name: "request_responses",
+                    metric_type: "Occurrence",
+                    selector: "core/setui_service:root/response_counts/FactoryReset/IncompatibleArguments:count",
+                },
+                {
+                    event_codes: [
+                        "FactoryReset",
+                        "ExternalFailure",
+                    ],
+                    metric_name: "request_responses",
+                    metric_type: "Occurrence",
+                    selector: "core/setui_service:root/response_counts/FactoryReset/ExternalFailure:count",
+                },
+                {
+                    event_codes: [
+                        "FactoryReset",
+                        "UnhandledType",
+                    ],
+                    metric_name: "request_responses",
+                    metric_type: "Occurrence",
+                    selector: "core/setui_service:root/response_counts/FactoryReset/UnhandledType:count",
+                },
+                {
+                    event_codes: [
+                        "FactoryReset",
+                        "DeliveryError",
+                    ],
+                    metric_name: "request_responses",
+                    metric_type: "Occurrence",
+                    selector: "core/setui_service:root/response_counts/FactoryReset/DeliveryError:count",
+                },
+                {
+                    event_codes: [
+                        "FactoryReset",
+                        "UnexpectedError",
+                    ],
+                    metric_name: "request_responses",
+                    metric_type: "Occurrence",
+                    selector: "core/setui_service:root/response_counts/FactoryReset/UnexpectedError:count",
+                },
+                {
+                    event_codes: [
+                        "FactoryReset",
+                        "UndeliverableError",
+                    ],
+                    metric_name: "request_responses",
+                    metric_type: "Occurrence",
+                    selector: "core/setui_service:root/response_counts/FactoryReset/UndeliverableError:count",
+                },
+                {
+                    event_codes: [
+                        "FactoryReset",
+                        "UnsupportedError",
+                    ],
+                    metric_name: "request_responses",
+                    metric_type: "Occurrence",
+                    selector: "core/setui_service:root/response_counts/FactoryReset/UnsupportedError:count",
+                },
+                {
+                    event_codes: [
+                        "FactoryReset",
+                        "CommunicationError",
+                    ],
+                    metric_name: "request_responses",
+                    metric_type: "Occurrence",
+                    selector: "core/setui_service:root/response_counts/FactoryReset/CommunicationError:count",
+                },
+                {
+                    event_codes: [
+                        "FactoryReset",
+                        "IrrecoverableError",
+                    ],
+                    metric_name: "request_responses",
+                    metric_type: "Occurrence",
+                    selector: "core/setui_service:root/response_counts/FactoryReset/IrrecoverableError:count",
+                },
+                {
+                    event_codes: [
+                        "FactoryReset",
+                        "TimeoutError",
+                    ],
+                    metric_name: "request_responses",
+                    metric_type: "Occurrence",
+                    selector: "core/setui_service:root/response_counts/FactoryReset/TimeoutError:count",
+                },
+                {
+                    event_codes: [
+                        "Input",
+                        "OkSome",
+                    ],
+                    metric_name: "request_responses",
+                    metric_type: "Occurrence",
+                    selector: "core/setui_service:root/response_counts/Input/OkSome:count",
+                },
+                {
+                    event_codes: [
+                        "Input",
+                        "OkNone",
+                    ],
+                    metric_name: "request_responses",
+                    metric_type: "Occurrence",
+                    selector: "core/setui_service:root/response_counts/Input/OkNone:count",
+                },
+                {
+                    event_codes: [
+                        "Input",
+                        "UnimplementedRequest",
+                    ],
+                    metric_name: "request_responses",
+                    metric_type: "Occurrence",
+                    selector: "core/setui_service:root/response_counts/Input/UnimplementedRequest:count",
+                },
+                {
+                    event_codes: [
+                        "Input",
+                        "StorageFailure",
+                    ],
+                    metric_name: "request_responses",
+                    metric_type: "Occurrence",
+                    selector: "core/setui_service:root/response_counts/Input/StorageFailure:count",
+                },
+                {
+                    event_codes: [
+                        "Input",
+                        "InitFailure",
+                    ],
+                    metric_name: "request_responses",
+                    metric_type: "Occurrence",
+                    selector: "core/setui_service:root/response_counts/Input/InitFailure:count",
+                },
+                {
+                    event_codes: [
+                        "Input",
+                        "RestoreFailure",
+                    ],
+                    metric_name: "request_responses",
+                    metric_type: "Occurrence",
+                    selector: "core/setui_service:root/response_counts/Input/RestoreFailure:count",
+                },
+                {
+                    event_codes: [
+                        "Input",
+                        "InvalidArgument",
+                    ],
+                    metric_name: "request_responses",
+                    metric_type: "Occurrence",
+                    selector: "core/setui_service:root/response_counts/Input/InvalidArgument:count",
+                },
+                {
+                    event_codes: [
+                        "Input",
+                        "IncompatibleArguments",
+                    ],
+                    metric_name: "request_responses",
+                    metric_type: "Occurrence",
+                    selector: "core/setui_service:root/response_counts/Input/IncompatibleArguments:count",
+                },
+                {
+                    event_codes: [
+                        "Input",
+                        "ExternalFailure",
+                    ],
+                    metric_name: "request_responses",
+                    metric_type: "Occurrence",
+                    selector: "core/setui_service:root/response_counts/Input/ExternalFailure:count",
+                },
+                {
+                    event_codes: [
+                        "Input",
+                        "UnhandledType",
+                    ],
+                    metric_name: "request_responses",
+                    metric_type: "Occurrence",
+                    selector: "core/setui_service:root/response_counts/Input/UnhandledType:count",
+                },
+                {
+                    event_codes: [
+                        "Input",
+                        "DeliveryError",
+                    ],
+                    metric_name: "request_responses",
+                    metric_type: "Occurrence",
+                    selector: "core/setui_service:root/response_counts/Input/DeliveryError:count",
+                },
+                {
+                    event_codes: [
+                        "Input",
+                        "UnexpectedError",
+                    ],
+                    metric_name: "request_responses",
+                    metric_type: "Occurrence",
+                    selector: "core/setui_service:root/response_counts/Input/UnexpectedError:count",
+                },
+                {
+                    event_codes: [
+                        "Input",
+                        "UndeliverableError",
+                    ],
+                    metric_name: "request_responses",
+                    metric_type: "Occurrence",
+                    selector: "core/setui_service:root/response_counts/Input/UndeliverableError:count",
+                },
+                {
+                    event_codes: [
+                        "Input",
+                        "UnsupportedError",
+                    ],
+                    metric_name: "request_responses",
+                    metric_type: "Occurrence",
+                    selector: "core/setui_service:root/response_counts/Input/UnsupportedError:count",
+                },
+                {
+                    event_codes: [
+                        "Input",
+                        "CommunicationError",
+                    ],
+                    metric_name: "request_responses",
+                    metric_type: "Occurrence",
+                    selector: "core/setui_service:root/response_counts/Input/CommunicationError:count",
+                },
+                {
+                    event_codes: [
+                        "Input",
+                        "IrrecoverableError",
+                    ],
+                    metric_name: "request_responses",
+                    metric_type: "Occurrence",
+                    selector: "core/setui_service:root/response_counts/Input/IrrecoverableError:count",
+                },
+                {
+                    event_codes: [
+                        "Input",
+                        "TimeoutError",
+                    ],
+                    metric_name: "request_responses",
+                    metric_type: "Occurrence",
+                    selector: "core/setui_service:root/response_counts/Input/TimeoutError:count",
+                },
+                {
+                    event_codes: [
+                        "Intl",
+                        "OkSome",
+                    ],
+                    metric_name: "request_responses",
+                    metric_type: "Occurrence",
+                    selector: "core/setui_service:root/response_counts/Intl/OkSome:count",
+                },
+                {
+                    event_codes: [
+                        "Intl",
+                        "OkNone",
+                    ],
+                    metric_name: "request_responses",
+                    metric_type: "Occurrence",
+                    selector: "core/setui_service:root/response_counts/Intl/OkNone:count",
+                },
+                {
+                    event_codes: [
+                        "Intl",
+                        "UnimplementedRequest",
+                    ],
+                    metric_name: "request_responses",
+                    metric_type: "Occurrence",
+                    selector: "core/setui_service:root/response_counts/Intl/UnimplementedRequest:count",
+                },
+                {
+                    event_codes: [
+                        "Intl",
+                        "StorageFailure",
+                    ],
+                    metric_name: "request_responses",
+                    metric_type: "Occurrence",
+                    selector: "core/setui_service:root/response_counts/Intl/StorageFailure:count",
+                },
+                {
+                    event_codes: [
+                        "Intl",
+                        "InitFailure",
+                    ],
+                    metric_name: "request_responses",
+                    metric_type: "Occurrence",
+                    selector: "core/setui_service:root/response_counts/Intl/InitFailure:count",
+                },
+                {
+                    event_codes: [
+                        "Intl",
+                        "RestoreFailure",
+                    ],
+                    metric_name: "request_responses",
+                    metric_type: "Occurrence",
+                    selector: "core/setui_service:root/response_counts/Intl/RestoreFailure:count",
+                },
+                {
+                    event_codes: [
+                        "Intl",
+                        "InvalidArgument",
+                    ],
+                    metric_name: "request_responses",
+                    metric_type: "Occurrence",
+                    selector: "core/setui_service:root/response_counts/Intl/InvalidArgument:count",
+                },
+                {
+                    event_codes: [
+                        "Intl",
+                        "IncompatibleArguments",
+                    ],
+                    metric_name: "request_responses",
+                    metric_type: "Occurrence",
+                    selector: "core/setui_service:root/response_counts/Intl/IncompatibleArguments:count",
+                },
+                {
+                    event_codes: [
+                        "Intl",
+                        "ExternalFailure",
+                    ],
+                    metric_name: "request_responses",
+                    metric_type: "Occurrence",
+                    selector: "core/setui_service:root/response_counts/Intl/ExternalFailure:count",
+                },
+                {
+                    event_codes: [
+                        "Intl",
+                        "UnhandledType",
+                    ],
+                    metric_name: "request_responses",
+                    metric_type: "Occurrence",
+                    selector: "core/setui_service:root/response_counts/Intl/UnhandledType:count",
+                },
+                {
+                    event_codes: [
+                        "Intl",
+                        "DeliveryError",
+                    ],
+                    metric_name: "request_responses",
+                    metric_type: "Occurrence",
+                    selector: "core/setui_service:root/response_counts/Intl/DeliveryError:count",
+                },
+                {
+                    event_codes: [
+                        "Intl",
+                        "UnexpectedError",
+                    ],
+                    metric_name: "request_responses",
+                    metric_type: "Occurrence",
+                    selector: "core/setui_service:root/response_counts/Intl/UnexpectedError:count",
+                },
+                {
+                    event_codes: [
+                        "Intl",
+                        "UndeliverableError",
+                    ],
+                    metric_name: "request_responses",
+                    metric_type: "Occurrence",
+                    selector: "core/setui_service:root/response_counts/Intl/UndeliverableError:count",
+                },
+                {
+                    event_codes: [
+                        "Intl",
+                        "UnsupportedError",
+                    ],
+                    metric_name: "request_responses",
+                    metric_type: "Occurrence",
+                    selector: "core/setui_service:root/response_counts/Intl/UnsupportedError:count",
+                },
+                {
+                    event_codes: [
+                        "Intl",
+                        "CommunicationError",
+                    ],
+                    metric_name: "request_responses",
+                    metric_type: "Occurrence",
+                    selector: "core/setui_service:root/response_counts/Intl/CommunicationError:count",
+                },
+                {
+                    event_codes: [
+                        "Intl",
+                        "IrrecoverableError",
+                    ],
+                    metric_name: "request_responses",
+                    metric_type: "Occurrence",
+                    selector: "core/setui_service:root/response_counts/Intl/IrrecoverableError:count",
+                },
+                {
+                    event_codes: [
+                        "Intl",
+                        "TimeoutError",
+                    ],
+                    metric_name: "request_responses",
+                    metric_type: "Occurrence",
+                    selector: "core/setui_service:root/response_counts/Intl/TimeoutError:count",
+                },
+                {
+                    event_codes: [
+                        "Light",
+                        "OkSome",
+                    ],
+                    metric_name: "request_responses",
+                    metric_type: "Occurrence",
+                    selector: "core/setui_service:root/response_counts/Light/OkSome:count",
+                },
+                {
+                    event_codes: [
+                        "Light",
+                        "OkNone",
+                    ],
+                    metric_name: "request_responses",
+                    metric_type: "Occurrence",
+                    selector: "core/setui_service:root/response_counts/Light/OkNone:count",
+                },
+                {
+                    event_codes: [
+                        "Light",
+                        "UnimplementedRequest",
+                    ],
+                    metric_name: "request_responses",
+                    metric_type: "Occurrence",
+                    selector: "core/setui_service:root/response_counts/Light/UnimplementedRequest:count",
+                },
+                {
+                    event_codes: [
+                        "Light",
+                        "StorageFailure",
+                    ],
+                    metric_name: "request_responses",
+                    metric_type: "Occurrence",
+                    selector: "core/setui_service:root/response_counts/Light/StorageFailure:count",
+                },
+                {
+                    event_codes: [
+                        "Light",
+                        "InitFailure",
+                    ],
+                    metric_name: "request_responses",
+                    metric_type: "Occurrence",
+                    selector: "core/setui_service:root/response_counts/Light/InitFailure:count",
+                },
+                {
+                    event_codes: [
+                        "Light",
+                        "RestoreFailure",
+                    ],
+                    metric_name: "request_responses",
+                    metric_type: "Occurrence",
+                    selector: "core/setui_service:root/response_counts/Light/RestoreFailure:count",
+                },
+                {
+                    event_codes: [
+                        "Light",
+                        "InvalidArgument",
+                    ],
+                    metric_name: "request_responses",
+                    metric_type: "Occurrence",
+                    selector: "core/setui_service:root/response_counts/Light/InvalidArgument:count",
+                },
+                {
+                    event_codes: [
+                        "Light",
+                        "IncompatibleArguments",
+                    ],
+                    metric_name: "request_responses",
+                    metric_type: "Occurrence",
+                    selector: "core/setui_service:root/response_counts/Light/IncompatibleArguments:count",
+                },
+                {
+                    event_codes: [
+                        "Light",
+                        "ExternalFailure",
+                    ],
+                    metric_name: "request_responses",
+                    metric_type: "Occurrence",
+                    selector: "core/setui_service:root/response_counts/Light/ExternalFailure:count",
+                },
+                {
+                    event_codes: [
+                        "Light",
+                        "UnhandledType",
+                    ],
+                    metric_name: "request_responses",
+                    metric_type: "Occurrence",
+                    selector: "core/setui_service:root/response_counts/Light/UnhandledType:count",
+                },
+                {
+                    event_codes: [
+                        "Light",
+                        "DeliveryError",
+                    ],
+                    metric_name: "request_responses",
+                    metric_type: "Occurrence",
+                    selector: "core/setui_service:root/response_counts/Light/DeliveryError:count",
+                },
+                {
+                    event_codes: [
+                        "Light",
+                        "UnexpectedError",
+                    ],
+                    metric_name: "request_responses",
+                    metric_type: "Occurrence",
+                    selector: "core/setui_service:root/response_counts/Light/UnexpectedError:count",
+                },
+                {
+                    event_codes: [
+                        "Light",
+                        "UndeliverableError",
+                    ],
+                    metric_name: "request_responses",
+                    metric_type: "Occurrence",
+                    selector: "core/setui_service:root/response_counts/Light/UndeliverableError:count",
+                },
+                {
+                    event_codes: [
+                        "Light",
+                        "UnsupportedError",
+                    ],
+                    metric_name: "request_responses",
+                    metric_type: "Occurrence",
+                    selector: "core/setui_service:root/response_counts/Light/UnsupportedError:count",
+                },
+                {
+                    event_codes: [
+                        "Light",
+                        "CommunicationError",
+                    ],
+                    metric_name: "request_responses",
+                    metric_type: "Occurrence",
+                    selector: "core/setui_service:root/response_counts/Light/CommunicationError:count",
+                },
+                {
+                    event_codes: [
+                        "Light",
+                        "IrrecoverableError",
+                    ],
+                    metric_name: "request_responses",
+                    metric_type: "Occurrence",
+                    selector: "core/setui_service:root/response_counts/Light/IrrecoverableError:count",
+                },
+                {
+                    event_codes: [
+                        "Light",
+                        "TimeoutError",
+                    ],
+                    metric_name: "request_responses",
+                    metric_type: "Occurrence",
+                    selector: "core/setui_service:root/response_counts/Light/TimeoutError:count",
+                },
+                {
+                    event_codes: [
+                        "NightMode",
+                        "OkSome",
+                    ],
+                    metric_name: "request_responses",
+                    metric_type: "Occurrence",
+                    selector: "core/setui_service:root/response_counts/NightMode/OkSome:count",
+                },
+                {
+                    event_codes: [
+                        "NightMode",
+                        "OkNone",
+                    ],
+                    metric_name: "request_responses",
+                    metric_type: "Occurrence",
+                    selector: "core/setui_service:root/response_counts/NightMode/OkNone:count",
+                },
+                {
+                    event_codes: [
+                        "NightMode",
+                        "UnimplementedRequest",
+                    ],
+                    metric_name: "request_responses",
+                    metric_type: "Occurrence",
+                    selector: "core/setui_service:root/response_counts/NightMode/UnimplementedRequest:count",
+                },
+                {
+                    event_codes: [
+                        "NightMode",
+                        "StorageFailure",
+                    ],
+                    metric_name: "request_responses",
+                    metric_type: "Occurrence",
+                    selector: "core/setui_service:root/response_counts/NightMode/StorageFailure:count",
+                },
+                {
+                    event_codes: [
+                        "NightMode",
+                        "InitFailure",
+                    ],
+                    metric_name: "request_responses",
+                    metric_type: "Occurrence",
+                    selector: "core/setui_service:root/response_counts/NightMode/InitFailure:count",
+                },
+                {
+                    event_codes: [
+                        "NightMode",
+                        "RestoreFailure",
+                    ],
+                    metric_name: "request_responses",
+                    metric_type: "Occurrence",
+                    selector: "core/setui_service:root/response_counts/NightMode/RestoreFailure:count",
+                },
+                {
+                    event_codes: [
+                        "NightMode",
+                        "InvalidArgument",
+                    ],
+                    metric_name: "request_responses",
+                    metric_type: "Occurrence",
+                    selector: "core/setui_service:root/response_counts/NightMode/InvalidArgument:count",
+                },
+                {
+                    event_codes: [
+                        "NightMode",
+                        "IncompatibleArguments",
+                    ],
+                    metric_name: "request_responses",
+                    metric_type: "Occurrence",
+                    selector: "core/setui_service:root/response_counts/NightMode/IncompatibleArguments:count",
+                },
+                {
+                    event_codes: [
+                        "NightMode",
+                        "ExternalFailure",
+                    ],
+                    metric_name: "request_responses",
+                    metric_type: "Occurrence",
+                    selector: "core/setui_service:root/response_counts/NightMode/ExternalFailure:count",
+                },
+                {
+                    event_codes: [
+                        "NightMode",
+                        "UnhandledType",
+                    ],
+                    metric_name: "request_responses",
+                    metric_type: "Occurrence",
+                    selector: "core/setui_service:root/response_counts/NightMode/UnhandledType:count",
+                },
+                {
+                    event_codes: [
+                        "NightMode",
+                        "DeliveryError",
+                    ],
+                    metric_name: "request_responses",
+                    metric_type: "Occurrence",
+                    selector: "core/setui_service:root/response_counts/NightMode/DeliveryError:count",
+                },
+                {
+                    event_codes: [
+                        "NightMode",
+                        "UnexpectedError",
+                    ],
+                    metric_name: "request_responses",
+                    metric_type: "Occurrence",
+                    selector: "core/setui_service:root/response_counts/NightMode/UnexpectedError:count",
+                },
+                {
+                    event_codes: [
+                        "NightMode",
+                        "UndeliverableError",
+                    ],
+                    metric_name: "request_responses",
+                    metric_type: "Occurrence",
+                    selector: "core/setui_service:root/response_counts/NightMode/UndeliverableError:count",
+                },
+                {
+                    event_codes: [
+                        "NightMode",
+                        "UnsupportedError",
+                    ],
+                    metric_name: "request_responses",
+                    metric_type: "Occurrence",
+                    selector: "core/setui_service:root/response_counts/NightMode/UnsupportedError:count",
+                },
+                {
+                    event_codes: [
+                        "NightMode",
+                        "CommunicationError",
+                    ],
+                    metric_name: "request_responses",
+                    metric_type: "Occurrence",
+                    selector: "core/setui_service:root/response_counts/NightMode/CommunicationError:count",
+                },
+                {
+                    event_codes: [
+                        "NightMode",
+                        "IrrecoverableError",
+                    ],
+                    metric_name: "request_responses",
+                    metric_type: "Occurrence",
+                    selector: "core/setui_service:root/response_counts/NightMode/IrrecoverableError:count",
+                },
+                {
+                    event_codes: [
+                        "NightMode",
+                        "TimeoutError",
+                    ],
+                    metric_name: "request_responses",
+                    metric_type: "Occurrence",
+                    selector: "core/setui_service:root/response_counts/NightMode/TimeoutError:count",
+                },
+                {
+                    event_codes: [
+                        "Privacy",
+                        "OkSome",
+                    ],
+                    metric_name: "request_responses",
+                    metric_type: "Occurrence",
+                    selector: "core/setui_service:root/response_counts/Privacy/OkSome:count",
+                },
+                {
+                    event_codes: [
+                        "Privacy",
+                        "OkNone",
+                    ],
+                    metric_name: "request_responses",
+                    metric_type: "Occurrence",
+                    selector: "core/setui_service:root/response_counts/Privacy/OkNone:count",
+                },
+                {
+                    event_codes: [
+                        "Privacy",
+                        "UnimplementedRequest",
+                    ],
+                    metric_name: "request_responses",
+                    metric_type: "Occurrence",
+                    selector: "core/setui_service:root/response_counts/Privacy/UnimplementedRequest:count",
+                },
+                {
+                    event_codes: [
+                        "Privacy",
+                        "StorageFailure",
+                    ],
+                    metric_name: "request_responses",
+                    metric_type: "Occurrence",
+                    selector: "core/setui_service:root/response_counts/Privacy/StorageFailure:count",
+                },
+                {
+                    event_codes: [
+                        "Privacy",
+                        "InitFailure",
+                    ],
+                    metric_name: "request_responses",
+                    metric_type: "Occurrence",
+                    selector: "core/setui_service:root/response_counts/Privacy/InitFailure:count",
+                },
+                {
+                    event_codes: [
+                        "Privacy",
+                        "RestoreFailure",
+                    ],
+                    metric_name: "request_responses",
+                    metric_type: "Occurrence",
+                    selector: "core/setui_service:root/response_counts/Privacy/RestoreFailure:count",
+                },
+                {
+                    event_codes: [
+                        "Privacy",
+                        "InvalidArgument",
+                    ],
+                    metric_name: "request_responses",
+                    metric_type: "Occurrence",
+                    selector: "core/setui_service:root/response_counts/Privacy/InvalidArgument:count",
+                },
+                {
+                    event_codes: [
+                        "Privacy",
+                        "IncompatibleArguments",
+                    ],
+                    metric_name: "request_responses",
+                    metric_type: "Occurrence",
+                    selector: "core/setui_service:root/response_counts/Privacy/IncompatibleArguments:count",
+                },
+                {
+                    event_codes: [
+                        "Privacy",
+                        "ExternalFailure",
+                    ],
+                    metric_name: "request_responses",
+                    metric_type: "Occurrence",
+                    selector: "core/setui_service:root/response_counts/Privacy/ExternalFailure:count",
+                },
+                {
+                    event_codes: [
+                        "Privacy",
+                        "UnhandledType",
+                    ],
+                    metric_name: "request_responses",
+                    metric_type: "Occurrence",
+                    selector: "core/setui_service:root/response_counts/Privacy/UnhandledType:count",
+                },
+                {
+                    event_codes: [
+                        "Privacy",
+                        "DeliveryError",
+                    ],
+                    metric_name: "request_responses",
+                    metric_type: "Occurrence",
+                    selector: "core/setui_service:root/response_counts/Privacy/DeliveryError:count",
+                },
+                {
+                    event_codes: [
+                        "Privacy",
+                        "UnexpectedError",
+                    ],
+                    metric_name: "request_responses",
+                    metric_type: "Occurrence",
+                    selector: "core/setui_service:root/response_counts/Privacy/UnexpectedError:count",
+                },
+                {
+                    event_codes: [
+                        "Privacy",
+                        "UndeliverableError",
+                    ],
+                    metric_name: "request_responses",
+                    metric_type: "Occurrence",
+                    selector: "core/setui_service:root/response_counts/Privacy/UndeliverableError:count",
+                },
+                {
+                    event_codes: [
+                        "Privacy",
+                        "UnsupportedError",
+                    ],
+                    metric_name: "request_responses",
+                    metric_type: "Occurrence",
+                    selector: "core/setui_service:root/response_counts/Privacy/UnsupportedError:count",
+                },
+                {
+                    event_codes: [
+                        "Privacy",
+                        "CommunicationError",
+                    ],
+                    metric_name: "request_responses",
+                    metric_type: "Occurrence",
+                    selector: "core/setui_service:root/response_counts/Privacy/CommunicationError:count",
+                },
+                {
+                    event_codes: [
+                        "Privacy",
+                        "IrrecoverableError",
+                    ],
+                    metric_name: "request_responses",
+                    metric_type: "Occurrence",
+                    selector: "core/setui_service:root/response_counts/Privacy/IrrecoverableError:count",
+                },
+                {
+                    event_codes: [
+                        "Privacy",
+                        "TimeoutError",
+                    ],
+                    metric_name: "request_responses",
+                    metric_type: "Occurrence",
+                    selector: "core/setui_service:root/response_counts/Privacy/TimeoutError:count",
+                },
+                {
+                    event_codes: [
+                        "Setup",
+                        "OkSome",
+                    ],
+                    metric_name: "request_responses",
+                    metric_type: "Occurrence",
+                    selector: "core/setui_service:root/response_counts/Setup/OkSome:count",
+                },
+                {
+                    event_codes: [
+                        "Setup",
+                        "OkNone",
+                    ],
+                    metric_name: "request_responses",
+                    metric_type: "Occurrence",
+                    selector: "core/setui_service:root/response_counts/Setup/OkNone:count",
+                },
+                {
+                    event_codes: [
+                        "Setup",
+                        "UnimplementedRequest",
+                    ],
+                    metric_name: "request_responses",
+                    metric_type: "Occurrence",
+                    selector: "core/setui_service:root/response_counts/Setup/UnimplementedRequest:count",
+                },
+                {
+                    event_codes: [
+                        "Setup",
+                        "StorageFailure",
+                    ],
+                    metric_name: "request_responses",
+                    metric_type: "Occurrence",
+                    selector: "core/setui_service:root/response_counts/Setup/StorageFailure:count",
+                },
+                {
+                    event_codes: [
+                        "Setup",
+                        "InitFailure",
+                    ],
+                    metric_name: "request_responses",
+                    metric_type: "Occurrence",
+                    selector: "core/setui_service:root/response_counts/Setup/InitFailure:count",
+                },
+                {
+                    event_codes: [
+                        "Setup",
+                        "RestoreFailure",
+                    ],
+                    metric_name: "request_responses",
+                    metric_type: "Occurrence",
+                    selector: "core/setui_service:root/response_counts/Setup/RestoreFailure:count",
+                },
+                {
+                    event_codes: [
+                        "Setup",
+                        "InvalidArgument",
+                    ],
+                    metric_name: "request_responses",
+                    metric_type: "Occurrence",
+                    selector: "core/setui_service:root/response_counts/Setup/InvalidArgument:count",
+                },
+                {
+                    event_codes: [
+                        "Setup",
+                        "IncompatibleArguments",
+                    ],
+                    metric_name: "request_responses",
+                    metric_type: "Occurrence",
+                    selector: "core/setui_service:root/response_counts/Setup/IncompatibleArguments:count",
+                },
+                {
+                    event_codes: [
+                        "Setup",
+                        "ExternalFailure",
+                    ],
+                    metric_name: "request_responses",
+                    metric_type: "Occurrence",
+                    selector: "core/setui_service:root/response_counts/Setup/ExternalFailure:count",
+                },
+                {
+                    event_codes: [
+                        "Setup",
+                        "UnhandledType",
+                    ],
+                    metric_name: "request_responses",
+                    metric_type: "Occurrence",
+                    selector: "core/setui_service:root/response_counts/Setup/UnhandledType:count",
+                },
+                {
+                    event_codes: [
+                        "Setup",
+                        "DeliveryError",
+                    ],
+                    metric_name: "request_responses",
+                    metric_type: "Occurrence",
+                    selector: "core/setui_service:root/response_counts/Setup/DeliveryError:count",
+                },
+                {
+                    event_codes: [
+                        "Setup",
+                        "UnexpectedError",
+                    ],
+                    metric_name: "request_responses",
+                    metric_type: "Occurrence",
+                    selector: "core/setui_service:root/response_counts/Setup/UnexpectedError:count",
+                },
+                {
+                    event_codes: [
+                        "Setup",
+                        "UndeliverableError",
+                    ],
+                    metric_name: "request_responses",
+                    metric_type: "Occurrence",
+                    selector: "core/setui_service:root/response_counts/Setup/UndeliverableError:count",
+                },
+                {
+                    event_codes: [
+                        "Setup",
+                        "UnsupportedError",
+                    ],
+                    metric_name: "request_responses",
+                    metric_type: "Occurrence",
+                    selector: "core/setui_service:root/response_counts/Setup/UnsupportedError:count",
+                },
+                {
+                    event_codes: [
+                        "Setup",
+                        "CommunicationError",
+                    ],
+                    metric_name: "request_responses",
+                    metric_type: "Occurrence",
+                    selector: "core/setui_service:root/response_counts/Setup/CommunicationError:count",
+                },
+                {
+                    event_codes: [
+                        "Setup",
+                        "IrrecoverableError",
+                    ],
+                    metric_name: "request_responses",
+                    metric_type: "Occurrence",
+                    selector: "core/setui_service:root/response_counts/Setup/IrrecoverableError:count",
+                },
+                {
+                    event_codes: [
+                        "Setup",
+                        "TimeoutError",
+                    ],
+                    metric_name: "request_responses",
+                    metric_type: "Occurrence",
+                    selector: "core/setui_service:root/response_counts/Setup/TimeoutError:count",
+                },
+                {
+                    event_codes: [
+                        "Keyboard",
+                        "OkSome",
+                    ],
+                    metric_name: "request_responses",
+                    metric_type: "Occurrence",
+                    selector: "core/setui_service:root/response_counts/Keyboard/OkSome:count",
+                },
+                {
+                    event_codes: [
+                        "Keyboard",
+                        "OkNone",
+                    ],
+                    metric_name: "request_responses",
+                    metric_type: "Occurrence",
+                    selector: "core/setui_service:root/response_counts/Keyboard/OkNone:count",
+                },
+                {
+                    event_codes: [
+                        "Keyboard",
+                        "UnimplementedRequest",
+                    ],
+                    metric_name: "request_responses",
+                    metric_type: "Occurrence",
+                    selector: "core/setui_service:root/response_counts/Keyboard/UnimplementedRequest:count",
+                },
+                {
+                    event_codes: [
+                        "Keyboard",
+                        "StorageFailure",
+                    ],
+                    metric_name: "request_responses",
+                    metric_type: "Occurrence",
+                    selector: "core/setui_service:root/response_counts/Keyboard/StorageFailure:count",
+                },
+                {
+                    event_codes: [
+                        "Keyboard",
+                        "InitFailure",
+                    ],
+                    metric_name: "request_responses",
+                    metric_type: "Occurrence",
+                    selector: "core/setui_service:root/response_counts/Keyboard/InitFailure:count",
+                },
+                {
+                    event_codes: [
+                        "Keyboard",
+                        "RestoreFailure",
+                    ],
+                    metric_name: "request_responses",
+                    metric_type: "Occurrence",
+                    selector: "core/setui_service:root/response_counts/Keyboard/RestoreFailure:count",
+                },
+                {
+                    event_codes: [
+                        "Keyboard",
+                        "InvalidArgument",
+                    ],
+                    metric_name: "request_responses",
+                    metric_type: "Occurrence",
+                    selector: "core/setui_service:root/response_counts/Keyboard/InvalidArgument:count",
+                },
+                {
+                    event_codes: [
+                        "Keyboard",
+                        "IncompatibleArguments",
+                    ],
+                    metric_name: "request_responses",
+                    metric_type: "Occurrence",
+                    selector: "core/setui_service:root/response_counts/Keyboard/IncompatibleArguments:count",
+                },
+                {
+                    event_codes: [
+                        "Keyboard",
+                        "ExternalFailure",
+                    ],
+                    metric_name: "request_responses",
+                    metric_type: "Occurrence",
+                    selector: "core/setui_service:root/response_counts/Keyboard/ExternalFailure:count",
+                },
+                {
+                    event_codes: [
+                        "Keyboard",
+                        "UnhandledType",
+                    ],
+                    metric_name: "request_responses",
+                    metric_type: "Occurrence",
+                    selector: "core/setui_service:root/response_counts/Keyboard/UnhandledType:count",
+                },
+                {
+                    event_codes: [
+                        "Keyboard",
+                        "DeliveryError",
+                    ],
+                    metric_name: "request_responses",
+                    metric_type: "Occurrence",
+                    selector: "core/setui_service:root/response_counts/Keyboard/DeliveryError:count",
+                },
+                {
+                    event_codes: [
+                        "Keyboard",
+                        "UnexpectedError",
+                    ],
+                    metric_name: "request_responses",
+                    metric_type: "Occurrence",
+                    selector: "core/setui_service:root/response_counts/Keyboard/UnexpectedError:count",
+                },
+                {
+                    event_codes: [
+                        "Keyboard",
+                        "UndeliverableError",
+                    ],
+                    metric_name: "request_responses",
+                    metric_type: "Occurrence",
+                    selector: "core/setui_service:root/response_counts/Keyboard/UndeliverableError:count",
+                },
+                {
+                    event_codes: [
+                        "Keyboard",
+                        "UnsupportedError",
+                    ],
+                    metric_name: "request_responses",
+                    metric_type: "Occurrence",
+                    selector: "core/setui_service:root/response_counts/Keyboard/UnsupportedError:count",
+                },
+                {
+                    event_codes: [
+                        "Keyboard",
+                        "CommunicationError",
+                    ],
+                    metric_name: "request_responses",
+                    metric_type: "Occurrence",
+                    selector: "core/setui_service:root/response_counts/Keyboard/CommunicationError:count",
+                },
+                {
+                    event_codes: [
+                        "Keyboard",
+                        "IrrecoverableError",
+                    ],
+                    metric_name: "request_responses",
+                    metric_type: "Occurrence",
+                    selector: "core/setui_service:root/response_counts/Keyboard/IrrecoverableError:count",
+                },
+                {
+                    event_codes: [
+                        "Keyboard",
+                        "TimeoutError",
+                    ],
+                    metric_name: "request_responses",
+                    metric_type: "Occurrence",
+                    selector: "core/setui_service:root/response_counts/Keyboard/TimeoutError:count",
+                },
+                {
+                    event_codes: [
+                        "LightSensor",
+                        "OkSome",
+                    ],
+                    metric_name: "request_responses",
+                    metric_type: "Occurrence",
+                    selector: "core/setui_service:root/response_counts/LightSensor/OkSome:count",
+                },
+                {
+                    event_codes: [
+                        "LightSensor",
+                        "OkNone",
+                    ],
+                    metric_name: "request_responses",
+                    metric_type: "Occurrence",
+                    selector: "core/setui_service:root/response_counts/LightSensor/OkNone:count",
+                },
+                {
+                    event_codes: [
+                        "LightSensor",
+                        "UnimplementedRequest",
+                    ],
+                    metric_name: "request_responses",
+                    metric_type: "Occurrence",
+                    selector: "core/setui_service:root/response_counts/LightSensor/UnimplementedRequest:count",
+                },
+                {
+                    event_codes: [
+                        "LightSensor",
+                        "StorageFailure",
+                    ],
+                    metric_name: "request_responses",
+                    metric_type: "Occurrence",
+                    selector: "core/setui_service:root/response_counts/LightSensor/StorageFailure:count",
+                },
+                {
+                    event_codes: [
+                        "LightSensor",
+                        "InitFailure",
+                    ],
+                    metric_name: "request_responses",
+                    metric_type: "Occurrence",
+                    selector: "core/setui_service:root/response_counts/LightSensor/InitFailure:count",
+                },
+                {
+                    event_codes: [
+                        "LightSensor",
+                        "RestoreFailure",
+                    ],
+                    metric_name: "request_responses",
+                    metric_type: "Occurrence",
+                    selector: "core/setui_service:root/response_counts/LightSensor/RestoreFailure:count",
+                },
+                {
+                    event_codes: [
+                        "LightSensor",
+                        "InvalidArgument",
+                    ],
+                    metric_name: "request_responses",
+                    metric_type: "Occurrence",
+                    selector: "core/setui_service:root/response_counts/LightSensor/InvalidArgument:count",
+                },
+                {
+                    event_codes: [
+                        "LightSensor",
+                        "IncompatibleArguments",
+                    ],
+                    metric_name: "request_responses",
+                    metric_type: "Occurrence",
+                    selector: "core/setui_service:root/response_counts/LightSensor/IncompatibleArguments:count",
+                },
+                {
+                    event_codes: [
+                        "LightSensor",
+                        "ExternalFailure",
+                    ],
+                    metric_name: "request_responses",
+                    metric_type: "Occurrence",
+                    selector: "core/setui_service:root/response_counts/LightSensor/ExternalFailure:count",
+                },
+                {
+                    event_codes: [
+                        "LightSensor",
+                        "UnhandledType",
+                    ],
+                    metric_name: "request_responses",
+                    metric_type: "Occurrence",
+                    selector: "core/setui_service:root/response_counts/LightSensor/UnhandledType:count",
+                },
+                {
+                    event_codes: [
+                        "LightSensor",
+                        "DeliveryError",
+                    ],
+                    metric_name: "request_responses",
+                    metric_type: "Occurrence",
+                    selector: "core/setui_service:root/response_counts/LightSensor/DeliveryError:count",
+                },
+                {
+                    event_codes: [
+                        "LightSensor",
+                        "UnexpectedError",
+                    ],
+                    metric_name: "request_responses",
+                    metric_type: "Occurrence",
+                    selector: "core/setui_service:root/response_counts/LightSensor/UnexpectedError:count",
+                },
+                {
+                    event_codes: [
+                        "LightSensor",
+                        "UndeliverableError",
+                    ],
+                    metric_name: "request_responses",
+                    metric_type: "Occurrence",
+                    selector: "core/setui_service:root/response_counts/LightSensor/UndeliverableError:count",
+                },
+                {
+                    event_codes: [
+                        "LightSensor",
+                        "UnsupportedError",
+                    ],
+                    metric_name: "request_responses",
+                    metric_type: "Occurrence",
+                    selector: "core/setui_service:root/response_counts/LightSensor/UnsupportedError:count",
+                },
+                {
+                    event_codes: [
+                        "LightSensor",
+                        "CommunicationError",
+                    ],
+                    metric_name: "request_responses",
+                    metric_type: "Occurrence",
+                    selector: "core/setui_service:root/response_counts/LightSensor/CommunicationError:count",
+                },
+                {
+                    event_codes: [
+                        "LightSensor",
+                        "IrrecoverableError",
+                    ],
+                    metric_name: "request_responses",
+                    metric_type: "Occurrence",
+                    selector: "core/setui_service:root/response_counts/LightSensor/IrrecoverableError:count",
+                },
+                {
+                    event_codes: [
+                        "LightSensor",
+                        "TimeoutError",
+                    ],
+                    metric_name: "request_responses",
+                    metric_type: "Occurrence",
+                    selector: "core/setui_service:root/response_counts/LightSensor/TimeoutError:count",
+                },
+                {
+                    event_codes: [
+                        "Accessibility",
+                    ],
+                    metric_name: "active_listeners",
+                    metric_type: "Integer",
+                    selector: "core/setui_service:root/active_listeners/Accessibility:count",
+                },
+                {
+                    event_codes: [
+                        "Audio",
+                    ],
+                    metric_name: "active_listeners",
+                    metric_type: "Integer",
+                    selector: "core/setui_service:root/active_listeners/Audio:count",
+                },
+                {
+                    event_codes: [
+                        "AudioPolicy",
+                    ],
+                    metric_name: "active_listeners",
+                    metric_type: "Integer",
+                    selector: "core/setui_service:root/active_listeners/AudioPolicy:count",
+                },
+                {
+                    event_codes: [
+                        "Display",
+                    ],
+                    metric_name: "active_listeners",
+                    metric_type: "Integer",
+                    selector: "core/setui_service:root/active_listeners/Display:count",
+                },
+                {
+                    event_codes: [
+                        "DoNotDisturb",
+                    ],
+                    metric_name: "active_listeners",
+                    metric_type: "Integer",
+                    selector: "core/setui_service:root/active_listeners/DoNotDisturb:count",
+                },
+                {
+                    event_codes: [
+                        "FactoryReset",
+                    ],
+                    metric_name: "active_listeners",
+                    metric_type: "Integer",
+                    selector: "core/setui_service:root/active_listeners/FactoryReset:count",
+                },
+                {
+                    event_codes: [
+                        "Input",
+                    ],
+                    metric_name: "active_listeners",
+                    metric_type: "Integer",
+                    selector: "core/setui_service:root/active_listeners/Input:count",
+                },
+                {
+                    event_codes: [
+                        "Intl",
+                    ],
+                    metric_name: "active_listeners",
+                    metric_type: "Integer",
+                    selector: "core/setui_service:root/active_listeners/Intl:count",
+                },
+                {
+                    event_codes: [
+                        "Light",
+                    ],
+                    metric_name: "active_listeners",
+                    metric_type: "Integer",
+                    selector: "core/setui_service:root/active_listeners/Light:count",
+                },
+                {
+                    event_codes: [
+                        "NightMode",
+                    ],
+                    metric_name: "active_listeners",
+                    metric_type: "Integer",
+                    selector: "core/setui_service:root/active_listeners/NightMode:count",
+                },
+                {
+                    event_codes: [
+                        "Privacy",
+                    ],
+                    metric_name: "active_listeners",
+                    metric_type: "Integer",
+                    selector: "core/setui_service:root/active_listeners/Privacy:count",
+                },
+                {
+                    event_codes: [
+                        "Setup",
+                    ],
+                    metric_name: "active_listeners",
+                    metric_type: "Integer",
+                    selector: "core/setui_service:root/active_listeners/Setup:count",
+                },
+                {
+                    event_codes: [
+                        "Keyboard",
+                    ],
+                    metric_name: "active_listeners",
+                    metric_type: "Integer",
+                    selector: "core/setui_service:root/active_listeners/Keyboard:count",
+                },
+                {
+                    event_codes: [
+                        "LightSensor",
+                    ],
+                    metric_name: "active_listeners",
+                    metric_type: "Integer",
+                    selector: "core/setui_service:root/active_listeners/LightSensor:count",
+                },
+                {
+                    event_codes: [
+                        "Accessibility",
+                        "Get",
+                    ],
+                    metric_name: "api_usage_counts",
+                    metric_type: "Occurrence",
+                    selector: "core/setui_service:root/api_usage_counts/Accessibility/Get:count",
+                },
+                {
+                    event_codes: [
+                        "Accessibility",
+                        "Listen",
+                    ],
+                    metric_name: "api_usage_counts",
+                    metric_type: "Occurrence",
+                    selector: "core/setui_service:root/api_usage_counts/Accessibility/Listen:count",
+                },
+                {
+                    event_codes: [
+                        "Accessibility",
+                        "Set",
+                    ],
+                    metric_name: "api_usage_counts",
+                    metric_type: "Occurrence",
+                    selector: "core/setui_service:root/api_usage_counts/Accessibility/Set:count",
+                },
+                {
+                    event_codes: [
+                        "Accessibility",
+                        "Restore",
+                    ],
+                    metric_name: "api_usage_counts",
+                    metric_type: "Occurrence",
+                    selector: "core/setui_service:root/api_usage_counts/Accessibility/Restore:count",
+                },
+                {
+                    event_codes: [
+                        "Audio",
+                        "Get",
+                    ],
+                    metric_name: "api_usage_counts",
+                    metric_type: "Occurrence",
+                    selector: "core/setui_service:root/api_usage_counts/Audio/Get:count",
+                },
+                {
+                    event_codes: [
+                        "Audio",
+                        "Listen",
+                    ],
+                    metric_name: "api_usage_counts",
+                    metric_type: "Occurrence",
+                    selector: "core/setui_service:root/api_usage_counts/Audio/Listen:count",
+                },
+                {
+                    event_codes: [
+                        "Audio",
+                        "Set",
+                    ],
+                    metric_name: "api_usage_counts",
+                    metric_type: "Occurrence",
+                    selector: "core/setui_service:root/api_usage_counts/Audio/Set:count",
+                },
+                {
+                    event_codes: [
+                        "Audio",
+                        "Restore",
+                    ],
+                    metric_name: "api_usage_counts",
+                    metric_type: "Occurrence",
+                    selector: "core/setui_service:root/api_usage_counts/Audio/Restore:count",
+                },
+                {
+                    event_codes: [
+                        "Display",
+                        "Get",
+                    ],
+                    metric_name: "api_usage_counts",
+                    metric_type: "Occurrence",
+                    selector: "core/setui_service:root/api_usage_counts/Display/Get:count",
+                },
+                {
+                    event_codes: [
+                        "Display",
+                        "Listen",
+                    ],
+                    metric_name: "api_usage_counts",
+                    metric_type: "Occurrence",
+                    selector: "core/setui_service:root/api_usage_counts/Display/Listen:count",
+                },
+                {
+                    event_codes: [
+                        "Display",
+                        "Set",
+                    ],
+                    metric_name: "api_usage_counts",
+                    metric_type: "Occurrence",
+                    selector: "core/setui_service:root/api_usage_counts/Display/Set:count",
+                },
+                {
+                    event_codes: [
+                        "Display",
+                        "Restore",
+                    ],
+                    metric_name: "api_usage_counts",
+                    metric_type: "Occurrence",
+                    selector: "core/setui_service:root/api_usage_counts/Display/Restore:count",
+                },
+                {
+                    event_codes: [
+                        "DoNotDisturb",
+                        "Get",
+                    ],
+                    metric_name: "api_usage_counts",
+                    metric_type: "Occurrence",
+                    selector: "core/setui_service:root/api_usage_counts/DoNotDisturb/Get:count",
+                },
+                {
+                    event_codes: [
+                        "DoNotDisturb",
+                        "Listen",
+                    ],
+                    metric_name: "api_usage_counts",
+                    metric_type: "Occurrence",
+                    selector: "core/setui_service:root/api_usage_counts/DoNotDisturb/Listen:count",
+                },
+                {
+                    event_codes: [
+                        "DoNotDisturb",
+                        "Set",
+                    ],
+                    metric_name: "api_usage_counts",
+                    metric_type: "Occurrence",
+                    selector: "core/setui_service:root/api_usage_counts/DoNotDisturb/Set:count",
+                },
+                {
+                    event_codes: [
+                        "DoNotDisturb",
+                        "Restore",
+                    ],
+                    metric_name: "api_usage_counts",
+                    metric_type: "Occurrence",
+                    selector: "core/setui_service:root/api_usage_counts/DoNotDisturb/Restore:count",
+                },
+                {
+                    event_codes: [
+                        "FactoryReset",
+                        "Get",
+                    ],
+                    metric_name: "api_usage_counts",
+                    metric_type: "Occurrence",
+                    selector: "core/setui_service:root/api_usage_counts/FactoryReset/Get:count",
+                },
+                {
+                    event_codes: [
+                        "FactoryReset",
+                        "Listen",
+                    ],
+                    metric_name: "api_usage_counts",
+                    metric_type: "Occurrence",
+                    selector: "core/setui_service:root/api_usage_counts/FactoryReset/Listen:count",
+                },
+                {
+                    event_codes: [
+                        "FactoryReset",
+                        "Set",
+                    ],
+                    metric_name: "api_usage_counts",
+                    metric_type: "Occurrence",
+                    selector: "core/setui_service:root/api_usage_counts/FactoryReset/Set:count",
+                },
+                {
+                    event_codes: [
+                        "FactoryReset",
+                        "Restore",
+                    ],
+                    metric_name: "api_usage_counts",
+                    metric_type: "Occurrence",
+                    selector: "core/setui_service:root/api_usage_counts/FactoryReset/Restore:count",
+                },
+                {
+                    event_codes: [
+                        "Input",
+                        "Get",
+                    ],
+                    metric_name: "api_usage_counts",
+                    metric_type: "Occurrence",
+                    selector: "core/setui_service:root/api_usage_counts/Input/Get:count",
+                },
+                {
+                    event_codes: [
+                        "Input",
+                        "Listen",
+                    ],
+                    metric_name: "api_usage_counts",
+                    metric_type: "Occurrence",
+                    selector: "core/setui_service:root/api_usage_counts/Input/Listen:count",
+                },
+                {
+                    event_codes: [
+                        "Input",
+                        "Set",
+                    ],
+                    metric_name: "api_usage_counts",
+                    metric_type: "Occurrence",
+                    selector: "core/setui_service:root/api_usage_counts/Input/Set:count",
+                },
+                {
+                    event_codes: [
+                        "Input",
+                        "Restore",
+                    ],
+                    metric_name: "api_usage_counts",
+                    metric_type: "Occurrence",
+                    selector: "core/setui_service:root/api_usage_counts/Input/Restore:count",
+                },
+                {
+                    event_codes: [
+                        "Intl",
+                        "Get",
+                    ],
+                    metric_name: "api_usage_counts",
+                    metric_type: "Occurrence",
+                    selector: "core/setui_service:root/api_usage_counts/Intl/Get:count",
+                },
+                {
+                    event_codes: [
+                        "Intl",
+                        "Listen",
+                    ],
+                    metric_name: "api_usage_counts",
+                    metric_type: "Occurrence",
+                    selector: "core/setui_service:root/api_usage_counts/Intl/Listen:count",
+                },
+                {
+                    event_codes: [
+                        "Intl",
+                        "Set",
+                    ],
+                    metric_name: "api_usage_counts",
+                    metric_type: "Occurrence",
+                    selector: "core/setui_service:root/api_usage_counts/Intl/Set:count",
+                },
+                {
+                    event_codes: [
+                        "Intl",
+                        "Restore",
+                    ],
+                    metric_name: "api_usage_counts",
+                    metric_type: "Occurrence",
+                    selector: "core/setui_service:root/api_usage_counts/Intl/Restore:count",
+                },
+                {
+                    event_codes: [
+                        "Light",
+                        "Get",
+                    ],
+                    metric_name: "api_usage_counts",
+                    metric_type: "Occurrence",
+                    selector: "core/setui_service:root/api_usage_counts/Light/Get:count",
+                },
+                {
+                    event_codes: [
+                        "Light",
+                        "Listen",
+                    ],
+                    metric_name: "api_usage_counts",
+                    metric_type: "Occurrence",
+                    selector: "core/setui_service:root/api_usage_counts/Light/Listen:count",
+                },
+                {
+                    event_codes: [
+                        "Light",
+                        "Set",
+                    ],
+                    metric_name: "api_usage_counts",
+                    metric_type: "Occurrence",
+                    selector: "core/setui_service:root/api_usage_counts/Light/Set:count",
+                },
+                {
+                    event_codes: [
+                        "Light",
+                        "Restore",
+                    ],
+                    metric_name: "api_usage_counts",
+                    metric_type: "Occurrence",
+                    selector: "core/setui_service:root/api_usage_counts/Light/Restore:count",
+                },
+                {
+                    event_codes: [
+                        "NightMode",
+                        "Get",
+                    ],
+                    metric_name: "api_usage_counts",
+                    metric_type: "Occurrence",
+                    selector: "core/setui_service:root/api_usage_counts/NightMode/Get:count",
+                },
+                {
+                    event_codes: [
+                        "NightMode",
+                        "Listen",
+                    ],
+                    metric_name: "api_usage_counts",
+                    metric_type: "Occurrence",
+                    selector: "core/setui_service:root/api_usage_counts/NightMode/Listen:count",
+                },
+                {
+                    event_codes: [
+                        "NightMode",
+                        "Set",
+                    ],
+                    metric_name: "api_usage_counts",
+                    metric_type: "Occurrence",
+                    selector: "core/setui_service:root/api_usage_counts/NightMode/Set:count",
+                },
+                {
+                    event_codes: [
+                        "NightMode",
+                        "Restore",
+                    ],
+                    metric_name: "api_usage_counts",
+                    metric_type: "Occurrence",
+                    selector: "core/setui_service:root/api_usage_counts/NightMode/Restore:count",
+                },
+                {
+                    event_codes: [
+                        "Privacy",
+                        "Get",
+                    ],
+                    metric_name: "api_usage_counts",
+                    metric_type: "Occurrence",
+                    selector: "core/setui_service:root/api_usage_counts/Privacy/Get:count",
+                },
+                {
+                    event_codes: [
+                        "Privacy",
+                        "Listen",
+                    ],
+                    metric_name: "api_usage_counts",
+                    metric_type: "Occurrence",
+                    selector: "core/setui_service:root/api_usage_counts/Privacy/Listen:count",
+                },
+                {
+                    event_codes: [
+                        "Privacy",
+                        "Set",
+                    ],
+                    metric_name: "api_usage_counts",
+                    metric_type: "Occurrence",
+                    selector: "core/setui_service:root/api_usage_counts/Privacy/Set:count",
+                },
+                {
+                    event_codes: [
+                        "Privacy",
+                        "Restore",
+                    ],
+                    metric_name: "api_usage_counts",
+                    metric_type: "Occurrence",
+                    selector: "core/setui_service:root/api_usage_counts/Privacy/Restore:count",
+                },
+                {
+                    event_codes: [
+                        "Setup",
+                        "Get",
+                    ],
+                    metric_name: "api_usage_counts",
+                    metric_type: "Occurrence",
+                    selector: "core/setui_service:root/api_usage_counts/Setup/Get:count",
+                },
+                {
+                    event_codes: [
+                        "Setup",
+                        "Listen",
+                    ],
+                    metric_name: "api_usage_counts",
+                    metric_type: "Occurrence",
+                    selector: "core/setui_service:root/api_usage_counts/Setup/Listen:count",
+                },
+                {
+                    event_codes: [
+                        "Setup",
+                        "Set",
+                    ],
+                    metric_name: "api_usage_counts",
+                    metric_type: "Occurrence",
+                    selector: "core/setui_service:root/api_usage_counts/Setup/Set:count",
+                },
+                {
+                    event_codes: [
+                        "Setup",
+                        "Restore",
+                    ],
+                    metric_name: "api_usage_counts",
+                    metric_type: "Occurrence",
+                    selector: "core/setui_service:root/api_usage_counts/Setup/Restore:count",
+                },
+                {
+                    event_codes: [
+                        "Keyboard",
+                        "Get",
+                    ],
+                    metric_name: "api_usage_counts",
+                    metric_type: "Occurrence",
+                    selector: "core/setui_service:root/api_usage_counts/Keyboard/Get:count",
+                },
+                {
+                    event_codes: [
+                        "Keyboard",
+                        "Listen",
+                    ],
+                    metric_name: "api_usage_counts",
+                    metric_type: "Occurrence",
+                    selector: "core/setui_service:root/api_usage_counts/Keyboard/Listen:count",
+                },
+                {
+                    event_codes: [
+                        "Keyboard",
+                        "Set",
+                    ],
+                    metric_name: "api_usage_counts",
+                    metric_type: "Occurrence",
+                    selector: "core/setui_service:root/api_usage_counts/Keyboard/Set:count",
+                },
+                {
+                    event_codes: [
+                        "Keyboard",
+                        "Restore",
+                    ],
+                    metric_name: "api_usage_counts",
+                    metric_type: "Occurrence",
+                    selector: "core/setui_service:root/api_usage_counts/Keyboard/Restore:count",
+                },
+                {
+                    event_codes: [
+                        "LightSensor",
+                        "Get",
+                    ],
+                    metric_name: "api_usage_counts",
+                    metric_type: "Occurrence",
+                    selector: "core/setui_service:root/api_usage_counts/LightSensor/Get:count",
+                },
+                {
+                    event_codes: [
+                        "LightSensor",
+                        "Listen",
+                    ],
+                    metric_name: "api_usage_counts",
+                    metric_type: "Occurrence",
+                    selector: "core/setui_service:root/api_usage_counts/LightSensor/Listen:count",
+                },
+                {
+                    event_codes: [
+                        "LightSensor",
+                        "Set",
+                    ],
+                    metric_name: "api_usage_counts",
+                    metric_type: "Occurrence",
+                    selector: "core/setui_service:root/api_usage_counts/LightSensor/Set:count",
+                },
+                {
+                    event_codes: [
+                        "LightSensor",
+                        "Restore",
+                    ],
+                    metric_name: "api_usage_counts",
+                    metric_type: "Occurrence",
+                    selector: "core/setui_service:root/api_usage_counts/LightSensor/Restore:count",
+                },
+            ],
+            poll_rate_sec: 3600,
+        },
+    ],
+}

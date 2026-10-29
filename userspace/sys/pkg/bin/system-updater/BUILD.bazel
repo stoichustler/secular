@@ -1,0 +1,157 @@
+# Copyright 2026 The Fuchsia Authors. All rights reserved.
+# Use of this source code is governed by a BSD-style license that can be
+# found in the LICENSE file.
+
+load("//products/build/bazel/rules:compiled_action.bzl", "compiled_action")
+load(
+    "//products/build/bazel/rules/components:fx_component.bzl",
+    "fx_component_manifest",
+)
+load(
+    "//products/build/bazel/rules/components:structured_config.bzl",
+    "fuchsia_structured_config_rust_lib",
+)
+load("//products/build/bazel/rules/rust:rustc_binary.bzl", "rustc_binary")
+
+package(default_applicable_licenses = ["//:license"])
+
+exports_files(
+    [
+        "meta/system_updater.core_shard.cml",
+        "meta/system_updater.system_update_shard.cml",
+    ],
+    visibility = ["//products/bundles/assembly:__subpackages__"],
+)
+
+# The GN build uses `generate_epoch("epoch.json")` defined above the bazel2gn
+# sentinel in BUILD.gn instead.
+# @bazel2gn:skip
+compiled_action(
+    name = "generate_epoch",
+    srcs = ["//userspace/sys/pkg/bin/system-updater/epoch:history"],
+    outs = ["epoch.json"],
+    args = [
+        "--history",
+        "$(location //userspace/sys/pkg/bin/system-updater/epoch:history)",
+        "--output",
+        "$(location :epoch.json)",
+    ],
+    tool = "//userspace/sys/pkg/bin/system-updater/epoch:generator",
+    visibility = ["//visibility:private"],
+)
+
+rustc_binary(
+    name = "bin",
+    srcs = [
+        "src/fidl.rs",
+        "src/install_manager.rs",
+        "src/main.rs",
+        "src/update.rs",
+        "src/update/config.rs",
+        "src/update/crash_report.rs",
+        "src/update/environment.rs",
+        "src/update/history.rs",
+        "src/update/history/version.rs",
+        "src/update/metrics.rs",
+        "src/update/paver.rs",
+        "src/update/paver/configuration.rs",
+        "src/update/reboot.rs",
+        "src/update/resolver.rs",
+        "src/update/state.rs",
+    ],
+    compile_data = [
+        ":epoch.json",
+    ],  # @bazel2gn:raw_overwrite:[ base_epoch_file ]
+    crate_name = "system_updater",
+    data = [
+        ":epoch.json",
+    ],  # @bazel2gn:raw_overwrite:[ ":epoch.json" ]
+    edition = "2024",
+    lint_config = "//products/build/config/rust/lints:clippy_warn_all",
+    proc_macro_deps = [
+        "//userspace/lib/include_str_from_working_dir",
+    ],
+    rustc_env = {
+        "EPOCH_PATH": "$(location :epoch.json)",
+    },  # @bazel2gn:raw_overwrite:[ "EPOCH_PATH=$rebased_epoch_file" ]
+    visibility = ["//visibility:private"],
+    deps = [
+        ":config_lib",
+        "//sdk/fidl/fuchsia.feedback:fuchsia.feedback_rust",
+        "//sdk/fidl/fuchsia.hardware.power.statecontrol:fuchsia.hardware.power.statecontrol_rust",
+        "//sdk/fidl/fuchsia.io:fuchsia.io_rust",
+        "//sdk/fidl/fuchsia.mem:fuchsia.mem_rust",
+        "//sdk/fidl/fuchsia.metrics:fuchsia.metrics_rust",
+        "//sdk/fidl/fuchsia.paver:fuchsia.paver_rust",
+        "//sdk/fidl/fuchsia.pkg:fuchsia.pkg_rust",
+        "//sdk/fidl/fuchsia.pkg.garbagecollector:fuchsia.pkg.garbagecollector_rust",
+        "//sdk/fidl/fuchsia.pkg.internal:fuchsia.pkg.internal_rust",
+        "//sdk/rust/zx",
+        "//userspace/lib/cobalt/rust/builders",
+        "//userspace/lib/diagnostics/inspect/contrib/rust",
+        "//userspace/lib/diagnostics/inspect/runtime/rust",
+        "//userspace/lib/diagnostics/inspect/rust:fuchsia-inspect",  # @bazel2gn:path_overwrite://userspace/lib/diagnostics/inspect/rust
+        "//userspace/lib/fidl/rust/fidl",
+        "//userspace/lib/fidl/rust/fidl-contrib",
+        "//userspace/lib/fuchsia",
+        "//userspace/lib/fuchsia-async",
+        "//userspace/lib/fuchsia-component",
+        "//userspace/lib/fuchsia-fs",
+        "//userspace/lib/fuchsia-url",
+        "//userspace/lib/http-uri-ext",
+        "//userspace/lib/mapped-vmo",
+        "//userspace/sys/lib/fidl-fuchsia-pkg-ext",
+        "//userspace/sys/lib/fuchsia_backoff",
+        "//userspace/sys/pkg/fidl/fuchsia.update.installer:fuchsia.update.installer_rust",
+        "//userspace/sys/pkg/lib/async-generator",
+        "//userspace/sys/pkg/lib/blobfs",
+        "//userspace/sys/pkg/lib/bounded-node",
+        "//userspace/sys/pkg/lib/epoch",
+        "//userspace/sys/pkg/lib/event-queue",
+        "//userspace/sys/pkg/lib/fetch-url",
+        "//userspace/sys/pkg/lib/fidl-fuchsia-update-installer-ext",
+        "//userspace/sys/pkg/lib/fuchsia-hash",
+        "//userspace/sys/pkg/lib/fuchsia-merkle",
+        "//userspace/sys/pkg/lib/fuchsia-pkg",
+        "//userspace/sys/pkg/lib/metrics:cobalt_sw_delivery_registry_rustlib",
+        "//userspace/sys/pkg/lib/update-package",
+        "//third_party/rust_crates/vendor:anyhow",
+        "//third_party/rust_crates/vendor:chrono",
+        "//third_party/rust_crates/vendor:futures",
+        "//third_party/rust_crates/vendor:hex",
+        "//third_party/rust_crates/vendor:http",
+        "//third_party/rust_crates/vendor:log",
+        "//third_party/rust_crates/vendor:ring",
+        "//third_party/rust_crates/vendor:serde",
+        "//third_party/rust_crates/vendor:serde_json",
+        "//third_party/rust_crates/vendor:sha2",
+        "//third_party/rust_crates/vendor:thiserror",
+        "//third_party/rust_crates/vendor:uuid",
+    ],
+)
+
+# The GN build uses the `fuchsia_component_manifest("manifest")` target defined
+# above the bazel2gn sentinel in BUILD.gn instead.
+# @bazel2gn:skip
+fx_component_manifest(
+    name = "manifest",
+    component_name = "system-updater",
+    includes = [
+        "meta/system-updater-common.shard.cml",
+        "//sdk/lib/inspect:client.shard.cml",
+        "//sdk/lib/inspect:offer.shard.cml",
+        "//sdk/lib/inspect:use.shard.cml",
+        "//sdk/lib/syslog:client.shard.cml",
+        "//sdk/lib/syslog:offer.shard.cml",
+        "//sdk/lib/syslog:use.shard.cml",
+    ],
+    manifest = "meta/system-updater.cml",
+    visibility = ["//visibility:private"],
+)
+
+fuchsia_structured_config_rust_lib(
+    name = "config_lib",
+    cm_label = ":manifest",
+    crate_name = "system_updater_config",
+    visibility = ["//visibility:private"],
+)

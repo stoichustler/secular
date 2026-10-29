@@ -1,0 +1,24 @@
+# Copyright 2023 The Fuchsia Authors. All rights reserved.
+# Use of this source code is governed by a BSD-style license that can be
+# found in the LICENSE file.
+
+import("//products/build/rust/rustc_library.gni")
+
+rustc_library("insecure") {
+  edition = "2024"
+  with_unit_tests = false
+  name = "fxfs-insecure-crypto"
+
+  deps = [
+    "//products/build/validate:non_production_tag",
+    "//userspace/storage/crypt/fxfs/common:lib",
+    "//userspace/storage/fxfs/crypto",
+  ]
+
+  sources = [ "src/lib.rs" ]
+  visibility = [
+    "//userspace/storage/f2fs_reader/*",
+    "//userspace/storage/fxfs/*",
+    "//vendor/google/*",
+  ]
+}

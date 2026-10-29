@@ -1,0 +1,70 @@
+# Copyright 2026 The Fuchsia Authors. All rights reserved.
+# Use of this source code is governed by a BSD-style license that can be
+# found in the LICENSE file.
+
+load("//products/build/tools/json_merge:json_merge.bzl", "json_merge")
+
+package(
+    default_applicable_licenses = ["//:license"],
+    default_visibility = ["//visibility:public"],
+)
+
+exports_files([
+    "data/config.json",
+    "lib/pbms/data/config.json",
+])
+
+# TODO(https://fxbug.dev/512659653): Match the target in GN to include configs for more plugins and
+# subtools.
+json_merge(
+    name = "ffx-defaults.json",
+    srcs = [
+        "data/config.json",
+        "lib/pbms/data/config.json",
+        "plugins/trace/data/config.json",
+    ],
+    deep_merge = True,
+)
+
+test_suite(
+    name = "tests",
+    tests = [
+        "//userspace/developer/fastboot:lib_test",
+        "//userspace/developer/ffx/lib/arg_parsing:lib_test",
+        "//userspace/developer/ffx/lib/buildid:lib_test",
+        "//userspace/developer/ffx/lib/compat_info:lib_test",
+        "//userspace/developer/ffx/lib/errors:lib_test",
+        "//userspace/developer/ffx/lib/fastboot/interface:lib_test",
+        "//userspace/developer/ffx/lib/isolate:lib_test",
+        "//userspace/developer/ffx/lib/logging:lib_test",
+        "//userspace/developer/ffx/lib/manual_targets:lib_test",
+        "//userspace/developer/ffx/lib/metrics:lib_test",
+        "//userspace/developer/ffx/lib/netext:lib_test",
+        "//userspace/developer/ffx/lib/port_picker:lib_test",
+        "//userspace/developer/ffx/lib/safe_string:lib_test",
+        "//userspace/developer/ffx/lib/ssh:lib_test",
+        "//userspace/developer/ffx/lib/target_errors:lib_test",
+        "//userspace/developer/ffx/lib/termio:termio_test",
+        "//userspace/developer/ffx/lib/trace:lib_test",
+        "//userspace/developer/ffx/lib/traceable_error:lib_test",
+        "//userspace/developer/ffx/lib/usb_fastboot_discovery:lib_test",
+        "//userspace/developer/ffx/lib/version:lib_test",
+        "//userspace/developer/ffx/plugins/config:ffx_config_plugin_args_test",
+        "//userspace/developer/ffx/plugins/config:ffx_config_plugin_test",
+        "//userspace/developer/ffx/plugins/emulator/common:ffx_emulator_common_test",
+        "//userspace/developer/ffx/plugins/package/blob/hash:ffx_package_blob_hash_test",
+        "//userspace/developer/ffx/plugins/package/far/extract:ffx_package_far_extract_test",
+        "//userspace/developer/ffx/plugins/sdk:ffx_sdk_test",
+        "//userspace/developer/ffx/plugins/version:ffx_version_test",
+        "//userspace/developer/ffx/plugins/wlan/common:ffx-wlan-common_host_test",
+        "//userspace/developer/ffx/tools/bluetooth/common:ffx_bluetooth_common_test",
+    ],
+)
+
+test_suite(
+    name = "target_tests",
+    target_compatible_with = ["@platforms//os:fuchsia"],
+    tests = [
+        "//userspace/developer/ffx/plugins/wlan/common:ffx-wlan-common-tests",
+    ],
+)

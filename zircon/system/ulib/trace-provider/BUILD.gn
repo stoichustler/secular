@@ -1,0 +1,215 @@
+# Copyright 2019 The Fuchsia Authors. All rights reserved.
+# Use of this source code is governed by a BSD-style license that can be
+# found in the LICENSE file.
+
+import("//products/build/zircon/zx_library.gni")
+
+config("trace_provider_include") {
+  include_dirs = [ "include" ]
+}
+
+# Shared version for the SDK.
+#
+# Unlike trace-engine which keeps a large amount of state that needs to be
+# merged between libraries, trace-provider, as the controlling layer on top of
+# trace engine, doesn't keep state that needs to be shared. Only the main
+# binary, not any of the libraries, need to link against trace-provider.
+#
+# Trace-provider was originally added to the sdk as a shared object due to
+# limitations of the fidl build system which are no longer relevant. It should
+# be possible to include the source version directly in the sdk -- modulo the
+# migration required to do so.
+#
+# TODO(https://fxbug.dev/42096938): Add start.cc to this library in order to match the
+# non-shared version of the library.
+zx_library("trace-provider-so") {
+  # We've got a wonky name here because zx_library forces us to use the target
+  # name as the output and trace-provider is already taken above. We could fix
+  # this by directly calling into `sdk_shared_library` and defining an
+  # output_name, ensuring that all the arguments are passed the same, and then
+  # migrating all the out of tree usages of `trace-provider-so.so`.
+  # Alternatively, as mentioned above, we may be able to drop the shared version
+  # entirely.
+  sdk_publishable = "partner"
+  sdk = "shared"
+  defines = [ "SHARED_LIBRARY" ]
+
+  sdk_headers = [
+    "lib/trace-provider/fdio_connect.h",
+    "lib/trace-provider/handler.h",
+    "lib/trace-provider/provider.h",
+  ]
+
+  public_deps = [
+    # <trace-provider/provider.h> has #include <lib/async/dispatcher.h>.
+    "//sdk/lib/async",
+    "//zircon/system/ulib/trace-engine",
+
+    # <trace-provider/provider.h> has #include <lib/zx/channel.h>.
+    "//zircon/system/ulib/zx",
+  ]
+
+  sources = [
+    "export.h",
+    "fdio_connect.cc",
+    "handler.cc",
+    "provider_impl.cc",
+    "provider_impl.h",
+    "provider_with_fdio.cc",
+    "session.cc",
+    "session.h",
+    "utils.cc",
+    "utils.h",
+  ]
+
+  # Source dependencies, not including the trace engine.
+  deps = [
+    "//sdk/fidl/fuchsia.tracing.provider:fuchsia.tracing.provider_cpp",
+    "//sdk/lib/async:async-cpp",
+    "//sdk/lib/fdio",
+    "//sdk/lib/fidl",
+    "//sdk/lib/fidl_base",
+    "//zircon/system/ulib/zx",
+  ]
+
+  runtime_deps = [ "//sdk/lib/fdio" ]
+}
+
+# We produce a static library version of tracing for (currently) one special
+# case: magma. Unlike components which get packaged and run with the shared
+# libraries they were built with, the vulkan icds get loaded at runtime into an
+# application with mostly-arbitrary library versions. Since there's no guarantee
+# of the trace library abi in this environment, magma instead statically links
+# against the trace libraries so that it can safely trace with a known
+# implementation. In addition, magma has a very limited set of allowable
+# dependencies, fdio not being one of them. We exclude fdio_connect support in
+# this version.
+zx_library("trace-provider-with-static-engine") {
+  sdk = "static"
+
+  sdk_headers = [
+    "lib/trace-provider/handler.h",
+    "lib/trace-provider/provider.h",
+  ]
+
+  public_deps = [
+    # <trace-provider/provider.h> has #include <lib/async/dispatcher.h>.
+    "//sdk/lib/async",
+    "//zircon/system/ulib/trace-engine:trace-engine-static",
+
+    # <trace-provider/provider.h> has #include <lib/zx/channel.h>.
+    "//zircon/system/ulib/zx",
+  ]
+
+  sources = [
+    "export.h",
+    "handler.cc",
+    "provider_impl.cc",
+    "provider_impl.h",
+    "session.cc",
+    "session.h",
+    "utils.cc",
+    "utils.h",
+  ]
+
+  # Source dependencies, not including the trace engine.
+  deps = [
+    "//sdk/fidl/fuchsia.tracing.provider:fuchsia.tracing.provider_cpp",
+    "//sdk/lib/async:async-cpp",
+    "//sdk/lib/fidl",
+    "//sdk/lib/fidl_base",
+    "//zircon/system/ulib/zx",
+  ]
+
+  # This is used by magma client drivers, so it can't depend on fdio (or other
+  # shared libraries besides libc).
+  assert_no_deps = [
+    "//sdk/lib/async-default",
+    "//sdk/lib/fdio",
+  ]
+}
+
+group("tests") {
+  testonly = true
+  deps = [ "test:tests" ]
+}
+
+## BAZEL2GN SENTINEL - DO NOT EDIT BELOW THIS LINE ##
+#
+#  ________  _________  ________  ________
+# |\   ____\|\___   ___\\   __  \|\   __  \
+# \ \  \___|\|___ \  \_\ \  \|\  \ \  \|\  \
+#  \ \_____  \   \ \  \ \ \  \\\  \ \   ____\
+#   \|____|\  \   \ \  \ \ \  \\\  \ \  \___|
+#     ____\_\  \   \ \__\ \ \_______\ \__\
+#    |\_________\   \|__|  \|_______|\|__|
+#    \|_________|
+#
+#
+# AUTO-GENERATED - DO NOT EDIT
+#
+# The targets below are auto-generated based on the targets defined in the
+# BUILD.bazel file from the same directory. If you made changes to targets in
+# Bazel, instead of editing this file manually, run:
+#
+#   > fx bazel2gn
+#
+# Please do NOT edit this file directly. Instead, edit the BUILD.bazel file and
+# rerun bazel2gn.
+
+import("//products/build/tools/bazel2gn/bazel_migration.gni")
+
+if (is_fuchsia) {
+  static_library("trace-provider") {
+    sources = [
+      "export.h",
+      "fdio_connect.cc",
+      "handler.cc",
+      "provider_impl.cc",
+      "provider_impl.h",
+      "provider_with_fdio.cc",
+      "session.cc",
+      "session.h",
+      "start.cc",
+      "utils.cc",
+      "utils.h",
+    ]
+    public = [
+      "include/lib/trace-provider/fdio_connect.h",
+      "include/lib/trace-provider/handler.h",
+      "include/lib/trace-provider/provider.h",
+      "include/lib/trace-provider/start.h",
+    ]
+    deps = [
+      "//sdk/fidl/fuchsia.tracing.provider:fuchsia.tracing.provider_cpp",
+      "//sdk/lib/async:async-cpp",
+      "//sdk/lib/async-loop",
+      "//sdk/lib/async-loop:async-loop-cpp",
+      "//sdk/lib/async-loop:async-loop-default",
+      "//sdk/lib/fdio",
+      "//zircon/system/ulib/sync",
+      "//zircon/system/ulib/trace",
+    ]
+    public_configs = [ ":trace_provider_include" ]
+    visibility = [ "//*" ]
+    public_deps = [
+      "//sdk/lib/async",
+      "//zircon/system/ulib/trace-engine",
+      "//zircon/system/ulib/zx",
+    ]
+  }
+}
+if (is_fuchsia) {
+  static_library("trace-handler") {
+    sources = [ "handler.cc" ]
+    public = [ "include/lib/trace-provider/handler.h" ]
+    public_configs = [ ":trace_provider_include" ]
+    visibility = [
+      ":*",
+      "//zircon/system/ulib/trace-test-utils:*",
+      "//zircon/system/ulib/trace-vthread/test:*",
+    ]
+    public_deps =
+        [ "//zircon/system/ulib/trace-engine:trace-engine-headersonly" ]
+  }
+}

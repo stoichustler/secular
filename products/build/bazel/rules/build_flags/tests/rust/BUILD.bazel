@@ -1,0 +1,127 @@
+# Copyright 2026 The Fuchsia Authors. All rights reserved.
+# Use of this source code is governed by a BSD-style license that can be
+# found in the LICENSE file.
+
+load("@fuchsia_build_info//:args.bzl", "rust_debug_assertions")
+load("@fuchsia_rules_common//build_flags:build_flags.bzl", "build_flags")
+load("@fuchsia_rules_common//build_flags:compiler_build_flags.bzl", "compiler_build_flags")
+load("//products/build/bazel/rules/host_tests:host_rustc_test.bzl", "host_rustc_test")
+load("//products/build/bazel/rules/host_tests:host_test.bzl", "host_test")
+load("//products/build/bazel/rules/rust:rustc_binary.bzl", "rustc_binary")
+load("//products/build/bazel/rules/rust:rustc_library.bzl", "rustc_library")
+load("//products/build/bazel/rules/rust:rustc_proc_macro.bzl", "rustc_proc_macro")
+load(
+    ":host_tests.bzl",
+    "build_flags_rust_binary_host_test",
+)
+
+package(default_applicable_licenses = ["//:license"])
+
+test_suite(
+    name = "tests",
+    visibility = ["//products/build/bazel/rules/build_flags/tests:__pkg__"],
+)
+
+# A test to verify that 'rustflags' and 'rustenv' attributes of build_flags()
+# are correctly passed to the Rust compiler.
+
+build_flags(
+    name = "flags_rust",
+    rustenv = ["RUSTENV_TEST_VAR=hello_world"],
+    rustflags = ["--cfg=rustflags_work"],
+)
+
+build_flags_rust_binary_host_test(
+    name = "check_rustflags_and_rustenv",
+    srcs = ["check_rustflags_and_rustenv.rs"],
+    build_flags = [":flags_rust"],
+    edition = "2024",
+)
+
+# This is the same test, but uses the rustc_binary() wrapper, while
+# build_flags_rustc_binary_host_test() uses rust_binary() directly.
+rustc_binary(
+    name = "check_rustc_binary_with_rustflags_and_rustenv_bin",
+    srcs = ["check_rustflags_and_rustenv.rs"],
+    build_flags = [":flags_rust"],
+    edition = "2024",
+)
+
+host_test(
+    name = "check_rustc_binary_with_rustflags_and_rustenv",
+    binary = ":check_rustc_binary_with_rustflags_and_rustenv_bin",
+)
+
+# Checks for rustc_xxx() wrapper macros.
+
+rustc_library(
+    name = "check_rustc_library_lib",
+    srcs = ["check_rustc_library.rs"],
+    build_flags = [":flags_rust"],
+    edition = "2024",
+)
+
+rustc_proc_macro(
+    name = "check_rustc_proc_macro_lib",
+    srcs = ["check_rustc_proc_macro.rs"],
+    build_flags = [":flags_rust"],
+    edition = "2024",
+)
+
+rustc_binary(
+    name = "check_rust_rules_test_bin",
+    srcs = ["check_rust_rules.rs"],
+    edition = "2024",
+    proc_macro_deps = [
+        ":check_rustc_proc_macro_lib",
+    ],
+    deps = [
+        ":check_rustc_library_lib",
+    ],
+)
+
+host_test(
+    name = "check_rust_rules_test",
+    binary = ":check_rust_rules_test_bin",
+)
+
+host_rustc_test(
+    name = "check_rustc_test_with_rustflags_and_rustenv",
+    srcs = ["check_rustc_test.rs"],
+    build_flags = [":flags_rust"],
+    edition = "2024",
+)
+
+# Verify that the default toolchain flags enable debug assertions exactly when
+# the GN `rust_debug_assertions` build arg is set, i.e. that no hardcoded
+# toolchain flag overrides //products/build/config/rust:default_debug_assertions.
+host_rustc_test(
+    name = "check_default_debug_assertions",
+    srcs = ["check_debug_assertions.rs"],
+    edition = "2024",
+    rustc_flags = ["--cfg=expect_debug_assertions"] if rust_debug_assertions else [],
+)
+
+# Verify compiler_build_flags() with configurable (select()) attributes in Rust.
+compiler_build_flags(
+    name = "compiler_flags_select_rust",
+    rust_llvm_flags = select({
+        "@platforms//os:fuchsia": [],
+        "//conditions:default": ["--inline-threshold=225"],
+    }),
+    rustenv = select({
+        "@platforms//os:fuchsia": ["RUSTENV_TEST_VAR=wrong"],
+        "//conditions:default": ["RUSTENV_TEST_VAR=hello_world"],
+    }),
+    rustflags = select({
+        "@platforms//os:fuchsia": [],
+        "//conditions:default": ["--cfg=rustflags_work"],
+    }),
+)
+
+build_flags_rust_binary_host_test(
+    name = "check_compiler_build_flags_select_rust",
+    srcs = ["check_rustflags_and_rustenv.rs"],
+    build_flags = [":compiler_flags_select_rust"],
+    edition = "2024",
+)

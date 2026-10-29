@@ -1,0 +1,27 @@
+# Copyright 2020 The Fuchsia Authors
+#
+# Use of this source code is governed by a MIT-style
+# license that can be found in the LICENSE file or at
+# https://opensource.org/licenses/MIT
+
+import("//zircon/kernel/kernel_rust_mod.gni")
+
+kernel_rust_mod("watchdog-rs") {
+  output_name = "pdev_watchdog"
+  source_root = "watchdog.rs"
+  sources = [
+    "console.rs",
+    "watchdog.rs",
+  ]
+  deps = [
+    "//sdk/rust/zx-status",
+    "//userspace/lib/kprint",
+    "//zircon/kernel/lib/arch:arch-rs",
+    "//zircon/kernel/lib/debug",
+  ]
+  test_deps = [ "//zircon/kernel/lib/unittest:unittest-rs" ]
+}
+
+source_set("hw_watchdog") {
+  deps = [ ":watchdog-rs" ]
+}

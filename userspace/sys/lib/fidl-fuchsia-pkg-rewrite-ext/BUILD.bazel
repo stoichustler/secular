@@ -1,0 +1,100 @@
+# Copyright 2026 The Fuchsia Authors. All rights reserved.
+# Use of this source code is governed by a BSD-style license that can be
+# found in the LICENSE file.
+
+load("//products/build/bazel/rules/host_tests:host_rustc_test.bzl", "host_rustc_test")
+load("//products/build/bazel/rules/rust:defs.bzl", "rustc_library", "rustc_test")
+load("//products/build/bazel/rules/testing:fx_unittest_package.bzl", "fx_unittest_package")
+
+package(default_applicable_licenses = ["//:license"])
+
+rustc_library(
+    name = "fidl-fuchsia-pkg-rewrite-ext",
+    srcs = [
+        "src/errors.rs",
+        "src/lib.rs",
+        "src/rule.rs",
+        "src/transaction.rs",
+    ],
+    edition = "2024",
+    visibility = [
+        "//userspace/sys/pkg/bin/pkg-resolver:__pkg__",
+        "//userspace/sys/pkg/bin/pkgctl:__pkg__",
+        "//userspace/sys/pkg/tests/pkg-resolver:__pkg__",
+        "//userspace/sys/pkg/tests/pkgctl:__pkg__",
+    ],
+    deps = [
+        "//sdk/fidl/fuchsia.pkg.rewrite:fuchsia.pkg.rewrite_rust_flex",
+        "//sdk/rust/zx-status",
+        "//userspace/lib/fdomain/client:flex_fidl",
+        "//userspace/lib/fuchsia-url",
+        "//third_party/rust_crates/vendor:serde",
+        "//third_party/rust_crates/vendor:thiserror",
+    ],
+)
+
+rustc_library(
+    name = "fidl-fuchsia-pkg-rewrite-ext_fdomain",
+    srcs = [
+        "src/errors.rs",
+        "src/lib.rs",
+        "src/rule.rs",
+        "src/transaction.rs",
+    ],
+    crate_features = ["fdomain"],
+    crate_name = "fdomain_fuchsia_pkg_rewrite_ext",
+    edition = "2024",
+    visibility = [
+        "//userspace/developer/ffx:__subpackages__",
+    ],
+    deps = [
+        "//sdk/fidl/fuchsia.pkg.rewrite:fuchsia.pkg.rewrite_rust_fdomain_flex",
+        "//sdk/rust/zx-status",
+        "//userspace/lib/fdomain/client:flex_fdomain",
+        "//userspace/lib/fidl/rust/fidl",
+        "//userspace/lib/fuchsia-url",
+        "//third_party/rust_crates/vendor:serde",
+        "//third_party/rust_crates/vendor:thiserror",
+    ],
+)
+
+# TODO(https://fxbug.dev/574121341): Run this test in GN too.
+# @bazel2gn:skip
+rustc_test(
+    name = "fidl-fuchsia-pkg-rewrite-ext_test",
+    crate = ":fidl-fuchsia-pkg-rewrite-ext",
+    edition = "2024",
+    visibility = ["//visibility:private"],
+    deps = [
+        "//userspace/lib/fuchsia",
+        "//userspace/lib/fuchsia-async",
+        "//third_party/rust_crates/vendor:assert_matches",
+        "//third_party/rust_crates/vendor:futures",
+        "//third_party/rust_crates/vendor:serde_json",
+    ],
+)
+
+# TODO(https://fxbug.dev/574121341): Run this test in GN too.
+# @bazel2gn:skip
+host_rustc_test(
+    name = "fidl-fuchsia-pkg-rewrite-ext_fdomain_test",
+    crate = ":fidl-fuchsia-pkg-rewrite-ext_fdomain",
+    crate_features = ["fdomain"],
+    edition = "2024",
+    visibility = ["//visibility:public"],
+    deps = [
+        "//userspace/lib/fdomain/local",
+        "//userspace/lib/fuchsia",
+        "//userspace/lib/fuchsia-async",
+        "//third_party/rust_crates/vendor:assert_matches",
+        "//third_party/rust_crates/vendor:futures",
+        "//third_party/rust_crates/vendor:serde_json",
+    ],
+)
+
+# @bazel2gn:skip
+fx_unittest_package(
+    name = "fidl-fuchsia-pkg-rewrite-ext-tests",
+    unit_tests = [":fidl-fuchsia-pkg-rewrite-ext_test"],
+    visibility = ["//visibility:public"],
+)

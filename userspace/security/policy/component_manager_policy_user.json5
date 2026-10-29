@@ -1,0 +1,5 @@
+{
+    security_policy: {
+        capability_policy: [],
+    },
+}

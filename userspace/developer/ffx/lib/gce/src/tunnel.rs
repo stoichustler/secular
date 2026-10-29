@@ -1,0 +1,1167 @@
+// Copyright 2026 The Fuchsia Authors. All rights reserved.
+// Use of this source code is governed by a BSD-style license that can be
+// found in the LICENSE file.
+
+use crate::error::{GceError, IoContext as _, Result};
+use discovery::TargetEvent;
+use discovery::gce_watcher::{self, GceInstanceData, GceWatcher};
+use ffx_config::EnvironmentContext;
+use ffx_config::logging::LogDirHandling;
+use ffx_ssh::SshKeyFiles;
+use fuchsia_async::{MonotonicInstant, TimeoutExt, Timer};
+use futures::StreamExt;
+use futures::channel::mpsc;
+use std::os::unix::process::CommandExt;
+use std::path::PathBuf;
+use std::process::{Child, Command, Stdio};
+use std::time::Duration;
+
+/// RAII guard for a spawned [`Child`] process that kills the process group and reaps
+/// the child process on `Drop` unless explicitly detached via [`ChildGuard::detach`].
+struct ChildGuard {
+    child: Option<Child>,
+    pgid: Option<i32>,
+}
+
+impl ChildGuard {
+    fn new(child: Child) -> Self {
+        let pgid = i32::try_from(child.id()).ok();
+        Self { child: Some(child), pgid }
+    }
+
+    fn id(&self) -> u32 {
+        self.child.as_ref().map(|c| c.id()).unwrap_or(0)
+    }
+
+    /// Checks whether the child process has exited or is no longer valid, reaping its exit status
+    /// if available.
+    fn has_exited(&mut self) -> bool {
+        if let Some(child) = self.child.as_mut() {
+            match child.try_wait() {
+                Ok(Some(_)) | Err(_) => {
+                    self.child = None;
+                    return true;
+                }
+                Ok(None) => return false,
+            }
+        }
+        true
+    }
+
+    /// Consumes the guard without killing the child process or process group, returning
+    /// the underlying [`Child`] so it can continue running in the background.
+    fn detach(mut self) -> Option<Child> {
+        self.pgid = None;
+        self.child.take()
+    }
+}
+
+impl Drop for ChildGuard {
+    fn drop(&mut self) {
+        if let Some(pgid) = self.pgid.take() {
+            let _ = nix::sys::signal::kill(
+                nix::unistd::Pid::from_raw(-pgid),
+                Some(nix::sys::signal::Signal::SIGKILL),
+            );
+        }
+        if let Some(mut child) = self.child.take() {
+            let _ = child.kill();
+            let _ = child.wait();
+        }
+    }
+}
+
+/// RAII guard for an active tunnel attempt whose instance state file has been written to disk.
+///
+/// Unless [`ActiveTunnelGuard::commit`] is called, dropping this guard will:
+/// 1. Terminate and reap the spawned tunnel process group (via [`ChildGuard`]).
+/// 2. Remove the instance state file from disk (via [`gce_watcher::Instance::stop`]).
+struct ActiveTunnelGuard<'a> {
+    ctx: &'a EnvironmentContext,
+    instance: &'a gce_watcher::Instance,
+    child: Option<ChildGuard>,
+}
+
+impl<'a> ActiveTunnelGuard<'a> {
+    fn new(
+        ctx: &'a EnvironmentContext,
+        instance: &'a gce_watcher::Instance,
+        child: ChildGuard,
+        data: &GceInstanceData,
+    ) -> Result<Self> {
+        instance
+            .write(ctx, data)
+            .io_context(|| format!("Failed to write GCE instance state for {}", instance.name))?;
+        Ok(Self { ctx, instance, child: Some(child) })
+    }
+
+    fn has_exited(&mut self) -> bool {
+        self.child.as_mut().map_or(true, |c| c.has_exited())
+    }
+
+    fn commit(mut self) -> Option<Child> {
+        self.child.take().and_then(|c| c.detach())
+    }
+}
+
+impl Drop for ActiveTunnelGuard<'_> {
+    fn drop(&mut self) {
+        if let Some(child) = self.child.take() {
+            drop(child);
+            let _ = self.instance.stop(self.ctx);
+        }
+    }
+}
+
+fn is_discovered_by_watcher(ctx: &EnvironmentContext, instance_name: &str) -> bool {
+    let (tx, mut rx) = mpsc::unbounded();
+    let Ok(_watcher) = GceWatcher::from_context(ctx, tx) else {
+        return false;
+    };
+    while let Ok(event) = rx.try_recv() {
+        if let TargetEvent::Added(handle) = event {
+            if handle.node_name.as_deref() == Some(instance_name) {
+                return true;
+            }
+        }
+    }
+    false
+}
+
+/// Returns advice on how to fix a tunnel failure that retrying cannot resolve, based on what
+/// `ssh` wrote to the tunnel log.
+fn ssh_failure_remediation(log_content: &str) -> Option<&'static str> {
+    if log_content.contains("got stuck at SSO")
+        || log_content.contains("login page detected")
+        || log_content.contains("try running gcert")
+    {
+        return Some(
+            "The corp SSH relay requires fresh SSO credentials. Run `gcert` and try again.",
+        );
+    }
+    if log_content.contains("IAPAS deny")
+        || log_content.contains("You do not have access to the requested resource")
+    {
+        return Some(
+            "The corp SSH relay (BeyondCorp IAP) denied access to this VM (`IAPAS deny`). Grant \
+             your account `roles/iap.tunnelResourceAccessor` and `roles/compute.osLogin` on the \
+             GCP project (see go/gce-beyondcorp-ssh).",
+        );
+    }
+    if log_content.contains("Could not resolve hostname")
+        || log_content.contains("Name or service not known")
+    {
+        return Some(
+            "The VM's `*.internal.gcpnode.com` address could not be resolved. Add a \
+             `Host *.internal.gcpnode.com` entry using `corp-ssh-helper` as its `ProxyCommand` to \
+             your `~/.ssh/config`.",
+        );
+    }
+    if log_content.contains("Permission denied (publickey")
+        || log_content.contains("Too many authentication failures")
+    {
+        return Some(
+            "The VM rejected the SSH key. Check the configured keys with \
+             `ffx config check-ssh-keys`; if they changed since the VM was created, recreate it \
+             with `ffx gce stop <name>` followed by `ffx gce start`.",
+        );
+    }
+    None
+}
+
+/// Reads the tunnel log, failing fast with advice if it reports a permanent error.
+fn read_tunnel_log(log_path: &std::path::Path) -> Result<String> {
+    let log_content = std::fs::read_to_string(log_path).unwrap_or_default();
+    if let Some(remediation) = ssh_failure_remediation(&log_content) {
+        return Err(GceError::SshUnrecoverable { remediation });
+    }
+    Ok(log_content)
+}
+
+/// Maximum number of SSH connection attempts before giving up.
+const MAX_TUNNEL_ATTEMPTS: usize = 8;
+
+/// Delay between successive SSH connection attempts.
+const RETRY_DELAY: Duration = Duration::from_secs(3);
+
+/// Maximum number of polls checking whether the local tunnel port is accepting connections.
+///
+/// This must outlast the supervisor's own reconnection attempts so that a failing `ssh` can write
+/// its error to the log before the process group is killed.
+const MAX_PORT_CHECK_POLLS: usize = 300;
+
+/// Interval between local port connection checks.
+const PORT_CHECK_INTERVAL: Duration = Duration::from_millis(100);
+
+/// Timeout waiting for [`GceWatcher`] to report the newly added instance target handle.
+const WATCHER_TIMEOUT: Duration = Duration::from_secs(5);
+
+/// Grace period after discovery before declaring the tunnel healthy.
+///
+/// [`GceWatcher`] reports the target as soon as the state file appears, which can happen before
+/// `ssh` finishes negotiating reverse port forwarding with the VM. Waiting lets an
+/// `ExitOnForwardFailure` teardown be observed instead of reported as success.
+const TUNNEL_SETTLE_DELAY: Duration = Duration::from_millis(500);
+
+/// Default TCP port used by the Fuchsia package repository server (`8083`).
+const DEFAULT_REPO_PORT: u16 = 8083;
+
+/// How long `ssh` waits for the VM to accept a TCP connection before failing an attempt.
+///
+/// A freshly created VM drops connections for tens of seconds while Zircon boots. Without a
+/// bound, `ssh` blocks in `connect()` and is killed before it can report anything.
+const SSH_CONNECT_TIMEOUT_SECS: u32 = 5;
+
+/// Minimum duration of an `ssh` session for the supervisor to treat it as an established tunnel
+/// that ended (for example, because the guest rebooted) rather than as a failed connection.
+const SUPERVISOR_ESTABLISHED_SECS: u32 = 30;
+
+/// Number of consecutive short-lived `ssh` sessions after which the supervisor gives up.
+const SUPERVISOR_MAX_FAILURES: u32 = 3;
+
+/// How long an interactive SSH serial session (when `follow == false`) waits for new output
+/// after receiving the initial buffered serial console data before closing the connection.
+const SSH_SERIAL_IDLE_TIMEOUT: Duration = Duration::from_millis(1500);
+
+/// Maximum time to wait for initial output from the SSH serial console when `follow == false`.
+const SSH_SERIAL_INITIAL_TIMEOUT: Duration = Duration::from_secs(10);
+
+/// Configuration options for establishing a local background SSH tunnel to a GCE instance.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct GceTunnelConfig {
+    pub project: String,
+    pub zone: String,
+    pub instance_name: String,
+    pub private_key: Option<PathBuf>,
+    pub reverse_ports: Vec<u16>,
+    pub serial_number: Option<String>,
+    pub ssh_binary: PathBuf,
+}
+
+impl GceTunnelConfig {
+    /// Creates a new tunnel configuration with reverse forwarding for the package repository server
+    /// configured in `ctx` (or defaulting to port `8083`).
+    pub fn new(
+        ctx: &EnvironmentContext,
+        project: impl Into<String>,
+        zone: impl Into<String>,
+        instance_name: impl Into<String>,
+    ) -> Result<Self> {
+        let reverse_ports = pkg::config::repository_listen_addr(ctx)
+            .map_err(|e| {
+                GceError::dependency("Failed to read the package repository listen address", e)
+            })?
+            .map(|addr| vec![addr.port()])
+            .unwrap_or_else(|| vec![DEFAULT_REPO_PORT]);
+        Ok(Self {
+            project: project.into(),
+            zone: zone.into(),
+            instance_name: instance_name.into(),
+            private_key: None,
+            reverse_ports,
+            serial_number: None,
+            ssh_binary: PathBuf::from("ssh"),
+        })
+    }
+
+    /// Overrides the SSH private key path used to authenticate.
+    pub fn with_private_key(mut self, private_key: impl Into<PathBuf>) -> Self {
+        self.private_key = Some(private_key.into());
+        self
+    }
+
+    /// Sets the list of reverse forwarded TCP ports (`-R <port>:localhost:<port>`).
+    pub fn with_reverse_ports(mut self, reverse_ports: Vec<u16>) -> Self {
+        self.reverse_ports = reverse_ports;
+        self
+    }
+
+    /// Sets the instance serial number (`GC-...`) to record in the discovery target handle.
+    pub fn with_serial_number(mut self, serial_number: impl Into<String>) -> Self {
+        self.serial_number = Some(serial_number.into());
+        self
+    }
+
+    /// Overrides the SSH executable path (defaults to `"ssh"`).
+    pub fn with_ssh_binary(mut self, ssh_binary: impl Into<PathBuf>) -> Self {
+        self.ssh_binary = ssh_binary.into();
+        self
+    }
+}
+
+/// Helper for managing a local background TCP forwarding tunnel to a GCE instance.
+#[derive(Debug, Clone, Copy, Default, PartialEq, Eq)]
+pub struct GceTunnel;
+
+impl GceTunnel {
+    /// Starts a background SSH port forwarding tunnel process to GCE VM port 22 and waits for it
+    /// to bind a local port and be discovered by [`GceWatcher`].
+    ///
+    /// By default, sets up reverse port forwarding for the package repository port configured in
+    /// `ctx`.
+    pub async fn start_tunnel(
+        ctx: &EnvironmentContext,
+        project: &str,
+        zone: &str,
+        instance_name: &str,
+    ) -> Result<GceInstanceData> {
+        let config = GceTunnelConfig::new(ctx, project, zone, instance_name)?;
+        Self::start_tunnel_with_config(ctx, config).await
+    }
+
+    /// Starts a background SSH port forwarding tunnel process using the provided
+    /// [`GceTunnelConfig`], writes the instance state file, and waits for [`GceWatcher`] to
+    /// discover the target.
+    pub async fn start_tunnel_with_config(
+        ctx: &EnvironmentContext,
+        config: GceTunnelConfig,
+    ) -> Result<GceInstanceData> {
+        let instance =
+            gce_watcher::Instance::new(&config.project, &config.zone, &config.instance_name)?;
+
+        match instance.read(ctx) {
+            Ok(Some(data)) => {
+                let config_satisfied =
+                    config.reverse_ports.iter().all(|p| data.reverse_ports.contains(p))
+                        && (config.serial_number.is_none()
+                            || data.serial_number == config.serial_number);
+                if config_satisfied
+                    && data.is_running()
+                    && std::net::TcpStream::connect(("127.0.0.1", data.ssh_port)).is_ok()
+                    && is_discovered_by_watcher(ctx, &instance.name)
+                {
+                    log::info!(
+                        "Reusing active GCE SSH tunnel for {} (pid {}, port {})",
+                        instance.name,
+                        data.pid,
+                        data.ssh_port
+                    );
+                    return Ok(data);
+                }
+                log::info!(
+                    "Cleaning up stale GCE SSH tunnel state for {} (pid {}, port {})",
+                    instance.name,
+                    data.pid,
+                    data.ssh_port
+                );
+                if let Err(e) = instance.stop(ctx) {
+                    log::warn!("Failed to clean up stale GCE tunnel for {}: {e}", instance.name);
+                }
+            }
+            Ok(None) => {}
+            Err(e) => {
+                log::warn!(
+                    "Cleaning up unreadable GCE instance state file for {}: {e}",
+                    instance.name
+                );
+                let _ = instance.stop(ctx);
+            }
+        }
+
+        let private_key = match &config.private_key {
+            Some(key) => key.clone(),
+            None => load_ssh_keys(ctx)?.private_key,
+        };
+
+        let log_filename = PathBuf::from(format!("gce_{}.log", instance.to_file_stem()));
+        let (log_file, log_file_path) = ffx_config::logging::log_file_with_info(
+            ctx,
+            &log_filename,
+            LogDirHandling::WithDirWithRotate,
+        )
+        .map_err(|e| GceError::dependency("Failed to open the GCE tunnel log", e))?;
+
+        let gcpnode_host = format!(
+            "nic0.{}.{}.c.{}.internal.gcpnode.com",
+            instance.name, instance.zone, instance.project
+        );
+
+        let mut last_err = String::new();
+
+        for attempt in 0..MAX_TUNNEL_ATTEMPTS {
+            if attempt > 0 {
+                Timer::new(RETRY_DELAY).await;
+                let _ = log_file.set_len(0);
+            }
+
+            let (tx, mut rx) = mpsc::unbounded();
+            let _watcher = GceWatcher::from_context(ctx, tx)
+                .map_err(|e| GceError::dependency("Failed to initialize GceWatcher", e))?;
+
+            let port = port_picker::pick_unused_port().ok_or(GceError::NoAvailablePort)?;
+
+            let stdout_log = log_file
+                .try_clone()
+                .io_context(|| "Failed to clone log file handle".to_string())?;
+            let stderr_log = log_file
+                .try_clone()
+                .io_context(|| "Failed to clone log file handle".to_string())?;
+
+            // Wrap `ssh` in a small shell reconnect loop so that the background tunnel survives
+            // guest VM reboots (such as during `fx ota` or `ffx target reboot`). When the Fuchsia
+            // guest reboots, its `sshd` closes the connection and `ssh` exits with code 255.
+            // Without this supervisor loop, `data.pid` would terminate on reboot, causing
+            // `GceWatcher` to drop the target and `127.0.0.1:<port>` to stop listening when the
+            // VM comes back up. Sessions shorter than `SUPERVISOR_ESTABLISHED_SECS` count as
+            // failures rather than reboots, and a burst of them exits with the `ssh` status so
+            // connection and authentication errors reach the caller instead of looping forever.
+            let mut cmd = Command::new("/bin/sh");
+            cmd.arg("-c")
+                .arg(format!(
+                    "trap 'kill 0 2>/dev/null; exit 0' TERM INT; failures=0; while true; do \
+                     start=$(date +%s); \"$@\"; rc=$?; \
+                     if [ $(($(date +%s) - start)) -ge {SUPERVISOR_ESTABLISHED_SECS} ]; then \
+                     failures=0; else failures=$((failures + 1)); \
+                     if [ $failures -ge {SUPERVISOR_MAX_FAILURES} ]; then exit $rc; fi; fi; \
+                     sleep 2; done"
+                ))
+                .arg("gce-tunnel-supervisor")
+                .arg(&config.ssh_binary)
+                .arg("-N")
+                .arg("-L")
+                .arg(format!("{port}:localhost:22"));
+
+            for &rport in &config.reverse_ports {
+                cmd.arg("-R").arg(format!("{rport}:localhost:{rport}"));
+            }
+
+            cmd.arg("-i")
+                .arg(&private_key)
+                .arg("-o")
+                .arg("StrictHostKeyChecking=no")
+                .arg("-o")
+                .arg("UserKnownHostsFile=/dev/null")
+                .arg("-o")
+                .arg("ExitOnForwardFailure=yes")
+                .arg("-o")
+                .arg(format!("ConnectTimeout={SSH_CONNECT_TIMEOUT_SECS}"))
+                .arg("-o")
+                .arg("ServerAliveInterval=5")
+                .arg("-o")
+                .arg("ServerAliveCountMax=3")
+                .arg(&gcpnode_host)
+                .stdin(Stdio::null())
+                .stdout(Stdio::from(stdout_log))
+                .stderr(Stdio::from(stderr_log))
+                .process_group(0);
+
+            let mut child = match cmd.spawn() {
+                Ok(c) => ChildGuard::new(c),
+                Err(e) => {
+                    last_err = format!("Failed to spawn SSH tunnel: {e}");
+                    log::warn!(
+                        "GCE SSH tunnel attempt {}/{} for {} failed: {}",
+                        attempt + 1,
+                        MAX_TUNNEL_ATTEMPTS,
+                        instance.name,
+                        last_err
+                    );
+                    continue;
+                }
+            };
+
+            let mut port_open = false;
+            for _ in 0..MAX_PORT_CHECK_POLLS {
+                if child.has_exited() {
+                    break;
+                }
+
+                if std::net::TcpStream::connect(("127.0.0.1", port)).is_ok() {
+                    port_open = true;
+                    break;
+                }
+                Timer::new(PORT_CHECK_INTERVAL).await;
+            }
+
+            if !port_open {
+                drop(child);
+                last_err = read_tunnel_log(&log_file_path)?;
+                log::warn!(
+                    "GCE SSH tunnel attempt {}/{} for {} failed to bind port {}: {}",
+                    attempt + 1,
+                    MAX_TUNNEL_ATTEMPTS,
+                    instance.name,
+                    port,
+                    last_err.trim()
+                );
+                continue;
+            }
+
+            let data = GceInstanceData {
+                instance_name: instance.name.clone(),
+                project: instance.project.clone(),
+                zone: instance.zone.clone(),
+                pid: child.id(),
+                ssh_port: port,
+                reverse_ports: config.reverse_ports.clone(),
+                serial_number: config.serial_number.clone(),
+            };
+
+            let mut tunnel_guard = ActiveTunnelGuard::new(ctx, &instance, child, &data)?;
+
+            // Wait for GceWatcher to observe and emit TargetEvent::Added for the new instance,
+            // while monitoring the child process in case it exits prematurely.
+            let mut confirmed = false;
+            let deadline = MonotonicInstant::now() + WATCHER_TIMEOUT;
+            while MonotonicInstant::now() < deadline {
+                if tunnel_guard.has_exited() {
+                    break;
+                }
+                let step_deadline =
+                    std::cmp::min(deadline, MonotonicInstant::now() + PORT_CHECK_INTERVAL);
+                if let Some(TargetEvent::Added(handle)) =
+                    rx.next().on_timeout(step_deadline, || None).await
+                {
+                    if handle.node_name.as_deref() == Some(&instance.name) {
+                        log::debug!("GceWatcher confirmed target handle for {}", instance.name);
+                        confirmed = true;
+                        break;
+                    }
+                }
+            }
+
+            // Reverse port forwarding is negotiated with the VM after the local port is bound and
+            // after the state file that GceWatcher observes is written, so let the tunnel settle
+            // before declaring it healthy.
+            Timer::new(TUNNEL_SETTLE_DELAY).await;
+
+            if !confirmed
+                || tunnel_guard.has_exited()
+                || std::net::TcpStream::connect(("127.0.0.1", port)).is_err()
+            {
+                drop(tunnel_guard);
+                let log_err = read_tunnel_log(&log_file_path)?;
+                let err_detail = log_err.trim();
+                last_err = if !confirmed {
+                    if err_detail.is_empty() {
+                        format!("Timed out waiting for GceWatcher to discover {}", instance.name)
+                    } else {
+                        format!("SSH tunnel exited before GceWatcher discovery: {err_detail}")
+                    }
+                } else if err_detail.is_empty() {
+                    format!(
+                        "SSH tunnel for {} exited unexpectedly after binding port",
+                        instance.name
+                    )
+                } else {
+                    format!(
+                        "SSH tunnel for {} exited unexpectedly after binding port: {err_detail}",
+                        instance.name
+                    )
+                };
+                log::warn!(
+                    "GCE SSH tunnel attempt {}/{} for {} failed: {}",
+                    attempt + 1,
+                    MAX_TUNNEL_ATTEMPTS,
+                    instance.name,
+                    last_err
+                );
+                continue;
+            }
+
+            let _ = tunnel_guard.commit();
+            return Ok(data);
+        }
+
+        let err_detail = last_err.trim();
+        let detail = if err_detail.is_empty() {
+            format!("see log at {}", log_file_path.display())
+        } else {
+            err_detail.to_string()
+        };
+        Err(GceError::TunnelFailed { attempts: MAX_TUNNEL_ATTEMPTS, detail })
+    }
+
+    /// Stops the tunnel process associated with an instance if running and removes its state file.
+    pub fn stop_tunnel(
+        ctx: &EnvironmentContext,
+        project: &str,
+        zone: &str,
+        instance_name: &str,
+    ) -> Result<()> {
+        let instance = gce_watcher::Instance::new(project, zone, instance_name)?;
+        instance.stop(ctx).io_context(|| format!("Failed to stop GCE tunnel for {}", instance.name))
+    }
+
+    /// Streams serial port output from `instance_name` over the GCE interactive SSH serial console
+    /// gateway (`<region>-ssh-serialport.googleapis.com:9600`).
+    ///
+    /// This is used as a fallback when `instances.getSerialPortOutput` returns `403 Forbidden`
+    /// (for example, on `google.com` projects where REST `getSerialPortOutput` requires JVS
+    /// breakglass justification while interactive SSH serial console access is permitted for
+    /// instance admins).
+    pub async fn stream_ssh_serial<W: std::io::Write>(
+        ctx: &EnvironmentContext,
+        project: &str,
+        zone: &str,
+        instance_name: &str,
+        port: u32,
+        follow: bool,
+        writer: &mut W,
+    ) -> Result<()> {
+        Self::stream_ssh_serial_with_binary(
+            ctx,
+            project,
+            zone,
+            instance_name,
+            port,
+            follow,
+            std::path::Path::new("ssh"),
+            writer,
+        )
+        .await
+    }
+
+    /// Streams serial port output over the GCE SSH serial console gateway using `ssh_binary`.
+    pub async fn stream_ssh_serial_with_binary<W: std::io::Write>(
+        ctx: &EnvironmentContext,
+        project: &str,
+        zone: &str,
+        instance_name: &str,
+        port: u32,
+        follow: bool,
+        ssh_binary: &std::path::Path,
+        writer: &mut W,
+    ) -> Result<()> {
+        use futures::FutureExt as _;
+        use tokio::io::AsyncReadExt as _;
+
+        let instance = gce_watcher::Instance::new(project, zone, instance_name)?;
+        let private_key = load_ssh_keys(ctx)?.private_key;
+        let args =
+            ssh_serial_args(&instance.project, &instance.zone, &instance.name, port, &private_key);
+
+        let mut cmd = Command::new(ssh_binary);
+        cmd.args(&args)
+            .stdin(Stdio::null())
+            .stdout(Stdio::piped())
+            .stderr(Stdio::piped())
+            .process_group(0);
+
+        let mut child = cmd
+            .spawn()
+            .io_context(|| format!("Failed to spawn SSH serial console for {}", instance.name))?;
+        let mut stdout = child
+            .stdout
+            .take()
+            .map(tokio::process::ChildStdout::from_std)
+            .transpose()
+            .io_context(|| "Failed to register async SSH serial stdout".to_string())?;
+        let mut stderr = child
+            .stderr
+            .take()
+            .map(tokio::process::ChildStderr::from_std)
+            .transpose()
+            .io_context(|| "Failed to register async SSH serial stderr".to_string())?;
+        let _guard = ChildGuard::new(child);
+
+        let mut buf = [0u8; 4096];
+        let mut received_any = false;
+        if let Some(ref mut stdout) = stdout {
+            loop {
+                let read_res = if follow {
+                    Some(stdout.read(&mut buf).await)
+                } else {
+                    let timeout = if received_any {
+                        SSH_SERIAL_IDLE_TIMEOUT
+                    } else {
+                        SSH_SERIAL_INITIAL_TIMEOUT
+                    };
+                    stdout
+                        .read(&mut buf)
+                        .map(Some)
+                        .on_timeout(MonotonicInstant::now() + timeout, || None)
+                        .await
+                };
+
+                match read_res {
+                    Some(Ok(0)) => {
+                        if !received_any {
+                            if let Some(ref mut stderr) = stderr {
+                                let mut stderr_out = String::new();
+                                let _ = stderr.read_to_string(&mut stderr_out).await;
+                                let trimmed = stderr_out.trim();
+                                if !trimmed.is_empty() {
+                                    if let Some(remediation) = ssh_failure_remediation(trimmed) {
+                                        return Err(GceError::SshUnrecoverable { remediation });
+                                    }
+                                    return Err(GceError::TunnelFailed {
+                                        attempts: 1,
+                                        detail: trimmed.to_string(),
+                                    });
+                                }
+                            }
+                        }
+                        break;
+                    }
+                    Some(Ok(n)) => {
+                        received_any = true;
+                        writer
+                            .write_all(&buf[..n])
+                            .io_context(|| "Failed to write SSH serial output".to_string())?;
+                        writer
+                            .flush()
+                            .io_context(|| "Failed to flush SSH serial output".to_string())?;
+                    }
+                    Some(Err(e)) => {
+                        return Err(e)
+                            .io_context(|| "Failed to read SSH serial output".to_string());
+                    }
+                    None => break,
+                }
+            }
+        }
+
+        Ok(())
+    }
+}
+
+/// Builds the `ssh` CLI arguments to connect to the GCE interactive serial console gateway.
+fn ssh_serial_args(
+    project: &str,
+    zone: &str,
+    instance_name: &str,
+    port: u32,
+    private_key: &std::path::Path,
+) -> Vec<String> {
+    let endpoint = crate::context::get_serial_endpoint(zone);
+    let (host, ssh_port) = endpoint.rsplit_once(':').unwrap_or((&endpoint, "9600"));
+    let target = format!("{project}.{zone}.{instance_name}.fuchsia.port={port}@{host}");
+    vec![
+        "-T".to_string(),
+        "-p".to_string(),
+        ssh_port.to_string(),
+        "-i".to_string(),
+        private_key.to_string_lossy().into_owned(),
+        "-o".to_string(),
+        "StrictHostKeyChecking=no".to_string(),
+        "-o".to_string(),
+        "UserKnownHostsFile=/dev/null".to_string(),
+        "-o".to_string(),
+        format!("ConnectTimeout={SSH_CONNECT_TIMEOUT_SECS}"),
+        "-o".to_string(),
+        "LogLevel=ERROR".to_string(),
+        target,
+    ]
+}
+
+/// Loads the configured FFX SSH key files, creating them if they do not exist yet.
+fn load_ssh_keys(ctx: &EnvironmentContext) -> Result<SshKeyFiles> {
+    let ssh_keys = SshKeyFiles::load(ctx)
+        .map_err(|e| GceError::dependency("Failed to load SSH key configuration", e))?;
+    ssh_keys
+        .create_keys_if_needed(false)
+        .map_err(|e| GceError::dependency("Failed to create SSH keys if needed", e))?;
+    Ok(ssh_keys)
+}
+
+/// Reads public key content from FFX SSH key configuration (`SshKeyFiles`).
+/// Returns a list of public keys from the configured `authorized_keys` file.
+pub fn read_gce_ssh_pubkeys(ctx: &EnvironmentContext) -> Result<Vec<String>> {
+    let ssh_keys = load_ssh_keys(ctx)?;
+    let content = std::fs::read_to_string(&ssh_keys.authorized_keys)
+        .io_context(|| format!("Failed to read {}", ssh_keys.authorized_keys.display()))?;
+    Ok(content
+        .lines()
+        .map(str::trim)
+        .filter(|line| !line.is_empty() && !line.starts_with('#'))
+        .map(ToString::to_string)
+        .collect())
+}
+
+/// Reads the first available public key content from FFX SSH key configuration (`SshKeyFiles`).
+pub fn read_gce_ssh_pubkey(ctx: &EnvironmentContext) -> Result<Option<String>> {
+    Ok(read_gce_ssh_pubkeys(ctx)?.into_iter().next())
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use discovery::instance_watcher::is_pid_running;
+    use std::os::unix::fs::PermissionsExt as _;
+
+    #[fuchsia::test]
+    async fn test_tunnel_config_uses_repository_listen_addr() {
+        let env = ffx_config::test_env()
+            .runtime_config("repository.server.listen", "127.0.0.1:9090")
+            .build()
+            .expect("test env");
+        let config =
+            GceTunnelConfig::new(&env.context, "my-project", "us-central1-a", "test-vm").unwrap();
+        assert_eq!(config.reverse_ports, vec![9090]);
+        assert_eq!(config.ssh_binary, PathBuf::from("ssh"));
+    }
+
+    #[fuchsia::test]
+    async fn test_child_guard_kills_on_drop_and_preserves_on_detach() {
+        let child = Command::new("/bin/sleep").arg("60").spawn().expect("spawn sleep");
+        let pid = child.id();
+        assert!(is_pid_running(pid));
+        {
+            let _guard = ChildGuard::new(child);
+        }
+        assert!(!is_pid_running(pid));
+
+        let child2 = Command::new("/bin/sleep").arg("60").spawn().expect("spawn sleep 2");
+        let pid2 = child2.id();
+        let detached = {
+            let guard2 = ChildGuard::new(child2);
+            guard2.detach()
+        };
+        assert!(is_pid_running(pid2));
+        if let Some(mut child) = detached {
+            let _ = child.kill();
+            let _ = child.wait();
+        }
+        assert!(!is_pid_running(pid2));
+    }
+
+    #[fuchsia::test]
+    async fn test_read_gce_ssh_pubkeys_from_config() {
+        let temp = tempfile::tempdir().expect("temp dir");
+        let auth_keys_path = temp.path().join("authorized_keys");
+        let priv_key_path = temp.path().join("private_key");
+        std::fs::write(
+            &auth_keys_path,
+            "# comment\nssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAI test@fuchsia\n",
+        )
+        .expect("write auth keys");
+
+        let env = ffx_config::test_env()
+            .runtime_config(ffx_config::keys::SSH_PUB_KEY, auth_keys_path.to_str().unwrap())
+            .runtime_config(ffx_config::keys::SSH_PRIVATE_KEY, priv_key_path.to_str().unwrap())
+            .build()
+            .expect("test env");
+
+        let keys = read_gce_ssh_pubkeys(&env.context).expect("read pubkeys");
+        assert!(keys.contains(&"ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAI test@fuchsia".to_string()));
+        assert_eq!(
+            read_gce_ssh_pubkey(&env.context).expect("read pubkey").as_deref(),
+            Some("ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAI test@fuchsia")
+        );
+    }
+
+    #[fuchsia::test]
+    async fn test_start_tunnel_reuses_running_instance_via_gce_watcher() {
+        let temp = tempfile::tempdir().expect("temp dir");
+        let env = ffx_config::test_env()
+            .runtime_config(ffx_config::keys::GCE_INSTANCE_ROOT_DIR, temp.path().to_str().unwrap())
+            .build()
+            .expect("test env");
+
+        let mut child = Command::new("/bin/sleep").arg("60").spawn().expect("spawn sleep");
+        let pid = child.id();
+        let listener = std::net::TcpListener::bind("127.0.0.1:0").expect("bind mock ssh port");
+        let port = listener.local_addr().unwrap().port();
+
+        let instance =
+            gce_watcher::Instance::new("my-project", "us-central1-a", "running-vm").unwrap();
+        let data = GceInstanceData {
+            instance_name: "running-vm".to_string(),
+            project: "my-project".to_string(),
+            zone: "us-central1-a".to_string(),
+            pid,
+            ssh_port: port,
+            reverse_ports: vec![8083],
+            serial_number: Some("GC-REUSE123".to_string()),
+        };
+        instance.write(&env.context, &data).expect("write instance data");
+
+        // Starting the tunnel should detect the running healthy instance via GceWatcher and reuse
+        // it immediately.
+        let reused =
+            GceTunnel::start_tunnel(&env.context, "my-project", "us-central1-a", "running-vm")
+                .await
+                .expect("reuse running tunnel");
+        assert_eq!(reused, data);
+
+        drop(listener);
+        GceTunnel::stop_tunnel(&env.context, "my-project", "us-central1-a", "running-vm")
+            .expect("stop tunnel");
+        let _ = child.wait();
+    }
+
+    #[fuchsia::test]
+    async fn test_start_tunnel_spawns_and_discovers_via_gce_watcher() {
+        let temp = tempfile::tempdir().expect("temp dir");
+        let log_dir = temp.path().join("logs");
+        std::fs::create_dir_all(&log_dir).expect("create log dir");
+        let auth_keys_path = temp.path().join("authorized_keys");
+        let priv_key_path = temp.path().join("private_key");
+
+        let mock_ssh_path = temp.path().join("mock_ssh.py");
+        let script = r#"#!/usr/bin/python3
+import socket
+import sys
+import time
+
+port = None
+args = sys.argv[1:]
+for i, arg in enumerate(args):
+    if arg == "-L" and i + 1 < len(args):
+        port = int(args[i + 1].split(":")[0])
+        break
+
+if port is not None:
+    s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+    s.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
+    s.bind(("127.0.0.1", port))
+    s.listen(5)
+    while True:
+        time.sleep(1)
+"#;
+        std::fs::write(&mock_ssh_path, script).expect("write mock ssh script");
+        std::fs::set_permissions(&mock_ssh_path, std::fs::Permissions::from_mode(0o755))
+            .expect("chmod mock ssh script");
+
+        let env = ffx_config::test_env()
+            .runtime_config(ffx_config::keys::GCE_INSTANCE_ROOT_DIR, temp.path().to_str().unwrap())
+            .runtime_config("log.dir", log_dir.to_str().unwrap())
+            .runtime_config(ffx_config::keys::SSH_PUB_KEY, auth_keys_path.to_str().unwrap())
+            .runtime_config(ffx_config::keys::SSH_PRIVATE_KEY, priv_key_path.to_str().unwrap())
+            .build()
+            .expect("test env");
+
+        let config =
+            GceTunnelConfig::new(&env.context, "my-project", "us-central1-a", "spawned-vm")
+                .expect("tunnel config")
+                .with_serial_number("GC-SPAWN123")
+                .with_ssh_binary(&mock_ssh_path);
+
+        let started = GceTunnel::start_tunnel_with_config(&env.context, config)
+            .await
+            .expect("start tunnel with mock ssh");
+
+        assert_eq!(started.instance_name, "spawned-vm");
+        assert_eq!(started.project, "my-project");
+        assert_eq!(started.zone, "us-central1-a");
+        assert_eq!(started.serial_number.as_deref(), Some("GC-SPAWN123"));
+        assert!(started.is_running());
+
+        GceTunnel::stop_tunnel(&env.context, "my-project", "us-central1-a", "spawned-vm")
+            .expect("stop spawned tunnel");
+    }
+
+    #[fuchsia::test]
+    async fn test_start_tunnel_retries_and_cleans_up_when_tunnel_exits_after_bind() {
+        let temp = tempfile::tempdir().expect("temp dir");
+        let log_dir = temp.path().join("logs");
+        std::fs::create_dir_all(&log_dir).expect("create log dir");
+        let auth_keys_path = temp.path().join("authorized_keys");
+        let priv_key_path = temp.path().join("private_key");
+        let counter_path = temp.path().join("attempt_count");
+
+        let mock_ssh_path = temp.path().join("mock_ssh_flaky.py");
+        let script = format!(
+            r#"#!/usr/bin/python3
+import socket
+import sys
+import time
+
+counter_file = "{}"
+try:
+    with open(counter_file, "r") as f:
+        attempt = int(f.read().strip())
+except Exception:
+    attempt = 0
+
+attempt += 1
+with open(counter_file, "w") as f:
+    f.write(str(attempt))
+
+port = None
+args = sys.argv[1:]
+for i, arg in enumerate(args):
+    if arg == "-L" and i + 1 < len(args):
+        port = int(args[i + 1].split(":")[0])
+        break
+
+if port is not None:
+    s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+    s.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
+    s.bind(("127.0.0.1", port))
+    s.listen(5)
+    if attempt == 1:
+        # Accept the initial port_open probe connection, then immediately close and exit
+        # to simulate OpenSSH binding locally and then failing remote port forwarding.
+        conn, _ = s.accept()
+        conn.close()
+        s.close()
+        sys.stderr.write("remote port forwarding failed\n")
+        sys.exit(255)
+    while True:
+        time.sleep(1)
+"#,
+            counter_path.display()
+        );
+        std::fs::write(&mock_ssh_path, script).expect("write flaky mock ssh script");
+        std::fs::set_permissions(&mock_ssh_path, std::fs::Permissions::from_mode(0o755))
+            .expect("chmod flaky mock ssh script");
+
+        let env = ffx_config::test_env()
+            .runtime_config(ffx_config::keys::GCE_INSTANCE_ROOT_DIR, temp.path().to_str().unwrap())
+            .runtime_config("log.dir", log_dir.to_str().unwrap())
+            .runtime_config(ffx_config::keys::SSH_PUB_KEY, auth_keys_path.to_str().unwrap())
+            .runtime_config(ffx_config::keys::SSH_PRIVATE_KEY, priv_key_path.to_str().unwrap())
+            .build()
+            .expect("test env");
+
+        let config = GceTunnelConfig::new(&env.context, "my-project", "us-central1-a", "flaky-vm")
+            .expect("tunnel config")
+            .with_ssh_binary(&mock_ssh_path);
+
+        let started = GceTunnel::start_tunnel_with_config(&env.context, config)
+            .await
+            .expect("start tunnel should succeed on retry");
+
+        assert!(started.is_running());
+        // The supervisor and the retry loop both reconnect, so only require that the failed
+        // first session was followed by a successful one.
+        let attempts: usize =
+            std::fs::read_to_string(&counter_path).unwrap().trim().parse().unwrap();
+        assert!(attempts >= 2, "expected a retry after the first session failed, got {attempts}");
+
+        GceTunnel::stop_tunnel(&env.context, "my-project", "us-central1-a", "flaky-vm")
+            .expect("stop flaky tunnel");
+    }
+
+    #[fuchsia::test]
+    async fn test_start_tunnel_cleans_up_corrupt_state_file_and_leaves_no_stale_file_on_failure() {
+        let temp = tempfile::tempdir().expect("temp dir");
+        let log_dir = temp.path().join("logs");
+        std::fs::create_dir_all(&log_dir).expect("create log dir");
+        let auth_keys_path = temp.path().join("authorized_keys");
+        let priv_key_path = temp.path().join("private_key");
+
+        let mock_ssh_path = temp.path().join("mock_ssh_fail.py");
+        let script = r#"#!/usr/bin/python3
+import sys
+sys.stderr.write("ERROR: try running gcert\n")
+sys.exit(255)
+"#;
+        std::fs::write(&mock_ssh_path, script).expect("write failing mock ssh script");
+        std::fs::set_permissions(&mock_ssh_path, std::fs::Permissions::from_mode(0o755))
+            .expect("chmod failing mock ssh script");
+
+        let env = ffx_config::test_env()
+            .runtime_config(ffx_config::keys::GCE_INSTANCE_ROOT_DIR, temp.path().to_str().unwrap())
+            .runtime_config("log.dir", log_dir.to_str().unwrap())
+            .runtime_config(ffx_config::keys::SSH_PUB_KEY, auth_keys_path.to_str().unwrap())
+            .runtime_config(ffx_config::keys::SSH_PRIVATE_KEY, priv_key_path.to_str().unwrap())
+            .build()
+            .expect("test env");
+
+        let instance =
+            gce_watcher::Instance::new("my-project", "us-central1-a", "corrupt-fail-vm").unwrap();
+        let state_path = instance.to_path(temp.path());
+        std::fs::write(&state_path, b"corrupt non-json pre-existing state").unwrap();
+        assert!(state_path.exists());
+
+        let config =
+            GceTunnelConfig::new(&env.context, "my-project", "us-central1-a", "corrupt-fail-vm")
+                .expect("tunnel config")
+                .with_ssh_binary(&mock_ssh_path);
+
+        let res = GceTunnel::start_tunnel_with_config(&env.context, config).await;
+        let err = res.expect_err("tunnel should fail").to_string();
+        assert!(err.contains("gcert"), "{err}");
+        assert!(!state_path.exists(), "corrupt pre-existing state file must be cleaned up");
+    }
+
+    #[fuchsia::test]
+    fn test_ssh_failure_remediation() {
+        assert!(ssh_failure_remediation("ERROR: try running gcert\n").unwrap().contains("gcert"),);
+        assert!(
+            ssh_failure_remediation(
+                "You do not have access to the requested resource. Reason: [IAPAS deny]\n"
+            )
+            .unwrap()
+            .contains("roles/iap.tunnelResourceAccessor")
+        );
+        assert!(
+            ssh_failure_remediation("ssh: Could not resolve hostname nic0.vm.internal.gcpnode.com")
+                .unwrap()
+                .contains("corp-ssh-helper")
+        );
+        assert!(
+            ssh_failure_remediation("fuchsia@host: Permission denied (publickey).")
+                .unwrap()
+                .contains("check-ssh-keys")
+        );
+        // Transient failures stay retryable.
+        assert_eq!(ssh_failure_remediation("ssh: connect to host ...: Connection timed out"), None);
+        assert_eq!(ssh_failure_remediation(""), None);
+    }
+
+    #[fuchsia::test]
+    fn test_ssh_serial_args() {
+        let args = ssh_serial_args(
+            "my-proj",
+            "us-central1-a",
+            "my-vm",
+            1,
+            std::path::Path::new("/tmp/id_ed25519"),
+        );
+        assert_eq!(
+            args,
+            vec![
+                "-T",
+                "-p",
+                "9600",
+                "-i",
+                "/tmp/id_ed25519",
+                "-o",
+                "StrictHostKeyChecking=no",
+                "-o",
+                "UserKnownHostsFile=/dev/null",
+                "-o",
+                "ConnectTimeout=5",
+                "-o",
+                "LogLevel=ERROR",
+                "my-proj.us-central1-a.my-vm.fuchsia.port=1@us-central1-ssh-serialport.googleapis.com",
+            ]
+        );
+    }
+
+    #[fuchsia::test]
+    async fn test_stream_ssh_serial_with_binary() {
+        let temp = tempfile::tempdir().expect("temp dir");
+        let auth_keys_path = temp.path().join("authorized_keys");
+        let priv_key_path = temp.path().join("private_key");
+
+        let mock_ssh_path = temp.path().join("mock_ssh_serial.py");
+        let script = r#"#!/usr/bin/python3
+import sys
+import time
+
+sys.stdout.write("[00000.000] Welcome to Zircon!\n")
+sys.stdout.flush()
+time.sleep(60)
+"#;
+        std::fs::write(&mock_ssh_path, script).expect("write mock ssh script");
+        std::fs::set_permissions(&mock_ssh_path, std::fs::Permissions::from_mode(0o755))
+            .expect("chmod mock ssh script");
+
+        let env = ffx_config::test_env()
+            .runtime_config(ffx_config::keys::SSH_PUB_KEY, auth_keys_path.to_str().unwrap())
+            .runtime_config(ffx_config::keys::SSH_PRIVATE_KEY, priv_key_path.to_str().unwrap())
+            .build()
+            .expect("test env");
+
+        let mut buf = Vec::new();
+        GceTunnel::stream_ssh_serial_with_binary(
+            &env.context,
+            "my-proj",
+            "us-central1-a",
+            "my-vm",
+            1,
+            false,
+            &mock_ssh_path,
+            &mut buf,
+        )
+        .await
+        .expect("stream ssh serial should succeed");
+
+        assert_eq!(String::from_utf8(buf).unwrap(), "[00000.000] Welcome to Zircon!\n");
+    }
+}

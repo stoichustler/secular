@@ -1,0 +1,18 @@
+# Copyright 2024 The Fuchsia Authors. All rights reserved.
+# Use of this source code is governed by a BSD-style license that can be
+# found in the LICENSE file.
+
+import("//products/build/components.gni")
+
+fuchsia_component("component") {
+  testonly = true
+  component_name = "target"
+  manifest = "meta/target.cml"
+  deps = [ "//userspace/diagnostics/launcher:bin_with_fake_time" ]
+}
+
+fuchsia_package("pkg") {
+  testonly = true
+  package_name = "diagnostics_detect_integration_target"
+  deps = [ ":component" ]
+}

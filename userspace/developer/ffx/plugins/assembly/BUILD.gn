@@ -1,0 +1,138 @@
+# Copyright 2021 The Fuchsia Authors. All rights reserved.
+# Use of this source code is governed by a BSD-style license that can be
+# found in the LICENSE file.
+
+import("//products/build/host.gni")
+import("//products/build/rust/rustc_binary.gni")
+import("//products/build/rust/rustc_library.gni")
+import("//products/build/zircon/tools.gni")
+import("//userspace/developer/ffx/build/ffx_tool.gni")
+
+assert(is_host)
+
+group("tests") {
+  testonly = true
+  deps = [
+    ":ffx_assembly_args_test",
+    ":ffx_assembly_test",
+  ]
+}
+
+rustc_library("ffx_assembly_args") {
+  version = "0.1.0"
+  edition = "2024"
+  with_unit_tests = true
+  sources = [ "src/args.rs" ]
+  source_root = "src/args.rs"
+
+  deps = [
+    "//userspace/lib/assembly/cli_args",
+    "//userspace/lib/assembly/images_config",
+    "//third_party/rust_crates:anyhow",
+    "//third_party/rust_crates:argh",
+    "//third_party/rust_crates:camino",
+  ]
+}
+
+rustc_library("ffx_assembly") {
+  version = "0.1.0"
+  edition = "2024"
+  with_unit_tests = true
+
+  sources = [
+    "src/lib.rs",
+    "src/operations.rs",
+    "src/operations/create_update.rs",
+    "src/operations/size_check.rs",
+    "src/operations/size_check/breakdown.rs",
+    "src/operations/size_check/common.rs",
+    "src/operations/size_check/diff.rs",
+    "src/operations/size_check/package.rs",
+    "src/operations/size_check/product.rs",
+    "src/operations/size_check/visualization.rs",
+    "src/subpackage_blobs_package.rs",
+  ]
+  inputs = [
+    "src/operations/size_check/index.html",
+    "src/operations/size_check/D3BlobTreeMap.js",
+    "//scripts/third_party/d3_v3/d3.js",
+    "//scripts/third_party/d3_v3/LICENSE",
+  ]
+
+  deps = [
+    ":ffx_assembly_args",
+    "//userspace/developer/ffx/config:lib",
+    "//userspace/developer/ffx/lib/errors:lib",
+    "//userspace/developer/ffx/lib/fho:lib",
+    "//userspace/developer/ffx/lib/pbms:lib",
+    "//userspace/developer/ffx/lib/writer:lib",
+    "//userspace/lib/assembly/api",
+    "//userspace/lib/assembly/assembled_system",
+    "//userspace/lib/assembly/blob_size",
+    "//userspace/lib/assembly/components",
+    "//userspace/lib/assembly/container",
+    "//userspace/lib/assembly/partitions_config",
+    "//userspace/lib/assembly/sdk",
+    "//userspace/lib/assembly/subpackage_blobs_package",
+    "//userspace/lib/assembly/tool",
+    "//userspace/lib/assembly/update_package",
+    "//userspace/lib/assembly/update_packages_manifest",
+    "//userspace/lib/assembly/util",
+    "//userspace/lib/fuchsia-url",
+    "//userspace/lib/gcs",
+    "//userspace/lib/structured_ui",
+    "//userspace/sys/pkg/lib/epoch",
+    "//userspace/sys/pkg/lib/fuchsia-hash",
+    "//userspace/sys/pkg/lib/fuchsia-merkle",
+    "//userspace/sys/pkg/lib/fuchsia-pkg",
+    "//third_party/rust_crates:anyhow",
+    "//third_party/rust_crates:async-trait",
+    "//third_party/rust_crates:camino",
+    "//third_party/rust_crates:log",
+    "//third_party/rust_crates:schemars",
+    "//third_party/rust_crates:serde",
+    "//third_party/rust_crates:serde_json",
+    "//third_party/rust_crates:url",
+  ]
+  test_deps = [
+    "//userspace/lib/assembly/images_config",
+    "//userspace/lib/assembly/release_info",
+    "//userspace/lib/utf8_path",
+    "//userspace/lib/versioning/version-history/rust",
+    "//userspace/storage/blobfs/tools:blobfs",
+    "//userspace/sys/pkg/lib/far/rust:fuchsia-archive",
+    "//third_party/rust_crates:camino",
+    "//third_party/rust_crates:pretty_assertions",
+    "//third_party/rust_crates:tempfile",
+  ]
+}
+
+ffx_tool("ffx_assembly_tool") {
+  edition = "2024"
+  output_name = "ffx-assembly"
+  deps = [
+    ":ffx_assembly",
+    "//userspace/developer/ffx/lib/fho:lib",
+    "//userspace/lib/fuchsia-async",
+  ]
+  sources = [ "src/main.rs" ]
+
+  sdk_target_name = "sdk"
+  sdk_category = "partner"
+
+  # We avoid instrumenting assembly for certain builds as this negatively
+  # impacts performance.
+  exclude_toolchain_tags = [
+    "asan",
+    "coverage",
+    "profile",
+  ]
+}
+
+group("assembly") {
+  public_deps = [ ":ffx_assembly_tool_host_tool" ]
+}
+
+group("bin") {
+  public_deps = [ ":ffx_assembly_tool_versioned" ]
+}

@@ -1,0 +1,103 @@
+# Copyright 2020 The Fuchsia Authors. All rights reserved.
+# Use of this source code is governed by a BSD-style license that can be
+# found in the LICENSE file.
+
+import("//products/build/components.gni")
+import("//products/build/rust/rustc_test.gni")
+
+rustc_test("driver") {
+  name = "omaha_client_integration_test"
+  edition = "2024"
+
+  deps = [
+    "//sdk/fidl/fuchsia.feedback:fuchsia.feedback_rust",
+    "//sdk/fidl/fuchsia.hardware.power.statecontrol:fuchsia.hardware.power.statecontrol_rust",
+    "//sdk/fidl/fuchsia.io:fuchsia.io_rust",
+    "//sdk/fidl/fuchsia.logger:fuchsia.logger_rust",
+    "//sdk/fidl/fuchsia.metrics:fuchsia.metrics_rust",
+    "//sdk/fidl/fuchsia.net.http:fuchsia.net.http_rust",
+    "//sdk/fidl/fuchsia.paver:fuchsia.paver_rust",
+    "//sdk/fidl/fuchsia.pkg:fuchsia.pkg_rust",
+    "//sdk/fidl/fuchsia.sys2:fuchsia.sys2_rust",
+    "//sdk/fidl/fuchsia.update:fuchsia.update_rust",
+    "//sdk/fidl/fuchsia.update.channel:fuchsia.update.channel_rust",
+    "//sdk/fidl/fuchsia.update.channelcontrol:fuchsia.update.channelcontrol_rust",
+    "//sdk/fidl/fuchsia.update.config:fuchsia.update.config_rust",
+    "//sdk/rust/zx",
+    "//userspace/lib/diagnostics/hierarchy/rust",
+    "//userspace/lib/diagnostics/reader/rust",
+    "//userspace/lib/diagnostics/testing/diagnostics-assertions/rust:diagnostics-assertions",
+    "//userspace/lib/fidl/rust/fidl",
+    "//userspace/lib/fuchsia",
+    "//userspace/lib/fuchsia-async",
+    "//userspace/lib/fuchsia-component",
+    "//userspace/lib/fuchsia-component-test",
+    "//userspace/lib/fuchsia-fs",
+    "//userspace/lib/fuchsia-sync",
+    "//userspace/lib/fuchsia-url",
+    "//userspace/sys/lib/cm_rust",
+    "//userspace/sys/pkg/fidl/fuchsia.update.installer:fuchsia.update.installer_rust",
+    "//userspace/sys/pkg/fidl/fuchsia.update.verify:fuchsia.update.verify_rust",
+    "//userspace/sys/pkg/lib/fidl-fuchsia-update-installer-ext",
+    "//userspace/sys/pkg/lib/fuchsia-pkg-testing",
+    "//userspace/sys/pkg/lib/update-package",
+    "//userspace/sys/pkg/testing/mock-crash-reporter:lib",
+    "//userspace/sys/pkg/testing/mock-health-verification",
+    "//userspace/sys/pkg/testing/mock-installer",
+    "//userspace/sys/pkg/testing/mock-omaha-server-fuchsia",
+    "//userspace/sys/pkg/testing/mock-paver",
+    "//userspace/sys/pkg/testing/mock-reboot",
+    "//userspace/sys/pkg/testing/mock-resolver",
+    "//third_party/rust_crates:anyhow",
+    "//third_party/rust_crates:assert_matches",
+    "//third_party/rust_crates:futures",
+    "//third_party/rust_crates:mock-omaha-server",
+    "//third_party/rust_crates:omaha_client",
+    "//third_party/rust_crates:serde_json",
+    "//third_party/rust_crates:tempfile",
+  ]
+
+  sources = [ "src/lib.rs" ]
+
+  inputs = [ "src/test_private_key.pem" ]
+  configs += [ "//products/build/config/rust/lints:clippy_warn_all" ]
+}
+
+fuchsia_test_component("omaha-client-test-root") {
+  component_name = "test_root"
+  manifest = "meta/test_root.cml"
+}
+
+fuchsia_component("omaha-client-test-driver") {
+  component_name = "test_driver"
+  testonly = true
+  manifest = "meta/test_driver.cml"
+  deps = [ ":driver" ]
+}
+
+fuchsia_test_package("omaha-client-integration-tests") {
+  test_components = [ ":omaha-client-test-root" ]
+  deps = [
+    ":omaha-client-test-driver",
+    "//userspace/cobalt/bin/testing/fake_cobalt:component_v2",
+    "//userspace/connectivity/network/dns:component",
+    "//userspace/connectivity/network/netstack3:component-for-tests",
+    "//userspace/connectivity/policy/http-client:component",
+    "//userspace/sys/pkg/bin/omaha-client:component",
+    "//userspace/sys/pkg/bin/system-update-committer:component",
+    "//userspace/sys/pkg/bin/system-updater:component",
+    "//userspace/sys/pkg/testing:fake-ssl-certs",
+    "//userspace/sys/stash:stash2_v2",
+  ]
+
+  test_specs = {
+    log_settings = {
+      max_severity = "ERROR"
+    }
+  }
+}
+
+group("non_hermetic_tests") {
+  testonly = true
+  public_deps = [ ":omaha-client-integration-tests" ]
+}

@@ -1,0 +1,57 @@
+# Copyright 2026 The Fuchsia Authors. All rights reserved.
+# Use of this source code is governed by a BSD-style license that can be
+# found in the LICENSE file.
+
+load("@io_bazel_rules_go//go:def.bzl", "go_library")
+load("//products/build/bazel/platforms:constraints.bzl", "HOST_OS_CONSTRAINTS")
+load("//products/build/bazel/rules/host_tests:host_go_test.bzl", "host_go_test")
+
+package(default_applicable_licenses = ["//:license"])
+
+go_library(
+    name = "serial",
+    srcs = [
+        "serial.go",
+        "serial_darwin.go",
+        "serial_linux.go",
+        "server.go",
+    ],
+    importpath = "go.fuchsia.dev/fuchsia/tools/lib/serial",
+    target_compatible_with = HOST_OS_CONSTRAINTS,
+    visibility = ["//tools:__subpackages__"],
+    deps = [
+        ":constants",
+        "//third_party/golibs:golang.org/x/sys/unix",
+        "//tools/lib/iomisc",
+        "//tools/lib/logger",
+        "//tools/lib/syslog",
+    ],
+)
+
+go_library(
+    name = "constants",
+    srcs = [
+        "constants/constants.go",
+    ],
+    importpath = "go.fuchsia.dev/fuchsia/tools/lib/serial/constants",
+    target_compatible_with = HOST_OS_CONSTRAINTS,
+    visibility = ["//tools/botanist:__pkg__"],
+)
+
+host_go_test(
+    name = "serial_tests",
+    srcs = [
+        "serial_linux_test.go",
+        "serial_test.go",
+        "server_test.go",
+    ],
+    embed = [":serial"],
+    target_compatible_with = HOST_OS_CONSTRAINTS,
+    visibility = ["//tools:__pkg__"],
+    deps = [
+        "//third_party/golibs:github.com/creack/pty",
+        "//third_party/golibs:github.com/google/go-cmp/cmp",
+        "//third_party/golibs:golang.org/x/sync/errgroup",
+        "//tools/lib/color",
+    ],
+)

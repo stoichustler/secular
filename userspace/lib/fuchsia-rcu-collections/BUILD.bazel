@@ -1,0 +1,36 @@
+# Copyright 2026 The Fuchsia Authors. All rights reserved.
+# Use of this source code is governed by a BSD-style license that can be
+# found in the LICENSE file.
+
+load("//products/build/bazel/rules/rust:defs.bzl", "rustc_library")
+
+package(default_applicable_licenses = ["//:license"])
+
+rustc_library(
+    name = "fuchsia-rcu-collections",
+    srcs = [
+        "src/lib.rs",
+        "src/rcu_array.rs",
+        "src/rcu_intrusive_list.rs",
+        "src/rcu_list.rs",
+        "src/rcu_raw_hash_map.rs",
+        "src/tests/mod.rs",
+        "src/tests/rcu_array.rs",
+        "src/tests/rcu_intrusive_list.rs",
+        "src/tests/rcu_list.rs",
+        "src/tests/rcu_raw_hash_map.rs",
+    ],
+    edition = "2024",
+    visibility = [
+        "//userspace/starnix/kernel/core:__pkg__",
+        "//userspace/starnix/lib/selinux:__pkg__",
+        "//userspace/starnix/lib/starnix_rcu:__pkg__",
+        "//userspace/starnix/lib/starnix_sync:__pkg__",
+    ],
+    with_unit_tests = True,
+    deps = [
+        "//userspace/lib/fuchsia-rcu",
+        "//third_party/rust_crates/vendor:memoffset",
+        "//third_party/rust_crates/vendor:rapidhash",
+    ],
+)

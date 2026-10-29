@@ -1,0 +1,37 @@
+# Copyright 2024 The Fuchsia Authors. All rights reserved.
+# Use of this source code is governed by a BSD-style license that can be
+# found in the LICENSE file.
+
+import("//products/build/config/compiler_config.gni")
+
+# LINT.IfChange(arm_configs)
+
+# Platform baseline.
+# This tracks the minimum hardware requirements for aarch32 on starnix.
+# Practically, this should see minimal to no use.
+compiler_config("arm") {
+  c_family_flags = [
+    "-march=armv7-a",
+    "-mhwdiv=arm,thumb",
+    "-mfloat-abi=hard",
+    "-mtune=generic",
+    "-fforce-enable-int128",
+  ]
+
+  rustflags = [ "-Ctarget-feature=+crc,+aes,+sha2" ]
+}
+
+# Copied from //products/build/config/arm64/BUILD.gn
+compiler_config("cortex-a53") {
+  c_family_flags = [ "-mcpu=cortex-a53" ]
+
+  # TODO(https://fxbug.dev/42168343): consider the below.
+  #rustflags = [ "-Ctarget-cpu=cortex-a53" ]
+
+  rustflags = [ "-Ctarget-feature=+crc,+aes,+sha2,+neon" ]
+
+  # The CPU doesn't support the new atomics, so don't pay conditionalization
+  # overhead at runtime.
+  configs = [ "//products/build/config/arm64:no-outline-atomics" ]
+}
+# LINT.ThenChange(BUILD.bazel:arm_configs)

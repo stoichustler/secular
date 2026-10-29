@@ -1,0 +1,46 @@
+# Copyright 2026 The Fuchsia Authors. All rights reserved.
+# Use of this source code is governed by a BSD-style license that can be
+# found in the LICENSE file.
+
+load("//products/build/bazel/rules/rust:defs.bzl", "rustc_library")
+
+package(default_applicable_licenses = ["//:license"])
+
+rustc_library(
+    name = "container",
+    srcs = [
+        "src/handles.rs",
+        "src/lib.rs",
+        "src/test.rs",
+        "src/wire.rs",
+    ],
+    crate_name = "fdomain_container",
+    edition = "2024",
+    test_deps = [
+        "//userspace/lib/fuchsia",
+    ],
+    visibility = [
+        "//userspace/developer/remote-control:__pkg__",
+        "//userspace/lib/fdomain/client:__pkg__",
+        "//userspace/lib/fdomain/example:__pkg__",
+        "//userspace/lib/fdomain/example_next:__pkg__",
+        "//userspace/lib/fdomain/local:__pkg__",
+    ],
+    with_unit_tests = True,
+    deps = [
+        "//sdk/fidl/fuchsia.fdomain:fuchsia.fdomain_rust",
+        "//sdk/fidl/fuchsia.io:fuchsia.io_rust",
+        "//userspace/lib/fidl/rust/fidl",
+        "//userspace/lib/fidl/rust/fidl_message",
+        "//userspace/lib/replace-with",
+        "//third_party/rust_crates/vendor:futures",
+        "//third_party/rust_crates/vendor:pin-project",
+        "//third_party/rust_crates/vendor:rand",
+    ] + select({
+        "@platforms//os:fuchsia": [
+            "//sdk/rust/zx",
+            "//userspace/lib/fuchsia-async",
+        ],
+        "//conditions:default": [],
+    }),
+)

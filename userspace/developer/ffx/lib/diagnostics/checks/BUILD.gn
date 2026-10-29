@@ -1,0 +1,58 @@
+# Copyright 2025 The Fuchsia Authors. All rights reserved.
+# Use of this source code is governed by a BSD-style license that can be
+# found in the LICENSE file.
+
+import("//products/build/rust/rustc_library.gni")
+
+rustc_library("lib") {
+  name = "ffx_diagnostics_checks"
+  edition = "2024"
+  with_unit_tests = true
+  deps = [
+    "//sdk/fidl/fuchsia.hwinfo:fuchsia.hwinfo_rust_fdomain",
+    "//userspace/developer/ffx/config:lib",
+    "//userspace/developer/ffx/lib/diagnostics:lib",
+    "//userspace/developer/ffx/lib/diagnostics/analytics:lib",
+    "//userspace/developer/ffx/lib/diagnostics/formatting:lib",
+    "//userspace/developer/ffx/lib/discovery:lib",
+    "//userspace/developer/ffx/lib/fastboot/connection_factory:lib",
+    "//userspace/developer/ffx/lib/fho:lib",
+    "//userspace/developer/ffx/lib/manual_targets:lib",
+    "//userspace/developer/ffx/lib/netext:lib",
+    "//userspace/developer/ffx/lib/rcs:lib",
+    "//userspace/developer/ffx/lib/safe_string:lib",
+    "//userspace/developer/ffx/lib/ssh:lib",
+    "//userspace/developer/ffx/lib/target:lib",
+    "//userspace/developer/ffx/lib/target/holders:lib",
+    "//userspace/developer/ffx/lib/termio",
+    "//userspace/developer/ffx/lib/usb_fastboot_discovery:lib",
+    "//userspace/lib/fdomain/client",
+    "//userspace/lib/fuchsia-async",
+    "//third_party/rust_crates:anyhow",
+    "//third_party/rust_crates:futures",
+    "//third_party/rust_crates:log",
+  ]
+
+  test_deps = [
+    "//sdk/fidl/fuchsia.developer.remotecontrol:fuchsia.developer.remotecontrol_rust",
+    "//sdk/fidl/fuchsia.developer.remotecontrol:fuchsia.developer.remotecontrol_rust_fdomain",
+    "//sdk/fidl/fuchsia.hwinfo:fuchsia.hwinfo_rust",
+    "//sdk/fidl/fuchsia.io:fuchsia.io_rust",
+    "//userspace/developer/ffx/lib/addr:lib",
+    "//userspace/lib/fdomain/local",
+    "//userspace/lib/fidl/rust/fidl",
+    "//userspace/lib/fuchsia",
+    "//userspace/lib/fuchsia-async",
+    "//third_party/rust_crates:futures-lite",
+  ]
+  sources = [
+    "src/check_fastboot.rs",
+    "src/check_target_specifier.rs",
+    "src/connect_rcs.rs",
+    "src/connect_ssh.rs",
+    "src/discovery_stream.rs",
+    "src/lib.rs",
+    "src/resolve_target.rs",
+    "src/verify_ssh_keys.rs",
+  ]
+}

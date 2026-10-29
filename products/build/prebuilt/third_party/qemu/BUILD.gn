@@ -1,0 +1,20 @@
+# Copyright 2026 The Fuchsia Authors. All rights reserved.
+# Use of this source code is governed by a BSD-style license that can be
+# found in the LICENSE file.
+
+import("//products/build/prebuilt/cipd_prebuilt.gni")
+import("//products/build/testing/host_test_data.gni")
+
+cipd_prebuilt("qemu") {
+  visibility = [ ":host_test_data" ]
+  paths = [ "${secular_prebuilt_root}/third_party/qemu/${secular_host_platform}" ]
+}
+
+if (is_host) {
+  host_test_data("host_test_data") {
+    visibility = [ "//userspace/developer/ffx/tests/target:*" ]
+    deps = [ ":qemu" ]
+    sources =
+        [ "${cipd_prebuilt_root}/prebuilt/third_party/qemu/${host_platform}" ]
+  }
+}

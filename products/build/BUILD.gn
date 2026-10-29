@@ -1,0 +1,759 @@
+# Copyright 2019 The Fuchsia Authors. All rights reserved.
+# Use of this source code is governed by a BSD-style license that can be
+# found in the LICENSE file.
+
+import("//products/build/bazel/bazel_test_suite.gni")
+import("//products/build/python/python_host_test.gni")
+import("//products/build/python/python_library.gni")
+import("//products/build/testing/host_test_data.gni")
+import("//products/build/testing/python_build_time_tests.gni")
+import("//sdk/lib/c/include/libc_headers.gni")
+
+group("build") {
+  testonly = true
+
+  deps = [ ":tests" ]
+}
+
+# The tests listed in this target will be built by the default build.
+group("tests") {
+  testonly = true
+
+  deps = [
+    ":bazel_host_tests",
+    ":build_tests_json_tests($host_toolchain)",
+    ":regenerator_tests($host_toolchain)",
+    ":target_metadata_test($host_toolchain)",
+    ":type_checked_scripts($host_toolchain)",
+    ":type_checked_toolchain_copy($host_toolchain)",
+    "api:tests",
+    "assembly:host_tests($host_toolchain)",
+    "auth:tests",
+    "bazel:tests",
+    "bazel/scripts:type_checked_scripts($host_toolchain)",
+    "bazel_sdk:type_checked_scripts($host_toolchain)",
+    "beads:tests",
+    "devicetree:tests",
+    "dist:tests",
+    "fidl:tests",
+    "go:tests",
+    "licenses:tests",
+    "packages:tests",
+    "prebuilt:tests",
+    "profile:tests",
+    "python:tests($host_toolchain)",
+    "rbe:tests",
+    "rbe:type_checked_scripts($host_toolchain)",
+    "resultstore:tests",
+    "rust:tests",
+    "scripts:tests",
+    "sdk:tests",
+    "tools:tests",
+    "tracer:tests",
+  ]
+}
+
+bazel_test_suite("bazel_host_tests") {
+  host_tests = [ "//products/build:host_tests" ]
+}
+
+if (is_host) {
+  python_build_time_tests("regenerator_tests") {
+    tests = [ "//products/build/regenerator_test.py" ]
+    inputs = [
+               "//products/build/bazel/fuchsia_idk/generate_repository.py",
+               "//products/build/bazel/scripts/compute_content_hash.py",
+               "//products/build/bazel/scripts/get_git_head_commit.py",
+               "//products/build/regenerator.py",
+             ] + libc_headers.idk_generate_inputs
+    deps = [
+      "//products/build/rbe:rbe_settings",
+      "//products/build/scripts:properties_lib",
+    ]
+  }
+
+  python_build_time_tests("build_tests_json_tests") {
+    tests = [ "//products/build/build_tests_json_test.py" ]
+    inputs = [
+      "//products/build/build_tests_json.py",
+      "//products/build/bazel/scripts/build_utils.py",
+      "//products/build/bazel/scripts/bazel_tests_utils.py",
+    ]
+    deps = [ "//products/build/python/modules/serialization" ]
+  }
+
+  # Python scripts under //build that aren't part of any other Python target,
+  # usually because they're run directly by action() or Bazel rules. Listing
+  # them here makes them subject to type checking. Directories with many
+  # such scripts (//products/build/bazel/scripts, //products/build/bazel_sdk and //products/build/rbe)
+  # have their own type_checked_scripts targets instead.
+  #
+  # Cross-directory modules that a script imports via sys.path manipulation
+  # must be in library_deps. Otherwise mypy either treats them as Any due to
+  # `ignore_missing_imports` in //pyproject.toml or, worse, resolves them to
+  # a same-named directory in the build directory, since mypy always searches
+  # its working directory. The latter makes type checking depend on the
+  # build configuration.
+  python_library("type_checked_scripts") {
+    testonly = true
+
+    # This target only exists for type checking; depending on it would package
+    # a grab-bag of unrelated scripts.
+    visibility = [ ":*" ]
+    library_deps = [
+      # For packages/generate_package_debug_symbols_manifest.py.
+      "//products/build/api:debug_symbols",
+    ]
+    source_root = "//products/build"
+    sources = [
+      "assembly/scripts/bootfs_distribution_manifest.py",
+      "bazel/assembly/size_checker/verify_verbose_size_report.py",
+      "bazel/bazel_idk/prebuild_info.py",
+      "bazel/bazel_sdk/compare_bazel_sdks.py",
+      "bazel/bazel_sdk/idk_to_bazel_sdk.py",
+      "bazel/config/toolchain_tags/update.py",
+      "bazel/debug_symbols/tests/check_debug_binaries.py",
+      "bazel/drivers/verify_driver_package.py",
+      "bazel/examples/hello_python/bin.py",
+      "bazel/examples/hello_python/lib.py",
+      "bazel/examples/hello_python/test.py",
+      "bazel/fuchsia_idk/generate_repository_validation.py",
+      "bazel/rules/host_tests/tests/py/lib_for_test.py",
+      "bazel/rules/host_tests/tests/py/list_unittests_test.py",
+      "bazel/rules/host_tests/tests/py/simple_test.py",
+      "bazel/rules/host_tests/tests/py/test_with_py_binary.py",
+      "bazel/rules/host_tests/tests/py/test_with_py_library.py",
+      "bazel/rules/host_tests/tests/py/test_with_unittests.py",
+      "beads/.agent/skills/analyzing_migration_dag/scripts/analyze_migration_dag.py",
+      "check_product_bundles_manifest.py",
+      "config/clang/generate_config_json.py",
+      "config/fuchsia/get_platform_version.py",
+      "copy_tree.py",
+      "cpp/binaries.py",
+      "cpp/verify_pragma_once.py",
+      "cpp/verify_public_headers.py",
+      "dart/gen_app_invocation.py",
+      "dart/gen_dart_test_invocation.py",
+      "dart/group_tests.py",
+      "dart/merge_deps_sources.py",
+      "dart/verify_sources.py",
+      "depfile_path_to_relative.py",
+      "dist/convert_fini_to_manifest.py",
+      "dist/convert_manifest_to_fini.py",
+      "dist/distribution-manifest-copy.py",
+      "drivers/assert_driver_components.py",
+      "drivers/check_included_drivers.py",
+      "drivers/create_driver_doc.py",
+      "drivers/create_driver_manifest.py",
+      "fidl/gen_ir_root_out.py",
+      "fidl/gen_response_file.py",
+      "force_clean/force_clean_if_needed.py",
+      "git/resolve_git_paths.py",
+      "git/resolve_git_revisions.py",
+      "go/build.py",
+      "go/gen_hermetic_inputs.py",
+      "go/gen_library_metadata.py",
+      "images/updates/create-universe-package-manifests-list.py",
+      "images/updates/merge_package_manifests_list.py",
+      "images/updates/package_names_list.py",
+      "info/gen_latest_commit_date.py",
+      "ninja_implicit_inputs/check_tool.py",
+      "ninja_implicit_inputs/ninja_implicit_inputs.py",
+      "packages/generate_package_archive_metadata.py",
+      "packages/generate_package_debug_symbols_manifest.py",
+      "packages/generate_package_metadata.py",
+      "packages/publish_archive.py",
+      "python/add_proto_copyright.py",
+      "python/create_c_extension_import_hook.py",
+      "python/modules/distribution_manifest/expand_and_find_conflicting_dist_entries.py",
+      "python/mypy_checker.py",
+      "python/package_python_binary.py",
+      "python/pyright_config.py",
+      "python/python_action_runner.py",
+      "resultstore/rs_profile.py",
+      "resultstore/rs_profile_test.py",
+      "rust/bindgen.py",
+      "rust/clippy_wrapper.py",
+      "rust/discover_rust_project.py",
+      "rust/generate_cargo.py",
+      "rust/new-bindgen.py",
+      "rust/rustdoc_wrapper.py",
+      "rust/tests/create_rustdoc_tests.py",
+      "scripts/compare_gn.py",
+      "scripts/count_build_targets.py",
+      "scripts/count_critical_actions.py",
+      "scripts/generate_target_metadata.py",
+      "sdk/compute_atom_api.py",
+      "sdk/filter_host_tools_from_sdk_api.py",
+      "sdk/generate_prebuild_idk/generate_prebuild_idk_validation.py",
+      "sdk/verify_final_manifest.py",
+      "subbuild.py",
+      "testing/boot_tests/create_efi_partition_config.py",
+      "testing/boot_tests/rebase_metadata_paths.py",
+      "testing/copy_unstripped_binaries.py",
+      "testing/python_build_time_tests.py",
+      "testing/run_target_test_and_host_script.py",
+      "testing/verify_files_match.py",
+      "testing/verify_golden_files.py",
+      "toolchain/get_concurrent_jobs.py",
+      "toolchain/verify-undefined-symbols.py",
+      "toolchain/verify_depfile.py",
+      "tools/json_validator/test/json_validator_valico_test_runner.py",
+      "tracer/hermetic_inputs_action.py",
+      "weights/generate_weights.py",
+      "weights/merge_weights_files.py",
+      "weights/ninjalog_to_weights.py",
+      "zbi/run_zbi.py",
+      "zircon/read_zircon_binaries.py",
+      "zircon/sdk_build_id.py",
+    ]
+  }
+
+  # Staged separately from type_checked_scripts because it would otherwise
+  # shadow the standard library's `copy` module for the other scripts there.
+  python_library("type_checked_toolchain_copy") {
+    testonly = true
+    visibility = [ ":*" ]
+    source_root = "//products/build"
+    sources = [ "toolchain/copy.py" ]
+  }
+}
+
+group("non_hermetic_deps") {
+  #  ________  _________  ________  ________
+  # |\   ____\|\___   ___\\   __  \|\   __  \
+  # \ \  \___|\|___ \  \_\ \  \|\  \ \  \|\  \
+  #  \ \_____  \   \ \  \ \ \  \\\  \ \   ____\
+  #   \|____|\  \   \ \  \ \ \  \\\  \ \  \___|
+  #     ____\_\  \   \ \__\ \ \_______\ \__\
+  #    |\_________\   \|__|  \|_______|\|__|
+  #    \|_________|
+  # This is an allowlist of actions with `hermetic_deps = false` or
+  # `hermetic_action_ignored_prefixes != []`.
+  #
+  # Introducing new actions that are non-hermetic is not allowed.
+  # A cleanup is in progress. See:
+  # https://fuchsia.dev/fuchsia-src/contribute/open_projects/build/hermetic_actions
+  #
+  # For more information about hermetic build actions:
+  # https://fuchsia.dev/fuchsia-src/development/build/hermetic_actions
+  #
+  # Maintainers will accept changes to the allowlist below that support
+  # refactors, such as moving a legacy target to a different directory.
+  #
+  # To regenerate:
+  # { fx gn refs $(fx get-build-dir) '//products/build:non_hermetic_deps'; fx gn refs $(fx get-build-dir) '//products/build:non_hermetic_deps(//products/build/toolchain:host_x64)'; } | sed 's|\([^:]*\):.*|"\1/*",|' | sort | uniq
+  visibility = [
+    "//third_party/crashpad/src/*",
+    "//third_party/pylibs/mypy/*",
+    "//vendor/*",
+    "//zircon/kernel/lib/version/*",
+  ]
+
+  # See: fxrev.dev/528291
+  visibility += [ "//products/build/rust:*" ]
+
+  # rustdoc-link merges an arbitrary tree of rustdoc `--out-dir`s
+  visibility += [ "//products/build/rust/tests/rustdoc-link/*" ]
+
+  # See: https://fxbug.dev/42148579
+  visibility += [ "//sdk:cts_generate" ]
+
+  # See: https://fxbug.dev/42121352
+  visibility += [
+    "//sdk:*",
+    "//sdk/firmware:*",
+    "//sdk/pdk:*",
+  ]
+
+  # TODO(https://fxbug.dev/42174306): Remove entries when
+  # assembly and board input bundle creation no longer triggers false-positives
+  # in the action_tracer.py due to how it cleans it's dynamic outputs.
+  visibility += [
+    "//products/boards/*",
+    "//products/build/assembly/overrides/*",
+    "//products/bundles/assembly/*",
+    "//local/*",
+  ]
+
+  # TODO(b/314016615): tar_to_pkg() template is not hermetic
+  visibility += [
+    "//userspace/starnix/containers/alpine/*",
+    "//userspace/starnix/containers/stardev/*",
+  ]
+
+  # //products/build/images/assemble_system.gni needs `hermetic_deps = false`, and that
+  # will not be resolved except by moving to Bazel.
+  visibility += [
+    "//products/build/images/*",
+    "//sdk/lib/c/*",
+    "//userspace/secular/*",
+    "//userspace/developer/ffx/lib/profiler/tests:*",
+    "//userspace/developer/ffx/lib/symbolize/tests:*",
+    "//userspace/developer/ffx/lib/target_net/tests:*",
+    "//userspace/developer/ffx/plugins/component/create/tests/structured_config:*",
+    "//userspace/developer/ffx/plugins/component/run/tests/structured_config:*",
+    "//userspace/developer/ffx/plugins/profile/heapdump:*",
+    "//userspace/developer/ffx/plugins/profile/stacktrack:*",
+    "//userspace/developer/ffx/plugins/target/package/explore/tests:*",
+    "//userspace/developer/ffx/tests/target:*",
+    "//userspace/devices/block/drivers/ufs/test/e2e/*",
+    "//userspace/lib/elfldltl/test/*",
+    "//userspace/security/lib/scrutiny/collector/*",
+    "//userspace/security/lib/scrutiny/tests/*",
+    "//userspace/security/tests/pkg_test/tests/*",
+    "//userspace/security/tests/scrutiny_ffx_integration/*",
+    "//userspace/sys/component_manager/tests/bootfs_launching_benchmark:*",
+    "//userspace/sys/component_manager/tests/fuchsia_boot_resolver:*",
+    "//userspace/tests/assembly/*",
+    "//userspace/tests/disable_shell/*",
+    "//userspace/tests/disable_syscalls/*",
+    "//userspace/tests/dlog/*",
+    "//userspace/tests/drivers_serial_log/*",
+    "//userspace/tests/end_to_end/component_tool/*",
+    "//userspace/tests/kernel_cprng/*",
+    "//userspace/tests/kernel_crashlog/*",
+    "//userspace/tests/kernel_lockup_detector/*",
+    "//userspace/tests/kernel_panic/*",
+    "//userspace/tests/limited_netsvc/image:*",
+    "//userspace/tests/memory_budget/*",
+    "//userspace/tests/oom/*",
+    "//userspace/tests/reboot/*",
+    "//userspace/tests/shutdown/*",
+    "//third_party/network-conformance/images/*",
+    "//tools/dupefinder/tests/e2e/:*",
+    "//zircon/kernel/*",
+    "//zircon/system/*",
+  ]
+
+  # //products/build/assembly/product_assembly_configuration.gni needs
+  # `hermetic_deps = false`, and that will not be resolved except by moving to
+  # Bazel.
+  visibility += [
+    "//products/build/assembly/*",
+    "//products/build/testing:*",
+    "//products/secular:*",
+    "//products/core:*",
+  ]
+
+  # TODO(https://fxbug.dev/42176361): Remove entry when action tracer can handle ld.lld invocations.
+  visibility += [ "//userspace/graphics/lib/magma/src/libmagma:*" ]
+
+  # TODO(https://fxbug.dev/42060773): Hermetic deps checking is disabled on build_id_entry
+  visibility += [ "//third_party/intel/media-driver/fuchsia:*" ]
+
+  # These repos are not in the default checkout.
+  visibility += [
+    # This git repo is only checked out when the vulkan-cts attribute is set.
+    "//third_party/arm-mali-bifrost/*",
+    "//third_party/vulkan-cts/fuchsia/*",
+  ]
+
+  # TODO(https://fxbug.dev/42168642): Remove this entry when it no longer executes
+  # fx tools.
+  visibility += [ "//tools/docsgen:invoke_helpdoc" ]
+
+  # Documentation generation needs to access toolchain's include headers.
+  visibility += [
+    "//sdk/lib/fdio:docs_clang_doc",
+    "//tools/cppdocgen/e2e_test:*",
+  ]
+
+  # Unit tests for the ffx e2e library make their own amber-files to test
+  # universe package resolve.
+  visibility += [ "//userspace/developer/ffx/lib/e2e_emu:*" ]
+
+  # e2e test using e2e_emu for ffx power system-activity application-activity.
+  visibility += [ "//userspace/developer/ffx/tools/power:*" ]
+
+  # Allow network-conformance unit test to makes its own amber-files to test
+  # package resolution.
+  visibility += [ "//third_party/network-conformance/orchestrator:*" ]
+
+  # This tests accesses `out/<build_dir_name>.json` at runtime.
+  # See https://fxbug.dev/352511300
+  visibility += [ "//userspace/developer/ffx/tests/mw-goldens:gen_schema_files" ]
+
+  # The Bazel workspace that exposes Ninja outputs as Bazel inputs
+  # is generated by an action that has unspecified outputs.
+  visibility += [
+    "//products/build/assembly/scripts:bazel_assembly_input_bundle_tool",
+    "//products/build/bazel:*",
+    "//products/build/bazel/bazel_sdk:*",
+    "//products/build/bazel/bazel_sdk/docs:*",
+    "//products/build/bazel/bazel_sdk/tests:*",
+    "//products/build/bazel/examples/*",
+    "//products/build/bazel/rules/tests/*",
+    "//products/build/tools/json_validator:*",
+    "//examples/assembly/*",
+    "//sdk/lib/driver/devicetree/*",
+    "//userspace:*",
+    "//userspace/connectivity/wlan/drivers/third_party/intel/iwlwifi/*",
+    "//userspace/devices/block/drivers/aml-sdmmc:*",
+    "//userspace/devices/board/drivers/vim3-devicetree:*",
+    "//userspace/devices/clock/drivers/vim3-clk:*",
+    "//userspace/devices/gpio/drivers/aml-gpio:*",
+    "//userspace/devices/i2c/drivers/aml-i2c:*",
+    "//userspace/devices/i2c/drivers/dw-i2c:*",
+    "//userspace/devices/rtc/drivers/nxp/pcf8563:*",
+    "//userspace/devices/spmi/lib/hwreg-spmi/*",
+    "//userspace/devices/usb/drivers/aml-usb-phy:*",
+    "//userspace/devices/usb/drivers/dwc3:*",
+    "//userspace/media/audio/drivers/aml-g12-tdm:*",
+    "//userspace/starnix/kernel/device/gpu/gfxstream/*",
+    "//userspace/ui/input/drivers/adc-buttons:*",
+    "//tools/create/goldens:*",
+  ]
+
+  # Bazel migration verification tests run GN, Ninja, and Bazel queries, and
+  # it's very difficult to list all the files they read.
+  visibility += [ "//products/build/beads/verifications/*" ]
+
+  # Bluetooth Bazel test packages are wrapped in the bazel_fuchsia_test_package
+  # GN rule, which has unspecified outputs.
+  # bt-host tests will be migrated out-of-tree.
+  visibility += [
+    "//userspace/connectivity/bluetooth/core/bt-host",
+    "//userspace/connectivity/bluetooth/core/bt-host:bazel_test_pkg",
+    "//userspace/connectivity/bluetooth/core/bt-host:bazel_test_pkg.bazel_build",
+    "//userspace/connectivity/bluetooth/core/bt-host:bt-host.bazel_build",
+    "//userspace/connectivity/bluetooth/core/bt-host:bt-host.package",
+    "//userspace/connectivity/bluetooth/core/bt-host:test_pkg",
+    "//userspace/connectivity/bluetooth/core/bt-host:test_pkg.bazel_build",
+    "//userspace/connectivity/bluetooth/core/bt-host/att:test_pkg",
+    "//userspace/connectivity/bluetooth/core/bt-host/att:test_pkg.bazel_build",
+    "//userspace/connectivity/bluetooth/core/bt-host/common:test_pkg",
+    "//userspace/connectivity/bluetooth/core/bt-host/common:test_pkg.bazel_build",
+    "//userspace/connectivity/bluetooth/core/bt-host/controllers:test_pkg",
+    "//userspace/connectivity/bluetooth/core/bt-host/controllers:test_pkg.bazel_build",
+    "//userspace/connectivity/bluetooth/core/bt-host/fidl:test_pkg",
+    "//userspace/connectivity/bluetooth/core/bt-host/fidl:test_pkg.bazel_build",
+    "//userspace/connectivity/bluetooth/core/bt-host/gap:test_pkg",
+    "//userspace/connectivity/bluetooth/core/bt-host/gap:test_pkg.bazel_build",
+    "//userspace/connectivity/bluetooth/core/bt-host/gatt:test_pkg",
+    "//userspace/connectivity/bluetooth/core/bt-host/gatt:test_pkg.bazel_build",
+    "//userspace/connectivity/bluetooth/core/bt-host/hci:test_pkg",
+    "//userspace/connectivity/bluetooth/core/bt-host/hci:test_pkg.bazel_build",
+    "//userspace/connectivity/bluetooth/core/bt-host/hci-spec:test_pkg",
+    "//userspace/connectivity/bluetooth/core/bt-host/hci-spec:test_pkg.bazel_build",
+    "//userspace/connectivity/bluetooth/core/bt-host/iso:test_pkg",
+    "//userspace/connectivity/bluetooth/core/bt-host/iso:test_pkg.bazel_build",
+    "//userspace/connectivity/bluetooth/core/bt-host/l2cap:test_pkg",
+    "//userspace/connectivity/bluetooth/core/bt-host/l2cap:test_pkg.bazel_build",
+    "//userspace/connectivity/bluetooth/core/bt-host/sco:test_pkg",
+    "//userspace/connectivity/bluetooth/core/bt-host/sco:test_pkg.bazel_build",
+    "//userspace/connectivity/bluetooth/core/bt-host/sdp:test_pkg",
+    "//userspace/connectivity/bluetooth/core/bt-host/sdp:test_pkg.bazel_build",
+    "//userspace/connectivity/bluetooth/core/bt-host/sm:test_pkg",
+    "//userspace/connectivity/bluetooth/core/bt-host/sm:test_pkg.bazel_build",
+    "//userspace/connectivity/bluetooth/core/bt-host/socket:test_pkg",
+    "//userspace/connectivity/bluetooth/core/bt-host/socket:test_pkg.bazel_build",
+    "//userspace/connectivity/bluetooth/core/bt-host/testing:test_pkg",
+    "//userspace/connectivity/bluetooth/core/bt-host/testing:test_pkg.bazel_build",
+    "//userspace/connectivity/bluetooth/core/bt-host/transport:test_pkg",
+    "//userspace/connectivity/bluetooth/core/bt-host/transport:test_pkg.bazel_build",
+  ]
+
+  # Products which use Bazel-based assembly have non-hermetic outputs
+  visibility += [
+    "//products/microfuchsia:*",
+    "//products/minimal:*",
+    "//products/terminal:*",
+    "//products/workbench:*",
+  ]
+
+  # FIXME(https://fxbug.dev/42072939): //products/build/packages/prebuilt_packages.gni
+  # needs `hermetic_action_ignored_prefixes`. Remove these entries when
+  # `prebuilt_package` is hermetic.
+  visibility += [
+    "//examples/drivers/simple/dfv2:pkg",
+    "//examples/drivers/simple/dfv2:pkg.package",
+    "//examples/drivers/template:pkg",
+    "//examples/drivers/template:pkg.package",
+    "//examples/drivers/transport:driver_transport_child_pkg",
+    "//examples/drivers/transport:driver_transport_child_pkg.package",
+    "//examples/drivers/transport:driver_transport_parent_pkg",
+    "//examples/drivers/transport:driver_transport_parent_pkg.package",
+    "//examples/fortune:fortune_teller",
+    "//examples/fortune:fortune_teller.package",
+    "//sdk/ctf:*",
+    "//sdk/ctf/release:*",
+    "//sdk/ctf/release/packages:*",
+    "//userspace/chromium:chromium_common_tests_base_unittests",
+    "//userspace/chromium:chromium_common_tests_base_unittests.package",
+    "//userspace/chromium:chromium_common_tests_blink_common_unittests",
+    "//userspace/chromium:chromium_common_tests_blink_common_unittests.package",
+    "//userspace/chromium:chromium_common_tests_ipc_tests",
+    "//userspace/chromium:chromium_common_tests_ipc_tests.package",
+    "//userspace/chromium:chromium_common_tests_media_unittests",
+    "//userspace/chromium:chromium_common_tests_media_unittests.package",
+    "//userspace/chromium:chromium_common_tests_mojo_unittests",
+    "//userspace/chromium:chromium_common_tests_mojo_unittests.package",
+    "//userspace/chromium:chromium_common_tests_skia_unittests",
+    "//userspace/chromium:chromium_common_tests_skia_unittests.package",
+    "//userspace/chromium:chromium_web_engine_tests_web_engine_integration_tests",
+    "//userspace/chromium:chromium_web_engine_tests_web_engine_integration_tests.package",
+    "//userspace/chromium:web_engine_pkg",
+    "//userspace/chromium:web_engine_pkg.package",
+    "//userspace/chromium:web_engine_shell_pkg",
+    "//userspace/chromium:web_engine_shell_pkg.package",
+    "//userspace/connectivity/bluetooth/core/bt-host",
+    "//userspace/connectivity/bluetooth/core/bt-host:bt-host.package",
+    "//userspace/connectivity/bluetooth/hci/virtual",
+    "//userspace/connectivity/bluetooth/hci/virtual:virtual.package",
+    "//userspace/connectivity/wlan/tools/third_party/broadcom:wl_pkg",
+    "//userspace/connectivity/wlan/tools/third_party/broadcom:wl_pkg.package",
+    "//userspace/graphics/drivers/arm-mali/icd:libvulkan_arm_g52_r0p0",
+    "//userspace/graphics/drivers/arm-mali/icd:libvulkan_arm_g52_r0p0.package",
+    "//userspace/ui/backlight/drivers:chromebook-keyboard-backlight",
+    "//userspace/ui/backlight/drivers:chromebook-keyboard-backlight.package",
+  ]
+
+  # TODO(https://fxbug.dev/454618550): Remove this
+  visibility += [ "//products/build/prebuilt" ]
+
+  # TODO(https://fxbug.dev/42165766): License analysis uses the output of 'fx gn gen', which
+  # can potentially touch every file in the repository. Remove this entry when
+  # license management becomes a hermetic process.
+  visibility += [ "//tools/check-licenses/build/*" ]
+
+  visibility += [
+    "//userspace/secular/bin/userboot/tests:*",
+    "//userspace/tests/early-boot-coverage/*",
+  ]
+
+  # TODO(https://fxbug.dev/331492588): Template driver example wraps Bazel output in Ninja, and
+  # depends on non_hermetic_deps.
+  visibility += [
+    "//examples/drivers:*",
+    "//examples/drivers/simple/dfv2:*",
+    "//examples/drivers/template:*",
+    "//examples/drivers/transport/driver/v2:*",
+  ]
+
+  # product config for boot_tests.
+  visibility += [ "//products/build/testing/boot_tests:product_config" ]
+
+  # Boot tests defined here use a custom QEMU kernel taken from under
+  # ${secular_prebuilt_root}s. The definition of an emulator AIB in this case can result in
+  # non-deterministic outputs for the reason indicated around the setting of
+  # hermetic_action_ignored_prefixes in
+  # emulator_support_assembly_input_bundle()
+  visibility += [ "//userspace/microfuchsia:*" ]
+
+  # Starnix VM-backed tests, which use //boards.
+  visibility += [
+    "//products/bundles/buildbot/virtualization:starnix_linux_vm_bundle.assembled_system.image_assembler",
+    "//products/bundles/buildbot/virtualization:starnix_linux_vm_bundle.assembled_system.product_assembler",
+    "//products/bundles/buildbot/virtualization:starnix_linux_vm_bundle.product_configuration",
+    "//products/bundles/buildbot/virtualization:starnix_linux_vm_bundle_product_bundle",
+    "//products/bundles/buildbot/virtualization:starnix_linux_vm_bundle_transfer_manifest",
+  ]
+
+  # Metadata that is generated by gn desc must not be subject to hermeticity
+  # rules.
+  visibility += [ "//products/build:target_metadata" ]
+
+  # Exporting @rules_fuchsia for OOT usage creates a directory with
+  # unpredictable content.
+  visibility += [ "//:rules_fuchsia.export" ]
+
+  # distribution_manifest_copy() uses.
+  visibility += [
+    "//sdk/lib/ld/test/modules/*",
+    "//zircon/kernel/lib/rust/*",
+  ]
+}
+
+# Build targets that use the legacy zx_library and zx_host_tool templates
+# need to depend on the target below and appear in the visibility list.
+# Please don't introduce new uses of these wrappers. Rather:
+#
+# Instead of zx_library, please use one of the following templates:
+# - source_set
+# - sdk_source_set
+# - static_library
+# - sdk_static_library
+# - shared_library
+# - sdk_shared_library
+#
+# Instead of zx_host_tool, use executable and set host_toolchain as needed.
+#
+# See: https://fuchsia.dev/fuchsia-src/contribute/open_projects/build/zx_wrappers_deprecation
+group("deprecated_zx_wrapper_allowlist") {
+  visibility = [
+    "//sdk/lib/async:*",
+    "//sdk/lib/async-default:*",
+    "//sdk/lib/async-loop:*",
+    "//sdk/lib/async-testing:*",
+    "//sdk/lib/fdio:*",
+    "//sdk/lib/fit:*",
+    "//sdk/lib/fit-promise:*",
+    "//sdk/lib/stdcompat:*",
+    "//userspace/devices/block/lib/scsi:*",
+    "//userspace/devices/bus/lib/virtio:*",
+    "//userspace/devices/bus/testing/mock-sdio:*",
+    "//userspace/devices/i2c/lib/i2c-channel-legacy:*",
+    "//userspace/devices/i2c/testing/fake-i2c:*",
+    "//userspace/devices/i2c/testing/mock-i2c:*",
+    "//userspace/devices/lib/amlogic:*",
+    "//userspace/devices/lib/broadcom:*",
+    "//userspace/devices/lib/dev-operation:*",
+    "//userspace/devices/lib/dma-buffer:*",
+    "//userspace/devices/lib/driver-info:*",
+    "//userspace/devices/lib/synchronous-executor:*",
+    "//userspace/devices/lib/thermal/cpp:*",
+    "//userspace/devices/lib/ti:*",
+    "//userspace/devices/pci/lib/device-protocol-pci:*",
+    "//userspace/devices/pci/lib/pci:*",
+    "//userspace/devices/rtc/lib/rtc:*",
+    "//userspace/devices/testing/fake-bti:*",
+    "//userspace/devices/testing/fake-dma-buffer:*",
+    "//userspace/devices/testing/fake-mmio-reg:*",
+    "//userspace/devices/testing/fake-msi:*",
+    "//userspace/devices/testing/fake-object:*",
+    "//userspace/devices/testing/fake-resource:*",
+    "//userspace/devices/usb/testing/usb-virtual-bus-launcher:*",
+    "//userspace/firmware/lib/abr:*",
+    "//userspace/firmware/lib/zbi:*",
+    "//userspace/firmware/lib/zircon_boot:*",
+    "//userspace/lib/cmdline:*",
+    "//userspace/lib/elfldltl:*",
+    "//userspace/lib/llvm-profdata:*",
+    "//userspace/lib/lockdep:*",
+    "//userspace/lib/trivial-allocator:*",
+    "//userspace/lib/zbitl:*",
+    "//userspace/lib/zxdump:*",
+    "//userspace/media/audio/drivers/lib/audio-driver-proto:*",
+    "//userspace/media/audio/drivers/lib/audio-proto-utils:*",
+    "//userspace/media/audio/drivers/lib/audio-utils:*",
+    "//userspace/media/audio/drivers/lib/intel-hda:*",
+    "//userspace/media/audio/lib/simple-codec:*",
+    "//userspace/storage/gpt:*",
+    "//third_party/android/platform/external/avb:*",
+    "//third_party/lz4:*",
+    "//zircon/kernel/arch/x86/phys:*",
+    "//zircon/kernel/dev/coresight:*",
+    "//zircon/kernel/lib/acpi_lite:*",
+    "//zircon/kernel/lib/arch:*",
+    "//zircon/kernel/lib/arch/arm64:*",
+    "//zircon/kernel/lib/arch/arm86:*",
+    "//zircon/kernel/lib/arch/host:*",
+    "//zircon/kernel/lib/arch/x86:*",
+    "//zircon/kernel/lib/boot-options:*",
+    "//zircon/kernel/lib/devicetree:*",
+    "//zircon/kernel/lib/efi:*",
+    "//zircon/kernel/lib/special-sections:*",
+    "//zircon/kernel/phys/lib/boot-shim:*",
+    "//zircon/kernel/phys/lib/memalloc:*",
+    "//zircon/system/ulib/affine:*",
+    "//zircon/system/ulib/bitmap:*",
+    "//zircon/system/ulib/closure-queue:*",
+    "//zircon/system/ulib/ddk-platform-defs:*",
+    "//zircon/system/ulib/debugdata:*",
+    "//zircon/system/ulib/elf-search:*",
+    "//zircon/system/ulib/explicit-memory:*",
+    "//zircon/system/ulib/fbl:*",
+    "//zircon/system/ulib/ffl:*",
+    "//zircon/system/ulib/fs-host:*",
+    "//zircon/system/ulib/fzl:*",
+    "//zircon/system/ulib/gfx:*",
+    "//zircon/system/ulib/hwreg:*",
+    "//zircon/system/ulib/hwreg/test/asm:*",
+    "//zircon/system/ulib/id_allocator:*",
+    "//zircon/system/ulib/image-format:*",
+    "//zircon/system/ulib/inspect:*",
+    "//zircon/system/ulib/inspector:*",
+    "//zircon/system/ulib/io-scheduler:*",
+    "//zircon/system/ulib/kcounter:*",
+    "//zircon/system/ulib/kernel-debug:*",
+    "//zircon/system/ulib/ktrace:*",
+    "//zircon/system/ulib/ldmsg:*",
+    "//zircon/system/ulib/mbr:*",
+    "//zircon/system/ulib/mini-process:*",
+    "//zircon/system/ulib/mmio-ptr:*",
+    "//zircon/system/ulib/mock-boot-arguments:*",
+    "//zircon/system/ulib/mock-function:*",
+    "//zircon/system/ulib/page_tables:*",
+    "//zircon/system/ulib/perftest:*",
+    "//zircon/system/ulib/pretty:*",
+    "//zircon/system/ulib/profile:*",
+    "//zircon/system/ulib/ram-crashlog:*",
+    "//zircon/system/ulib/refcount:*",
+    "//zircon/system/ulib/region-alloc:*",
+    "//zircon/system/ulib/runtests-utils:*",
+    "//zircon/system/ulib/runtime:*",
+    "//zircon/system/ulib/smbios:*",
+    "//zircon/system/ulib/spi:*",
+    "//zircon/system/ulib/svc:*",
+    "//zircon/system/ulib/sync:*",
+    "//zircon/system/ulib/sysconfig-client:*",
+    "//zircon/system/ulib/syslog:*",
+    "//zircon/system/ulib/sysmem-version:*",
+    "//zircon/system/ulib/task-utils:*",
+    "//zircon/system/ulib/test-exceptions:*",
+    "//zircon/system/ulib/test-utils:*",
+    "//zircon/system/ulib/tftp:*",
+    "//zircon/system/ulib/thread-safe-deleter:*",
+    "//zircon/system/ulib/trace:*",
+    "//zircon/system/ulib/trace-engine:*",
+    "//zircon/system/ulib/trace-provider:*",
+    "//zircon/system/ulib/trace-reader:*",
+    "//zircon/system/ulib/trace-test-utils:*",
+    "//zircon/system/ulib/trace-vthread:*",
+    "//zircon/system/ulib/uart:*",
+    "//zircon/system/ulib/virtio:*",
+    "//zircon/system/ulib/xdc-host-utils:*",
+    "//zircon/system/ulib/xdc-server-utils:*",
+    "//zircon/system/ulib/zircon-internal:*",
+    "//zircon/system/ulib/zx:*",
+    "//zircon/third_party/ulib/cksum:*",
+    "//zircon/tools/zbi:*",
+  ]
+}
+
+action("target_metadata") {
+  target_metadata_file = "${root_build_dir}/target_metadata.json"
+  target_metadata_depfile = "${root_build_dir}/target_metadata.d"
+
+  script = "//products/build/scripts/generate_target_metadata.py"
+  inputs = [
+    "//products/build/api/client.py",
+    "${root_build_dir}/project.json",
+  ]
+  outputs = [ target_metadata_file ]
+  args = [
+    "--client-binary",
+    rebase_path("//products/build/api/client.py", root_build_dir),
+    "--fuchsia-dir",
+    rebase_path("//", root_build_dir),
+    "--output",
+    rebase_path(target_metadata_file, root_build_dir),
+    "--depfile",
+    rebase_path(target_metadata_depfile, root_build_dir),
+    "--quiet",
+  ]
+  deps = [ "//tools/gn_desc:gn_project_json($default_toolchain)" ]
+  depfile = target_metadata_depfile
+  check_for_output_dir_leaks = false
+  hermetic_deps = false
+}
+
+if (is_host) {
+  host_test_data("target_metadata_deps") {
+    deps = [ ":target_metadata" ]
+    sources = get_target_outputs(":target_metadata")
+  }
+
+  python_host_test("target_metadata_test") {
+    main_source = "target_metadata_test.py"
+    main_callable = "main"
+    libraries = [ "//products/build/python/modules/serialization" ]
+    test_data_deps = [ ":target_metadata_deps" ]
+    _metadata_path = get_target_outputs(":target_metadata")
+    extra_args = [
+      "--target-metadata",
+      rebase_path(_metadata_path[0], root_build_dir),
+    ]
+  }
+}

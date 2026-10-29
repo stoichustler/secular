@@ -1,0 +1,190 @@
+# Copyright 2023 The Fuchsia Authors. All rights reserved.
+# Use of this source code is governed by a BSD-style license that can be
+# found in the LICENSE file.
+
+import("//products/build/rust/rustc_library.gni")
+
+rustc_library("constants") {
+  edition = "2024"
+  name = "fxfs_platform_constants"
+  sources = [ "src/constants.rs" ]
+  source_root = "src/constants.rs"
+  visibility = [
+    "//userspace/developer/ffx/plugins/profile/memory/components/*",
+    "//userspace/storage/fxfs/*",
+  ]
+}
+
+template("fxfs_platform_library") {
+  rustc_library(target_name) {
+    edition = "2024"
+    forward_variables_from(invoker,
+                           "*",
+                           [
+                             "deps",
+                             "sources",
+                           ])
+
+    sources = [
+      "src/fuchsia.rs",
+      "src/fuchsia/component.rs",
+      "src/fuchsia/debug.rs",
+      "src/fuchsia/device.rs",
+      "src/fuchsia/directory.rs",
+      "src/fuchsia/dirent_cache.rs",
+      "src/fuchsia/errors.rs",
+      "src/fuchsia/file.rs",
+      "src/fuchsia/fxblob.rs",
+      "src/fuchsia/fxblob/blob.rs",
+      "src/fuchsia/fxblob/directory.rs",
+      "src/fuchsia/fxblob/mapping_provider.rs",
+      "src/fuchsia/fxblob/reader.rs",
+      "src/fuchsia/fxblob/testing.rs",
+      "src/fuchsia/fxblob/writer.rs",
+      "src/fuchsia/inline_encryption.rs",
+      "src/fuchsia/layer_pager.rs",
+      "src/fuchsia/memory_pressure.rs",
+      "src/fuchsia/node.rs",
+      "src/fuchsia/paged_object_handle.rs",
+      "src/fuchsia/pager.rs",
+      "src/fuchsia/power.rs",
+      "src/fuchsia/profile.rs",
+      "src/fuchsia/remote_crypt.rs",
+      "src/fuchsia/symlink.rs",
+      "src/fuchsia/testing.rs",
+      "src/fuchsia/volume.rs",
+      "src/fuchsia/volumes_directory.rs",
+      "src/lib.rs",
+    ]
+
+    deps = [
+      ":constants",
+      "//sdk/fidl/fuchsia.feedback:fuchsia.feedback_rust",
+      "//sdk/fidl/fuchsia.fs:fuchsia.fs_rust",
+      "//sdk/fidl/fuchsia.io:fuchsia.io_rust",
+      "//sdk/fidl/fuchsia.mem:fuchsia.mem_rust",
+      "//sdk/fidl/fuchsia.memory.attribution:fuchsia.memory.attribution_rust",
+      "//sdk/fidl/fuchsia.memorypressure:fuchsia.memorypressure_rust",
+      "//sdk/fidl/fuchsia.power.battery:fuchsia.power.battery_rust",
+      "//sdk/fidl/fuchsia.power.system:fuchsia.power.system_rust",
+      "//sdk/fidl/fuchsia.process.lifecycle:fuchsia.process.lifecycle_rust",
+      "//sdk/fidl/fuchsia.storage.block:fuchsia.storage.block_rust",
+      "//sdk/rust/zx",
+      "//userspace/lib/diagnostics/inspect/rust",
+      "//userspace/lib/fidl/rust/fidl",
+      "//userspace/lib/fuchsia-async",
+      "//userspace/lib/fuchsia-component/client",
+      "//userspace/lib/fuchsia-runtime",
+      "//userspace/lib/fuchsia-sync",
+      "//userspace/performance/memory/attribution/refaults_vmo",
+      "//userspace/storage/fidl/fuchsia.fs.startup:fuchsia.fs.startup_rust",
+      "//userspace/storage/fidl/fuchsia.storage.mapping:fuchsia.storage.mapping_rust",
+      "//userspace/storage/fxfs:fxfs_macros",
+      "//userspace/storage/fxfs:lib",
+      "//userspace/storage/fxfs/crypto",
+      "//userspace/storage/fxfs/fidl/fuchsia.fxfs:fuchsia.fxfs_rust",
+      "//userspace/storage/fxfs/trace",
+      "//userspace/storage/fxfs/unicode",
+      "//userspace/storage/lib/block_client/rust",
+      "//userspace/storage/lib/delivery_blob",
+      "//userspace/storage/lib/fs_inspect",
+      "//userspace/storage/lib/mapping",
+      "//userspace/storage/lib/profile",
+      "//userspace/storage/lib/pseudo_fs:pseudo_fs_static",
+      "//userspace/storage/lib/storage_device",
+      "//userspace/storage/lib/units",
+      "//userspace/storage/lib/vfs/rust:vfs_static",
+      "//userspace/storage/lib/vmo-fifo",
+      "//userspace/sys/pkg/lib/fuchsia-hash",
+      "//userspace/sys/pkg/lib/fuchsia-merkle",
+      "//third_party/rust_crates:anyhow",
+      "//third_party/rust_crates:async-channel",
+      "//third_party/rust_crates:async-trait",
+      "//third_party/rust_crates:base64",
+      "//third_party/rust_crates:bitflags",
+      "//third_party/rust_crates:either",
+      "//third_party/rust_crates:event-listener",
+      "//third_party/rust_crates:futures",
+      "//third_party/rust_crates:linked-hash-map",
+      "//third_party/rust_crates:log",
+      "//third_party/rust_crates:rustc-hash",
+      "//third_party/rust_crates:scopeguard",
+      "//third_party/rust_crates:static_assertions",
+      "//third_party/zstd",
+    ]
+
+    if (defined(invoker.deps)) {
+      deps += invoker.deps
+    }
+  }
+}
+
+fxfs_platform_library("platform") {
+  with_unit_tests = true
+  name = "fxfs-platform"
+  test_deps = [
+    "//sdk/fidl/fuchsia.hardware.inlineencryption:fuchsia.hardware.inlineencryption_rust",
+    "//userspace/lib/fdio/rust:fdio",
+    "//userspace/lib/fuchsia",
+    "//userspace/lib/fuchsia-fs",
+    "//userspace/lib/test_util",
+    "//userspace/storage/blobfs/bin:blobfs-component",
+    "//userspace/storage/crypt/fxfs:lib",
+    "//userspace/storage/crypt/fxfs/common:lib",
+    "//userspace/storage/crypt/starnix:lib",
+    "//userspace/storage/fxfs:lib",
+    "//userspace/storage/fxfs/crypto/insecure",
+    "//userspace/storage/fxfs/make-blob-image",
+    "//userspace/storage/lib/blob_pager_and_verifier",
+    "//userspace/storage/lib/blob_writer:blob-writer",
+    "//userspace/storage/lib/block_protocol",
+    "//userspace/storage/lib/block_server",
+    "//userspace/storage/lib/block_server/vmo_backed:test_vmo_backed_block_server",
+    "//userspace/storage/lib/fs_management/rust:fs_management",
+    "//userspace/storage/lib/fsverity-merkle",
+    "//userspace/storage/lib/ptr_slice",
+    "//userspace/sys/pkg/lib/fuchsia-merkle",
+    "//third_party/rust_crates:assert_matches",
+    "//third_party/rust_crates:libc",
+    "//third_party/rust_crates:rand",
+    "//third_party/rust_crates:test-case",
+  ]
+
+  # The test requires more than typical memory,
+  # so remote-build with a larger worker.
+  _concurrent_jobs = concurrent_jobs.rust_highmem
+  test_configs = _concurrent_jobs.configs
+  test_vars = _concurrent_jobs.vars
+
+  visibility = [
+    "//userspace/storage/f2fs_reader/*",
+    "//userspace/storage/fxfs/*",
+  ]
+}
+
+fxfs_platform_library("platform_testing") {
+  testonly = true
+  name = "fxfs-platform-testing"
+  features = [ "testing" ]
+  deps = [
+    "//userspace/storage/crypt/fxfs/common:lib",
+    "//userspace/storage/fxfs/crypto/insecure",
+  ]
+  visibility = [ "//userspace/storage/fxfs/*" ]
+}
+
+rustc_library("fxfs-testing") {
+  testonly = true
+  edition = "2024"
+  features = [ "testing" ]
+  sources = [ "src/testing.rs" ]
+  source_root = "src/testing.rs"
+  deps = [ ":platform_testing" ]
+  visibility = [
+    "//sdk/lib/zxio/tests/*",
+    "//userspace/starnix/kernel/*",
+    "//userspace/starnix/modules/overlayfs/*",
+    "//userspace/storage/conformance/conformance_harness/fxfs/*",
+    "//userspace/storage/fxfs/*",
+  ]
+}

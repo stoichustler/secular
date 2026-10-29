@@ -1,0 +1,7 @@
+# Copyright 2026 The Fuchsia Authors. All rights reserved.
+# Use of this source code is governed by a BSD-style license that can be
+# found in the LICENSE file.
+
+# Conformance suite sources were removed from the Secular tree.
+conformance_suite_gidl_files = []
+conformance_suite_fidl_target = ""

@@ -1,0 +1,42 @@
+# Copyright 2026 The Fuchsia Authors. All rights reserved.
+# Use of this source code is governed by a BSD-style license that can be
+# found in the LICENSE file.
+
+load("//products/build/bazel/rules/rust:defs.bzl", "rustc_library")
+
+package(default_applicable_licenses = ["//:license"])
+
+rustc_library(
+    name = "rust",
+    srcs = [
+        "src/constants.rs",
+        "src/encode.rs",
+        "src/lib.rs",
+        "src/parse.rs",
+    ],
+    crate_name = "diagnostics_log_encoding",
+    edition = "2024",
+    lint_config = "//products/build/config/rust/lints:clippy_warn_all",
+    test_deps = ["//userspace/lib/fuchsia"],
+    visibility = [
+        "//userspace/diagnostics/archivist:__subpackages__",
+        "//userspace/diagnostics/archivist/tests/integration/realm_factory/puppet:__pkg__",
+        "//userspace/diagnostics/lib/log-command:__subpackages__",
+        "//userspace/diagnostics/validator/logs:__subpackages__",
+        "//userspace/lib/diagnostics/fake-log-sink/rust:__subpackages__",
+        "//userspace/lib/diagnostics/log:__subpackages__",
+        "//userspace/starnix/kernel:__subpackages__",
+    ],
+    with_unit_tests = True,
+    deps = [
+        "//sdk/fidl/fuchsia.diagnostics.types:fuchsia.diagnostics.types_rust",
+        "//userspace/lib/diagnostics/log/types",
+        "//third_party/rust_crates/vendor:bitfield",
+        "//third_party/rust_crates/vendor:log",
+        "//third_party/rust_crates/vendor:thiserror",
+        "//third_party/rust_crates/vendor:zerocopy",
+    ] + select({
+        "//products/build/bazel/platforms:is_host_os": [],
+        "//conditions:default": ["//sdk/rust/zx"],
+    }),
+)

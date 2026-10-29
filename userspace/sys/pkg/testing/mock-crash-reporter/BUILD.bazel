@@ -1,0 +1,41 @@
+# Copyright 2026 The Fuchsia Authors. All rights reserved.
+# Use of this source code is governed by a BSD-style license that can be
+# found in the LICENSE file.
+
+load("//products/build/bazel/rules/rust:rustc_library.bzl", "rustc_library")
+load("//products/build/bazel/rules/rust:rustc_test.bzl", "rustc_test")
+load("//products/build/bazel/rules/testing:fx_unittest_package.bzl", "fx_unittest_package")
+
+package(default_applicable_licenses = ["//:license"])
+
+rustc_library(
+    name = "lib",
+    srcs = ["src/lib.rs"],
+    crate_name = "mock_crash_reporter",
+    edition = "2024",
+    lint_config = "//products/build/config/rust/lints:clippy_warn_all",
+    visibility = ["//userspace/sys/pkg:__subpackages__"],
+    deps = [
+        "//sdk/fidl/fuchsia.feedback:fuchsia.feedback_rust",
+        "//userspace/lib/fidl/rust/fidl",
+        "//userspace/lib/fuchsia-async",
+        "//third_party/rust_crates/vendor:futures",
+    ],
+)
+
+# @bazel2gn:skip
+rustc_test(
+    name = "lib_test",
+    crate = ":lib",
+    edition = "2024",
+    lint_config = "//products/build/config/rust/lints:clippy_warn_all",
+    deps = [
+        "//userspace/lib/fuchsia",
+    ],
+)
+
+# @bazel2gn:skip
+fx_unittest_package(
+    name = "mock-crash-reporter-tests",
+    unit_tests = [":lib_test"],
+)

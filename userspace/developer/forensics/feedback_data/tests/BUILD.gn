@@ -1,0 +1,197 @@
+# Copyright 2019 The Fuchsia Authors. All rights reserved.
+# Use of this source code is governed by a BSD-style license that can be
+# found in the LICENSE file.
+
+import("//products/build/components.gni")
+import("//products/build/components/fuchsia_unittest_component.gni")
+import("//products/build/testing/cc_test_executable.gni")
+
+visibility = [ ":*" ]
+
+###############################################################################
+# EXECUTABLES
+###############################################################################
+cc_test_executable("data_provider_unittest_exe") {
+  testonly = true
+
+  sources = [
+    "data_provider_unittest.cc",
+    "stub_attachment_provider.cc",
+    "stub_attachment_provider.h",
+  ]
+
+  deps = [
+    "//sdk/fidl/fuchsia.boot:fuchsia.boot_hlcpp",
+    "//sdk/fidl/fuchsia.diagnostics:fuchsia.diagnostics_hlcpp",
+    "//sdk/fidl/fuchsia.feedback:fuchsia.feedback_hlcpp",
+    "//sdk/fidl/fuchsia.logger:fuchsia.logger_hlcpp",
+    "//userspace/developer/forensics/feedback/attachments",
+    "//userspace/developer/forensics/feedback_data:constants",
+    "//userspace/developer/forensics/feedback_data:data_provider",
+    "//userspace/developer/forensics/feedback_data:metadata",
+    "//userspace/developer/forensics/testing:gmatchers",
+    "//userspace/developer/forensics/testing:gpretty_printers",
+    "//userspace/developer/forensics/testing:gtest_with_syslog_main",
+    "//userspace/developer/forensics/testing:unit_test_fixture",
+    "//userspace/developer/forensics/testing/stubs:cobalt",
+    "//userspace/developer/forensics/utils:archive",
+    "//userspace/lib/fostr/fidl/fuchsia.math",
+    "//userspace/lib/fsl",
+    "//userspace/lib/fxl",
+    "//userspace/lib/timekeeper:testing",
+    "//userspace/lib/uuid",
+    "//third_party/googletest:gmock",
+    "//third_party/googletest:gtest",
+    "//third_party/rapidjson",
+    "//zircon/system/ulib/zx",
+  ]
+}
+
+cc_test_executable("inspect_data_budget_unittest_exe") {
+  testonly = true
+
+  sources = [ "inspect_data_budget_unittest.cc" ]
+
+  deps = [
+    "//userspace/developer/forensics/feedback_data:constants",
+    "//userspace/developer/forensics/feedback_data:inspect_budget",
+    "//userspace/developer/forensics/testing:gtest_with_syslog_main",
+    "//userspace/developer/forensics/testing:unit_test_fixture",
+    "//userspace/lib/files",
+    "//userspace/lib/timekeeper:testing",
+    "//third_party/googletest:gmock",
+    "//third_party/googletest:gtest",
+  ]
+}
+
+cc_test_executable("log_buffer_unittest_exe") {
+  testonly = true
+
+  sources = [ "log_buffer_unittest.cc" ]
+
+  deps = [
+    "//userspace/developer/forensics/feedback_data:log_buffer",
+    "//userspace/developer/forensics/testing:gtest_with_syslog_main",
+    "//third_party/googletest:gmock",
+    "//third_party/googletest:gtest",
+  ]
+}
+
+cc_test_executable("log_source_unittest_exe") {
+  testonly = true
+
+  sources = [ "log_source_unittest.cc" ]
+
+  deps = [
+    "//sdk/lib/sys/cpp/testing:cpp",
+    "//userspace/developer/forensics/feedback_data:log_source",
+    "//userspace/developer/forensics/testing:backoff",
+    "//userspace/developer/forensics/testing:gpretty_printers",
+    "//userspace/developer/forensics/testing:gtest_with_syslog_main",
+    "//userspace/developer/forensics/testing:log_message",
+    "//userspace/developer/forensics/testing:unit_test_fixture",
+    "//userspace/developer/forensics/testing/stubs:diagnostics",
+    "//userspace/developer/forensics/utils:logs",
+    "//third_party/googletest:gmock",
+    "//third_party/googletest:gtest",
+  ]
+}
+
+cc_test_executable("metadata_unittest_exe") {
+  testonly = true
+
+  sources = [ "metadata_unittest.cc" ]
+
+  deps = [
+    "//sdk/lib/fit-promise",
+    "//sdk/lib/syslog/cpp",
+    "//userspace/developer/forensics/feedback/attachments",
+    "//userspace/developer/forensics/feedback_data:constants",
+    "//userspace/developer/forensics/feedback_data:metadata",
+    "//userspace/developer/forensics/testing:unit_test_fixture",
+    "//userspace/developer/forensics/testing/stubs:utc_clock_ready_watcher",
+    "//userspace/developer/forensics/utils:errors",
+    "//userspace/developer/forensics/utils/redact",
+    "//userspace/lib/fxl/test:gtest_main",
+    "//userspace/lib/timekeeper:testing",
+    "//third_party/googletest:gmock",
+    "//third_party/googletest:gtest",
+    "//third_party/rapidjson",
+  ]
+}
+
+###############################################################################
+# RESOURCES
+###############################################################################
+resource("test_image") {
+  sources =
+      [ "//userspace/developer/forensics/testing/resources/checkerboard_100.png" ]
+
+  outputs = [ "data/checkerboard_100.png" ]
+}
+
+###############################################################################
+# COMPONENTS
+###############################################################################
+fuchsia_test_component("data_provider_unittest") {
+  manifest = "meta/data_provider_unittest.cml"
+
+  deps = [
+    ":data_provider_unittest_exe",
+    ":test_image",
+  ]
+  test_type = "system"
+}
+
+fuchsia_unittest_component("inspect_data_budget_unittest") {
+  deps = [
+    ":inspect_data_budget_unittest_exe",
+    "//userspace/sys/test_runners:tmp_storage",
+  ]
+}
+
+fuchsia_unittest_component("log_buffer_unittest") {
+  deps = [ ":log_buffer_unittest_exe" ]
+}
+
+fuchsia_unittest_component("log_source_unittest") {
+  deps = [ ":log_source_unittest_exe" ]
+}
+
+fuchsia_component("metadata_unittest") {
+  testonly = true
+
+  manifest = "meta/metadata_unittest.cml"
+
+  deps = [ ":metadata_unittest_exe" ]
+}
+
+###############################################################################
+# PACKAGES
+###############################################################################
+fuchsia_test_package("feedback-data-tests") {
+  test_components = [
+    ":data_provider_unittest",
+    ":inspect_data_budget_unittest",
+    ":log_buffer_unittest",
+    ":log_source_unittest",
+    ":metadata_unittest",
+  ]
+
+  test_specs = {
+    log_settings = {
+      max_severity = "FATAL"
+    }
+  }
+}
+
+###############################################################################
+# GROUPS
+###############################################################################
+group("tests") {
+  testonly = true
+
+  deps = [ ":feedback-data-tests" ]
+
+  visibility += [ "//userspace/developer/forensics:tests" ]
+}

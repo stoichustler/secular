@@ -1,0 +1,8 @@
+out/
+*.pyc
+__pycache__/
+.sdk-prebuilt/
+compile_commands.json
+tags
+.clangd
+.cache/

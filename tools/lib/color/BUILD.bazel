@@ -1,0 +1,43 @@
+# Copyright 2024 The Fuchsia Authors. All rights reserved.
+# Use of this source code is governed by a BSD-style license that can be
+# found in the LICENSE file.
+
+load("@io_bazel_rules_go//go:def.bzl", "go_library")
+load("//products/build/bazel/platforms:constraints.bzl", "HOST_OS_CONSTRAINTS")
+load("//products/build/bazel/rules/host_tests:host_go_test.bzl", "host_go_test")
+
+package(default_applicable_licenses = ["//:license"])
+
+go_library(
+    name = "color",
+    srcs = [
+        "color.go",
+    ],
+    importpath = "go.fuchsia.dev/fuchsia/tools/lib/color",
+    target_compatible_with = HOST_OS_CONSTRAINTS,
+    visibility = [
+        "//products/build/tools:__subpackages__",
+        "//userspace/firmware:__subpackages__",
+        "//userspace/sys:__subpackages__",
+        "//userspace/testing/host-target-testing/omaha_tool:__pkg__",
+        "//third_party/network-conformance:__subpackages__",
+        "//tools:__subpackages__",
+        "//vendor/google:__subpackages__",
+        "//zircon/tools:__subpackages__",
+    ],
+    deps = [
+        "//tools/lib/isatty",
+    ],
+)
+
+host_go_test(
+    name = "color_tests",
+    srcs = [
+        "color_test.go",
+    ],
+    embed = [
+        ":color",
+    ],
+    target_compatible_with = HOST_OS_CONSTRAINTS,
+    visibility = ["//tools:__pkg__"],
+)

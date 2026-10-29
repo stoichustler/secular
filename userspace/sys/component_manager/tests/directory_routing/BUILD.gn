@@ -1,0 +1,41 @@
+# Copyright 2025 The Fuchsia Authors. All rights reserved.
+# Use of this source code is governed by a BSD-style license that can be
+# found in the LICENSE file.
+
+import("//products/build/components.gni")
+import("//products/build/rust/rustc_test.gni")
+
+rustc_test("directory_routing_bin") {
+  name = "directory_routing"
+  edition = "2024"
+  source_root = "src/main.rs"
+  deps = [
+    "//sdk/fidl/fuchsia.io:fuchsia.io_rust",
+    "//userspace/lib/fidl/rust/fidl",
+    "//userspace/lib/fuchsia",
+    "//userspace/lib/fuchsia-component-test",
+    "//userspace/lib/fuchsia-fs",
+    "//userspace/sys/lib/cm_rust",
+    "//userspace/sys/lib/cm_types",
+    "//third_party/rust_crates:futures",
+    "//third_party/rust_crates:rand",
+  ]
+
+  sources = [ "src/main.rs" ]
+}
+
+fuchsia_test_component("directory_routing") {
+  manifest = "meta/directory_routing_test.cml"
+  deps = [ ":directory_routing_bin" ]
+}
+
+fuchsia_test_package("directory_routing_test") {
+  test_components = [ ":directory_routing" ]
+  deps = [ "//userspace/sys/component_manager:component-manager-realm-builder-cmp" ]
+}
+
+group("tests") {
+  testonly = true
+
+  deps = [ ":directory_routing_test" ]
+}

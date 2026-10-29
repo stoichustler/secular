@@ -1,0 +1,11 @@
+# Copyright 2026 The Fuchsia Authors. All rights reserved.
+# Use of this source code is governed by a BSD-style license that can be
+# found in the LICENSE file.
+
+# Secular is the in-tree product: Zircon + interactive serial console +
+# the bootstrap/component-manager services from Fuchsia bringup.
+#
+# Image assembly is GN-only (`//products/secular:secular`). Do not set
+# bazel_product_bundle_prefix; QEMU boots the GN ZBI + linux-arm64-boot-shim.
+
+build_info_product = "secular"

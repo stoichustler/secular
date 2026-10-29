@@ -1,0 +1,39 @@
+# Copyright 2022 The Fuchsia Authors. All rights reserved.
+# Use of this source code is governed by a BSD-style license that can be
+# found in the LICENSE file.
+
+import("//products/build/go/go_library.gni")
+import("//products/build/go/go_test.gni")
+import("//userspace/sys/pkg/tests/system-tests/system-tests.gni")
+
+if (is_host) {
+  go_library("gopkg") {
+    testonly = true
+    deps = [
+      "../check",
+      "../flash",
+      "../pave",
+      "//userspace/testing/host-target-testing/artifacts",
+      "//userspace/testing/host-target-testing/cli",
+      "//userspace/testing/host-target-testing/device",
+      "//userspace/testing/host-target-testing/errutil",
+      "//userspace/testing/host-target-testing/packages",
+      "//userspace/testing/host-target-testing/sl4f",
+      "//userspace/testing/host-target-testing/util",
+      "//tools/lib/color",
+      "//tools/lib/logger",
+    ]
+    non_go_deps = [ "//userspace/sys/pkg/tests/system-tests:non_go_deps" ]
+    sources = [
+      "config.go",
+      "ota.go",
+      "upgrade_test.go",
+    ]
+  }
+
+  go_test("system_tests_upgrade") {
+    embed = [ ":gopkg" ]
+    environments = [ disabled_env ]
+    data_deps = [ "//userspace/sys/pkg/tests/system-tests:non_go_deps" ]
+  }
+}

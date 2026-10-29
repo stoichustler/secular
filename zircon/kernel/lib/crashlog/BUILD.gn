@@ -1,0 +1,68 @@
+# Copyright 2019 The Fuchsia Authors
+#
+# Use of this source code is governed by a MIT-style
+# license that can be found in the LICENSE file or at
+# https://opensource.org/licenses/MIT
+
+import("//products/build/cpp/library_headers.gni")
+import("//zircon/kernel/kernel_rust_mod.gni")
+import("params.gni")
+
+static_library("crashlog") {
+  public_deps = [ ":headers" ]
+
+  complete_static_lib = true
+
+  sources = [
+    "crashlog.cc",
+    "crashlog_ffi.cc",
+    "panic_buffer.cc",
+  ]
+  deps = [
+    ":crashlog-rs",
+    "//zircon/kernel/lib/boot-options",
+    "//zircon/kernel/lib/counters",
+    "//zircon/kernel/lib/io",
+    "//zircon/kernel/object:headers",
+    "//zircon/kernel/phys/handoff",
+  ]
+}
+
+kernel_rust_mod("crashlog-rs") {
+  sources = [ "crashlog.rs" ]
+  deps = [
+    "//sdk/rust/zx-status",
+    "//sdk/rust/zx-types",
+    "//userspace/lib/kalloc",
+    "//userspace/lib/kprint",
+    "//zircon/kernel/lib/console:console_rs",
+    "//zircon/system/ulib/fbl/rust:fbl",
+  ]
+}
+
+library_headers("headers") {
+  headers = []
+  public_configs = [ ":config" ]
+}
+
+config("config") {
+  visibility = [ ":*" ]
+  defines = [ "MIN_CRASHLOG_SIZE=$min_crashlog_size" ]
+}
+
+group("tests") {
+  testonly = true
+}
+
+group("kernel-tests") {
+  testonly = true
+  deps = [ "test" ]
+}
+
+group("phys-tests") {
+  testonly = true
+}
+
+group("boot_tests") {
+  testonly = true
+}

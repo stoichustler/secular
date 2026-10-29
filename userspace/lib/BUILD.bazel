@@ -1,0 +1,38 @@
+# Copyright 2026 The Fuchsia Authors. All rights reserved.
+# Use of this source code is governed by a BSD-style license that can be
+# found in the LICENSE file.
+
+load("//products/build/bazel/platforms:constraints.bzl", "HOST_OS_CONSTRAINTS")
+
+package(default_applicable_licenses = ["//:license"])
+
+# Host tests for //userspace/lib defined in Bazel. These are exported to `fx test`
+# and infra builders through the `bazel_tests` target in //userspace/lib/BUILD.gn.
+test_suite(
+    name = "host_tests",
+    target_compatible_with = HOST_OS_CONSTRAINTS,
+    tests = [
+        "//userspace/lib/fuchsia-emulated-handle:fuchsia-emulated-handle-shutdown-test",
+        "//userspace/lib/fuchsia-emulated-handle:fuchsia-emulated-handle_test",
+        "//userspace/lib/gcs/test:gcs_test_client_bin_test",
+        "//userspace/lib/go-benchmarking:go_benchmarking_test",
+        "//userspace/lib/inet:libinet_host_test",
+        "//userspace/lib/listnode:listnode_host_tests",
+    ],
+)
+
+# Device tests for //userspace/lib defined in Bazel. These are exported to `fx test`
+# and infra builders through the `bazel_tests` target in //userspace/lib/BUILD.gn.
+test_suite(
+    name = "target_tests",
+    target_compatible_with = ["@platforms//os:fuchsia"],
+    tests = [
+        "//userspace/lib/atomic-storage:atomic-storage-tests",
+        "//userspace/lib/backoff:backoff_tests",
+        "//userspace/lib/callback:callback_tests",
+        "//userspace/lib/cstringify:cstringify-test",
+        "//userspace/lib/fuchsia-image-format:fuchsia-image-format-tests",
+        "//userspace/lib/inet:libinet_tests",
+        "//userspace/lib/listnode:listnode-package",
+    ],
+)

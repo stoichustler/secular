@@ -1,0 +1,30 @@
+# Copyright 2024 The Fuchsia Authors. All rights reserved.
+# Use of this source code is governed by a BSD-style license that can be
+# found in the LICENSE file.
+
+import("//products/build/assembly/bootfs_files_for_assembly.gni")
+import("//products/build/components.gni")
+import("//products/build/rust/rustc_binary.gni")
+import("//products/build/rust/rustc_library.gni")
+import("//products/build/rust/rustc_test.gni")
+import("//products/build/testing/test_spec.gni")
+
+rustc_binary("bin") {
+  output_name = "fdomain_runner"
+  edition = "2024"
+
+  deps = [
+    "//userspace/developer/remote-control/fidl:fuchsia.developer.remotecontrol.connector_rust",
+    "//userspace/developer/remote-control/logging-util",
+    "//userspace/lib/fdio",
+    "//userspace/lib/fidl/rust/fidl",
+    "//userspace/lib/fuchsia",
+    "//userspace/lib/fuchsia-component",
+    "//third_party/rust_crates:anyhow",
+    "//third_party/rust_crates:argh",
+    "//third_party/rust_crates:futures",
+    "//third_party/rust_crates:log",
+  ]
+
+  sources = [ "src/main.rs" ]
+}

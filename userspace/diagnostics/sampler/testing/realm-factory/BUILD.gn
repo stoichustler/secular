@@ -1,0 +1,73 @@
+# Copyright 2023 The Fuchsia Authors. All rights reserved.
+# Use of this source code is governed by a BSD-style license that can be
+# found in the LICENSE file.
+
+import("//products/build/components.gni")
+import("//products/build/rust/rustc_binary.gni")
+
+rustc_binary("bin") {
+  testonly = true
+  edition = "2024"
+  name = "sampler_realm_factory"
+  sources = [
+    "src/main.rs",
+    "src/mocks.rs",
+    "src/realm_factory.rs",
+  ]
+  deps = [
+    "../fidl:test.sampler_rust",
+    "//sdk/fidl/fuchsia.component:fuchsia.component_rust",
+    "//sdk/fidl/fuchsia.diagnostics:fuchsia.diagnostics_rust",
+    "//sdk/fidl/fuchsia.hardware.power.statecontrol:fuchsia.hardware.power.statecontrol_rust",
+    "//sdk/fidl/fuchsia.inspect:fuchsia.inspect_rust",
+    "//sdk/fidl/fuchsia.logger:fuchsia.logger_rust",
+    "//sdk/fidl/fuchsia.metrics:fuchsia.metrics_rust",
+    "//sdk/fidl/fuchsia.metrics.test:fuchsia.metrics.test_rust",
+    "//userspace/diagnostics/lib/sampler-config",
+    "//userspace/diagnostics/sampler/tests/fidl:fuchsia.mockrebootcontroller_rust",
+    "//userspace/diagnostics/sampler/tests/fidl:fuchsia.samplertestcontroller_rust",
+    "//userspace/lib/fidl/rust/fidl",
+    "//userspace/lib/fuchsia",
+    "//userspace/lib/fuchsia-async",
+    "//userspace/lib/fuchsia-component",
+    "//userspace/lib/fuchsia-component-test",
+    "//userspace/sys/lib/cm_rust",
+    "//userspace/sys/lib/component_id_index",
+    "//userspace/sys/lib/moniker",
+    "//third_party/rust_crates:anyhow",
+    "//third_party/rust_crates:flyweights",
+    "//third_party/rust_crates:futures",
+    "//third_party/rust_crates:log",
+    "//third_party/rust_crates:serde_json5",
+  ]
+  configs += [ "//products/build/config/rust/lints:clippy_warn_all" ]
+
+  inputs = [
+    "configs/reboot_required_config.json",
+    "configs/test_config.json",
+    "configs/named_tree_config.json",
+    "configs/components.json5",
+    "configs/fire_1.json5",
+    "configs/fire_2.json5",
+    "configs/fire_3.json5",
+  ]
+}
+
+fuchsia_component("realm-factory-component") {
+  testonly = true
+  component_name = "realm-factory"
+  manifest = "meta/default.cml"
+  deps = [ ":bin" ]
+}
+
+fuchsia_package("realm-factory") {
+  package_name = "sampler-realm-factory"
+  testonly = true
+  deps = [
+    ":realm-factory-component",
+    "//userspace/cobalt/bin/testing/fake_cobalt:component_v2",
+    "//userspace/diagnostics/archivist:archivist-for-embedding-bundle",
+    "//userspace/diagnostics/sampler:sampler-component",
+    "//userspace/diagnostics/sampler/tests/test_component:single_counter_test_component",
+  ]
+}

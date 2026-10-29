@@ -1,0 +1,46 @@
+# Copyright 2026 The Fuchsia Authors. All rights reserved.
+# Use of this source code is governed by a BSD-style license that can be
+# found in the LICENSE file.
+
+# Compact root graph for the Secular console image.
+
+declare_args() {
+  universe_package_labels = []
+  target_labels = []
+  discoverable_package_labels = []
+  exported_package_labels = []
+  hermetic_test_package_labels = []
+  e2e_test_labels = []
+  host_test_labels = []
+  developer_test_labels = []
+  host_labels = []
+  test_durations_file = ""
+  default_test_durations_file = ""
+  sdk_archive_labels = []
+  additional_bazel_sdk_labels = []
+  assembly_board_configs = []
+  assembly_product_configs = []
+  assembly_partitions_configs = []
+  additional_default_targets = []
+  additional_tefmocheck_labels = []
+  build_only_labels = []
+  product_bundle_labels = []
+}
+
+assert(current_toolchain == default_toolchain,
+       "The root build file (//BUILD.gn) can only be processed in the default toolchain.")
+
+group("default") {
+  testonly = true
+  deps = [
+    "//products/secular",
+    "//products/secular:boot_shim",
+  ]
+  deps += additional_default_targets
+  deps += target_labels
+}
+
+group("build_only") {
+  testonly = true
+  deps = build_only_labels
+}

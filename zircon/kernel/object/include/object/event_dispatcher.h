@@ -1,0 +1,71 @@
+// Copyright 2016 The Fuchsia Authors
+//
+// Use of this source code is governed by a MIT-style
+// license that can be found in the LICENSE file or at
+// https://opensource.org/licenses/MIT
+
+#ifndef ZIRCON_KERNEL_OBJECT_INCLUDE_OBJECT_EVENT_DISPATCHER_H_
+#define ZIRCON_KERNEL_OBJECT_INCLUDE_OBJECT_EVENT_DISPATCHER_H_
+
+#include <lib/object-constants.h>
+#include <sys/types.h>
+#include <zircon/rights.h>
+#include <zircon/types.h>
+
+#include <kernel/ffi.h>
+#include <object/dispatcher.h>
+#include <object/handle.h>
+#include <object/opaque_storage.h>
+
+class EventDispatcher;
+
+extern "C" {
+zx_status_t cpp_event_dispatcher_create(
+    uint32_t options, ffi::Uninitialized<KernelHandle<EventDispatcher>>* handle_out);
+zx_status_t cpp_memory_stall_event_dispatcher_create(
+    uint32_t kind, ffi::Uninitialized<KernelHandle<EventDispatcher>>* out_handle);
+}
+
+class EventDispatcher : public Dispatcher {
+ public:
+  ~EventDispatcher() override;
+
+  zx_obj_type_t get_type() const final { return ZX_OBJ_TYPE_EVENT; }
+  zx_koid_t get_related_koid() const final { return ZX_KOID_INVALID; }
+  bool is_waitable() const final { return ZX_DEFAULT_EVENT_RIGHTS & ZX_RIGHT_WAIT; }
+
+  zx_status_t user_signal_self(uint32_t clear_mask, uint32_t set_mask) final;
+  zx_status_t user_signal_peer(uint32_t clear_mask, uint32_t set_mask) final {
+    return ZX_ERR_NOT_SUPPORTED;
+  }
+
+ protected:
+  Lock<CriticalMutex>* get_lock() const final;
+
+  friend zx_status_t cpp_event_dispatcher_create(
+      uint32_t options, ffi::Uninitialized<KernelHandle<EventDispatcher>>* handle_out);
+  explicit EventDispatcher(uint32_t options);
+
+ private:
+  OpaqueStorage<kEventDispatcherStateSize, kEventDispatcherStateAlign> opaque_storage_;
+};
+
+// An EventDispatcher that is signalled while the system's memory stall time is above a threshold.
+//
+// Its state - the kind of stall being watched and the StallObserver that watches it - lives in
+// Rust, which is also where the observer's callbacks land. See //zircon/kernel/object/
+// event_dispatcher.rs and //zircon/kernel/lib/stall/src/mod.rs.
+class MemoryStallEventDispatcher final : public EventDispatcher {
+ public:
+  ~MemoryStallEventDispatcher() final;
+
+ private:
+  friend zx_status_t cpp_memory_stall_event_dispatcher_create(
+      uint32_t kind, ffi::Uninitialized<KernelHandle<EventDispatcher>>* out_handle);
+  explicit MemoryStallEventDispatcher(uint32_t kind);
+
+  OpaqueStorage<kMemoryStallEventDispatcherStateSize, kMemoryStallEventDispatcherStateAlign>
+      opaque_storage_;
+};
+
+#endif  // ZIRCON_KERNEL_OBJECT_INCLUDE_OBJECT_EVENT_DISPATCHER_H_

@@ -1,0 +1,6 @@
+module(name = "rapidjson", version = "")
+
+bazel_dep(name = "rules_cc", version = "0.0.16")
+
+# Required by the unit-test suite only.
+bazel_dep(name = "googletest", version="1.16.0", dev_dependency=True)

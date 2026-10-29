@@ -1,0 +1,87 @@
+# Copyright 2026 The Fuchsia Authors. All rights reserved.
+# Use of this source code is governed by a BSD-style license that can be
+# found in the LICENSE file.
+
+load("//products/build/bazel/rules/cc:fx_cc_library.bzl", "fx_cc_library")
+load("//products/build/bazel/rules/host_tests:host_cc_test.bzl", "host_cc_test")
+
+package(default_applicable_licenses = ["//:license"])
+
+fx_cc_library(
+    name = "testable_internals",
+    srcs = [
+        "environment_status.cc",
+        "persistent_status.cc",
+    ],
+    hdrs = [
+        "environment_status.h",
+        "persistent_status.h",
+    ],
+    deps = [
+        "//sdk/lib/syslog/cpp",
+        "//userspace/lib/analytics/cpp/metric_properties",
+        "//userspace/lib/uuid",
+    ],
+    alwayslink = True,
+)
+
+fx_cc_library(
+    name = "core_dev_tools",
+    srcs = [
+        "analytics_executor.cc",
+        "analytics_internal.cc",
+        "analytics_messages.cc",
+        "analytics_messages.h",
+        "analytics_status.h",
+        "command_line_options.cc",
+        "ga4_common_events.h",
+        "google_analytics_4_client.cc",
+        "system_info.cc",
+    ],
+    hdrs = [
+        "analytics.h",
+        "analytics_executor.h",
+        "analytics_internal.h",
+        "command_line_options.h",
+        "google_analytics_4_client.h",
+        "system_info.h",
+    ],
+    implementation_deps = [
+        "//userspace/developer/debug/shared",
+        "//userspace/developer/debug/zxdb/common",
+    ],
+    visibility = [
+        "//userspace/developer/debug/zxdb/client:__pkg__",
+        "//tools/fidlcat:__pkg__",
+        "//tools/fidlcat/lib:__pkg__",
+        "//tools/symbolizer:__pkg__",
+    ],
+    deps = [
+        ":testable_internals",
+        "//sdk/lib/fit-promise",
+        "//sdk/lib/syslog/cpp",
+        "//userspace/lib/analytics/cpp/google_analytics_4",
+        "//userspace/lib/analytics/cpp/metric_properties",
+        "//userspace/lib/cmdline",
+        "//userspace/lib/fxl",
+    ],
+)
+
+host_cc_test(
+    name = "analytics_cpp_core_dev_tools_unittests",
+    srcs = [
+        "environment_status_unittest.cc",
+        "persistent_status_unittest.cc",
+    ],
+    test_args = ["env HOME=/tmp"],
+    visibility = ["//userspace/lib/analytics:__pkg__"],
+    deps = [
+        ":core_dev_tools",
+        ":testable_internals",
+        "//userspace/lib/analytics/cpp/metric_properties",
+        "//userspace/lib/files",
+        "//userspace/lib/fxl/test:gtest_main",
+        "//userspace/lib/uuid",
+        "@com_google_googletest//:gtest",
+    ],
+)

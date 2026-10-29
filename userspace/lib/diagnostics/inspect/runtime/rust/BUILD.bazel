@@ -1,0 +1,66 @@
+# Copyright 2026 The Fuchsia Authors. All rights reserved.
+# Use of this source code is governed by a BSD-style license that can be
+# found in the LICENSE file.
+
+load("@fuchsia_build_info//:args.bzl", "current_build_target_api_level")
+load("//products/build/bazel/rules/rust:rustc_library.bzl", "rustc_library")
+
+package(default_applicable_licenses = ["//:license"])
+
+# NOTE: `lib_test` and `inspect-runtime-tests` remain in BUILD.gn above the
+# sentinel because `inspect_test_component` uses
+# `fuchsia_structured_config_rust_lib` and `fuchsia_structured_config_values`,
+# which do not have Bazel rules yet, and `lib_test` depends on
+# `//userspace/lib/diagnostics/reader/rust`, `//userspace/lib/fuchsia-component-test`, and
+# `//userspace/sys/lib/component-events`.
+# TODO(https://fxbug.dev/42161852): Remove this dep during post-migration cleanup.
+#
+# Restrict visibility to local targets. Clients looking to use the
+# inspect_runtime library should depend on `:rust` or, in rare circumstances,
+# `:unchecked_includes`.
+rustc_library(
+    name = "lib",
+    srcs = [
+        "src/lib.rs",
+        "src/service.rs",
+    ],
+    crate_name = "inspect_runtime",
+    edition = "2024",
+    lint_config = "//products/build/config/rust/lints:clippy_warn_all",
+    visibility = [
+        "//userspace/lib/diagnostics/inspect/rust/testing:__pkg__",
+        "//userspace/sys/pkg/bin/system-update-configurator:__pkg__",
+    ],
+    deps = [
+        "//sdk/fidl/fuchsia.inspect:fuchsia.inspect_rust",
+        "//sdk/fidl/fuchsia.mem:fuchsia.mem_rust",
+        "//sdk/rust/zx",
+        "//userspace/lib/diagnostics/inspect/rust:fuchsia-inspect",  # @bazel2gn:path_overwrite://userspace/lib/diagnostics/inspect/rust
+        "//userspace/lib/fidl/rust/fidl",
+        "//userspace/lib/fuchsia-async",
+        "//userspace/lib/fuchsia-component/client",
+        "//third_party/rust_crates/vendor:anyhow",
+        "//third_party/rust_crates/vendor:futures",
+        "//third_party/rust_crates/vendor:log",
+        "//third_party/rust_crates/vendor:pin-project",
+    ] + ([
+        # `thiserror` is only used by `EscrowError`, which is compiled out when
+        # IDK sub-builds target a numbered API level.
+        "//third_party/rust_crates/vendor:thiserror",
+    ] if current_build_target_api_level == "PLATFORM" or current_build_target_api_level == "HEAD" else []),
+)
+
+# The GN build uses `group("rust")` above the bazel2gn sentinel in BUILD.gn so
+# that GN dependents also get `//sdk/lib/inspect:client_includes`.
+# @bazel2gn:skip
+alias(
+    name = "rust",
+    actual = ":lib",
+    visibility = [
+        "//userspace/sys/pkg/bin/omaha-client:__pkg__",
+        "//userspace/sys/pkg/bin/system-update-checker:__pkg__",
+        "//userspace/sys/pkg/bin/system-update-committer:__pkg__",
+        "//userspace/sys/pkg/bin/system-updater:__pkg__",
+        "//userspace/sys/stash:__pkg__",
+    ],
+)

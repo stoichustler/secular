@@ -1,0 +1,23 @@
+# Copyright 2024 The Fuchsia Authors. All rights reserved.
+# Use of this source code is governed by a BSD-style license that can be
+# found in the LICENSE file.
+
+import("//tools/bazel-docgen/bazel_docgen.gni")
+
+# Create documentation for the Bazel SDK rules
+# The following are the public APIs that we are exposing
+bazel_docgen("docs") {
+  docset_name = "bazel_sdk"
+  bazel_targets = [
+    "//products/build/bazel/bazel_sdk/docs:assembly",
+    "//products/build/bazel/bazel_sdk/docs:clang",
+    "//products/build/bazel/bazel_sdk/docs:defs",
+    "//products/build/bazel/bazel_sdk/docs:deps",
+    "//products/build/bazel/bazel_sdk/docs:licenses",
+    "//products/build/bazel/bazel_sdk/docs:products",
+    "//products/build/bazel/bazel_sdk/docs:workflows",
+  ]
+  reference_repo_path = "sdk/bazel_sdk"
+  docsite_base_path = "reference/bazel_sdk"
+  bazel_config = "fuchsia_sdk"
+}

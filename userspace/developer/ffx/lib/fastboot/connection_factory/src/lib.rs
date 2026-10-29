@@ -1,0 +1,547 @@
+// Copyright 2023 The Fuchsia Authors. All rights reserved.
+// Use of this source code is governed by a BSD-style license that can be
+// found in the LICENSE file.
+
+use ffx_config::EnvironmentContext;
+use ffx_fastboot::common::caching::CachingFastboot;
+use ffx_fastboot_interface::fastboot_interface::FastbootInterface;
+use ffx_fastboot_interface::fastboot_proxy::FastbootProxy;
+use ffx_fastboot_interface::interface_factory::InterfaceFactoryBase;
+use ffx_fastboot_transport_factory::tcp::TcpFactory;
+use ffx_fastboot_transport_factory::udp::UdpFactory;
+use ffx_fastboot_transport_factory::usb::UsbFactory;
+use ffx_fastboot_transport_interface::tcp::TcpNetworkInterface;
+use ffx_fastboot_transport_interface::udp::UdpNetworkInterface;
+use netext::MultithreadedTokioAsyncWrapper;
+use std::future::Future;
+use std::net::SocketAddr;
+use std::path::PathBuf;
+use thiserror::Error;
+use tokio::net::TcpStream;
+use usb_fastboot_discovery::Interface as AsyncInterface;
+
+#[derive(Error, Debug)]
+pub enum ConnectionFactoryError {
+    #[error("Could not get a valid TCP address for target")]
+    NoTcpAddress,
+
+    #[error("Could not get a valid UDP address for target")]
+    NoUdpAddress,
+
+    #[error("USB Interface creation error for serial {serial}: {source}")]
+    UsbInterfaceCreation {
+        serial: String,
+        source: ffx_fastboot_interface::interface_factory::InterfaceFactoryError,
+    },
+
+    #[error("TCP Interface creation error for address {addr}: {source}")]
+    TcpInterfaceCreation {
+        addr: std::net::SocketAddr,
+        source: ffx_fastboot_interface::interface_factory::InterfaceFactoryError,
+    },
+
+    #[error("UDP Interface creation error for address {addr}: {source}")]
+    UdpInterfaceCreation {
+        addr: std::net::SocketAddr,
+        source: ffx_fastboot_interface::interface_factory::InterfaceFactoryError,
+    },
+}
+
+pub enum FastbootConnectionKind {
+    Usb(String),
+    Tcp(String, SocketAddr),
+    Udp(String, SocketAddr),
+}
+
+pub trait FastbootConnectionFactory {
+    fn build_interface(
+        &self,
+        connection: FastbootConnectionKind,
+    ) -> impl Future<Output = Result<Box<dyn FastbootInterface>, ConnectionFactoryError>>;
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum RetryLimit {
+    Default,
+    Forever,
+    Count(u64),
+}
+
+pub struct ConnectionFactory {
+    context: EnvironmentContext,
+    retry_limit: RetryLimit,
+}
+
+impl ConnectionFactory {
+    pub fn new(context: &EnvironmentContext) -> Self {
+        Self { context: context.clone(), retry_limit: RetryLimit::Default }
+    }
+
+    pub fn with_retry_limit(mut self, retry_limit: RetryLimit) -> Self {
+        self.retry_limit = retry_limit;
+        self
+    }
+}
+
+impl FastbootConnectionFactory for ConnectionFactory {
+    async fn build_interface(
+        &self,
+        connection: FastbootConnectionKind,
+    ) -> Result<Box<dyn FastbootInterface>, ConnectionFactoryError> {
+        match connection {
+            FastbootConnectionKind::Usb(serial_number) => {
+                Ok(Box::new(CachingFastboot::new(usb_proxy(serial_number).await?)))
+            }
+            FastbootConnectionKind::Tcp(target_name, addr) => {
+                let config = match self.retry_limit {
+                    RetryLimit::Default => FastbootNetworkConnectionConfig::new_tcp(&self.context),
+                    RetryLimit::Forever => FastbootNetworkConnectionConfig::forever(),
+                    RetryLimit::Count(n) => {
+                        let mut config = FastbootNetworkConnectionConfig::new_tcp(&self.context);
+                        config.retry_count = Some(n);
+                        config
+                    }
+                };
+                let fastboot_device_file_path: Option<PathBuf> =
+                    self.context.get(ffx_config::keys::FASTBOOT_FILE_PATH).ok();
+                Ok(Box::new(CachingFastboot::new(
+                    tcp_proxy(&self.context, target_name, fastboot_device_file_path, &addr, config)
+                        .await?,
+                )))
+            }
+            FastbootConnectionKind::Udp(target_name, addr) => {
+                let config = match self.retry_limit {
+                    RetryLimit::Default => FastbootNetworkConnectionConfig::new_udp(&self.context),
+                    RetryLimit::Forever => FastbootNetworkConnectionConfig::forever(),
+                    RetryLimit::Count(n) => {
+                        let mut config = FastbootNetworkConnectionConfig::new_udp(&self.context);
+                        config.retry_count = Some(n);
+                        config
+                    }
+                };
+                let fastboot_device_file_path: Option<PathBuf> =
+                    self.context.get(ffx_config::keys::FASTBOOT_FILE_PATH).ok();
+                Ok(Box::new(CachingFastboot::new(
+                    udp_proxy(&self.context, target_name, fastboot_device_file_path, &addr, config)
+                        .await?,
+                )))
+            }
+        }
+    }
+}
+
+const UDP_RETRY_COUNT: &str = "fastboot.network.udp.retry_count";
+const UDP_RETRY_COUNT_DEFAULT: u64 = 3;
+const UDP_WAIT_SECONDS: &str = "fastboot.network.udp.retry_wait_seconds";
+const UDP_WAIT_SECONDS_DEFAULT: u64 = 2;
+const TCP_RETRY_COUNT: &str = "fastboot.network.tcp.retry_count";
+const TCP_RETRY_COUNT_DEFAULT: u64 = 3;
+const TCP_WAIT_SECONDS: &str = "fastboot.network.tcp.retry_wait_seconds";
+const TCP_WAIT_SECONDS_DEFAULT: u64 = 2;
+
+pub struct FastbootNetworkConnectionConfig {
+    retry_wait_seconds: u64,
+    retry_count: Option<u64>,
+}
+
+impl FastbootNetworkConnectionConfig {
+    pub fn new(retry_wait_seconds: u64, retry_count: Option<u64>) -> Self {
+        Self { retry_wait_seconds, retry_count }
+    }
+
+    fn new_from_config(
+        context: &EnvironmentContext,
+        retry_key: &str,
+        retry_default: u64,
+        wait_key: &str,
+        wait_default: u64,
+    ) -> Self {
+        let retry_count = context.get(retry_key).unwrap_or(retry_default);
+        let retry_wait_seconds = context.get(wait_key).unwrap_or(wait_default);
+        Self::new(retry_wait_seconds, Some(retry_count))
+    }
+
+    pub fn forever() -> Self {
+        Self { retry_wait_seconds: 2, retry_count: None }
+    }
+
+    pub fn new_tcp(context: &EnvironmentContext) -> Self {
+        Self::new_from_config(
+            context,
+            TCP_RETRY_COUNT,
+            TCP_RETRY_COUNT_DEFAULT,
+            TCP_WAIT_SECONDS,
+            TCP_WAIT_SECONDS_DEFAULT,
+        )
+    }
+
+    pub fn new_udp(context: &EnvironmentContext) -> Self {
+        Self::new_from_config(
+            context,
+            UDP_RETRY_COUNT,
+            UDP_RETRY_COUNT_DEFAULT,
+            UDP_WAIT_SECONDS,
+            UDP_WAIT_SECONDS_DEFAULT,
+        )
+    }
+}
+
+///////////////////////////////////////////////////////////////////////////////
+// AsyncInterface
+//
+
+/// Creates a FastbootProxy over USB for a device with the given serial number
+async fn usb_proxy(
+    serial_number: String,
+) -> Result<FastbootProxy<AsyncInterface>, ConnectionFactoryError> {
+    let mut interface_factory = UsbFactory::new(serial_number.clone());
+    let interface = interface_factory.open().await.map_err(|e| {
+        ConnectionFactoryError::UsbInterfaceCreation { serial: serial_number.clone(), source: e }
+    })?;
+
+    Ok(FastbootProxy::<AsyncInterface>::new(serial_number, interface, interface_factory))
+}
+
+///////////////////////////////////////////////////////////////////////////////
+// TcpInterface
+//
+
+/// Creates a FastbootProxy over TCP for a device at the given SocketAddr
+async fn tcp_proxy(
+    context: &EnvironmentContext,
+    target_name: String,
+    fastboot_device_file_path: Option<PathBuf>,
+    addr: &SocketAddr,
+    config: FastbootNetworkConnectionConfig,
+) -> Result<
+    FastbootProxy<TcpNetworkInterface<MultithreadedTokioAsyncWrapper<TcpStream>>>,
+    ConnectionFactoryError,
+> {
+    let mut factory = TcpFactory::new(
+        context,
+        target_name,
+        fastboot_device_file_path,
+        *addr,
+        config.retry_count,
+        config.retry_wait_seconds,
+    );
+    let interface = factory
+        .open()
+        .await
+        .map_err(|e| ConnectionFactoryError::TcpInterfaceCreation { addr: *addr, source: e })?;
+    Ok(FastbootProxy::<TcpNetworkInterface<MultithreadedTokioAsyncWrapper<TcpStream>>>::new(
+        addr.to_string(),
+        interface,
+        factory,
+    ))
+}
+
+///////////////////////////////////////////////////////////////////////////////
+// UdpInterface
+//
+
+/// Creates a FastbootProxy over UDP for a device at the given SocketAddr
+async fn udp_proxy(
+    context: &EnvironmentContext,
+    target_name: String,
+    fastboot_device_file_path: Option<PathBuf>,
+    addr: &SocketAddr,
+    config: FastbootNetworkConnectionConfig,
+) -> Result<FastbootProxy<UdpNetworkInterface>, ConnectionFactoryError> {
+    let mut factory = UdpFactory::new(
+        context,
+        target_name,
+        fastboot_device_file_path,
+        *addr,
+        config.retry_count,
+        config.retry_wait_seconds,
+    );
+    let interface = factory
+        .open()
+        .await
+        .map_err(|e| ConnectionFactoryError::UdpInterfaceCreation { addr: *addr, source: e })?;
+    Ok(FastbootProxy::<UdpNetworkInterface>::new(addr.to_string(), interface, factory))
+}
+
+/// Creates a FastbootInterface based on the provided target state
+pub async fn get_fastboot_interface(
+    fastboot_state: &discovery::FastbootTargetState,
+    node_name: Option<String>,
+    context: &EnvironmentContext,
+    retry_limit: RetryLimit,
+) -> Result<Box<dyn FastbootInterface>, ConnectionFactoryError> {
+    let connection_kind = get_connection_kind(fastboot_state, node_name)?;
+    let factory = ConnectionFactory::new(context).with_retry_limit(retry_limit);
+    factory.build_interface(connection_kind).await
+}
+
+pub fn get_connection_kind(
+    fastboot_state: &discovery::FastbootTargetState,
+    node_name: Option<String>,
+) -> Result<FastbootConnectionKind, ConnectionFactoryError> {
+    let connection_kind = match fastboot_state.connection_state {
+        discovery::FastbootConnectionState::Usb => {
+            FastbootConnectionKind::Usb(fastboot_state.serial_number.clone())
+        }
+        // This assumes the first address in the array will a.) exist, and b.) be the _most
+        // correct_ address from which we're selecting.
+        discovery::FastbootConnectionState::Tcp(ref v) => {
+            let Some(addr) = v.first() else {
+                return Err(ConnectionFactoryError::NoTcpAddress);
+            };
+            let socket_addr: SocketAddr = addr.into();
+            let name =
+                get_fallback_name(node_name, &fastboot_state.serial_number, &socket_addr, "TCP");
+            FastbootConnectionKind::Tcp(name, socket_addr)
+        }
+        discovery::FastbootConnectionState::Udp(ref v) => {
+            let Some(addr) = v.first() else {
+                return Err(ConnectionFactoryError::NoUdpAddress);
+            };
+            let socket_addr: SocketAddr = addr.into();
+            let name =
+                get_fallback_name(node_name, &fastboot_state.serial_number, &socket_addr, "UDP");
+            FastbootConnectionKind::Udp(name, socket_addr)
+        }
+    };
+    Ok(connection_kind)
+}
+
+/// Builds a [`discovery::query::TargetInfoQuery`] for Fastboot rediscovery after rebooting
+/// a Product target into bootloader mode, preferring the hardware info serial number, then
+/// the product-state serial number, then the nodename, and finally `First`.
+pub fn rediscovery_query(
+    hwinfo_serial: Option<String>,
+    product_serial: Option<&str>,
+    node_name: Option<&str>,
+) -> discovery::query::TargetInfoQuery {
+    let serial = hwinfo_serial
+        .filter(|s| !s.is_empty())
+        .or_else(|| product_serial.filter(|s| !s.is_empty()).map(String::from));
+    match (serial, node_name.filter(|n| !n.is_empty())) {
+        (Some(sn), _) => discovery::query::TargetInfoQuery::Id(sn),
+        (None, Some(nn)) => discovery::query::TargetInfoQuery::NodenameOrId(nn.to_string()),
+        (None, None) => discovery::query::TargetInfoQuery::First,
+    }
+}
+
+/// Returns the target identifier for TCP/UDP Fastboot rediscovery, preferring
+/// `node_name`, then `id:<serial_number>`, and finally the socket address string.
+fn get_fallback_name(
+    node_name: Option<String>,
+    serial_number: &str,
+    socket_addr: &SocketAddr,
+    protocol: &str,
+) -> String {
+    match node_name.filter(|n| !n.is_empty()) {
+        Some(name) => name,
+        None if !serial_number.is_empty() => format!("id:{serial_number}"),
+        None => {
+            log::debug!(
+                "node_name and serial_number are missing for {} target, rediscovery will be impossible. Using address {} as fallback.",
+                protocol,
+                socket_addr
+            );
+            socket_addr.to_string()
+        }
+    }
+}
+
+pub mod test {
+    use super::*;
+    use ffx_fastboot_interface::test::{FakeServiceCommands, TestFastbootInterface};
+    use std::sync::{Arc, Mutex};
+
+    pub struct TestConnectionFactory {
+        state: Arc<Mutex<FakeServiceCommands>>,
+    }
+
+    impl FastbootConnectionFactory for TestConnectionFactory {
+        async fn build_interface(
+            &self,
+            _connection: FastbootConnectionKind,
+        ) -> Result<Box<dyn FastbootInterface>, ConnectionFactoryError> {
+            Ok(Box::new(TestFastbootInterface::new(self.state.clone())))
+        }
+    }
+
+    pub fn setup_connection_factory()
+    -> (Arc<Mutex<FakeServiceCommands>>, impl FastbootConnectionFactory) {
+        let state = Arc::new(Mutex::new(FakeServiceCommands::default()));
+        (state.clone(), TestConnectionFactory { state: state })
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use discovery::{FastbootConnectionState, FastbootTargetState};
+    use std::net::{IpAddr, Ipv4Addr};
+
+    #[fuchsia::test]
+    fn test_get_connection_kind_usb() {
+        let serial = "serial123".to_string();
+        let state = FastbootTargetState {
+            serial_number: serial.clone(),
+            connection_state: FastbootConnectionState::Usb,
+        };
+        let kind = get_connection_kind(&state, None).unwrap();
+        match kind {
+            FastbootConnectionKind::Usb(s) => assert_eq!(s, serial),
+            _ => panic!("Expected Usb connection kind"),
+        }
+    }
+
+    #[fuchsia::test]
+    fn test_get_connection_kind_tcp() {
+        let addr = SocketAddr::new(IpAddr::V4(Ipv4Addr::new(127, 0, 0, 1)), 8080);
+        let state = FastbootTargetState {
+            serial_number: "serial".to_string(),
+            connection_state: FastbootConnectionState::Tcp(vec![addr.into()]),
+        };
+        let kind = get_connection_kind(&state, Some("node".to_string())).unwrap();
+        match kind {
+            FastbootConnectionKind::Tcp(n, a) => {
+                assert_eq!(n, "node");
+                assert_eq!(a, addr);
+            }
+            _ => panic!("Expected Tcp connection kind"),
+        }
+    }
+
+    #[fuchsia::test]
+    fn test_get_connection_kind_udp() {
+        let addr = SocketAddr::new(IpAddr::V4(Ipv4Addr::new(127, 0, 0, 1)), 8080);
+        let state = FastbootTargetState {
+            serial_number: "serial".to_string(),
+            connection_state: FastbootConnectionState::Udp(vec![addr.into()]),
+        };
+        let kind = get_connection_kind(&state, None).unwrap();
+        match kind {
+            FastbootConnectionKind::Udp(n, a) => {
+                assert_eq!(n, "id:serial");
+                assert_eq!(a, addr);
+            }
+            _ => panic!("Expected Udp connection kind"),
+        }
+    }
+
+    #[fuchsia::test]
+    fn test_get_connection_kind_tcp_empty_nodename_fallback() {
+        let addr = SocketAddr::new(IpAddr::V4(Ipv4Addr::new(127, 0, 0, 1)), 8080);
+        let state = FastbootTargetState {
+            serial_number: "serial".to_string(),
+            connection_state: FastbootConnectionState::Tcp(vec![addr.into()]),
+        };
+        let kind = get_connection_kind(&state, Some(String::new())).unwrap();
+        match kind {
+            FastbootConnectionKind::Tcp(n, a) => {
+                assert_eq!(n, "id:serial");
+                assert_eq!(a, addr);
+            }
+            _ => panic!("Expected Tcp connection kind"),
+        }
+    }
+
+    #[fuchsia::test]
+    fn test_get_connection_kind_tcp_addr_fallback() {
+        let addr = SocketAddr::new(IpAddr::V4(Ipv4Addr::new(127, 0, 0, 1)), 8080);
+        let state = FastbootTargetState {
+            serial_number: String::new(),
+            connection_state: FastbootConnectionState::Tcp(vec![addr.into()]),
+        };
+        let kind = get_connection_kind(&state, None).unwrap();
+        match kind {
+            FastbootConnectionKind::Tcp(n, a) => {
+                assert_eq!(n, addr.to_string());
+                assert_eq!(a, addr);
+            }
+            _ => panic!("Expected Tcp connection kind"),
+        }
+    }
+
+    #[fuchsia::test]
+    fn test_get_connection_kind_empty_tcp() {
+        let state = FastbootTargetState {
+            serial_number: "serial".to_string(),
+            connection_state: FastbootConnectionState::Tcp(vec![]),
+        };
+        assert!(get_connection_kind(&state, None).is_err());
+    }
+
+    #[fuchsia::test]
+    fn test_get_connection_kind_empty_udp() {
+        let state = FastbootTargetState {
+            serial_number: "serial".to_string(),
+            connection_state: FastbootConnectionState::Udp(vec![]),
+        };
+        assert!(get_connection_kind(&state, None).is_err());
+    }
+
+    #[fuchsia::test]
+    fn test_rediscovery_query_prefers_hwinfo_then_product_serial_then_nodename() {
+        use discovery::query::TargetInfoQuery;
+
+        assert_eq!(
+            rediscovery_query(Some("hw-serial".into()), Some("prod-serial"), Some("node-a")),
+            TargetInfoQuery::Id("hw-serial".into())
+        );
+        assert_eq!(
+            rediscovery_query(None, Some("prod-serial"), Some("node-a")),
+            TargetInfoQuery::Id("prod-serial".into())
+        );
+        assert_eq!(
+            rediscovery_query(Some(String::new()), Some("prod-serial"), Some("node-a")),
+            TargetInfoQuery::Id("prod-serial".into())
+        );
+        assert_eq!(
+            rediscovery_query(None, None, Some("node-a")),
+            TargetInfoQuery::NodenameOrId("node-a".into())
+        );
+        assert_eq!(rediscovery_query(None, Some(""), Some("")), TargetInfoQuery::First);
+    }
+
+    #[fuchsia::test]
+    fn test_fastboot_network_connection_config_defaults() {
+        let env = ffx_config::test_env().build().expect("test env");
+
+        let tcp_config = FastbootNetworkConnectionConfig::new_tcp(&env.context);
+        assert_eq!(tcp_config.retry_count, Some(TCP_RETRY_COUNT_DEFAULT));
+        assert_eq!(tcp_config.retry_wait_seconds, TCP_WAIT_SECONDS_DEFAULT);
+
+        let udp_config = FastbootNetworkConnectionConfig::new_udp(&env.context);
+        assert_eq!(udp_config.retry_count, Some(UDP_RETRY_COUNT_DEFAULT));
+        assert_eq!(udp_config.retry_wait_seconds, UDP_WAIT_SECONDS_DEFAULT);
+
+        assert_eq!(ffx_config::keys::FASTBOOT_FILE_PATH, "fastboot.devices_file.path");
+        if let Ok(devices_file_path) = env.context.get::<PathBuf, _>("fastboot.devices_file.path") {
+            assert!(devices_file_path.ends_with(".fastboot/devices"));
+        }
+    }
+
+    #[fuchsia::test]
+    fn test_fastboot_network_connection_config_overrides() {
+        let env = ffx_config::test_env()
+            .user_config("fastboot.network.tcp.retry_count", 10)
+            .user_config("fastboot.network.tcp.retry_wait_seconds", 5)
+            .user_config("fastboot.network.udp.retry_count", 7)
+            .user_config("fastboot.network.udp.retry_wait_seconds", 4)
+            .user_config("fastboot.devices_file.path", "/custom/fastboot/devices")
+            .build()
+            .expect("test env");
+
+        let tcp_config = FastbootNetworkConnectionConfig::new_tcp(&env.context);
+        assert_eq!(tcp_config.retry_count, Some(10));
+        assert_eq!(tcp_config.retry_wait_seconds, 5);
+
+        let udp_config = FastbootNetworkConnectionConfig::new_udp(&env.context);
+        assert_eq!(udp_config.retry_count, Some(7));
+        assert_eq!(udp_config.retry_wait_seconds, 4);
+
+        let devices_file_path: PathBuf = env
+            .context
+            .get(ffx_config::keys::FASTBOOT_FILE_PATH)
+            .expect("custom fastboot.devices_file.path");
+        assert_eq!(devices_file_path, PathBuf::from("/custom/fastboot/devices"));
+    }
+}

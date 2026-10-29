@@ -1,0 +1,54 @@
+# Copyright 2026 The Fuchsia Authors. All rights reserved.
+# Use of this source code is governed by a BSD-style license that can be
+# found in the LICENSE file.
+
+load("@platforms//host:constraints.bzl", "HOST_CONSTRAINTS")
+load("//products/build/bazel/rules/rust:defs.bzl", "rustc_library")
+
+package(
+    default_applicable_licenses = ["//:license"],
+    default_visibility = ["//visibility:public"],
+)
+
+rustc_library(
+    name = "lib",
+    srcs = [
+        "src/adapters.rs",
+        "src/fho_env.rs",
+        "src/from_env.rs",
+        "src/lib.rs",
+        "src/null_writer.rs",
+        "src/subtool.rs",
+        "src/subtool_suite.rs",
+        "src/try_from_env.rs",
+    ],
+    crate_name = "fho",
+    edition = "2024",
+    proc_macro_deps = [
+        "//userspace/developer/ffx/lib/fho/macro:lib",
+        "//third_party/rust_crates/vendor:async-trait",
+    ],
+    target_compatible_with = HOST_CONSTRAINTS,
+    test_deps = [
+        "//userspace/lib/fuchsia",
+        "//third_party/rust_crates:tempfile",
+    ],
+    version = "0.1.0",
+    with_host_unit_tests = True,
+    deps = [
+        "//userspace/developer/ffx/command:lib",
+        "//userspace/developer/ffx/command/error:lib",
+        "//userspace/developer/ffx/config:lib",
+        "//userspace/developer/ffx/lib/diagnostics/analytics/state:lib",
+        "//userspace/developer/ffx/lib/fho/metadata:lib",
+        "//userspace/developer/ffx/lib/traceable_error:lib",
+        "//userspace/developer/lib/writer:lib",
+        "//third_party/rust_crates/vendor:anyhow",
+        "//third_party/rust_crates/vendor:argh",
+        "//third_party/rust_crates/vendor:async-lock",
+        "//third_party/rust_crates/vendor:futures",
+        "//third_party/rust_crates/vendor:log",
+        "//third_party/rust_crates/vendor:serde",
+        "//third_party/rust_crates/vendor:serde_json",
+    ],
+)

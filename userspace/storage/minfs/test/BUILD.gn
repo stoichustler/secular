@@ -1,0 +1,313 @@
+# Copyright 2019 The Fuchsia Authors. All rights reserved.
+# Use of this source code is governed by a BSD-style license that can be
+# found in the LICENSE file.
+
+import("//products/build/components.gni")
+import("//products/build/fuzz.gni")
+import("//products/build/test.gni")
+import("//userspace/storage/fs_test/suite.gni")
+import("//userspace/storage/testing/driver_test_realm.gni")
+import("//tools/cmc/build/expect_includes.gni")
+
+test("minfs_unit") {
+  sources = [
+    "unit/bcache_test.cc",
+    "unit/buffer_view_test.cc",
+    "unit/directory_test.cc",
+    "unit/format_test.cc",
+    "unit/fsck_test.cc",
+    "unit/journal_integration_fixture.cc",
+    "unit/journal_integration_fixture.h",
+    "unit/journal_test.cc",
+    "unit/lazy_buffer_test.cc",
+    "unit/lazy_reader_test.cc",
+    "unit/mkfs_test.cc",
+    "unit/mount_test.cc",
+    "unit/resizeable_array_buffer_test.cc",
+    "unit/rw_test.cc",
+    "unit/superblock_test.cc",
+    "unit/transaction_limits_test.cc",
+    "unit/transaction_test.cc",
+    "unit/truncate_test.cc",
+    "unit/unlink_test.cc",
+    "unit/vnode_mapper_test.cc",
+  ]
+  deps = [
+    "//sdk/lib/async-loop:async-loop-cpp",
+    "//sdk/lib/async-loop:async-loop-default",
+    "//userspace/lib/fxl/test:gtest_main",
+    "//userspace/lib/testing/predicates",
+    "//userspace/storage/fvm",
+    "//userspace/storage/lib/block_client/cpp",
+    "//userspace/storage/lib/block_client/cpp:fake_device",
+    "//userspace/storage/lib/fs_management",
+    "//userspace/storage/lib/vfs/cpp/journal",
+    "//userspace/storage/minfs",
+    "//third_party/googletest:gmock",
+    "//third_party/googletest:gtest",
+    "//zircon/system/ulib/bitmap",
+    "//zircon/system/ulib/sync",
+    "//zircon/system/ulib/zircon-internal",
+    "//zircon/system/ulib/zx",
+    "//zircon/third_party/ulib/cksum",
+    "//zircon/third_party/ulib/safemath",
+  ]
+}
+
+test("minfs-integration") {
+  sources = [
+    "integration/backup_superblock.cc",
+    "integration/mount_test.cc",
+    "integration/power_test.cc",
+  ]
+  deps = [
+    "//sdk/fidl/fuchsia.io:fuchsia.io_cpp",
+    "//sdk/fidl/fuchsia.storage.block:fuchsia.storage.block_cpp",
+    "//sdk/lib/async",
+    "//sdk/lib/async:async-cpp",
+    "//sdk/lib/async-default",
+    "//sdk/lib/async-loop",
+    "//sdk/lib/async-loop:async-loop-cpp",
+    "//sdk/lib/async-loop:async-loop-default",
+    "//sdk/lib/component/incoming/cpp",
+    "//sdk/lib/fdio-caller",
+    "//userspace/lib/fxl/test:gtest_main",
+    "//userspace/storage/fs_test",
+    "//userspace/storage/fvm",
+    "//userspace/storage/lib/fs_management",
+    "//userspace/storage/minfs",
+    "//third_party/googletest:gmock",
+    "//third_party/googletest:gtest",
+    "//zircon/system/ulib/fbl",
+    "//zircon/system/ulib/zx",
+  ]
+}
+
+test("minfs_dirty_cache_integration") {
+  sources = [ "integration/dirty_cache_test.cc" ]
+  deps = [
+    "//sdk/fidl/fuchsia.fs:fuchsia.fs_cpp",
+    "//sdk/fidl/fuchsia.io:fuchsia.io_cpp",
+    "//sdk/lib/fdio-caller",
+    "//userspace/lib/fxl/test:gtest_main",
+    "//userspace/storage/fs_test",
+    "//userspace/storage/minfs",
+    "//userspace/storage/testing:storage_driver_test_support",
+    "//third_party/googletest:gtest",
+    "//zircon/system/ulib/fbl",
+    "//zircon/system/ulib/zircon-internal",
+    "//zircon/system/ulib/zx",
+  ]
+}
+
+test("minfs-power") {
+  sources = [ "integration/power_test.cc" ]
+  deps = [
+    "//sdk/fidl/fuchsia.io:fuchsia.io_cpp",
+    "//sdk/lib/async",
+    "//sdk/lib/async:async-cpp",
+    "//sdk/lib/async-default",
+    "//sdk/lib/async-loop",
+    "//sdk/lib/async-loop:async-loop-cpp",
+    "//sdk/lib/async-loop:async-loop-default",
+    "//userspace/lib/fxl/test:gtest_main",
+    "//userspace/storage/fs_test",
+    "//userspace/storage/minfs",
+    "//third_party/googletest:gtest",
+    "//zircon/system/ulib/zx",
+  ]
+}
+
+# To run this use the component name below: "minfs-integration-fs-tests"
+test("fs_tests") {
+  sources = [ "integration/fs_tests.cc" ]
+  deps = [
+    "//sdk/fidl/fuchsia.io:fuchsia.io_cpp",
+    "//sdk/fidl/fuchsia.storage.block:fuchsia.storage.block_cpp",
+    "//sdk/lib/fdio",
+    "//sdk/lib/fdio-caller",
+    "//userspace/lib/fxl/test:gtest_main",
+    "//userspace/storage/fs_test",
+    "//userspace/storage/fvm",
+    "//userspace/storage/minfs",
+    "//third_party/googletest:gmock",
+  ]
+}
+
+test("minfs_component_runner_test") {
+  output_name = "minfs_component_runner_test"
+  sources = [ "integration/minfs_component_runner_test.cc" ]
+  deps = [
+    "//sdk/fidl/fuchsia.fs:fuchsia.fs_cpp",
+    "//sdk/fidl/fuchsia.io:fuchsia.io_cpp",
+    "//sdk/lib/async-loop",
+    "//sdk/lib/async-loop:async-loop-cpp",
+    "//sdk/lib/async-loop:async-loop-default",
+    "//sdk/lib/component/incoming/cpp",
+    "//sdk/lib/fdio",
+    "//userspace/lib/fxl/test:gtest_main",
+    "//userspace/lib/testing/predicates",
+    "//userspace/storage/fidl/fuchsia.fs.startup:fuchsia.fs.startup_cpp",
+    "//userspace/storage/lib/block_client/cpp:fake_device",
+    "//userspace/storage/minfs",
+    "//zircon/system/ulib/id_allocator",
+    "//zircon/system/ulib/zx",
+  ]
+}
+
+storage_driver_test_realm_component("minfs-integration-fs-tests") {
+  deps = [ ":fs_tests" ]
+}
+
+fuchsia_library_fuzzer("minfs-fuzzer") {
+  sources = [ "unit/fuzz.cc" ]
+  deps = [
+    "//sdk/lib/async-loop:async-loop-cpp",
+    "//sdk/lib/async-loop:async-loop-default",
+    "//userspace/storage/lib/block_client/cpp:fake_device",
+    "//userspace/storage/minfs",
+    "//zircon/system/ulib/bitmap",
+    "//zircon/system/ulib/zircon-internal",
+    "//zircon/system/ulib/zx",
+  ]
+}
+
+fuchsia_fuzzer_component("minfs-fuzzer-component") {
+  manifest = "meta/minfs-fuzzer.cml"
+  deps = [ ":minfs-fuzzer" ]
+}
+
+fuchsia_fuzzer_package("minfs-fuzzers") {
+  cpp_fuzzer_components = [ ":minfs-fuzzer-component" ]
+}
+
+storage_driver_test_realm_component("minfs-integration-test") {
+  deps = [ ":minfs-integration" ]
+}
+
+storage_driver_test_realm_component("minfs-dirty-cache-integration-test") {
+  manifest = "meta/minfs-dirty-cache-integration-test.cml"
+  deps = [ ":minfs_dirty_cache_integration" ]
+}
+
+storage_driver_test_realm_component("minfs-power-test") {
+  deps = [ ":minfs-power" ]
+}
+
+fuchsia_unittest_component("minfs-unit-test") {
+  deps = [ ":minfs_unit" ]
+  manifest = "meta/minfs_unit_test.cml"
+}
+
+fuchsia_unittest_component("minfs-component-runner-test") {
+  deps = [ ":minfs_component_runner_test" ]
+}
+
+fs_test_config("minfs") {
+  timestamp_granularity = 1
+  supports_hard_links = true
+  supports_resize = true
+  max_file_size = 4294950912
+  has_directory_size_limit = true
+  supports_fsck_after_every_transaction = true
+  supports_inspect = true
+  supports_shutdown_on_no_connections = true
+  options = [
+    {
+      description = "MinfsWithFvm"
+      use_fvm = true
+    },
+    {
+      description = "MinfsWithoutFvm"
+      use_fvm = false
+    },
+  ]
+}
+
+fs_test_suite("minfs") {
+  deps = [
+    ":minfs_fs_test_config",
+    ":minfs_validate_fs_test_config",
+    "//userspace/storage/fvm:fvm-component",
+    "//userspace/storage/minfs/bin:minfs-test-component",
+  ]
+  extra_components = [
+    ":minfs-component-runner-test",
+    ":minfs-dirty-cache-integration-test",
+    ":minfs-integration-fs-tests",
+    ":minfs-unit-test",
+  ]
+
+  # TODO(https://fxbug.dev/42165431): Flaky test disabled on coverage.
+  # Please fix the flake and remove the condition below.
+  if (!is_coverage) {
+    deps += [ ":minfs-integration-test" ]
+  }
+
+  # TODO(https://fxbug.dev/42165432): Flaky test disabled on coverage.
+  # Please fix the flake and remove the condition below.
+  if (!is_coverage) {
+    deps += [ ":minfs-power-test" ]
+  }
+
+  # Isolate corrupt-tests into a separate package to route
+  # fuchsia.storage.minfs.DieOnMutationFailure = false without impacting the
+  # main suite.
+  omit_components = [ ":minfs-corrupt-tests" ]
+
+  # TODO(b/297201368): These tests timeout only on the RISC-V builders
+  # currently.
+  if (current_cpu == "riscv64") {
+    omit_components += [
+      ":minfs-full-tests",
+      ":minfs-resize-tests",
+    ]
+    extra_components -= [ ":minfs-integration-fs-tests" ]
+  }
+}
+
+expect_includes("minfs_corrupt_test_includes") {
+  includes = [ "meta/minfs_corrupt_test.shard.cml" ]
+}
+
+storage_driver_test_realm_component("minfs-corrupt-test-component") {
+  component_name = "minfs-corrupt-tests"
+  deps = [
+    ":minfs_corrupt_test_includes",
+    "//userspace/storage/fs_test:corrupt_tests",
+  ]
+}
+
+fuchsia_test_package("minfs-corrupt-fs-tests") {
+  test_components = [ ":minfs-corrupt-test-component" ]
+  deps = [
+    ":minfs_fs_test_config",
+    ":minfs_validate_fs_test_config",
+    "//userspace/storage/fvm:fvm-component",
+    "//userspace/storage/minfs/bin:minfs-test-component",
+  ]
+  test_specs = {
+    log_settings = {
+      max_severity = "ERROR"
+    }
+  }
+}
+
+slow_fs_test_suite("minfs") {
+  deps = [
+    ":minfs_fs_test_config",
+    ":minfs_validate_fs_test_config",
+    "//userspace/storage/fvm:fvm-component",
+    "//userspace/storage/minfs/bin:minfs-test-component",
+  ]
+
+  # TODO(b/297201368): These tests are disabled in the regular test suite above
+  # due to timeouts.
+  if (current_cpu == "riscv64") {
+    extra_components = [
+      ":minfs-full-tests",
+      ":minfs-resize-tests",
+      ":minfs-integration-fs-tests",
+    ]
+  }
+}

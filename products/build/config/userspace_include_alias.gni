@@ -1,0 +1,21 @@
+# Copyright 2026 The Fuchsia Authors. All rights reserved.
+# Use of this source code is governed by a BSD-style license that can be
+# found in the LICENSE file.
+
+# Include root (in the build directory) that maps #include "src/..." to
+# //userspace and #include "src/bringup/..." to //userspace/secular.
+# Source files keep the Fuchsia include spelling; only the compile graph
+# uses //userspace labels.
+
+userspace_include_alias_root = exec_script(
+        "//products/build/config/write_userspace_include_alias.py",
+        [
+          rebase_path("//userspace", root_build_dir),
+          rebase_path("//products", root_build_dir),
+          rebase_path("$root_build_dir/userspace_include_alias",
+                      root_build_dir),
+          rebase_path("$root_build_dir/obj", root_build_dir),
+        ],
+        "trim string")
+userspace_generated_include_alias_root =
+    "$userspace_include_alias_root/obj"

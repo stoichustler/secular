@@ -1,0 +1,84 @@
+// Copyright 2026 The Fuchsia Authors. All rights reserved.
+// Use of this source code is governed by a BSD-style license that can be
+// found in the LICENSE file.
+
+// GN stand-in for the assembly-generated fuchsia-boot:///config package.
+{
+    capabilities: [
+        {
+            config: "fuchsia.diagnostics.ExceptionHandlerAvailable",
+            type: "bool",
+            value: false,
+        },
+        {
+            config: "fuchsia.power.SuspendEnabled",
+            type: "bool",
+            value: false,
+        },
+        {
+            config: "fuchsia.diagnostics.AllowSerialLogs",
+            type: "vector",
+            max_count: 512,
+            element: {
+                type: "string",
+                max_size: 50,
+            },
+            value: [],
+        },
+        {
+            config: "fuchsia.diagnostics.BindServices",
+            type: "vector",
+            max_count: 10,
+            element: {
+                type: "string",
+                max_size: 256,
+            },
+            value: [],
+        },
+        {
+            config: "fuchsia.diagnostics.ComponentInitialInterests",
+            type: "vector",
+            max_count: 512,
+            element: {
+                type: "string",
+                max_size: 4096,
+            },
+            value: [],
+        },
+        {
+            config: "fuchsia.diagnostics.DenySerialLogs",
+            type: "vector",
+            max_count: 512,
+            element: {
+                type: "string",
+                max_size: 50,
+            },
+            value: [],
+        },
+        {
+            config: "fuchsia.diagnostics.LogsMaxCachedOriginalBytes",
+            type: "uint64",
+            value: 4194304,
+        },
+        {
+            config: "fuchsia.diagnostics.MaximumConcurrentSnapshotsPerReader",
+            type: "uint64",
+            value: 4,
+        },
+    ],
+    expose: [
+        {
+            config: [
+                "fuchsia.diagnostics.AllowSerialLogs",
+                "fuchsia.diagnostics.BindServices",
+                "fuchsia.diagnostics.ComponentInitialInterests",
+                "fuchsia.diagnostics.DenySerialLogs",
+                "fuchsia.diagnostics.ExceptionHandlerAvailable",
+                "fuchsia.diagnostics.LogsMaxCachedOriginalBytes",
+                "fuchsia.diagnostics.MaximumConcurrentSnapshotsPerReader",
+                "fuchsia.power.SuspendEnabled",
+            ],
+            from: "self",
+        },
+    ],
+}

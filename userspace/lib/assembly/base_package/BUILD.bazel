@@ -1,0 +1,45 @@
+# Copyright 2026 The Fuchsia Authors. All rights reserved.
+# Use of this source code is governed by a BSD-style license that can be
+# found in the LICENSE file.
+
+load("//products/build/bazel/platforms:constraints.bzl", "HOST_OS_CONSTRAINTS")
+load("//products/build/bazel/rules/host_tests:host_rustc_test.bzl", "host_rustc_test")
+load("//products/build/bazel/rules/rust:rustc_library.bzl", "rustc_library")
+
+package(default_applicable_licenses = ["//:license"])
+
+rustc_library(
+    name = "base_package",
+    srcs = [
+        "src/base_package.rs",
+        "src/lib.rs",
+    ],
+    crate_name = "assembly_base_package",
+    edition = "2024",
+    target_compatible_with = HOST_OS_CONSTRAINTS,
+    version = "0.1.0",
+    visibility = ["//userspace/lib/assembly:__subpackages__"],
+    deps = [
+        "//userspace/lib/assembly/constants",
+        "//userspace/lib/assembly/package_list",
+        "//userspace/sys/pkg/lib/fuchsia-pkg",
+        "//third_party/rust_crates/vendor:anyhow",
+        "//third_party/rust_crates/vendor:camino",
+    ],
+)
+
+# TODO(https://fxbug.dev/574121341): Run this test in GN too.
+# @bazel2gn:skip
+host_rustc_test(
+    name = "base_package_test",
+    crate = ":base_package",
+    target_compatible_with = HOST_OS_CONSTRAINTS,
+    visibility = ["//userspace/lib/assembly:__pkg__"],
+    deps = [
+        "//userspace/lib/assembly/test_util",
+        "//userspace/lib/fuchsia-url",
+        "//userspace/sys/pkg/lib/far/rust:fuchsia-archive",
+        "//userspace/sys/pkg/lib/fuchsia-hash",
+        "//third_party/rust_crates/vendor:tempfile",
+    ],
+)

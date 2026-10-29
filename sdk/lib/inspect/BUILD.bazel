@@ -1,0 +1,24 @@
+# Copyright 2026 The Fuchsia Authors. All rights reserved.
+# Use of this source code is governed by a BSD-style license that can be
+# found in the LICENSE file.
+
+package(default_applicable_licenses = ["//:license"])
+
+exports_files(
+    [
+        "offer.shard.cml",
+        "client.shard.cml",
+        "use.shard.cml",
+    ],
+    visibility = [
+        "//products/bundles/assembly:__subpackages__",
+        "//userspace/security/lib/scrutiny/tests/route_verification:__pkg__",
+        "//userspace/sys/pkg/bin/omaha-client:__pkg__",
+        "//userspace/sys/pkg/bin/pkg-cache:__pkg__",
+        "//userspace/sys/pkg/bin/system-update-checker:__pkg__",
+        "//userspace/sys/pkg/bin/system-update-committer:__pkg__",
+        "//userspace/sys/pkg/bin/system-updater:__pkg__",
+        "//userspace/sys/pkg/lib/omaha-client-fuchsia:__pkg__",
+        "//userspace/sys/pkg/tests/pkg-resolver:__pkg__",
+    ],
+)

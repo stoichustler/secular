@@ -1,0 +1,63 @@
+# Copyright 2026 The Fuchsia Authors. All rights reserved.
+# Use of this source code is governed by a BSD-style license that can be
+# found in the LICENSE file.
+
+load("//products/build/bazel/rules/host_tests:host_rustc_test.bzl", "wrap_host_rust_test")
+load("//products/build/bazel/rules/rust:rustc_library.bzl", "rustc_library")
+load("//products/build/bazel/rules/rust:rustc_test.bzl", "rustc_test")
+load("//products/build/bazel/rules/testing:fx_unittest_package.bzl", "fx_unittest_package")
+
+package(default_applicable_licenses = ["//:license"])
+
+rustc_library(
+    name = "fuchsia-merkle",
+    srcs = [
+        "src/lib.rs",
+        "src/merkle_root_builder.rs",
+        "src/merkle_verifier.rs",
+        "src/util.rs",
+    ],
+    edition = "2024",
+    lint_config = "//products/build/config/rust/lints:clippy_warn_all",
+    visibility = [
+        "//userspace/secular:__subpackages__",
+        "//userspace/developer:__subpackages__",
+        "//userspace/lib/assembly:__subpackages__",
+        "//userspace/recovery:__subpackages__",
+        "//userspace/security:__subpackages__",
+        "//userspace/storage:__subpackages__",
+        "//userspace/sys:__subpackages__",
+        "//tools/lib:__subpackages__",
+    ],
+    deps = [
+        "//sdk/rust/zx-status",
+        "//userspace/storage/lib/ptr_slice",
+        "//userspace/sys/pkg/lib/fuchsia-hash",
+        "//third_party/boringssl/rust:bssl-crypto.no-ssl",
+    ],
+)
+
+# @bazel2gn:skip
+rustc_test(
+    name = "fuchsia-merkle_test",
+    crate = ":fuchsia-merkle",
+    edition = "2024",
+    lint_config = "//products/build/config/rust/lints:clippy_warn_all",
+    deps = [
+        "//third_party/rust_crates/vendor:anyhow",
+        "//third_party/rust_crates/vendor:assert_matches",
+        "//third_party/rust_crates/vendor:test-case",
+    ],
+)
+
+# @bazel2gn:skip
+wrap_host_rust_test(
+    name = "fuchsia-merkle_host_test",
+    binary_name = "fuchsia-merkle_test",
+)
+
+# @bazel2gn:skip
+fx_unittest_package(
+    name = "fuchsia-merkle-tests",
+    unit_tests = [":fuchsia-merkle_test"],
+)

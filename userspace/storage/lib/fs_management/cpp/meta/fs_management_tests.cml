@@ -1,0 +1,57 @@
+// Copyright 2021 The Fuchsia Authors. All rights reserved.
+// Use of this source code is governed by a BSD-style license that can be
+// found in the LICENSE file.
+{
+    include: [
+        "//sdk/lib/inspect/client.shard.cml",
+        "//sdk/lib/syslog/client.shard.cml",
+        "//userspace/storage/blobfs/meta/decompressor_sandbox.shard.cml",
+        "//userspace/storage/fs_test/meta/fxfs_crypt_test.shard.cml",
+        "//userspace/storage/lib/fs_management/client.shard.cml",
+        "//userspace/storage/testing/driver_test_realm/meta/client.shard.cml",
+        "//userspace/sys/test_runners/gtest/default.shard.cml",
+        "inspect/offer.shard.cml",
+    ],
+    program: {
+        binary: "test/fs-management-test",
+    },
+    children: [
+        // Intended to mimic the way fshost configures its blobfs component.
+        {
+            name: "static-test-blobfs",
+            url: "#meta/blobfs.cm",
+            startup: "eager",
+        },
+        {
+            name: "static-test-fxfs",
+            url: "#meta/fxfs.cm",
+        },
+        {
+            name: "static-test-minfs",
+            url: "#meta/minfs.cm",
+        },
+        {
+            name: "static-test-f2fs",
+            url: "#meta/f2fs.cm",
+        },
+    ],
+    offer: [
+        {
+            protocol: [ "fuchsia.boot.WriteOnlyLog" ],
+            from: "parent",
+            to: [ "#static-test-blobfs" ],
+        },
+        {
+            config: "fuchsia.storage.blobfs.PagerThreads",
+            from: "void",
+            to: "#static-test-blobfs",
+            availability: "optional",
+        },
+        {
+            config: "fuchsia.storage.minfs.DieOnMutationFailure",
+            from: "void",
+            to: "#static-test-minfs",
+            availability: "optional",
+        },
+    ],
+}

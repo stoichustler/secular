@@ -1,0 +1,56 @@
+# Copyright 2021 The Fuchsia Authors. All rights reserved.
+# Use of this source code is governed by a BSD-style license that can be
+# found in the LICENSE file.
+
+import("//products/build/components.gni")
+import("//products/build/rust/rustc_test.gni")
+
+rustc_test("diagnostics_persistence_integration_test") {
+  edition = "2024"
+  source_root = "integration_test.rs"
+  sources = [ "integration_test.rs" ]
+
+  deps = [
+    "//sdk/fidl/fuchsia.component.decl:fuchsia.component.decl_rust",
+    "//sdk/fidl/fuchsia.diagnostics:fuchsia.diagnostics_rust",
+    "//sdk/fidl/fuchsia.diagnostics.persistence:fuchsia.diagnostics.persistence_rust",
+    "//sdk/fidl/fuchsia.hardware.power.statecontrol:fuchsia.hardware.power.statecontrol_rust",
+    "//sdk/fidl/fuchsia.inspect:fuchsia.inspect_rust",
+    "//sdk/fidl/fuchsia.io:fuchsia.io_rust",
+    "//sdk/fidl/fuchsia.logger:fuchsia.logger_rust",
+    "//sdk/fidl/fuchsia.power.battery:fuchsia.power.battery_rust",
+    "//sdk/fidl/fuchsia.sys2:fuchsia.sys2_rust",
+    "//sdk/fidl/fuchsia.update:fuchsia.update_rust",
+    "//sdk/rust/zx",
+    "//userspace/lib/diagnostics/data/rust",
+    "//userspace/lib/diagnostics/hierarchy/rust",
+    "//userspace/lib/diagnostics/inspect/runtime/rust",
+    "//userspace/lib/diagnostics/inspect/rust",
+    "//userspace/lib/diagnostics/selectors",
+    "//userspace/lib/fidl/rust/fidl",
+    "//userspace/lib/fuchsia",
+    "//userspace/lib/fuchsia-async",
+    "//userspace/lib/fuchsia-component",
+    "//userspace/lib/fuchsia-component-test",
+    "//userspace/lib/fuchsia-fs",
+    "//userspace/sys/lib/cm_rust",
+    "//third_party/rust_crates:anyhow",
+    "//third_party/rust_crates:futures",
+    "//third_party/rust_crates:serde_json",
+    "//third_party/rust_crates:tempfile",
+  ]
+}
+
+fuchsia_unittest_package("diagnostics-persistence-integration-tests") {
+  manifest = "meta/integration_test.cml"
+  deps = [
+    ":diagnostics_persistence_integration_test",
+    "//userspace/diagnostics/archivist:archivist-for-embedding-bundle",
+    "//userspace/diagnostics/persistence:diagnostics-persistence-component",
+  ]
+}
+
+group("tests") {
+  testonly = true
+  deps = [ ":diagnostics-persistence-integration-tests" ]
+}

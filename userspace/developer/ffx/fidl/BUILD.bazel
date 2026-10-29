@@ -1,0 +1,28 @@
+# Copyright 2026 The Fuchsia Authors. All rights reserved.
+# Use of this source code is governed by a BSD-style license that can be
+# found in the LICENSE file.
+
+load("//products/build/bazel/rules/fidl:fidl_library.bzl", "fidl_library")
+
+package(default_applicable_licenses = ["//:license"])
+
+fidl_library(
+    name = "fuchsia.developer.ffx",
+    srcs = [
+        "echo.fidl",
+        "overview.fidl",
+        "target.fidl",
+    ],
+    visibility = [
+        "//products/build/sdk/meta:__pkg__",
+        "//userspace/developer/ffx:__subpackages__",
+        "//userspace/developer/fuchsia-controller:__subpackages__",
+        "//userspace/sys/pkg/lib:__subpackages__",
+        "//tools/fidl/fidlgen_python/tests:__subpackages__",
+        "//tools/funnel:__subpackages__",
+        "//vendor/google/tools:__subpackages__",
+    ],
+    deps = [
+        "//sdk/fidl/fuchsia.net",
+    ],
+)

@@ -1,0 +1,27 @@
+// Copyright 2020 The Fuchsia Authors. All rights reserved.
+// Use of this source code is governed by a BSD-style license that can be
+// found in the LICENSE file.
+@available(added=HEAD)
+library fuchsia.system.state;
+
+/// The number of variants of `SystemPowerState`.
+const MAX_SYSTEM_POWER_STATES uint32 = 6;
+
+/// Provides protocol for fetching relevant information during a system state transition.
+@discoverable
+closed protocol SystemStateTransition {
+    /// Gets the termination state.
+    strict GetTerminationSystemState() -> (struct {
+        // TODO(ravoorir): When the system power states are properly defined,
+        // remove the suspend flags. For now, treat each suspend flag as a system
+        // power state.
+        state @generated_name("SystemPowerState") strict enum : uint8 {
+            FULLY_ON = 1;
+            REBOOT = 2;
+            REBOOT_BOOTLOADER = 3;
+            REBOOT_RECOVERY = 4;
+            POWEROFF = 5;
+            REBOOT_KERNEL_INITIATED = 8;
+        };
+    });
+};

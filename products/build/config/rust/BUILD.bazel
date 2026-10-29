@@ -1,0 +1,242 @@
+# Copyright 2026 The Fuchsia Authors. All rights reserved.
+# Use of this source code is governed by a BSD-style license that can be
+# found in the LICENSE file.
+
+load(
+    "@fuchsia_build_info//:args.bzl",
+    "rust_debug_assertions",
+    "rust_parallel_frontend_threads",
+    "rust_v0_symbol_mangling",
+)
+load("@fuchsia_rules_common//build_flags:build_flags.bzl", "build_flags")
+
+package(default_applicable_licenses = ["//:license"])
+
+# LINT.IfChange(bootfs)
+# Best practices for Rust binaries that go into size-constrained bootfs.
+#
+# TODO(https://fxbug.dev/568722249): The GN config also enables ThinLTO
+# (//products/build/config/lto:thinlto) when target_cpu == "arm64" && is_debug, which
+# is not ported yet.
+build_flags(
+    name = "bootfs",
+    # Optimize for size.
+    # TODO(https://fxbug.dev/42165168): use "z" when resolved.
+    rustflags = ["-Copt-level=s"],
+    visibility = ["//visibility:public"],
+)
+# LINT.ThenChange(//products/build/config/rust/BUILD.gn:bootfs)
+
+# LINT.IfChange(rust_build_flags)
+build_flags(
+    name = "2018_idioms",
+    rustflags = ["-Wrust-2018-idioms"],
+    visibility = ["//visibility:public"],
+)
+
+# TODO(https://fxbug.dev/42148577) remove this allowance
+build_flags(
+    name = "allow_legacy_derive_helpers",
+    rustflags = ["-Alegacy-derive-helpers"],
+    visibility = ["//visibility:public"],
+)
+
+# Turns on the rust compilation analysis generator. This will produce a
+# directory $OUT/save-analysis-temp, which will dump all the source analysis
+# that the compiler collected while analyzing the source.
+build_flags(
+    name = "analysis",
+    rustflags = ["-Zsave-analysis"],
+    visibility = ["//visibility:public"],
+)
+
+build_flags(
+    name = "cap_lints",
+
+    # --cap-lints cannot be overridden by a later --cap-lints flag on the rustc
+    # command line (rustc only honors the first occurrence).
+    #
+    # If this target added `--cap-lints=$rust_cap_lints` here, that flag would be
+    # part of the default toolchain flags and would appear before any target-specific
+    # --cap-lints flags (making the latter ignored). This in particular would break
+    # the compilation of third-party Rust crates.
+    #
+    # To work-around this, this target doesn't add any flag. Instead, the rustc_xxx()
+    # macros call with_fuchsia_rustc_flags() in //products/build/bazel/rules/rust/common.bzl
+    # to add --cap-lints={rust_cap_lints}.
+    #
+    # Intentionally commented, see note above.
+    # rustflags = [ "--cap-lints=$rust_cap_lints" ]
+    visibility = ["//visibility:public"],
+)
+
+build_flags(
+    name = "cap_lints_allow",
+    rustflags = ["--cap-lints=allow"],
+    visibility = ["//visibility:public"],
+)
+
+build_flags(
+    name = "codegen_units_16",
+    # Enable default codegen parallelism (rustc default).
+    # This will increase code size over `:one_codegen_unit` above.
+    #
+    # Used without any lto option, this will also enable thin-local lto.
+    # https://doc.rust-lang.org/rustc/codegen-options/index.html#lto
+    #
+    # NOTE: Assumes rust_incremental == "" in Bazel (see :incremental).
+    # TODO: The GN config also adds //products/build/config/rbe:big_rbe_machine, which
+    # is not supported in Bazel yet.
+    rustflags = ["-Ccodegen-units=16"],
+    visibility = ["//visibility:public"],
+)
+
+build_flags(
+    name = "coverage",
+    rustflags = ["-Cinstrument-coverage"],
+    visibility = ["//visibility:public"],
+)
+
+build_flags(
+    name = "debug_assertions",
+    rustflags = ["-Cdebug-assertions=yes"],
+    visibility = ["//visibility:public"],
+)
+
+build_flags(
+    name = "no_debug_assertions",
+    rustflags = ["-Cdebug-assertions=no"],
+    visibility = ["//visibility:public"],
+)
+
+build_flags(
+    name = "default_debug_assertions",
+    subflags = [":debug_assertions"] if rust_debug_assertions else [":no_debug_assertions"],
+    visibility = ["//visibility:public"],
+)
+
+build_flags(
+    name = "edition_2024",
+    rustflags = ["--edition=2024"],
+    visibility = ["//visibility:public"],
+)
+
+build_flags(
+    name = "edition_2021",
+    rustflags = ["--edition=2021"],
+    visibility = ["//visibility:public"],
+)
+
+build_flags(
+    name = "edition_2018",
+    rustflags = ["--edition=2018"],
+    visibility = ["//visibility:public"],
+)
+
+build_flags(
+    name = "edition_2015",
+    rustflags = ["--edition=2015"],
+    visibility = ["//visibility:public"],
+)
+
+build_flags(
+    name = "error_format_human",
+    # @rules_rust always set the --error-format implicitly and trying to add it
+    # here will result in a compilation error: Option 'error-format' given more than once.
+    # Thus it is never set here.
+    # rustflags = ["--error-format=human"],
+    visibility = ["//visibility:public"],
+)
+
+build_flags(
+    name = "incremental",
+    # Rust's -Cincremental=<dir> is incompatible with Bazel's action sandboxing
+    # and remote caching, as each Rustc action runs in an ephemeral sandbox
+    # where non-declared incremental cache directories are neither persisted
+    # nor shared across invocations.
+    visibility = ["//visibility:public"],
+)
+
+# TODO(https://fxbug.dev/556328773): Use next generation trait solver after compile time regression is addressed.
+build_flags(
+    name = "next_solver",
+    rustflags = ["-Znext-solver=coherence"],
+    visibility = ["//visibility:public"],
+)
+
+build_flags(
+    name = "no_features",
+    rustflags = ["-Zallow-features="],
+    visibility = ["//visibility:public"],
+)
+
+build_flags(
+    name = "one_codegen_unit",
+    # Disable codegen parallelism.
+    # Trades incremental rebuild speed for smaller code size.
+    # See: https://fxbug.dev/42154118, https://fxbug.dev/42160867
+    #
+    # NOTE: Assumes rust_incremental == "" in Bazel (see :incremental).
+    rustflags = ["-Ccodegen-units=1"],
+    visibility = ["//visibility:public"],
+)
+
+build_flags(
+    name = "panic_abort",
+    rustflags = [
+        "-Cpanic=abort",
+        "-Cforce-unwind-tables=yes",
+        "-Zpanic_abort_tests",
+    ],
+    visibility = ["//visibility:public"],
+)
+
+build_flags(
+    name = "parallel_frontend_threads",
+    rustflags = [
+        "-Z",
+        "threads={}".format(rust_parallel_frontend_threads),
+    ] if rust_parallel_frontend_threads else [],
+    visibility = ["//visibility:public"],
+)
+
+build_flags(
+    name = "proc_macro_test",
+    rustflags = [
+        "--extern",
+        "proc_macro",
+    ],
+    visibility = ["//visibility:public"],
+)
+
+build_flags(
+    name = "self-profile",
+    rustflags = [
+        "-Zself-profile",
+        "-Zself-profile-events=default,args",
+    ],
+    visibility = ["//visibility:public"],
+)
+
+build_flags(
+    name = "target",
+    # @rules_rust always sets --target=<triple> implicitly from the Rust
+    # toolchain's target_flag_value, and trying to add it here will result
+    # in a compilation error: Option 'target' given more than once.
+    # Thus it is never set here.
+    # rustflags = ["--target", rust_target],
+    visibility = ["//visibility:public"],
+)
+
+build_flags(
+    name = "time-passes",
+    rustflags = ["-Ztime-passes"],
+    visibility = ["//visibility:public"],
+)
+
+build_flags(
+    name = "v0_symbol_mangling",
+    rustflags = ["-Csymbol-mangling-version=v0"] if rust_v0_symbol_mangling else [],
+    visibility = ["//visibility:public"],
+)
+# LINT.ThenChange(//products/build/config/rust/BUILD.gn:rust_build_flags)

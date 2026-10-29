@@ -1,0 +1,19 @@
+// Copyright 2026 The Fuchsia Authors. All rights reserved.
+// Use of this source code is governed by a BSD-style license that can be
+// found in the LICENSE file.
+
+// cmc --must-offer-dictionary diagnostics requires root to offer
+// diagnostics to every child. Assembly normally injects this.
+{
+    offer: [
+        {
+            dictionary: "diagnostics",
+            from: "parent",
+            to: [
+                "#bootstrap",
+                "#config",
+                "#elf_runner",
+            ],
+        },
+    ],
+}

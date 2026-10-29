@@ -1,0 +1,410 @@
+# Copyright 2022 The Fuchsia Authors. All rights reserved.
+# Use of this source code is governed by a BSD-style license that can be
+# found in the LICENSE file.
+
+import("//products/build/bazel/remote_services.gni")
+import("//products/build/toolchain/rbe.gni")
+import("//products/build/toolchain/rbe_modes.gni")
+
+import("//products/build/python/python_library.gni")
+import("//products/build/testing/python_build_time_tests.gni")
+
+group("tests") {
+  testonly = true
+
+  deps = [
+    ":bbtool_test($host_toolchain)",
+    ":build_summary_test($host_toolchain)",
+    ":cas_test($host_toolchain)",
+    ":casfs_test($host_toolchain)",
+    ":cl_utils_test($host_toolchain)",
+    ":cxx_link_remote_wrapper_test($host_toolchain)",
+    ":cxx_remote_wrapper_test($host_toolchain)",
+    ":cxx_test($host_toolchain)",
+    ":depfile_test($host_toolchain)",
+    ":dlwrap_test($host_toolchain)",
+    ":fuchsia_test($host_toolchain)",
+    ":linker_test($host_toolchain)",
+    ":output_leak_scanner_test($host_toolchain)",
+    ":prebuilt_tool_remote_wrapper_test($host_toolchain)",
+    ":rbe_diagnose_test($host_toolchain)",
+    ":rbe_profile_test($host_toolchain)",
+    ":rbe_settings_test($host_toolchain)",
+    ":relativize_args_test($host_toolchain)",
+    ":remote_action_test($host_toolchain)",
+    ":remotetool_test($host_toolchain)",
+    ":rustc_remote_wrapper_test($host_toolchain)",
+    ":rustc_test($host_toolchain)",
+    ":tablefmt_test($host_toolchain)",
+    ":textpb_test($host_toolchain)",
+  ]
+}
+
+if (is_host) {
+  python_library("fuchsia") {
+    sources = [ "fuchsia.py" ]
+  }
+
+  python_build_time_tests("fuchsia_test") {
+    tests = [ "fuchsia_test.py" ]
+    deps = [ ":fuchsia" ]
+  }
+
+  python_library("cl_utils") {
+    sources = [ "cl_utils.py" ]
+  }
+
+  python_build_time_tests("cl_utils_test") {
+    tests = [ "cl_utils_test.py" ]
+    deps = [ ":cl_utils" ]
+  }
+
+  python_library("depfile") {
+    sources = [ "depfile.py" ]
+  }
+
+  python_build_time_tests("depfile_test") {
+    tests = [ "depfile_test.py" ]
+    deps = [ ":depfile" ]
+  }
+
+  python_library("output_leak_scanner") {
+    sources = [ "output_leak_scanner.py" ]
+    library_deps = [
+      ":cl_utils",
+      ":fuchsia",
+    ]
+  }
+
+  python_build_time_tests("output_leak_scanner_test") {
+    tests = [ "output_leak_scanner_test.py" ]
+    deps = [ ":output_leak_scanner" ]
+  }
+
+  python_library("linker") {
+    sources = [ "linker.py" ]
+    library_deps = [
+      ":cl_utils",
+      ":depfile",
+    ]
+  }
+
+  python_build_time_tests("linker_test") {
+    tests = [ "linker_test.py" ]
+    deps = [ ":linker" ]
+  }
+
+  python_library("tablefmt") {
+    sources = [ "tablefmt.py" ]
+  }
+
+  python_build_time_tests("tablefmt_test") {
+    tests = [ "tablefmt_test.py" ]
+    deps = [ ":tablefmt" ]
+  }
+
+  python_library("textpb") {
+    sources = [ "textpb.py" ]
+  }
+
+  python_build_time_tests("textpb_test") {
+    tests = [ "textpb_test.py" ]
+    deps = [ ":textpb" ]
+  }
+
+  python_library("rbe_diagnose") {
+    sources = [ "rbe_diagnose.py" ]
+  }
+
+  python_build_time_tests("rbe_diagnose_test") {
+    tests = [ "rbe_diagnose_test.py" ]
+    deps = [ ":rbe_diagnose" ]
+  }
+
+  python_library("cas") {
+    sources = [ "cas.py" ]
+    library_deps = [
+      ":cl_utils",
+      ":fuchsia",
+    ]
+  }
+
+  python_build_time_tests("cas_test") {
+    tests = [ "cas_test.py" ]
+    deps = [ ":cas" ]
+  }
+
+  python_library("casfs") {
+    sources = [ "casfs.py" ]
+  }
+
+  python_build_time_tests("casfs_test") {
+    tests = [ "casfs_test.py" ]
+    deps = [ ":casfs" ]
+  }
+
+  python_library("bbtool") {
+    sources = [ "bbtool.py" ]
+    library_deps = [
+      ":cas",
+      ":cl_utils",
+      ":fuchsia",
+    ]
+  }
+
+  python_build_time_tests("bbtool_test") {
+    tests = [ "bbtool_test.py" ]
+    deps = [ ":bbtool" ]
+  }
+
+  python_library("build_summary") {
+    sources = [ "build_summary.py" ]
+    library_deps = [
+      ":tablefmt",
+      ":textpb",
+    ]
+  }
+
+  python_build_time_tests("build_summary_test") {
+    tests = [ "build_summary_test.py" ]
+    deps = [ ":build_summary" ]
+  }
+
+  python_library("remotetool") {
+    sources = [ "remotetool.py" ]
+    library_deps = [
+      ":cl_utils",
+      ":fuchsia",
+      ":rbe_profile",
+    ]
+  }
+
+  python_build_time_tests("remotetool_test") {
+    tests = [ "remotetool_test.py" ]
+    deps = [ ":remotetool" ]
+  }
+
+  python_library("rbe_profile") {
+    sources = [ "rbe_profile.py" ]
+    library_deps = [
+      "//products/build/python/modules/serialization",
+      "//products/build/scripts:service_profile_lib",
+    ]
+  }
+
+  python_build_time_tests("rbe_profile_test") {
+    tests = [ "rbe_profile_test.py" ]
+    deps = [ ":rbe_profile" ]
+  }
+
+  python_library("remote_action") {
+    sources = [ "remote_action.py" ]
+    library_deps = [
+      ":cl_utils",
+      ":depfile",
+      ":fuchsia",
+      ":output_leak_scanner",
+      ":rbe_profile",
+      ":remotetool",
+      ":textpb",
+    ]
+  }
+
+  python_build_time_tests("remote_action_test") {
+    tests = [ "remote_action_test.py" ]
+    deps = [ ":remote_action" ]
+  }
+
+  python_library("dlwrap") {
+    sources = [ "dlwrap.py" ]
+    library_deps = [ ":remote_action" ]
+  }
+
+  python_build_time_tests("dlwrap_test") {
+    tests = [ "dlwrap_test.py" ]
+    deps = [ ":dlwrap" ]
+  }
+
+  python_library("cxx") {
+    sources = [ "cxx.py" ]
+    library_deps = [ ":cl_utils" ]
+  }
+
+  python_build_time_tests("cxx_test") {
+    tests = [ "cxx_test.py" ]
+    deps = [ ":cxx" ]
+  }
+
+  python_library("cxx_link_remote_wrapper") {
+    sources = [ "cxx_link_remote_wrapper.py" ]
+    library_deps = [
+      ":cxx",
+      ":fuchsia",
+      ":linker",
+      ":remote_action",
+    ]
+  }
+
+  python_build_time_tests("cxx_link_remote_wrapper_test") {
+    tests = [ "cxx_link_remote_wrapper_test.py" ]
+    deps = [ ":cxx_link_remote_wrapper" ]
+  }
+
+  python_library("cxx_remote_wrapper") {
+    sources = [ "cxx_remote_wrapper.py" ]
+    library_deps = [
+      ":cl_utils",
+      ":cxx",
+      ":fuchsia",
+      ":remote_action",
+    ]
+  }
+
+  python_build_time_tests("cxx_remote_wrapper_test") {
+    tests = [ "cxx_remote_wrapper_test.py" ]
+    deps = [ ":cxx_remote_wrapper" ]
+  }
+
+  python_library("rustc") {
+    sources = [ "rustc.py" ]
+    library_deps = [ ":cl_utils" ]
+  }
+
+  python_build_time_tests("rustc_test") {
+    tests = [ "rustc_test.py" ]
+    deps = [ ":rustc" ]
+  }
+
+  python_library("rustc_remote_wrapper") {
+    sources = [ "rustc_remote_wrapper.py" ]
+    library_deps = [
+      ":cl_utils",
+      ":fuchsia",
+      ":linker",
+      ":remote_action",
+      ":rustc",
+    ]
+  }
+
+  python_build_time_tests("rustc_remote_wrapper_test") {
+    tests = [ "rustc_remote_wrapper_test.py" ]
+    deps = [ ":rustc_remote_wrapper" ]
+  }
+
+  python_library("prebuilt_tool_remote_wrapper") {
+    sources = [ "prebuilt_tool_remote_wrapper.py" ]
+    library_deps = [
+      ":cl_utils",
+      ":fuchsia",
+      ":remote_action",
+    ]
+  }
+
+  python_build_time_tests("prebuilt_tool_remote_wrapper_test") {
+    tests = [ "prebuilt_tool_remote_wrapper_test.py" ]
+    deps = [ ":prebuilt_tool_remote_wrapper" ]
+  }
+
+  python_library("relativize_args") {
+    sources = [ "relativize_args.py" ]
+  }
+
+  python_build_time_tests("relativize_args_test") {
+    tests = [ "relativize_args_test.py" ]
+    deps = [ ":relativize_args" ]
+  }
+
+  python_library("rbe_settings") {
+    sources = [ "rbe_settings.py" ]
+    library_deps = [ "//products/build/python/modules/serialization" ]
+  }
+
+  python_build_time_tests("rbe_settings_test") {
+    tests = [ "rbe_settings_test.py" ]
+    deps = [ ":rbe_settings" ]
+  }
+}
+
+if (current_toolchain == default_toolchain) {
+  # List all of the RBE related settings after modes have been applied
+  # and resolved.
+  # TODO(b/346845227): the final override and source-of-truth still lies
+  # with the global variables, but this will eventually migrate to using
+  # the corresponding variables in the `rbe_settings` scope.
+  generated_file("rbe_settings.json") {
+    contents = {
+      mode = rbe_mode
+      settings = rbe_settings
+
+      # after considering top-level overrides
+      # LINT.IfChange(RbeSettings)
+      final = {
+        bazel_enable = enable_bazel_remote_rbe
+        bazel_exec_strategy = bazel_rbe_exec_strategy
+        bazel_download_outputs = bazel_rbe_download_outputs
+        cxx_download_objects = cxx_rbe_download_obj_files
+        cxx_enable = cxx_rbe_enable
+        cxx_exec_strategy = cxx_rbe_exec_strategy
+        cxx_minimalist_wrapper = cxx_rbe_minimalist_wrapper
+        link_download_unstripped_outputs = link_rbe_download_unstripped_outputs
+        link_enable = link_rbe_enable
+        link_exec_strategy = link_rbe_exec_strategy
+        rust_download_rlibs = rust_rbe_download_rlibs
+        rust_download_unstripped_binaries =
+            rust_rbe_download_unstripped_binaries
+        rust_enable = rust_rbe_enable
+        rust_exec_strategy = rust_rbe_exec_strategy
+
+        # derived values:
+
+        # The following is used by lib/vars.sh to auto-startup reproxy.
+        needs_reproxy = cxx_enable || link_enable || rust_enable
+
+        # Set the following to true if any remote build service is used. Note:
+        # authentication for ResultStore is managed dynamically at runtime by
+        # build/scripts/main_build.py, so we only need to specify RBE-specific
+        # auth requirements here.
+        needs_auth = needs_reproxy || bazel_enable
+      }
+
+      # LINT.ThenChange(//products/build/rbe/rbe_settings.py:RbeSettings)
+    }
+    output_conversion = "json"
+    outputs = [ "$root_build_dir/rbe_settings.json" ]
+  }
+}
+
+if (is_host) {
+  # Python scripts in this directory that aren't part of any other Python
+  # target, usually because they're run directly by action() or Bazel rules.
+  # Listing them here makes them subject to type checking.
+  python_library("type_checked_scripts") {
+    testonly = true
+
+    # This target only exists for type checking; depending on it would package
+    # a grab-bag of unrelated scripts.
+    visibility = [
+      ":*",
+      "//products/build:*",
+    ]
+    sources = [
+      "action_diff.py",
+      "action_diff_test.py",
+      "bb_fetch_rbe_cas.py",
+      "bb_fetch_rbe_cas_test.py",
+      "pb_message_util.py",
+      "pb_message_util_test.py",
+      "rbe_profile.py",
+      "rbe_profile_test.py",
+      "rbe_settings.py",
+      "rbe_settings_test.py",
+      "reproxy_logs.py",
+      "reproxy_logs_test.py",
+      "rpl_tool.py",
+      "rpl_tool_test.py",
+      "textpb_benchmark.py",
+      "upload_reproxy_logs.py",
+      "upload_reproxy_logs_test.py",
+    ]
+  }
+}

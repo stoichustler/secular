@@ -1,0 +1,61 @@
+# Copyright 2021 The Fuchsia Authors
+#
+# Use of this source code is governed by a MIT-style
+# license that can be found in the LICENSE file or at
+# https://opensource.org/licenses/MIT
+
+import("//products/build/cpp/library_headers.gni")
+import("//zircon/kernel/kernel_rust_mod.gni")
+
+static_library("jtrace") {
+  public_deps = [ ":headers" ]
+
+  sources = [
+    "jtrace.cc",
+    "jtrace_internal.h",
+  ]
+  deps = [
+    ":jtrace-rs",
+    "//sdk/lib/fit:headers",
+    "//userspace/lib/lazy_init",
+    "//zircon/kernel/lib/arch",
+    "//zircon/kernel/lib/debuglog",
+    "//zircon/kernel/lib/io",
+    "//zircon/kernel/lib/ktl",
+    "//zircon/kernel/lib/syscalls",
+    "//zircon/kernel/vm",
+    "//zircon/system/ulib/affine",
+    "//zircon/system/ulib/fbl:headers",
+    "//zircon/system/ulib/pretty",
+  ]
+}
+
+kernel_rust_mod("jtrace-rs") {
+  sources = [ "jtrace.rs" ]
+  deps = [
+    "//userspace/lib/kprint",
+    "//userspace/lib/zr",
+    "//zircon/kernel/lib/console:console_rs",
+  ]
+}
+
+library_headers("headers") {
+  headers = [ "lib/jtrace/jtrace.h" ]
+}
+
+group("tests") {
+  testonly = true
+}
+
+group("kernel-tests") {
+  testonly = true
+  deps = [ "tests" ]
+}
+
+group("phys-tests") {
+  testonly = true
+}
+
+group("boot_tests") {
+  testonly = true
+}

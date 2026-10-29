@@ -1,0 +1,46 @@
+// Copyright 2017 The Fuchsia Authors. All rights reserved.
+// Use of this source code is governed by a BSD-style license that can be
+// found in the LICENSE file.
+library fuchsia.ui.gfx;
+
+type vec2 = struct {
+    x float32;
+    y float32;
+};
+
+type vec3 = struct {
+    x float32;
+    y float32;
+    z float32;
+};
+
+type mat4 = struct {
+    /// Column major order.
+    matrix array<float32, 16>;
+};
+
+/// Represents an axis-aligned bounding box.
+///
+/// If any of the dimensions has a negative extent (e.g. max.x < min.x) then the
+/// bounding box is treated as empty. It is valid for a client to define an
+/// empty bounding box.
+///
+/// An "empty bounding box" is one that does not admit a point inhabitant.
+/// Note that a zero-volume, zero-area bounding box (e.g., a point like
+/// (0,0,0)-(0,0,0), or a line like (0,0,0)-(1,0,0)) is thus not empty.
+type BoundingBox = struct {
+    min vec3;
+    max vec3;
+};
+
+/// A value that is specified explicitly by `value` if `variable_id` is zero,
+/// or is the value produced by the resource identified by `variable_id`, e.g.
+/// an animation or expression.  In the latter case, the value produced by the
+/// resource must be a vec4, and `value` is ignored.
+// NOTE(https://fxbug.dev/432713692): The real @available annotation is:
+// @available(deprecated=13, removed=17)
+@available(added=HEAD, deprecated=HEAD)
+type Matrix4Value = struct {
+    value mat4;
+    variable_id uint32;
+};

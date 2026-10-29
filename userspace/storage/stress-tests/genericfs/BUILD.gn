@@ -1,0 +1,47 @@
+# Copyright 2020 The Fuchsia Authors. All rights reserved.
+# Use of this source code is governed by a BSD-style license that can be
+# found in the LICENSE file.
+
+import("//products/build/rust/rustc_test.gni")
+
+rustc_test("stressor-bin") {
+  name = "fs_stressor"
+  edition = "2024"
+  source_root = "main.rs"
+  testonly = true
+
+  deps = [
+    "//sdk/fidl/fuchsia.io:fuchsia.io_rust",
+    "//sdk/fidl/fuchsia.logger:fuchsia.logger_rust",
+    "//sdk/rust/zx",
+    "//userspace/lib/diagnostics/inspect/rust",
+    "//userspace/lib/diagnostics/log/rust",
+    "//userspace/lib/diagnostics/reader/rust",
+    "//userspace/lib/fuchsia",
+    "//userspace/lib/fuchsia-async",
+    "//userspace/lib/fuchsia-component-test",
+    "//userspace/lib/fuchsia-sync",
+    "//userspace/storage/fidl/fuchsia.fs.startup:fuchsia.fs.startup_rust",
+    "//userspace/storage/fxfs/fidl/fuchsia.fxfs:fuchsia.fxfs_rust",
+    "//userspace/storage/lib/fs_management/rust:fs_management",
+    "//userspace/storage/lib/key-bag",
+    "//userspace/storage/stress-tests/utils",
+    "//userspace/sys/lib/stress-test",
+    "//third_party/rust_crates:anyhow",
+    "//third_party/rust_crates:argh",
+    "//third_party/rust_crates:async-trait",
+    "//third_party/rust_crates:either",
+    "//third_party/rust_crates:futures",
+    "//third_party/rust_crates:log",
+    "//third_party/rust_crates:rand",
+    "//third_party/rust_crates:serde_json",
+  ]
+
+  sources = [
+    "deletion_actor.rs",
+    "environment.rs",
+    "file_actor.rs",
+    "instance_actor.rs",
+    "main.rs",
+  ]
+}

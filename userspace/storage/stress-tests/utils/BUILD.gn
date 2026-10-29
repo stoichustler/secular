@@ -1,0 +1,33 @@
+# Copyright 2020 The Fuchsia Authors. All rights reserved.
+# Use of this source code is governed by a BSD-style license that can be
+# found in the LICENSE file.
+
+import("//products/build/rust/rustc_library.gni")
+
+rustc_library("utils") {
+  name = "storage_stress_test_utils"
+  edition = "2024"
+  source_root = "mod.rs"
+  testonly = true
+
+  deps = [
+    "//sdk/fidl/fuchsia.io:fuchsia.io_rust",
+    "//sdk/fidl/fuchsia.storage.block:fuchsia.storage.block_rust",
+    "//sdk/rust/zx",
+    "//userspace/lib/fidl/rust/fidl",
+    "//userspace/lib/fuchsia-fs",
+    "//userspace/storage/fidl/fuchsia.fs.startup:fuchsia.fs.startup_rust",
+    "//userspace/storage/lib/block_matcher",
+    "//userspace/storage/lib/fs_management/rust:fs_management",
+    "//userspace/storage/lib/ramdevice_client",
+    "//third_party/rust_crates:log",  # for recording messages
+    "//third_party/rust_crates:rand",
+  ]
+
+  sources = [
+    "data.rs",
+    "fvm.rs",
+    "io.rs",
+    "mod.rs",
+  ]
+}

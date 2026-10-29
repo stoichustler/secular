@@ -1,0 +1,19 @@
+# Copyright 2022 The Fuchsia Authors. All rights reserved.
+# Use of this source code is governed by a BSD-style license that can be
+# found in the LICENSE file.
+
+import("//products/build/go/go_library.gni")
+
+if (is_host) {
+  go_library("flash") {
+    testonly = true
+    deps = [
+      "//userspace/testing/host-target-testing/artifacts",
+      "//userspace/testing/host-target-testing/device",
+      "//userspace/testing/host-target-testing/ffx",
+      "//third_party/golibs:golang.org/x/crypto",
+      "//tools/lib/logger",
+    ]
+    sources = [ "flash.go" ]
+  }
+}

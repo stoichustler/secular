@@ -1,0 +1,50 @@
+# Copyright 2026 The Fuchsia Authors. All rights reserved.
+# Use of this source code is governed by a BSD-style license that can be
+# found in the LICENSE file.
+
+load("//products/build/bazel/rules/rust:rustc_library.bzl", "rustc_library")
+
+package(default_applicable_licenses = ["//:license"])
+
+# The unit tests (`:package-directory_test`, `:test-component`, and
+# `:package-directory-tests`) stay in BUILD.gn because `:package-directory_test`
+# depends on `//userspace/sys/pkg/lib/fuchsia-pkg-testing`, which is GN-only and
+# depends on `//userspace/sys/pkg/lib/system-image` and
+# `//userspace/sys/pkg/lib/update-package` (both of which depend back on
+# `:package-directory`).
+rustc_library(
+    name = "package-directory",
+    srcs = [
+        "src/lib.rs",
+        "src/meta_as_dir.rs",
+        "src/meta_subdir.rs",
+        "src/non_meta_subdir.rs",
+        "src/root_dir.rs",
+        "src/root_dir_cache.rs",
+    ],
+    edition = "2024",
+    lint_config = "//products/build/config/rust/lints:clippy_warn_all",
+    visibility = [
+        "//userspace/storage/benchmarks/fuchsia/pkgdir-component:__pkg__",
+        "//userspace/sys/component_manager:__pkg__",
+        "//userspace/sys/pkg:__subpackages__",
+    ],
+    deps = [
+        "//sdk/fidl/fuchsia.io:fuchsia.io_rust",
+        "//sdk/rust/zx",
+        "//userspace/lib/collections/packed",
+        "//userspace/lib/diagnostics/inspect/rust:fuchsia-inspect",  # @bazel2gn:path_overwrite://userspace/lib/diagnostics/inspect/rust
+        "//userspace/lib/fidl/rust/fidl",
+        "//userspace/lib/fuchsia-fs",
+        "//userspace/storage/lib/vfs/rust:vfs",
+        "//userspace/sys/pkg/lib/blobfs",
+        "//userspace/sys/pkg/lib/far/rust:fuchsia-archive",
+        "//userspace/sys/pkg/lib/fuchsia-hash",
+        "//userspace/sys/pkg/lib/fuchsia-pkg",
+        "//third_party/rust_crates/vendor:anyhow",
+        "//third_party/rust_crates/vendor:futures",
+        "//third_party/rust_crates/vendor:log",
+        "//third_party/rust_crates/vendor:static_assertions",
+        "//third_party/rust_crates/vendor:thiserror",
+    ],
+)

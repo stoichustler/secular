@@ -1,0 +1,42 @@
+# Copyright 2026 The Fuchsia Authors. All rights reserved.
+# Use of this source code is governed by a BSD-style license that can be
+# found in the LICENSE file.
+
+load("//products/build/bazel/rules/rust:defs.bzl", "rustc_library")
+
+package(default_applicable_licenses = ["//:license"])
+
+rustc_library(
+    name = "blob-writer",
+    srcs = [
+        "src/errors.rs",
+        "src/lib.rs",
+    ],
+    edition = "2024",
+    test_deps = [
+        "//userspace/lib/fuchsia",
+        "//userspace/lib/fuchsia-sync",
+        "//third_party/rust_crates/vendor:assert_matches",
+        "//third_party/rust_crates/vendor:rand",
+    ],
+    visibility = [
+        "//userspace/connectivity/policy/http-client:__pkg__",
+        "//userspace/storage/benchmarks/fuchsia:__pkg__",
+        "//userspace/storage/fshost/integration:__pkg__",
+        "//userspace/storage/fxfs/platform:__pkg__",
+        "//userspace/storage/fxfs/test:__pkg__",
+        "//userspace/storage/lib/fs_management/rust:__pkg__",
+        "//userspace/storage/stress-tests/blobfs:__pkg__",
+        "//userspace/sys/lib/fidl-fuchsia-pkg-ext:__pkg__",
+        "//userspace/sys/pkg/testing/blobfs-ramdisk:__pkg__",
+        "//userspace/sys/pkg/tests/pkg-cache:__pkg__",
+    ],
+    with_unit_tests = True,
+    deps = [
+        "//sdk/rust/zx",
+        "//userspace/lib/fidl/rust/fidl",
+        "//userspace/storage/fxfs/fidl/fuchsia.fxfs:fuchsia.fxfs_rust",
+        "//third_party/rust_crates/vendor:futures",
+        "//third_party/rust_crates/vendor:thiserror",
+    ],
+)

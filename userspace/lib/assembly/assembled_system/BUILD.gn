@@ -1,0 +1,68 @@
+# Copyright 2021 The Fuchsia Authors. All rights reserved.
+# Use of this source code is governed by a BSD-style license that can be
+# found in the LICENSE file.
+
+import("//products/build/host.gni")
+import("//products/build/rust/rustc_library.gni")
+
+assert(is_host, "Assembly libraries are host-only")
+
+rustc_library("assembled_system") {
+  edition = "2024"
+  name = "assembled_system"
+  version = "0.1.0"
+  with_unit_tests = true
+  deps = [
+    "//userspace/lib/assembly/base_package",
+    "//userspace/lib/assembly/blobfs",
+    "//userspace/lib/assembly/cli_args",
+    "//userspace/lib/assembly/config_schema",
+    "//userspace/lib/assembly/constants",
+    "//userspace/lib/assembly/container",
+    "//userspace/lib/assembly/fvm",
+    "//userspace/lib/assembly/fxfs",
+    "//userspace/lib/assembly/image_assembly_config",
+    "//userspace/lib/assembly/images_config",
+    "//userspace/lib/assembly/package_list",
+    "//userspace/lib/assembly/release_info",
+    "//userspace/lib/assembly/tool",
+    "//userspace/lib/assembly/util",
+    "//userspace/lib/assembly/vbmeta",
+    "//userspace/lib/assembly/zbi",
+    "//userspace/lib/utf8_path",
+    "//userspace/lib/versioning/version-history/rust",
+    "//userspace/sys/pkg/lib/fuchsia-hash",
+    "//userspace/sys/pkg/lib/fuchsia-merkle",
+    "//userspace/sys/pkg/lib/fuchsia-pkg",
+    "//third_party/rust_crates:anyhow",
+    "//third_party/rust_crates:camino",
+    "//third_party/rust_crates:hex",
+    "//third_party/rust_crates:log",
+    "//third_party/rust_crates:pathdiff",
+    "//third_party/rust_crates:serde",
+    "//third_party/rust_crates:serde_json",
+  ]
+  sources = [
+    "src/assembled_system.rs",
+    "src/base_package.rs",
+    "src/blobfs.rs",
+    "src/extra_hash_descriptor.rs",
+    "src/fvm.rs",
+    "src/fxfs.rs",
+    "src/image.rs",
+    "src/lib.rs",
+    "src/vbmeta.rs",
+    "src/zbi.rs",
+  ]
+  test_deps = [
+    "//userspace/lib/assembly/config_schema",
+    "//userspace/lib/assembly/release_info",
+    "//userspace/lib/assembly/test_keys",
+    "//userspace/lib/fuchsia-async",
+    "//userspace/sys/pkg/lib/far/rust:fuchsia-archive",
+    "//third_party/rust_crates:assert_matches",
+    "//third_party/rust_crates:regex",
+    "//third_party/rust_crates:tempfile",
+  ]
+  configs += [ "//products/build/config/rust/lints:clippy_warn_all" ]
+}

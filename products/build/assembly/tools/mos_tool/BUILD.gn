@@ -1,0 +1,31 @@
+# Copyright 2025 The Fuchsia Authors. All rights reserved.
+# Use of this source code is governed by a BSD-style license that can be
+# found in the LICENSE file.
+
+import("//products/build/host.gni")
+import("//products/build/rust/rustc_binary.gni")
+
+assert(is_host, "This tool is only applicable on the host toolchain")
+
+rustc_binary("mos_tool") {
+  edition = "2024"
+  with_unit_tests = true
+  sources = [ "src/main.rs" ]
+  output_name = "mos-tool"
+  deps = [
+    "//userspace/developer/ffx/lib/pbms:lib",
+    "//userspace/lib/assembly/artifact_cache",
+    "//userspace/lib/assembly/util",
+    "//userspace/lib/fuchsia",
+    "//userspace/lib/gcs",
+    "//userspace/lib/structured_ui",
+    "//third_party/rust_crates:anyhow",
+    "//third_party/rust_crates:argh",
+    "//third_party/rust_crates:serde_json",
+  ]
+}
+
+install_host_tools("host") {
+  deps = [ ":mos_tool" ]
+  outputs = [ "mos-tool" ]
+}

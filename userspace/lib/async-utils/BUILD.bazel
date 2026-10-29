@@ -1,0 +1,63 @@
+# Copyright 2026 The Fuchsia Authors. All rights reserved.
+# Use of this source code is governed by a BSD-style license that can be
+# found in the LICENSE file.
+
+load("//products/build/bazel/rules/rust:defs.bzl", "rustc_library")
+load("//products/build/bazel/rules/testing:fx_unittest_package.bzl", "fx_unittest_package")
+
+package(default_applicable_licenses = ["//:license"])
+
+rustc_library(
+    name = "async-utils",
+    srcs = [
+        "src/async_once/mod.rs",
+        "src/channel.rs",
+        "src/event.rs",
+        "src/fold.rs",
+        "src/futures.rs",
+        "src/hanging_get/client.rs",
+        "src/hanging_get/error.rs",
+        "src/hanging_get/mod.rs",
+        "src/hanging_get/server.rs",
+        "src/hanging_get/test_util.rs",
+        "src/lib.rs",
+        "src/mutex_ticket.rs",
+        "src/stream.rs",
+        "src/stream/future_map.rs",
+        "src/stream/one_or_many.rs",
+        "src/stream/short_circuit.rs",
+        "src/stream/stream_map.rs",
+        "src/traits.rs",
+    ],
+    edition = "2024",
+    rustc_flags = ["-Dunused_results"],
+    # @bazel2gn:skip
+    test_deps = [
+        "//userspace/lib/fuchsia-async",
+        "//third_party/rust_crates/vendor:assert_matches",
+        "//third_party/rust_crates/vendor:futures-lite",
+        "//third_party/rust_crates/vendor:futures-test",
+        "//third_party/rust_crates/vendor:proptest",
+        "//third_party/rust_crates/vendor:test-case",
+    ],
+    visibility = ["//visibility:public"],
+    # @bazel2gn:skip
+    with_unit_tests = True,
+    deps = [
+        "//userspace/lib/fidl/rust/fidl",
+        "//userspace/lib/fuchsia-sync",
+        "//third_party/rust_crates/vendor:anyhow",
+        "//third_party/rust_crates/vendor:async-lock",
+        "//third_party/rust_crates/vendor:futures",
+        "//third_party/rust_crates/vendor:once_cell",
+        "//third_party/rust_crates/vendor:pin-project",
+        "//third_party/rust_crates/vendor:slab",
+        "//third_party/rust_crates/vendor:thiserror",
+    ],
+)
+
+# @bazel2gn:skip
+fx_unittest_package(
+    name = "async-utils-tests",
+    unit_tests = [":async-utils_test"],
+)

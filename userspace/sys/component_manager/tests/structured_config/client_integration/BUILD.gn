@@ -1,0 +1,30 @@
+# Copyright 2022 The Fuchsia Authors. All rights reserved.
+# Use of this source code is governed by a BSD-style license that can be
+# found in the LICENSE file.
+
+import("//products/build/components.gni")
+import("//products/build/fidl/fidl.gni")
+import("//products/build/host.gni")
+import("//products/build/rust/rustc_library.gni")
+
+rustc_library("sc_client_integration_support") {
+  edition = "2024"
+  testonly = true
+  source_root = "support/lib.rs"
+  sources = [ "support/lib.rs" ]
+  deps = [
+    "//userspace/lib/diagnostics/reader/rust",
+    "//userspace/lib/diagnostics/testing/diagnostics-assertions/rust:diagnostics-assertions",
+    "//userspace/lib/fuchsia-component",
+    "//userspace/sys/component_manager/tests/structured_config/fidl:test.structuredconfig.receiver_rust",
+  ]
+}
+
+group("client_integration") {
+  testonly = true
+  deps = [
+    "cpp_driver",
+    "cpp_elf",
+    "rust",
+  ]
+}

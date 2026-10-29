@@ -1,0 +1,43 @@
+# Copyright 2026 The Fuchsia Authors. All rights reserved.
+# Use of this source code is governed by a BSD-style license that can be
+# found in the LICENSE file.
+
+load("@rules_cc//cc:cc_library.bzl", "cc_library")
+load("//products/build/bazel/rules/rust:defs.bzl", "rustc_library")
+
+package(default_applicable_licenses = ["//:license"])
+
+rustc_library(
+    name = "block_protocol",
+    srcs = [
+        "src/fifo.rs",
+        "src/lib.rs",
+    ],
+    edition = "2024",
+    visibility = [
+        "//userspace/devices/block/drivers/ramdisk:__pkg__",
+        "//userspace/storage/fxfs/platform:__pkg__",
+        "//userspace/storage/lib:__subpackages__",
+    ],
+    deps = [
+        "//third_party/rust_crates/vendor:bitflags",
+        "//third_party/rust_crates/vendor:zerocopy",
+    ],
+)
+
+cc_library(
+    name = "block_fifo",
+    hdrs = [
+        "block-fifo.h",
+        "types.h",
+    ],
+    visibility = [
+        "//userspace/devices/block/bin/biotime:__pkg__",
+        "//userspace/devices/block/drivers/ahci:__pkg__",
+        "//userspace/devices/lib/block:__pkg__",
+        "//userspace/storage/lib/block_client/cpp:__pkg__",
+        "//userspace/storage/lib/vfs/cpp/journal:__pkg__",
+    ],
+    deps = ["//sdk/fidl/fuchsia.storage.block:fuchsia.storage.block_cpp"],
+    alwayslink = True,
+)

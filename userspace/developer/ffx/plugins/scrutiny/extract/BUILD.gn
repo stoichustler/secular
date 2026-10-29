@@ -1,0 +1,24 @@
+# Copyright 2021 The Fuchsia Authors. All rights reserved.
+# Use of this source code is governed by a BSD-style license that can be
+# found in the LICENSE file.
+
+import("//userspace/developer/ffx/build/ffx_plugin.gni")
+
+ffx_plugin("ffx_scrutiny_extract") {
+  sdk_category = "not-yet-specified"
+  version = "0.1.0"
+  edition = "2024"
+  plugin_deps = [
+    "blobfs:ffx_scrutiny_blobfs",
+    "fvm:ffx_scrutiny_fvm",
+    "package:ffx_scrutiny_package",
+    "structured_config:ffx_scrutiny_structured_config",
+    "zbi:ffx_scrutiny_zbi",
+  ]
+
+  args_sources = [ "src/args.rs" ]
+  args_deps = [
+    "//userspace/developer/ffx/core:lib",
+    "//third_party/rust_crates:argh",
+  ]
+}

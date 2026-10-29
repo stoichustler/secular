@@ -1,0 +1,32 @@
+# Copyright 2022 The Fuchsia Authors. All rights reserved.
+# Use of this source code is governed by a BSD-style license that can be
+# found in the LICENSE file.
+
+import("//products/build/rust/rustc_library.gni")
+
+rustc_library("example_tester") {
+  visibility = [
+    "//examples/fidl/*",
+    "//tools/fidl/example-tester/*",
+  ]
+  testonly = true
+  edition = "2024"
+  name = "example_tester"
+  source_root = "src/lib.rs"
+  sources = [ "src/lib.rs" ]
+  deps = [
+    "//sdk/rust/zx",
+    "//userspace/lib/diagnostics/data/rust",
+    "//userspace/lib/diagnostics/reader/rust",
+    "//userspace/lib/fuchsia-async",
+    "//userspace/lib/fuchsia-component-test",
+    "//userspace/sys/lib/component-events",
+    "//third_party/rust_crates:anyhow",
+    "//third_party/rust_crates:regex",
+  ]
+}
+
+group("tests") {
+  testonly = true
+  deps = [ "//tools/fidl/example-tester/example:tests" ]
+}

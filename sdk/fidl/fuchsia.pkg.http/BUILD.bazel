@@ -1,0 +1,28 @@
+# Copyright 2026 The Fuchsia Authors. All rights reserved.
+# Use of this source code is governed by a BSD-style license that can be
+# found in the LICENSE file.
+
+load("//products/build/bazel/rules/fidl:fidl_library.bzl", "fidl_library")
+
+package(default_applicable_licenses = ["//:license"])
+
+fidl_library(
+    name = "fuchsia.pkg.http",
+    srcs = [
+        "http.fidl",
+    ],
+    visibility = [
+        "//userspace/connectivity/policy/http-client:__pkg__",
+        "//userspace/connectivity/policy/http-client/integration:__pkg__",
+        "//userspace/sys/pkg/bin/pkg-cache:__pkg__",
+        "//userspace/sys/pkg/bin/pkg-resolver:__pkg__",
+        "//userspace/sys/pkg/tests/isolated-ota:__pkg__",
+        "//userspace/sys/pkg/tests/pkg-cache:__pkg__",
+        "//userspace/sys/pkg/tests/pkg-resolver:__pkg__",
+    ],
+    deps = [
+        "//sdk/fidl/fuchsia.url",
+        "//userspace/storage/fxfs/fidl/fuchsia.fxfs",
+        "//zircon/vdso/zx",
+    ],
+)

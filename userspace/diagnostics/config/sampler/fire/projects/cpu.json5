@@ -1,0 +1,13 @@
+{
+    metrics: [
+        {
+            metric_name: "per_component_cpu_percentage",
+            metric_type: "IntHistogram",
+            selector: [
+                "<component_manager>:root/stats/histograms:{MONIKER}",
+            ],
+        },
+    ],
+    poll_rate_sec: 1200,
+    project_id: 13,
+}

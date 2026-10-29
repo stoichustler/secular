@@ -1,0 +1,43 @@
+# Copyright 2021 The Fuchsia Authors. All rights reserved.
+# Use of this source code is governed by a BSD-style license that can be
+# found in the LICENSE file.
+
+import("//products/build/components.gni")
+import("//products/build/host.gni")
+import("//products/build/rust/rustc_library.gni")
+
+rustc_library("testing") {
+  edition = "2024"
+  name = "cm_rust_testing"
+
+  testonly = true
+
+  deps = [
+    "//sdk/fidl/fuchsia.component.decl:fuchsia.component.decl_rust",
+    "//sdk/fidl/fuchsia.data:fuchsia.data_rust",
+    "//sdk/fidl/fuchsia.io:fuchsia.io_rust",
+    "//userspace/sys/lib/cm_rust",
+    "//userspace/sys/lib/cm_types",
+    "//third_party/rust_crates:anyhow",
+    "//third_party/rust_crates:assert_matches",
+    "//third_party/rust_crates:derivative",
+    "//third_party/rust_crates:serde_json",
+    "//tools/lib/cml",
+  ]
+
+  visibility = [
+    "//userspace/connectivity/network/testing/netemul/runner:*",
+    "//userspace/lib/diagnostics/log/rust/tests:*",
+    "//userspace/lib/fuchsia-component-test/realm_builder_server/*",
+    "//userspace/lib/fuchsia-component-test/tests/*",
+    "//userspace/security/lib/scrutiny/frontend:*",
+    "//userspace/security/lib/scrutiny/x:*",
+    "//userspace/sys/component_manager/*",
+    "//userspace/sys/lib/cm_rust/testing:*",
+    "//userspace/sys/lib/component_debug/*",
+    "//userspace/sys/lib/routing/*",
+    "//tools/lib/cm_fidl_analyzer/*",
+  ]
+
+  sources = [ "src/lib.rs" ]
+}

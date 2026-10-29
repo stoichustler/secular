@@ -1,0 +1,66 @@
+{
+    "$schema": "http://json-schema.org/draft-07/schema#",
+    "title": "Output",
+    "oneOf": [
+        {
+            "type": "object",
+            "properties": {
+                "destroyed": {
+                    "type": "object",
+                    "properties": {
+                        "moniker": {
+                            "type": "string"
+                        }
+                    },
+                    "required": [
+                        "moniker"
+                    ]
+                }
+            },
+            "required": [
+                "destroyed"
+            ],
+            "additionalProperties": false
+        },
+        {
+            "type": "object",
+            "properties": {
+                "not_dynamic_instance_error": {
+                    "type": "object",
+                    "properties": {
+                        "moniker": {
+                            "type": "string"
+                        }
+                    },
+                    "required": [
+                        "moniker"
+                    ]
+                }
+            },
+            "required": [
+                "not_dynamic_instance_error"
+            ],
+            "additionalProperties": false
+        },
+        {
+            "type": "object",
+            "properties": {
+                "get_moniker_failed": {
+                    "type": "object",
+                    "properties": {
+                        "message": {
+                            "type": "string"
+                        }
+                    },
+                    "required": [
+                        "message"
+                    ]
+                }
+            },
+            "required": [
+                "get_moniker_failed"
+            ],
+            "additionalProperties": false
+        }
+    ]
+}

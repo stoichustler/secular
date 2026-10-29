@@ -1,0 +1,68 @@
+# Copyright 2026 The Fuchsia Authors. All rights reserved.
+# Use of this source code is governed by a BSD-style license that can be
+# found in the LICENSE file.
+
+load("//products/build/bazel/rules/rust:rustc_library.bzl", "rustc_library")
+load("//products/build/bazel/rules/rust:rustc_test.bzl", "rustc_test")
+load("//products/build/bazel/rules/testing:fx_unittest_package.bzl", "fx_unittest_package")
+
+package(default_applicable_licenses = ["//:license"])
+
+rustc_library(
+    name = "fidl-fuchsia-update-ext",
+    srcs = [
+        "src/lib.rs",
+        "src/types.rs",
+    ] + select({
+        "@platforms//os:fuchsia": [
+            "src/commit.rs",
+        ],
+        "//conditions:default": [],
+    }),
+    edition = "2024",
+    lint_config = "//products/build/config/rust/lints:clippy_warn_all",
+    proc_macro_deps = [
+        "//third_party/rust_crates/vendor:proptest-derive",
+    ],
+    visibility = [
+        "//userspace/developer/ffx/plugins/target/update:__pkg__",
+        "//userspace/sys/pkg:__subpackages__",
+    ],
+    deps = [
+        "//sdk/fidl/fuchsia.update:fuchsia.update_rust_common",
+        "//userspace/sys/pkg/lib/event-queue",
+        "//third_party/rust_crates/vendor:proptest",
+        "//third_party/rust_crates/vendor:thiserror",
+        "//third_party/rust_crates/vendor:typed-builder",
+    ] + select({
+        "@platforms//os:fuchsia": [
+            "//sdk/fidl/fuchsia.update:fuchsia.update_rust",
+            "//sdk/rust/zx",
+            "//third_party/rust_crates/vendor:anyhow",
+        ],
+        "//conditions:default": [],
+    }),
+)
+
+# @bazel2gn:skip
+rustc_test(
+    name = "fidl_fuchsia_update_ext_lib_test",
+    crate = ":fidl-fuchsia-update-ext",
+    edition = "2024",
+    lint_config = "//products/build/config/rust/lints:clippy_warn_all",
+    deps = select({
+        "@platforms//os:fuchsia": [
+            "//userspace/lib/fidl/rust/fidl",
+            "//userspace/lib/fuchsia",
+            "//userspace/lib/fuchsia-async",
+            "//third_party/rust_crates/vendor:futures",
+        ],
+        "//conditions:default": [],
+    }),
+)
+
+# @bazel2gn:skip
+fx_unittest_package(
+    name = "fidl-fuchsia-update-ext-tests",
+    unit_tests = [":fidl_fuchsia_update_ext_lib_test"],
+)

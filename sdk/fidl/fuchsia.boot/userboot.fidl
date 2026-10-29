@@ -1,0 +1,60 @@
+// Copyright 2024 The Fuchsia Authors. All rights reserved.
+// Use of this source code is governed by a BSD-style license that can be
+// found in the LICENSE file.
+
+library fuchsia.boot;
+
+using zx;
+
+/// Refers to a VMO that has been created from the big bootfs VMO.
+type BootfsFileVmo = resource struct {
+    /// Offset of the VMO in the bootfs VMO.
+    offset uint32;
+    /// VMO with the contents from the decoded file.
+    contents zx.Handle:<VMO>;
+};
+
+/// Protocol for communication between `userboot` and the process booted by userboot.
+///
+/// The userboot process will act as a client, pipelining requests containing information and/or handles that might
+/// be useful for the booted process. The booted process, or whoever processes the server endpoint of this protocol,
+/// will then process the pipelined requests from userboot.
+closed protocol Userboot {
+
+    /// Posts the uncompressed bootfs VMO.
+    strict PostBootfsVmo(resource struct {
+        bootfs zx.Handle:<VMO>;
+    });
+
+    /// Posts a set of `BootfsFileVmo` that were used for launching the `userboot.next=` program and are no longer
+    /// available in the big BootfsVmo.
+    ///
+    /// Messages will only become available after the `Userboot` protocol client end (userboot's handle)
+    /// has been closed.
+    strict PostBootfsFiles(resource struct {
+        files vector<BootfsFileVmo>:zx.CHANNEL_MAX_MSG_HANDLES;
+    });
+
+    /// Posts non-bootstrap handles provided by the kernel to the booted process.
+    strict PostBootHandles(resource table {
+        /// ZBI (bootdata) VMO.
+        1: zbi_vmo zx.Handle:VMO;
+        /// Kernel file VMOs to be published under `/boot/kernel/`.
+        2: kernel_files vector<zx.Handle:VMO>:zx.CHANNEL_MAX_MSG_HANDLES;
+        /// System resource handle.
+        3: system_resource zx.Handle:RESOURCE;
+        /// MMIO resource handle.
+        4: mmio_resource zx.Handle:RESOURCE;
+        /// IRQ resource handle.
+        5: irq_resource zx.Handle:RESOURCE;
+        /// I/O port resource handle (x86_64).
+        6: ioport_resource zx.Handle:RESOURCE;
+        /// SMC resource handle (aarch64).
+        7: smc_resource zx.Handle:RESOURCE;
+    });
+
+    /// Posts `svc_stash` server endpoint. For more information refer to `fuchsia.boot.SvcStash`.
+    strict PostStashSvc(resource struct {
+        stash_svc_endpoint server_end:SvcStash;
+    });
+};

@@ -1,0 +1,94 @@
+{
+    project_id: 4247972873,
+    data_sets: [
+        {
+            metrics: [
+                {
+                    event_codes: [
+                        "true",
+                    ],
+                    metric_name: "ota_successful_commit_boot_attempts_count",
+                    metric_type: "Integer",
+                    selector: "core/system-update/system-update-committer:root/commit:boot_attempts",
+                    upload_once: true,
+                },
+                {
+                    event_codes: [
+                        "false",
+                    ],
+                    metric_name: "ota_successful_commit_boot_attempts_count",
+                    metric_type: "Integer",
+                    selector: "core/system-update/system-update-committer:root/commit:boot_attempts_missing",
+                    upload_once: true,
+                },
+                {
+                    event_codes: [
+                        "success",
+                    ],
+                    metric_name: "ota_verification_duration_migrated",
+                    metric_type: "Integer",
+                    selector: "core/system-update/system-update-committer:root/verification/ota_verification_duration:success",
+                    upload_once: true,
+                },
+                {
+                    event_codes: [
+                        "failure_health_check",
+                    ],
+                    metric_name: "ota_verification_duration_migrated",
+                    metric_type: "Integer",
+                    selector: "core/system-update/system-update-committer:root/verification/ota_verification_duration:failure_health_check",
+                    upload_once: true,
+                },
+                {
+                    event_codes: [
+                        "failure_timeout",
+                    ],
+                    metric_name: "ota_verification_duration_migrated",
+                    metric_type: "Integer",
+                    selector: "core/system-update/system-update-committer:root/verification/ota_verification_duration:failure_timeout",
+                    upload_once: true,
+                },
+                {
+                    event_codes: [
+                        "failure_internal",
+                    ],
+                    metric_name: "ota_verification_duration_migrated",
+                    metric_type: "Integer",
+                    selector: "core/system-update/system-update-committer:root/verification/ota_verification_duration:failure_internal",
+                    upload_once: true,
+                },
+                {
+                    event_codes: [
+                        "failure_health_check",
+                        "verify",
+                    ],
+                    metric_name: "ota_verification_failure_migrated",
+                    metric_type: "Occurrence",
+                    selector: "core/system-update/system-update-committer:root/verification/ota_verification_failure:verify",
+                    upload_once: true,
+                },
+                {
+                    event_codes: [
+                        "failure_timeout",
+                        "timeout",
+                    ],
+                    metric_name: "ota_verification_failure_migrated",
+                    metric_type: "Occurrence",
+                    selector: "core/system-update/system-update-committer:root/verification/ota_verification_failure:timeout",
+                    upload_once: true,
+                },
+                {
+                    event_codes: [
+                        "failure_internal",
+                        "internal",
+                    ],
+                    metric_name: "ota_verification_failure_migrated",
+                    metric_type: "Occurrence",
+                    selector: "core/system-update/system-update-committer:root/verification/ota_verification_failure:internal",
+                    upload_once: true,
+                },
+            ],
+            poll_rate_sec: 3600,
+        },
+    ],
+}

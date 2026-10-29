@@ -1,0 +1,82 @@
+# Copyright 2020 The Fuchsia Authors. All rights reserved.
+# Use of this source code is governed by a BSD-style license that can be
+# found in the LICENSE file.
+
+import("//products/build/components.gni")
+import("//products/build/test.gni")
+import("//userspace/storage/testing/driver_test_realm.gni")
+
+group("tests") {
+  testonly = true
+  deps = [
+    ":ftl-library-test",
+    ":ftl-wear-simulator-package",
+  ]
+}
+
+test("ftl-test") {
+  output_name = "ftl-library-test"
+  if (is_fuchsia) {
+    fdio_config = [ "//products/build/config/fuchsia:fdio_config" ]
+    if (configs + fdio_config - fdio_config != configs) {
+      configs -= fdio_config
+    }
+  }
+  sources = [
+    "ftl_test.cc",
+    "ndm_driver_test.cc",
+    "ndm_test.cc",
+  ]
+  deps = [
+    "//userspace/devices/block/drivers/ftl/tests:shared",
+    "//userspace/lib/fxl/test:gtest_main",
+    "//userspace/storage/lib/ftl",
+    "//third_party/googletest:gtest",
+  ]
+  defines = [ "NDM_DEBUG" ]
+}
+
+fuchsia_unittest_package("ftl-library-test") {
+  deps = [ ":ftl-test" ]
+}
+
+source_set("ftl-workload-fuzzer") {
+  sources = [ "ftl_workload_fuzzer.cc" ]
+  deps = [
+    "//userspace/devices/block/drivers/ftl/tests:shared",
+    "//userspace/storage/lib/ftl",
+  ]
+}
+
+test("ftl-wear-simulator-test") {
+  sources = [ "wear_simulator.cc" ]
+  deps = [
+    "//sdk/lib/syslog/cpp",
+    "//userspace/lib/files",
+    "//userspace/lib/fxl/test:gtest_main",
+    "//userspace/storage/blobfs",
+    "//userspace/storage/blobfs/bin:blobfs-component",
+    "//userspace/storage/blobfs/test:test_utils",
+    "//userspace/storage/fs_test",
+    "//userspace/storage/fvm:fvm-component",
+    "//userspace/storage/fxfs/fidl/fuchsia.fxfs:fuchsia.fxfs_cpp",
+    "//userspace/storage/lib/ftl/test/testdata:minimal_image",
+    "//userspace/storage/minfs/bin:minfs-test-component",
+    "//third_party/zstd",
+    "//zircon/system/ulib/fbl",
+    "//zircon/system/ulib/fzl",
+  ]
+}
+
+storage_driver_test_realm_component("ftl-wear-simulator") {
+  deps = [ ":ftl-wear-simulator-test" ]
+}
+
+fuchsia_test_package("ftl-wear-simulator-package") {
+  test_specs = {
+    log_settings = {
+      max_severity = "ERROR"
+    }
+  }
+  test_components = [ ":ftl-wear-simulator" ]
+}

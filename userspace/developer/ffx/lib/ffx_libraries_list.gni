@@ -1,0 +1,82 @@
+# Copyright 2026 The Fuchsia Authors. All rights reserved.
+# Use of this source code is governed by a BSD-style license that can be
+# found in the LICENSE file.
+
+all_ffx_libraries = [
+  # keep-sorted start
+  "addr",
+  "arg_parsing",
+  "auth",
+  "buildid",
+  "compat_info",
+  "diagnostics",
+  "discovery",
+  "doctor_utils",
+  "emulator_instance",
+  "errors",
+  "executor",
+  "fastboot",
+  "fastboot_file_discovery",
+  "fho",
+  "gce",
+  "isolate",
+  "logging",
+  "manual_targets",
+  "mdns_discovery",
+  "metrics",
+  "netext",
+  "pbms",
+  "pkg",
+  "port_picker",
+  "rcs",
+  "safe_string",
+  "sdk",
+  "ssh",
+  "symbol-index",
+  "symbolize",
+  "target",
+  "target/connector",
+  "target/holders",
+  "target_errors",
+  "target_net",
+  "termio",
+  "testing",
+  "timeout",
+  "trace",
+  "traceable_error",
+  "uart_driver_api",
+  "uefi_disk",
+  "usb_driver_api",
+  "usb_fastboot_discovery",
+  "usb_vsock_host",
+  "version",
+  "writer",
+
+  # keep-sorted end
+]
+
+tests_migrated_ffx_libraries = [
+  # keep-sorted start
+  "arg_parsing",
+  "buildid",
+  "compat_info",
+  "errors",
+  "isolate",
+  "logging",
+  "metrics",
+  "netext",
+  "port_picker",
+  "safe_string",
+  "ssh",
+  "target_errors",
+  "termio",
+  "trace",
+  "traceable_error",
+  "usb_fastboot_discovery",
+  "version",
+
+  # keep-sorted end
+]
+
+tests_unmigrated_ffx_libraries =
+    all_ffx_libraries - tests_migrated_ffx_libraries

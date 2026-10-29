@@ -1,0 +1,65 @@
+# Copyright 2025 The Fuchsia Authors. All rights reserved.
+# Use of this source code is governed by a BSD-style license that can be
+# found in the LICENSE file.
+
+import("//products/build/host.gni")
+import("//products/build/rust/rustc_library.gni")
+
+assert(is_host, "Assembly libraries are host-only")
+
+rustc_library("image_assembly_config_builder") {
+  edition = "2024"
+  version = "0.1.0"
+  with_unit_tests = true
+  deps = [
+    "//sdk/fidl/fuchsia.component.decl:fuchsia.component.decl_rust",
+    "//userspace/lib/assembly/cli_args",
+    "//userspace/lib/assembly/components",
+    "//userspace/lib/assembly/config_capabilities",
+    "//userspace/lib/assembly/config_data",
+    "//userspace/lib/assembly/config_schema",
+    "//userspace/lib/assembly/constants",
+    "//userspace/lib/assembly/container",
+    "//userspace/lib/assembly/domain_config",
+    "//userspace/lib/assembly/driver_manifest",
+    "//userspace/lib/assembly/image_assembly_config",
+    "//userspace/lib/assembly/images_config",
+    "//userspace/lib/assembly/memory_buckets",
+    "//userspace/lib/assembly/named_file_map",
+    "//userspace/lib/assembly/package_utils",
+    "//userspace/lib/assembly/platform_artifacts",
+    "//userspace/lib/assembly/platform_configuration",
+    "//userspace/lib/assembly/product_input_bundle",
+    "//userspace/lib/assembly/release_info",
+    "//userspace/lib/assembly/shell_commands",
+    "//userspace/lib/assembly/structured_config",
+    "//userspace/lib/assembly/tool",
+    "//userspace/lib/assembly/util",
+    "//userspace/lib/assembly/validate_package",
+    "//userspace/lib/assembly/validate_util",
+    "//userspace/lib/fidl/rust/fidl",
+    "//userspace/lib/fuchsia-url",
+    "//userspace/sys/pkg/lib/far/rust:fuchsia-archive",
+    "//userspace/sys/pkg/lib/fuchsia-pkg",
+    "//third_party/rust_crates:anyhow",
+    "//third_party/rust_crates:camino",
+    "//third_party/rust_crates:itertools",
+    "//third_party/rust_crates:rayon",
+    "//third_party/rust_crates:serde",
+    "//third_party/rust_crates:serde_json",
+    "//third_party/rust_crates:textwrap",
+  ]
+  test_deps = [
+    "//userspace/lib/assembly/release_info",
+    "//userspace/lib/assembly/test_util",
+    "//userspace/sys/pkg/lib/far/rust:fuchsia-archive",
+    "//third_party/rust_crates:serde_json",
+    "//third_party/rust_crates:tempfile",
+  ]
+  sources = [
+    "src/compiled_package.rs",
+    "src/image_assembly_config_builder.rs",
+    "src/lib.rs",
+    "src/product_assembly.rs",
+  ]
+}

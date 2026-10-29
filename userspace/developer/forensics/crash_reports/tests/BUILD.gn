@@ -1,0 +1,574 @@
+# Copyright 2018 The Fuchsia Authors. All rights reserved.
+# Use of this source code is governed by a BSD-style license that can be
+# found in the LICENSE file.
+
+import("//products/build/components.gni")
+import("//products/build/components/fuchsia_unittest_component.gni")
+import("//products/build/testing/cc_test_executable.gni")
+
+visibility = [ ":*" ]
+
+###############################################################################
+# EXECUTABLES
+###############################################################################
+cc_test_executable("annotation_map_unittest_exe") {
+  testonly = true
+
+  sources = [ "annotation_map_unittest.cc" ]
+
+  deps = [
+    "//userspace/developer/forensics/crash_reports:annotation_map",
+    "//userspace/developer/forensics/testing:gtest_with_syslog_main",
+    "//third_party/googletest:gmock",
+    "//third_party/googletest:gtest",
+  ]
+}
+
+cc_test_executable("crash_register_unittest_exe") {
+  testonly = true
+
+  sources = [ "crash_register_unittest.cc" ]
+
+  deps = [
+    "//sdk/fidl/fuchsia.feedback:fuchsia.feedback_hlcpp",
+    "//sdk/lib/async:async-cpp",
+    "//sdk/lib/fit-promise",
+    "//userspace/developer/forensics/crash_reports:crash_register",
+    "//userspace/developer/forensics/crash_reports/info",
+    "//userspace/developer/forensics/testing:gpretty_printers",
+    "//userspace/developer/forensics/testing:gtest_with_syslog_main",
+    "//userspace/developer/forensics/testing:unit_test_fixture",
+    "//userspace/developer/forensics/testing/stubs:cobalt",
+    "//userspace/lib/files",
+    "//userspace/lib/timekeeper:testing",
+    "//third_party/googletest:gmock",
+    "//third_party/googletest:gtest",
+    "//zircon/system/ulib/zx",
+  ]
+}
+
+cc_test_executable("crash_reporter_unittest_exe") {
+  testonly = true
+
+  sources = [
+    "crash_reporter_unittest.cc",
+    "stub_crash_server.cc",
+    "stub_crash_server.h",
+  ]
+
+  deps = [
+    ":scoped_test_report_store",
+    "//sdk/fidl/fuchsia.feedback:fuchsia.feedback_hlcpp",
+    "//sdk/fidl/fuchsia.mem:fuchsia.mem_hlcpp",
+    "//sdk/fidl/fuchsia.settings:fuchsia.settings_hlcpp",
+    "//sdk/fidl/fuchsia.time:fuchsia.time_hlcpp",
+    "//sdk/lib/fit-promise",
+    "//sdk/lib/syslog/cpp",
+    "//userspace/developer/forensics/crash_reports:constants",
+    "//userspace/developer/forensics/crash_reports:crash_reporter",
+    "//userspace/developer/forensics/crash_reports/info",
+    "//userspace/developer/forensics/feedback/annotations",
+    "//userspace/developer/forensics/feedback_data:constants",
+    "//userspace/developer/forensics/testing:gtest_with_syslog_main",
+    "//userspace/developer/forensics/testing:unit_test_fixture",
+    "//userspace/developer/forensics/testing/fakes:privacy_settings",
+    "//userspace/developer/forensics/testing/stubs:cobalt",
+    "//userspace/developer/forensics/testing/stubs:data_provider",
+    "//userspace/developer/forensics/testing/stubs:device_id_provider",
+    "//userspace/developer/forensics/utils/cobalt",
+    "//userspace/lib/fsl",
+    "//userspace/lib/timekeeper:testing",
+    "//third_party/crashpad/src/util",
+    "//third_party/googletest:gmock",
+    "//third_party/googletest:gtest",
+    "//zircon/system/ulib/zx",
+  ]
+}
+
+cc_test_executable("crash_server_unittest_exe") {
+  testonly = true
+
+  # "crash_server_unittest" is rather generic for the default_output_dir that
+  # is set to root_out_dir so instead we write the binary to target_out_dir.
+  output_dir = target_out_dir
+
+  sources = [ "crash_server_unittest.cc" ]
+
+  deps = [
+    "//sdk/lib/sys/cpp/testing:unit",
+    "//userspace/developer/forensics/crash_reports:constants",
+    "//userspace/developer/forensics/crash_reports:crash_server",
+    "//userspace/developer/forensics/testing:gtest_with_syslog_main",
+    "//userspace/developer/forensics/testing:unit_test_fixture",
+    "//userspace/developer/forensics/testing/stubs:data_provider",
+    "//userspace/developer/forensics/testing/stubs:loader",
+    "//userspace/lib/timekeeper:testing",
+    "//third_party/googletest:gtest",
+  ]
+}
+
+cc_test_executable("dart_module_parser_unittest_exe") {
+  testonly = true
+
+  sources = [ "dart_module_parser_unittest.cc" ]
+
+  deps = [
+    "//userspace/developer/forensics/crash_reports:report_util",
+    "//userspace/developer/forensics/testing:gtest_with_syslog_main",
+    "//userspace/lib/fxl",
+    "//third_party/googletest:gmock",
+    "//third_party/googletest:gtest",
+  ]
+}
+
+cc_test_executable("filing_result_unittest_exe") {
+  testonly = true
+
+  sources = [ "filing_result_unittest.cc" ]
+
+  deps = [
+    "//sdk/fidl/fuchsia.feedback:fuchsia.feedback_hlcpp",
+    "//userspace/developer/forensics/crash_reports:filing_result",
+    "//userspace/developer/forensics/testing:gtest_with_syslog_main",
+    "//third_party/googletest:gtest",
+  ]
+}
+
+cc_test_executable("inspect_manager_unittest_exe") {
+  testonly = true
+
+  # "inspect_manager_unittest" is rather generic for the default_output_dir
+  # that is set to root_out_dir so instead we write the binary to
+  # target_out_dir.
+  output_dir = target_out_dir
+
+  sources = [ "inspect_manager_unittest.cc" ]
+
+  deps = [
+    "//sdk/lib/syslog/cpp",
+    "//userspace/developer/forensics/crash_reports:constants",
+    "//userspace/developer/forensics/crash_reports:errors",
+    "//userspace/developer/forensics/crash_reports/info:inspect_manager",
+    "//userspace/developer/forensics/feedback:config",
+    "//userspace/developer/forensics/testing:gtest_with_syslog_main",
+    "//userspace/developer/forensics/testing:unit_test_fixture",
+    "//userspace/lib/fxl",
+    "//userspace/lib/timekeeper:testing",
+    "//third_party/googletest:gmock",
+    "//third_party/googletest:gtest",
+    "//zircon/system/ulib/zx",
+  ]
+}
+
+cc_test_executable("product_quotas_unittest_exe") {
+  testonly = true
+
+  sources = [ "product_quotas_unittest.cc" ]
+
+  deps = [
+    "//userspace/developer/forensics/crash_reports:crash_reporter",
+    "//userspace/developer/forensics/testing:gtest_with_syslog_main",
+    "//userspace/developer/forensics/testing:unit_test_fixture",
+    "//userspace/developer/forensics/testing/stubs:utc_clock_ready_watcher",
+    "//userspace/lib/files",
+    "//userspace/lib/timekeeper:testing",
+    "//third_party/googletest:gtest",
+  ]
+}
+
+cc_test_executable("program_shortname_unittest_exe") {
+  testonly = true
+
+  sources = [ "program_shortname_unittest.cc" ]
+
+  deps = [
+    "//userspace/developer/forensics/crash_reports:program_shortname",
+    "//userspace/developer/forensics/testing:gtest_with_syslog_main",
+    "//third_party/googletest:gmock",
+    "//third_party/googletest:gtest",
+  ]
+}
+
+cc_test_executable("queue_unittest_exe") {
+  testonly = true
+
+  sources = [
+    "queue_unittest.cc",
+    "stub_crash_server.cc",
+    "stub_crash_server.h",
+  ]
+
+  deps = [
+    ":scoped_test_report_store",
+    "//userspace/developer/forensics/crash_reports:constants",
+    "//userspace/developer/forensics/crash_reports:queue",
+    "//userspace/developer/forensics/crash_reports/info",
+    "//userspace/developer/forensics/testing:gpretty_printers",
+    "//userspace/developer/forensics/testing:gtest_with_syslog_main",
+    "//userspace/developer/forensics/testing:unit_test_fixture",
+    "//userspace/developer/forensics/testing/stubs:cobalt",
+    "//userspace/developer/forensics/testing/stubs:data_provider",
+    "//userspace/lib/fsl",
+    "//userspace/lib/timekeeper:testing",
+    "//third_party/googletest:gmock",
+    "//third_party/googletest:gtest",
+  ]
+}
+
+cc_test_executable("reporting_policy_watcher_unittest_exe") {
+  testonly = true
+
+  sources = [ "reporting_policy_watcher_unittest.cc" ]
+
+  deps = [
+    "//userspace/developer/forensics/crash_reports:reporting_policy_watcher",
+    "//userspace/developer/forensics/testing:gtest_with_syslog_main",
+    "//userspace/developer/forensics/testing:unit_test_fixture",
+    "//userspace/developer/forensics/testing/fakes:privacy_settings",
+    "//third_party/googletest:gtest",
+  ]
+}
+
+cc_test_executable("report_util_unittest_exe") {
+  testonly = true
+
+  sources = [ "report_util_unittest.cc" ]
+
+  deps = [
+    "//userspace/developer/forensics/crash_reports:report_util",
+    "//userspace/developer/forensics/testing:gtest_with_syslog_main",
+    "//third_party/googletest:gmock",
+    "//third_party/googletest:gtest",
+  ]
+}
+
+cc_test_executable("sized_data_reader_unittest_exe") {
+  testonly = true
+
+  sources = [ "sized_data_reader_unittest.cc" ]
+
+  deps = [
+    ":test_data",
+    "//userspace/developer/forensics/crash_reports:sized_data_reader",
+    "//userspace/lib/files",
+    "//userspace/lib/fxl/test:gtest_main",
+    "//third_party/crashpad/src/util",
+    "//third_party/googletest:gtest",
+  ]
+}
+
+cc_test_executable("snapshot_collector_unittest_exe") {
+  testonly = true
+
+  sources = [
+    "snapshot_collector_unittest.cc",
+    "stub_crash_server.cc",
+    "stub_crash_server.h",
+  ]
+
+  deps = [
+    ":scoped_test_report_store",
+    "//userspace/developer/forensics/crash_reports:errors",
+    "//userspace/developer/forensics/crash_reports:snapshot_collector",
+    "//userspace/developer/forensics/testing:gmatchers",
+    "//userspace/developer/forensics/testing:gpretty_printers",
+    "//userspace/developer/forensics/testing:gtest_with_syslog_main",
+    "//userspace/developer/forensics/testing:unit_test_fixture",
+    "//userspace/developer/forensics/testing/stubs:data_provider",
+    "//userspace/lib/timekeeper:testing",
+    "//third_party/googletest:gmock",
+    "//third_party/googletest:gtest",
+  ]
+}
+
+cc_test_executable("snapshot_persistence_metadata_unittest_exe") {
+  testonly = true
+
+  sources = [ "snapshot_persistence_metadata_unittest.cc" ]
+
+  deps = [
+    "//userspace/developer/forensics/crash_reports:store",
+    "//userspace/developer/forensics/testing:gtest_with_syslog_main",
+    "//userspace/developer/forensics/testing:scoped_memfs_manager",
+    "//userspace/developer/forensics/utils:storage_size",
+    "//userspace/lib/files",
+    "//third_party/googletest:gmock",
+    "//third_party/googletest:gtest",
+  ]
+}
+
+cc_test_executable("snapshot_persistence_unittest_exe") {
+  testonly = true
+
+  sources = [ "snapshot_persistence_unittest.cc" ]
+
+  deps = [
+    "//userspace/developer/forensics/crash_reports:constants",
+    "//userspace/developer/forensics/crash_reports:store",
+    "//userspace/developer/forensics/feedback_data:constants",
+    "//userspace/developer/forensics/testing:gmatchers",
+    "//userspace/developer/forensics/testing:gpretty_printers",
+    "//userspace/developer/forensics/testing:gtest_with_syslog_main",
+    "//userspace/developer/forensics/testing:scoped_memfs_manager",
+    "//userspace/developer/forensics/testing:unit_test_fixture",
+    "//third_party/googletest:gmock",
+    "//third_party/googletest:gtest",
+  ]
+}
+
+cc_test_executable("snapshot_store_unittest_exe") {
+  testonly = true
+
+  sources = [ "snapshot_store_unittest.cc" ]
+
+  deps = [
+    "//userspace/developer/forensics/crash_reports:constants",
+    "//userspace/developer/forensics/crash_reports:store",
+    "//userspace/developer/forensics/testing:gmatchers",
+    "//userspace/developer/forensics/testing:gpretty_printers",
+    "//userspace/developer/forensics/testing:gtest_with_syslog_main",
+    "//userspace/developer/forensics/testing:unit_test_fixture",
+    "//third_party/googletest:gmock",
+    "//third_party/googletest:gtest",
+  ]
+}
+
+cc_test_executable("report_store_unittest_exe") {
+  testonly = true
+
+  sources = [ "report_store_unittest.cc" ]
+
+  deps = [
+    "//sdk/lib/syslog/cpp",
+    "//userspace/developer/forensics/crash_reports:store",
+    "//userspace/developer/forensics/feedback_data:constants",
+    "//userspace/developer/forensics/testing:gpretty_printers",
+    "//userspace/developer/forensics/testing:gtest_with_syslog_main",
+    "//userspace/developer/forensics/testing:scoped_memfs_manager",
+    "//userspace/developer/forensics/testing:unit_test_fixture",
+    "//userspace/developer/forensics/utils:sized_data",
+    "//userspace/developer/forensics/utils:storage_size",
+    "//userspace/lib/files",
+    "//userspace/lib/timekeeper:testing",
+    "//third_party/googletest:gmock",
+    "//third_party/googletest:gtest",
+    "//third_party/rapidjson",
+  ]
+}
+
+cc_test_executable("report_store_metadata_unittest_exe") {
+  testonly = true
+
+  sources = [ "report_store_metadata_unittest.cc" ]
+
+  deps = [
+    "//sdk/lib/syslog/cpp",
+    "//userspace/developer/forensics/crash_reports:store",
+    "//userspace/developer/forensics/testing:gtest_with_syslog_main",
+    "//userspace/developer/forensics/testing:scoped_memfs_manager",
+    "//userspace/developer/forensics/utils:storage_size",
+    "//userspace/lib/files",
+    "//third_party/googletest:gmock",
+    "//third_party/googletest:gtest",
+  ]
+}
+
+source_set("scoped_test_report_store") {
+  sources = [
+    "scoped_test_report_store.cc",
+    "scoped_test_report_store.h",
+  ]
+
+  public_deps = [
+    "//userspace/developer/forensics/crash_reports:store",
+    "//userspace/developer/forensics/feedback/annotations",
+    "//userspace/developer/forensics/utils:storage_size",
+  ]
+
+  deps = [
+    "//userspace/developer/forensics/crash_reports:constants",
+    "//userspace/lib/files",
+  ]
+}
+
+###############################################################################
+# RESOURCES
+###############################################################################
+resource("test_data") {
+  sources = [ "resources/test_data.zip" ]
+
+  outputs = [ "data/test_data.zip" ]
+}
+
+###############################################################################
+# COMPONENTS
+###############################################################################
+fuchsia_unittest_component("annotation_map_unittest") {
+  deps = [ ":annotation_map_unittest_exe" ]
+}
+
+fuchsia_unittest_component("crash_register_unittest") {
+  deps = [
+    ":crash_register_unittest_exe",
+    "//userspace/sys/test_runners:tmp_storage",
+  ]
+}
+
+fuchsia_component("crash_reporter_unittest") {
+  testonly = true
+
+  manifest = "meta/crash_reporter_unittest.cml"
+
+  deps = [
+    ":crash_reporter_unittest_exe",
+    "//userspace/sys/test_runners:tmp_storage",
+  ]
+}
+
+fuchsia_unittest_component("crash_server_unittest") {
+  deps = [ ":crash_server_unittest_exe" ]
+}
+
+fuchsia_unittest_component("dart_module_parser_unittest") {
+  deps = [ ":dart_module_parser_unittest_exe" ]
+}
+
+fuchsia_unittest_component("filing_result_unittest") {
+  deps = [ ":filing_result_unittest_exe" ]
+}
+
+fuchsia_unittest_component("inspect_manager_unittest") {
+  deps = [ ":inspect_manager_unittest_exe" ]
+}
+
+fuchsia_unittest_component("product_quotas_unittest") {
+  deps = [
+    ":product_quotas_unittest_exe",
+    "//userspace/sys/test_runners:tmp_storage",
+    "//userspace/sys/test_runners/gtest:death_test",
+  ]
+}
+
+fuchsia_unittest_component("program_shortname_unittest") {
+  deps = [ ":program_shortname_unittest_exe" ]
+}
+
+fuchsia_component("queue_unittest") {
+  testonly = true
+
+  manifest = "meta/queue_unittest.cml"
+
+  deps = [
+    ":queue_unittest_exe",
+    "//userspace/sys/test_runners:tmp_storage",
+  ]
+}
+
+fuchsia_unittest_component("report_util_unittest") {
+  deps = [ ":report_util_unittest_exe" ]
+}
+
+fuchsia_unittest_component("reporting_policy_watcher_unittest") {
+  deps = [
+    ":reporting_policy_watcher_unittest_exe",
+    "//userspace/sys/test_runners/gtest:death_test",
+  ]
+}
+
+fuchsia_unittest_component("sized_data_reader_unittest") {
+  deps = [ ":sized_data_reader_unittest_exe" ]
+}
+
+fuchsia_unittest_component("snapshot_collector_unittest") {
+  deps = [
+    ":snapshot_collector_unittest_exe",
+    "//userspace/sys/test_runners:tmp_storage",
+  ]
+}
+
+fuchsia_unittest_component("snapshot_persistence_metadata_unittest") {
+  deps = [
+    ":snapshot_persistence_metadata_unittest_exe",
+    "//userspace/sys/test_runners:tmp_storage",
+  ]
+}
+
+fuchsia_unittest_component("snapshot_persistence_unittest") {
+  deps = [
+    ":snapshot_persistence_unittest_exe",
+    "//userspace/sys/test_runners:tmp_storage",
+    "//userspace/sys/test_runners/gtest:death_test",
+  ]
+}
+
+fuchsia_unittest_component("snapshot_store_unittest") {
+  deps = [
+    ":snapshot_store_unittest_exe",
+    "//userspace/sys/test_runners:tmp_storage",
+    "//userspace/sys/test_runners/gtest:death_test",
+  ]
+}
+
+fuchsia_unittest_component("report_store_metadata_unittest") {
+  deps = [
+    ":report_store_metadata_unittest_exe",
+    "//userspace/sys/test_runners:tmp_storage",
+  ]
+}
+
+fuchsia_unittest_component("report_store_unittest") {
+  deps = [
+    ":report_store_unittest_exe",
+    "//userspace/sys/test_runners:tmp_storage",
+    "//userspace/sys/test_runners/gtest:death_test",
+  ]
+}
+
+###############################################################################
+# PACKAGES
+###############################################################################
+fuchsia_test_package("crash-reports-tests") {
+  test_components = [
+    ":annotation_map_unittest",
+    ":crash_register_unittest",
+    ":crash_reporter_unittest",
+    ":crash_server_unittest",
+    ":dart_module_parser_unittest",
+    ":filing_result_unittest",
+    ":reporting_policy_watcher_unittest",
+    ":inspect_manager_unittest",
+    ":product_quotas_unittest",
+    ":program_shortname_unittest",
+    ":queue_unittest",
+    ":report_util_unittest",
+    ":sized_data_reader_unittest",
+    ":snapshot_collector_unittest",
+    ":snapshot_persistence_metadata_unittest",
+    ":snapshot_persistence_unittest",
+    ":snapshot_store_unittest",
+    ":report_store_unittest",
+    ":report_store_metadata_unittest",
+  ]
+
+  test_specs = {
+    log_settings = {
+      max_severity = "FATAL"
+    }
+  }
+}
+
+###############################################################################
+# GROUPS
+###############################################################################
+group("tests") {
+  testonly = true
+
+  deps = [
+    ":crash-reports-tests",
+
+    # To run the Crashpad tests.
+    "//third_party/crashpad/src:tests",
+  ]
+
+  visibility += [ "//userspace/developer/forensics:tests" ]
+}

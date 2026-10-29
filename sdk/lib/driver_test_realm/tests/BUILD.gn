@@ -1,0 +1,55 @@
+# Copyright 2021 The Fuchsia Authors. All rights reserved.
+# Use of this source code is governed by a BSD-style license that can be
+# found in the LICENSE file.
+
+import("//products/build/bind/bind.gni")
+import("//products/build/components.gni")
+import("//products/build/rust/rustc_test.gni")
+import("//products/build/test.gni")
+
+group("tests") {
+  testonly = true
+  deps = [ ":package" ]
+}
+
+rustc_test("driver_test_realm_test") {
+  edition = "2024"
+  testonly = true
+  source_root = "test.rs"
+  sources = [ "test.rs" ]
+  deps = [
+    "//sdk/fidl/fuchsia.boot:fuchsia.boot_rust",
+    "//sdk/fidl/fuchsia.driver.development:fuchsia.driver.development_rust",
+    "//sdk/fidl/fuchsia.driver.framework:fuchsia.driver.framework_rust",
+    "//sdk/fidl/fuchsia.driver.test:fuchsia.driver.test_rust",
+    "//sdk/fidl/fuchsia.io:fuchsia.io_rust",
+    "//sdk/lib/device-watcher/rust",
+    "//sdk/lib/driver_test_realm/realm_builder/rust",
+    "//sdk/rust/zbi",
+    "//sdk/rust/zx",
+    "//userspace/lib/fidl/rust/fidl",
+    "//userspace/lib/fuchsia",
+    "//userspace/lib/fuchsia-async",
+    "//userspace/lib/fuchsia-component",
+    "//userspace/lib/fuchsia-component-test",
+    "//userspace/lib/fuchsia-fs",
+    "//third_party/rust_crates:anyhow",
+    "//third_party/rust_crates:futures",
+    "//third_party/rust_crates:zerocopy",
+  ]
+}
+
+fuchsia_unittest_package("package") {
+  package_name = "driver_test_realm_test"
+  deps = [
+    ":driver_test_realm_test",
+    "//userspace/devices/bus/drivers/platform:platform-bus",
+    "//userspace/devices/misc/drivers/test",
+    "//userspace/devices/misc/drivers/test-parent",
+  ]
+  test_specs = {
+    log_settings = {
+      max_severity = "ERROR"
+    }
+  }
+}

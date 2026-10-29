@@ -1,0 +1,104 @@
+# Copyright 2019 The Fuchsia Authors. All rights reserved.
+# Use of this source code is governed by a BSD-style license that can be
+# found in the LICENSE file.
+
+import("//products/build/components.gni")
+import("//products/build/rust/rustc_library.gni")
+import("//products/build/rust/rustc_test.gni")
+
+rustc_library("fuchsia-pkg-testing") {
+  testonly = true
+  version = "0.1.0"
+  edition = "2024"
+  with_unit_tests = true
+
+  deps = [
+    "//sdk/fidl/fuchsia.io:fuchsia.io_rust",
+    "//sdk/rust/zx",
+    "//userspace/lib/diagnostics/hierarchy/rust",
+    "//userspace/lib/diagnostics/reader/rust",
+    "//userspace/lib/fidl/rust/fidl",
+    "//userspace/lib/fuchsia-async",
+    "//userspace/lib/fuchsia-fs",
+    "//userspace/lib/fuchsia-hyper",
+    "//userspace/lib/fuchsia-sync",
+    "//userspace/lib/fuchsia-url",
+    "//userspace/lib/http-sse:http_sse",
+    "//userspace/lib/versioning/version-history/rust",
+    "//userspace/storage/fxfs/fidl/fuchsia.fxfs:fuchsia.fxfs_rust",
+    "//userspace/storage/lib/delivery_blob",
+    "//userspace/sys/lib/fidl-fuchsia-pkg-ext",
+    "//userspace/sys/pkg/lib/blobfs",
+    "//userspace/sys/pkg/lib/epoch",
+    "//userspace/sys/pkg/lib/far/rust:fuchsia-archive",
+    "//userspace/sys/pkg/lib/fuchsia-hash",
+    "//userspace/sys/pkg/lib/fuchsia-merkle",
+    "//userspace/sys/pkg/lib/fuchsia-pkg",
+    "//userspace/sys/pkg/lib/fuchsia-repo",
+    "//userspace/sys/pkg/lib/system-image",
+    "//userspace/sys/pkg/lib/update-package",
+    "//userspace/sys/pkg/testing/blobfs-ramdisk",
+    "//third_party/rust_crates:anyhow",
+    "//third_party/rust_crates:camino",
+    "//third_party/rust_crates:chrono",
+    "//third_party/rust_crates:futures",
+    "//third_party/rust_crates:hex",
+    "//third_party/rust_crates:http",
+    "//third_party/rust_crates:http-body-util",
+    "//third_party/rust_crates:hyper",
+    "//third_party/rust_crates:hyper-util",
+    "//third_party/rust_crates:log",
+    "//third_party/rust_crates:maybe-owned",
+    "//third_party/rust_crates:rustls",
+    "//third_party/rust_crates:rustls-pemfile",
+    "//third_party/rust_crates:serde",
+    "//third_party/rust_crates:serde_json",
+    "//third_party/rust_crates:sha2",
+    "//third_party/rust_crates:tempfile",
+    "//third_party/rust_crates:tokio",
+    "//third_party/rust_crates:tokio-rustls",
+    "//third_party/rust_crates:tuf",
+    "//third_party/rust_crates:walkdir",
+  ]
+
+  test_deps = [
+    "//userspace/lib/fuchsia",
+    "//userspace/storage/lib/delivery_blob",
+    "//third_party/rust_crates:assert_matches",
+  ]
+
+  sources = [
+    "src/blobfs.rs",
+    "src/inspect.rs",
+    "src/lib.rs",
+    "src/package.rs",
+    "src/repo.rs",
+    "src/serve.rs",
+    "src/serve/responder.rs",
+    "src/system_image.rs",
+    "src/update_package.rs",
+  ]
+
+  inputs = [
+    "certs/wildcard.fuchsia-updates.googleusercontent.com.rsa",
+    "certs/test.fuchsia.com.rsa",
+    "certs/test.fuchsia.com.certchain",
+    "certs/wildcard.fuchsia-updates.googleusercontent.com.certchain",
+  ]
+  configs += [ "//products/build/config/rust/lints:clippy_warn_all" ]
+}
+
+fuchsia_unittest_package("fuchsia-pkg-testing-tests") {
+  manifest = "meta/fuchsia-pkg-testing-tests.cml"
+  deps = [
+    ":fuchsia-pkg-testing_test",
+    "//userspace/connectivity/network/dns:component",
+    "//userspace/connectivity/network/netstack3:component-for-tests",
+    "//userspace/storage/tools/blobfs-compression",
+  ]
+}
+
+group("tests") {
+  testonly = true
+  public_deps = [ ":fuchsia-pkg-testing-tests" ]
+}

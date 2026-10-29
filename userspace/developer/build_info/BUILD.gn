@@ -1,0 +1,41 @@
+# Copyright 2020 The Fuchsia Authors. All rights reserved.
+# Use of this source code is governed by a BSD-style license that can be
+# found in the LICENSE file.
+
+import("//products/build/bazel/bazel_test_suite.gni")
+import("//products/build/components.gni")
+import("//products/build/rust/rustc_binary.gni")
+
+rustc_binary("shell_bin") {
+  name = "build-info"
+  edition = "2024"
+
+  deps = [
+    "//sdk/fidl/fuchsia.buildinfo:fuchsia.buildinfo_rust",
+    "//userspace/lib/fuchsia",
+    "//userspace/lib/fuchsia-component",
+    "//third_party/rust_crates:anyhow",
+    "//third_party/rust_crates:argh",
+    "//third_party/rust_crates:futures",
+  ]
+
+  sources = [ "shell.rs" ]
+  source_root = "shell.rs"
+}
+
+fuchsia_package_with_single_component("build-info-shell") {
+  manifest = "meta/build_info_shell.cml"
+  deps = [ ":shell_bin" ]
+}
+
+bazel_test_suite("build-info-unittest") {
+  target_tests = [ "//userspace/developer/build_info:build-info-unittest" ]
+}
+
+group("tests") {
+  testonly = true
+  deps = [
+    ":build-info-unittest",
+    "testing:tests",
+  ]
+}

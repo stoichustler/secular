@@ -1,0 +1,58 @@
+# Copyright 2021 The Fuchsia Authors
+#
+# Use of this source code is governed by a MIT-style
+# license that can be found in the LICENSE file or at
+# https://opensource.org/licenses/MIT
+
+import("//products/build/cpp/library_headers.gni")
+import("//zircon/kernel/kernel_rust_mod.gni")
+
+library_headers("virtual_alloc_headers") {
+  headers = [ "lib/virtual_alloc.h" ]
+  public_deps = [
+    "//zircon/system/ulib/fbl:headers",
+    "//zircon/system/ulib/zx",
+  ]
+}
+
+kernel_rust_mod("virtual_alloc-rs") {
+  sources = [
+    "virtual_alloc.rs",
+    "virtual_alloc_ffi.rs",
+  ]
+  deps = [
+    "//sdk/rust/zx-status",
+    "//sdk/rust/zx-types",
+    "//userspace/lib/zr",
+    "//third_party/rust_crates:pin-init",
+    "//zircon/kernel/lib/debug",
+    "//zircon/kernel/lib/page:page-rs",
+    "//zircon/system/ulib/bitmap/rust:bitmap",
+    "//zircon/system/ulib/fbl/rust:fbl",
+  ]
+  test_deps = [
+    "//userspace/lib/kprint",
+    "//zircon/kernel/lib/unittest:unittest-rs",
+  ]
+}
+
+source_set("virtual_alloc") {
+  public_deps = [ ":virtual_alloc_headers" ]
+}
+
+group("tests") {
+  testonly = true
+}
+
+group("kernel-tests") {
+  testonly = true
+  deps = [ "tests" ]
+}
+
+group("phys-tests") {
+  testonly = true
+}
+
+group("boot_tests") {
+  testonly = true
+}

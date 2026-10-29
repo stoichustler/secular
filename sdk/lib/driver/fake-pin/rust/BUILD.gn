@@ -1,0 +1,22 @@
+# Copyright 2026 The Fuchsia Authors. All rights reserved.
+# Use of this source code is governed by a BSD-style license that can be
+# found in the LICENSE file.
+
+import("//products/build/rust/rustc_library.gni")
+
+rustc_library("rust") {
+  name = "fake_pin"
+  edition = "2024"
+
+  deps = [
+    "//sdk/fidl/fuchsia.driver.framework:fuchsia.driver.framework_rust",
+    "//sdk/fidl/fuchsia.hardware.pin:fuchsia.hardware.pin_rust_next",
+    "//sdk/lib/driver/component/rust",
+    "//userspace/lib/fidl/rust_next/fidl_next",
+    "//userspace/lib/fuchsia-async",
+    "//userspace/lib/fuchsia-component",
+    "//userspace/lib/fuchsia-sync",
+  ]
+
+  sources = [ "src/lib.rs" ]
+}

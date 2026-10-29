@@ -1,0 +1,332 @@
+# Copyright 2017 The Fuchsia Authors. All rights reserved.
+#
+# Redistribution and use in source and binary forms, with or without
+# modification, are permitted provided that the following conditions are
+# met:
+#
+#    * Redistributions of source code must retain the above copyright
+# notice, this list of conditions and the following disclaimer.
+#    * Redistributions in binary form must reproduce the above
+# copyright notice, this list of conditions and the following disclaimer
+# in the documentation and/or other materials provided with the
+# distribution.
+#    * Neither the name of Google Inc. nor the names of its
+# contributors may be used to endorse or promote products derived from
+# this software without specific prior written permission.
+#
+# THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS
+# "AS IS" AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT
+# LIMITED TO, THE IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR
+# A PARTICULAR PURPOSE ARE DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT
+# OWNER OR CONTRIBUTORS BE LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL,
+# SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT
+# LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS OF USE,
+# DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON ANY
+# THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT
+# (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
+# OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
+
+if (defined(is_fuchsia_tree) && is_fuchsia_tree) {
+  import("//products/build/licenses/license.gni")
+
+  license("protobuf_license") {
+    public_package_name = "protobuf"
+    license_files = [ "src/LICENSE" ]
+  }
+
+  license("utf8_range_license") {
+    public_package_name = "utf8_range"
+    license_files = [ "src/third_party/utf8_range/LICENSE" ]
+  }
+}
+import("//products/build/test.gni")
+
+# LINT.IfChange
+visibility = [ "//third_party/protobuf/*" ]
+
+# Please do not add more entries to this list. Proto depends on abseil-cpp,
+# which is not intended to be widely used in Fuchsia platform components.
+visibility_protobuf = [
+  "$cobalt_root/*",
+  "//userspace/connectivity/bluetooth/testing/pandora/bt-pandora-server:*",
+  "//userspace/lib/fidl_codec:*",
+  "//userspace/performance/experimental/profiler/samples_to_pprof:*",
+  "//userspace/sensors/playback/*",
+  "//userspace/virtualization/bin/termina_guest_manager:*",
+  "//userspace/virtualization/lib/*",
+  "//userspace/virtualization/third_party/*",
+  "//third_party/grpc:*",
+  "//third_party/perfetto/*",
+  "//third_party/spirv-tools:*",
+  "//third_party/tink-cc/*",
+  "//tools/fidlcat/*",
+  "//vendor/third_party/*",
+]
+
+visibility_protoc = [
+  "$cobalt_root/*",
+  "//userspace/connectivity/bluetooth/testing/pandora/bt-pandora-server:*",
+  "//userspace/lib/fidl_codec:*",
+  "//userspace/developer/ffx/lib/profiler:*",
+  "//userspace/diagnostics/*",
+  "//userspace/performance/*",
+  "//userspace/starnix/lib/perfetto:*",
+  "//userspace/starnix/modules/perfetto_consumer/lib/perfetto:*",
+  "//userspace/sys/pkg/lib/update-package/*",
+  "//userspace/sensors/playback/proto:*",
+  "//userspace/virtualization/third_party/vm_tools:*",
+  "//userspace/virtualization/lib/*",
+  "//third_party/luci-go/resultdb/*",
+  "//third_party/luci-go/swarming/*",
+  "//third_party/perfetto/*",
+  "//third_party/pigweed/backends/pw_protobuf_compiler:*",
+  "//third_party/pigweed/src/pw_log:*",
+  "//third_party/pigweed/src/pw_protobuf:*",
+  "//third_party/pigweed/src/pw_tokenizer:*",
+  "//third_party/tink-cc/*",
+  "//tools/bazel-docgen:*",
+  "//tools/build/fx-set:*",
+  "//tools/debug/covargs/*",
+  "//tools/fidlcat/lib:*",
+  "//tools/integration/fint:*",
+  "//tools/integration/testsharder:*",
+  "//tools/metadata/proto:*",
+  "//tools/testing/resultdb:*",
+  "//tools/virtual_device/*",
+  "//vendor/google/*",
+  "//vendor/third_party/*",
+]
+
+config("protobuf_config") {
+  visibility += [ "//third_party/grpc:*" ]
+  include_dirs = [
+    "src/src",
+    "src/third_party/utf8_range/",
+    "//third_party/abseil-cpp/src",
+  ]
+  defines = [
+    "GOOGLE_PROTOBUF_NO_RTTI",
+    "HAVE_PTHREAD",
+  ]
+  cflags = []
+  if (is_clang) {
+    cflags += [
+      # Needed to support PROTOBUF_INTERNAL_CHECK_CLASS_SIZE in descriptor.h
+      "-Wno-c++98-compat-extra-semi",
+
+      # There are implicit conversions in parse_context.h
+      "-Wno-shorten-64-to-32",
+      "-Wno-deprecated-builtins",
+      "-Wno-unused-result",
+    ]
+  }
+}
+
+config("upb_bootstrap_config") {
+  defines = [ "UPB_BOOTSTRAP_STAGE=0" ]
+}
+
+config("protobuf_warnings") {
+  visibility += visibility_protoc
+  cflags = []
+
+  if (is_clang) {
+    # These are all needed as of https://github.com/protocolbuffers/protobuf/releases/tag/v3.21.12
+    cflags += [
+      "-Wno-deprecated-pragma",
+      "-Wno-enum-enum-conversion",
+      "-Wno-extra-semi",
+      "-Wno-float-conversion",
+      "-Wno-implicit-float-conversion",
+      "-Wno-implicit-int-conversion",
+      "-Wno-implicit-int-float-conversion",
+      "-Wno-invalid-noreturn",
+      "-Wno-missing-field-initializers",
+      "-Wno-sign-compare",
+      "-Wno-unused-function",
+      "-Wno-unused-private-field",
+      "-Wno-deprecated-declarations",  # Mac deprecated sprintf
+      "-Wno-deprecated-builtins",
+      "-Wno-deprecated-this-capture",
+      "-Wno-unnecessary-virtual-specifier",
+      "-Wno-strict-prototypes",
+      "-Wno-call-graph-section-no-prototype",
+      "-Wno-newline-eof",
+    ]
+  }
+}
+
+# This config should be applied to targets using generated code from the proto
+# compiler. It sets up the include directories properly.
+config("using_proto") {
+  visibility += visibility_protoc
+  include_dirs = [
+    "src/src",
+    "$root_gen_dir",
+  ]
+}
+
+# LINT.ThenChange(BUILD.input.gn)
+
+# Note: The targets below are excluded from the LINT block because some of their
+# source and public file lists are generated dynamically by gen.py (using
+# git ls-tree). A protobuf source update will modify the expanded file lists in
+# the generated BUILD.gn without requiring changes to BUILD.input.gn. Including
+# these sections would cause false positives in the IfChange verification.
+
+static_library("protobuf_lite") {
+  if (defined(is_fuchsia_tree) && is_fuchsia_tree) {
+    applicable_licenses = [
+      ":protobuf_license",
+      ":utf8_range_license",
+    ]
+  }
+  visibility += visibility_protobuf
+  sources = [
+    "src/src/google/protobuf/any_lite.cc",
+    "src/src/google/protobuf/arena.cc",
+    "src/src/google/protobuf/arena_align.cc",
+    "src/src/google/protobuf/arenastring.cc",
+    "src/src/google/protobuf/arenaz_sampler.cc",
+    "src/src/google/protobuf/extension_set.cc",
+    "src/src/google/protobuf/generated_enum_util.cc",
+    "src/src/google/protobuf/generated_message_tctable_lite.cc",
+    "src/src/google/protobuf/generated_message_util.cc",
+    "src/src/google/protobuf/implicit_weak_message.cc",
+    "src/src/google/protobuf/inlined_string_field.cc",
+    "src/src/google/protobuf/io/coded_stream.cc",
+    "src/src/google/protobuf/io/io_win32.cc",
+    "src/src/google/protobuf/io/strtod.cc",
+    "src/src/google/protobuf/io/zero_copy_stream.cc",
+    "src/src/google/protobuf/io/zero_copy_stream_impl.cc",
+    "src/src/google/protobuf/io/zero_copy_stream_impl_lite.cc",
+    "src/src/google/protobuf/map.cc",
+    "src/src/google/protobuf/message_lite.cc",
+    "src/src/google/protobuf/micro_string.cc",
+    "src/src/google/protobuf/parse_context.cc",
+    "src/src/google/protobuf/port.cc",
+    "src/src/google/protobuf/raw_ptr.cc",
+    "src/src/google/protobuf/repeated_field.cc",
+    "src/src/google/protobuf/repeated_ptr_field.cc",
+    "src/src/google/protobuf/stubs/common.cc",
+    "src/src/google/protobuf/wire_format_lite.cc",
+    "src/third_party/utf8_range/utf8_range.c",
+  ]
+  public = [ PROTOBUF_LITE_PUBLIC ]
+  configs += [ ":protobuf_warnings" ]
+  public_configs = [ ":protobuf_config" ]
+  deps = [ "//third_party/abseil-cpp:absl" ]
+}
+
+# This is the full, heavy protobuf lib that's needed for c++ .protos that don't
+# specify the LITE_RUNTIME option. The protocol compiler itself (protoc) falls
+# into that category.
+static_library("protobuf_full") {
+  visibility += visibility_protobuf
+  sources = [
+    "src/src/google/protobuf/any.cc",
+    "src/src/google/protobuf/any.pb.cc",
+    "src/src/google/protobuf/api.pb.cc",
+    "src/src/google/protobuf/compiler/importer.cc",
+    "src/src/google/protobuf/compiler/parser.cc",
+    "src/src/google/protobuf/cpp_features.pb.cc",
+    "src/src/google/protobuf/descriptor.cc",
+    "src/src/google/protobuf/descriptor.pb.cc",
+    "src/src/google/protobuf/descriptor_database.cc",
+    "src/src/google/protobuf/duration.pb.cc",
+    "src/src/google/protobuf/dynamic_message.cc",
+    "src/src/google/protobuf/empty.pb.cc",
+    "src/src/google/protobuf/extension_set_heavy.cc",
+    "src/src/google/protobuf/feature_resolver.cc",
+    "src/src/google/protobuf/field_mask.pb.cc",
+    "src/src/google/protobuf/generated_message_bases.cc",
+    "src/src/google/protobuf/generated_message_reflection.cc",
+    "src/src/google/protobuf/generated_message_tctable_full.cc",
+    "src/src/google/protobuf/generated_message_tctable_gen.cc",
+    "src/src/google/protobuf/internal_feature_helper.cc",
+
+    # gzip_stream.cc pulls in zlib, but it's not actually used by protoc, just
+    # by test code, so instead of compiling zlib for the host, let's just
+    # exclude this.
+    # "src/google/protobuf/io/gzip_stream.cc",
+
+    "src/src/google/protobuf/io/printer.cc",
+    "src/src/google/protobuf/io/tokenizer.cc",
+    "src/src/google/protobuf/io/zero_copy_sink.cc",
+    "src/src/google/protobuf/map_field.cc",
+    "src/src/google/protobuf/message.cc",
+    "src/src/google/protobuf/reflection_mode.cc",
+    "src/src/google/protobuf/reflection_ops.cc",
+    "src/src/google/protobuf/service.cc",
+    "src/src/google/protobuf/source_context.pb.cc",
+    "src/src/google/protobuf/struct.pb.cc",
+    "src/src/google/protobuf/symbol_checker.cc",
+    "src/src/google/protobuf/text_format.cc",
+    "src/src/google/protobuf/timestamp.pb.cc",
+    "src/src/google/protobuf/type.pb.cc",
+    "src/src/google/protobuf/unknown_field_set.cc",
+    "src/src/google/protobuf/util/delimited_message_util.cc",
+    "src/src/google/protobuf/util/field_comparator.cc",
+    "src/src/google/protobuf/util/field_mask_util.cc",
+    "src/src/google/protobuf/util/message_differencer.cc",
+    "src/src/google/protobuf/util/time_util.cc",
+    "src/src/google/protobuf/util/type_resolver_util.cc",
+    "src/src/google/protobuf/wire_format.cc",
+    "src/src/google/protobuf/wrappers.pb.cc",
+  ]
+  public = [ PROTOBUF_FULL_PUBLIC ]
+  configs += [ ":protobuf_warnings" ]
+  public_configs = [ ":protobuf_config" ]
+  deps = [ ":protobuf_lite" ]
+}
+
+# Only compile the compiler for the host architecture.
+if (current_toolchain == host_toolchain) {
+  # Only the minimal upb files required to build the protoc compiler.
+  #
+  # git ls-tree -r --name-only <commit> -- ':!*_test.cc' 'upb/port/*.h' 'upb/port/*.inc'
+  # 'upb/port/*.cc' 'upb/base/*.h' 'upb/base/*.cc' 'upb/mem/*.h' 'upb/mem/*.cc'
+  # | sed 's/^/"/' | sed 's/$/",/'
+  static_library("upb") {
+    sources = [ UPB_LIB_SOURCES ]
+    public_configs = [ ":upb_bootstrap_config" ]
+    include_dirs = [ "//third_party/protobuf/src" ]
+    configs += [
+      ":protobuf_config",
+      ":protobuf_warnings",
+    ]
+    deps = [ "//third_party/abseil-cpp" ]
+  }
+
+  # protoc compiler is separated into protoc library and executable targets to
+  # support protoc plugins that need to link libprotoc, but not the main()
+  # itself. See src/google/protobuf/compiler/plugin.h
+  #
+  # git ls-tree -r --name-only <commit> -- ':!*/main.cc' ':!*test*' ':!*mock*'
+  # ':!src/google/protobuf/compiler/cpp/tools/*'
+  # 'src/google/protobuf/compiler/*.cc' | sed 's/^/"/' | sed 's/$/",/'
+  static_library("protoc_lib") {
+    visibility += [
+      "//third_party/grpc:*",
+      "//third_party/perfetto/gn:*",
+    ]
+    sources = [ PROTOC_LIB_SOURCES ]
+    include_dirs = [ "//third_party/protobuf/src" ]
+    configs += [ ":protobuf_warnings" ]
+    public_deps = [
+      ":protobuf_full",
+      ":upb",
+    ]
+  }
+
+  executable("protoc") {
+    visibility += visibility_protoc
+    sources = [ "src/src/google/protobuf/compiler/main.cc" ]
+    deps = [ ":protoc_lib" ]
+  }
+} else {
+  group("protoc") {
+    visibility += visibility_protoc
+    deps = [ ":protoc($host_toolchain)" ]
+  }
+}

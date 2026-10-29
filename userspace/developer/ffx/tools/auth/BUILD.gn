@@ -1,0 +1,55 @@
+# Copyright 2023 The Fuchsia Authors. All rights reserved.
+# Use of this source code is governed by a BSD-style license that can be
+# found in the LICENSE file.
+
+import("//userspace/developer/ffx/build/ffx_plugin.gni")
+import("//userspace/developer/ffx/build/ffx_tool.gni")
+
+rustc_library("lib") {
+  name = "ffx_auth"
+  edition = "2024"
+
+  deps = [
+    "//userspace/developer/ffx/lib/auth",
+    "//userspace/developer/ffx/lib/fho:lib",
+    "//userspace/developer/ffx/lib/writer:lib",
+    "//userspace/lib/structured_ui",
+    "//third_party/rust_crates:anyhow",
+    "//third_party/rust_crates:argh",
+    "//third_party/rust_crates:async-trait",
+  ]
+
+  sources = [
+    "src/generate.rs",
+    "src/lib.rs",
+  ]
+}
+
+ffx_tool("ffx_auth") {
+  edition = "2024"
+  output_name = "ffx-auth"
+
+  deps = [
+    ":lib",
+    "//userspace/developer/ffx/lib/fho:lib",
+    "//userspace/lib/fuchsia-async",
+  ]
+
+  sources = [ "src/main.rs" ]
+}
+
+group("auth") {
+  public_deps = [
+    ":ffx_auth",
+    ":ffx_auth_host_tool",
+  ]
+}
+
+group("bin") {
+  public_deps = [ ":ffx_auth_versioned" ]
+}
+
+# Needed for //userspace/developer/ffx/tools:tests.
+group("tests") {
+  testonly = true
+}

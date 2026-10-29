@@ -1,0 +1,42 @@
+# Copyright 2026 The Fuchsia Authors. All rights reserved.
+# Use of this source code is governed by a BSD-style license that can be
+# found in the LICENSE file.
+
+load("//products/build/bazel/rules/fidl:fidl_library.bzl", "fidl_library")
+load("//tools/fidl/measure-tape:measure_tape.bzl", "measure_tape")
+
+package(default_applicable_licenses = ["//:license"])
+
+fidl_library(
+    name = "fuchsia.test",
+    srcs = [
+        "suite.fidl",
+    ],
+    api_area = "Testing",
+    category = "partner",
+    enable_hlcpp = True,
+    stable = True,
+    visibility = ["//visibility:public"],
+    deps = [
+        "//zircon/vdso/zx",
+    ],
+)
+
+measure_tape(
+    name = "hlcpp_measure_tape_for_case",
+    fidls = [":fuchsia.test"],
+    target_binding = "hlcpp",
+    target_types = ["fuchsia.test/Case"],
+)
+
+measure_tape(
+    name = "rust_measure_tape_for_case",
+    fidls = [":fuchsia.test"],
+    target_binding = "rust",
+    target_types = ["fuchsia.test/Case"],
+    visibility = [
+        "//userspace/diagnostics/tests/inspect-system:__pkg__",
+        "//userspace/microfuchsia/tee/testing/enumeration_test_adapter:__pkg__",
+        "//userspace/sys/test_runners:__subpackages__",
+    ],
+)

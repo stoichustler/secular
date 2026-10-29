@@ -1,0 +1,139 @@
+// Copyright 2022 The Fuchsia Authors. All rights reserved.
+// Use of this source code is governed by a BSD-style license that can be
+// found in the LICENSE file.
+
+use anyhow::{Context, Result};
+use ffx_config::EnvironmentContext;
+use std::ffi::OsStr;
+use std::fs::read_dir;
+use std::path::PathBuf;
+
+/// The default configs paths used if 0 paths are given.
+/// These will be prefixed by the project root directory to get the full config file path.
+const DEFAULT_INTREE_RELATIVE_CONFIG_FILES: [&str; 2] =
+    ["src/diagnostics/config/triage/", "src/diagnostics/config/triage/detect/"];
+
+/// The default config paths variable in OOT invocation.
+const DEFAULT_CONFIG_PATHS_VARIABLE: &str = "triage.config_paths";
+
+/// Returns the config files passed via cmdline arguments.
+/// If 0 paths are given returns default paths.
+pub async fn get_or_default_config_files(
+    context: &EnvironmentContext,
+    config: Vec<String>,
+) -> Result<Vec<PathBuf>> {
+    let config_paths: Vec<PathBuf> = if config.is_empty() {
+        if let Some(fuchsia_dir) = context.project_root() {
+            DEFAULT_INTREE_RELATIVE_CONFIG_FILES
+                .iter()
+                .map(|default_file| fuchsia_dir.join(default_file))
+                .collect()
+        } else {
+            // OOT default configs are expected to be set in triage.config_path variable.
+            context.get(DEFAULT_CONFIG_PATHS_VARIABLE).context(format!(
+                "Please set the default config using `ffx config set {} \"{}\"`.",
+                DEFAULT_CONFIG_PATHS_VARIABLE, r#"[\"config1.triage\",\"default/config2.triage\"]"#
+            ))?
+        }
+    } else {
+        config.into_iter().map(PathBuf::from).collect()
+    };
+
+    let mut config_files = Vec::new();
+
+    for config_path in config_paths {
+        // If path is a directory, all files in that directory
+        // with an extension of "triage" are taken.
+        if config_path.is_dir() {
+            let dir_entries = read_dir(&config_path)
+                .context(format!("Could not read directory {}.", config_path.display()))?;
+
+            config_files.extend(dir_entries.into_iter().filter_map(|dir_entry| {
+                if let Some(path) = dir_entry.ok().map(|entry| entry.path()) {
+                    if path.extension().and_then(OsStr::to_str) == Some("triage") {
+                        return Some(path);
+                    }
+                }
+                None
+            }));
+        } else {
+            config_files.push(config_path);
+        }
+    }
+
+    Ok(config_files)
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use std::fs;
+    use std::path::Path;
+    use tempfile::{NamedTempFile, tempdir};
+
+    fn create_empty_file(root: &Path, filename: &'static str) -> PathBuf {
+        let file = root.join(filename);
+        fs::File::create(&file).expect("Unable to create new file.");
+        file
+    }
+
+    #[fuchsia::test]
+    async fn in_tree_default_config() {
+        let build_dir = tempdir().expect("Unable to create tempdir for testing.");
+        let mut builder = ffx_config::test_env().in_tree(build_dir.path());
+        let tree_root = builder.isolate_root();
+        let env = builder.build().expect("Unable to initialize ffx_config.");
+
+        let config_files = get_or_default_config_files(&env.context, vec![])
+            .await
+            .expect("Unable to get config files.");
+
+        assert_eq!(
+            config_files,
+            &[
+                tree_root.join("src/diagnostics/config/triage/"),
+                tree_root.join("src/diagnostics/config/triage/detect/")
+            ]
+        );
+    }
+
+    #[fuchsia::test]
+    async fn oot_default_config() {
+        let oot_test_default_configs =
+            [Path::new("default/configs/a.triage"), Path::new("configs/b.triage")];
+
+        let env = ffx_config::test_env()
+            .user_config(DEFAULT_CONFIG_PATHS_VARIABLE, serde_json::json!(oot_test_default_configs))
+            .build()
+            .expect("Unable to initialize ffx_config.");
+
+        let config_files = get_or_default_config_files(&env.context, vec![])
+            .await
+            .expect("Unable to get config files.");
+
+        assert_eq!(config_files, oot_test_default_configs);
+    }
+
+    #[fuchsia::test]
+    async fn directory_passed_to_config() {
+        let env = ffx_config::test_init().expect("Unable to initialize ffx_config.");
+
+        let tempdir = tempdir().expect("Unable to create tempdir for testing.");
+        let root = tempdir.path();
+        let config_file1 = create_empty_file(root, "config1.triage");
+        let _txt_file = create_empty_file(root, "not_config.txt");
+        let _jpg_file = create_empty_file(root, "random_picture.jpg");
+
+        let config_file2 =
+            NamedTempFile::new().expect("Unable to create namedtempfile for testing.");
+
+        let config_files = get_or_default_config_files(
+            &env.context,
+            vec![root.to_string_lossy().into(), config_file2.path().to_string_lossy().into()],
+        )
+        .await
+        .expect("Unable to get config files.");
+
+        assert_eq!(config_files, &[&config_file1, config_file2.path()]);
+    }
+}

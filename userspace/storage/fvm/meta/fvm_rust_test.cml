@@ -1,0 +1,29 @@
+// Copyright 2025 The Fuchsia Authors. All rights reserved.
+// Use of this source code is governed by a BSD-style license that can be
+// found in the LICENSE file.
+{
+    include: [
+        "//sdk/lib/sys/component/realm_builder.shard.cml",
+        "//userspace/storage/lib/fs_management/client.shard.cml",
+        "//userspace/sys/test_runners/rust/default.shard.cml",
+        "inspect/client.shard.cml",
+        "syslog/client.shard.cml",
+    ],
+    program: {
+        binary: "bin/fvm_rust_test",
+    },
+    collections: [
+        {
+            name: "blobfs-collection",
+            durability: "transient",
+        },
+    ],
+    offer: [
+        {
+            config: "fuchsia.storage.blobfs.PagerThreads",
+            from: "void",
+            to: "#blobfs-collection",
+            availability: "optional",
+        },
+    ],
+}

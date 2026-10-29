@@ -1,0 +1,6 @@
+# Copyright 2026 The Fuchsia Authors. All rights reserved.
+# Use of this source code is governed by a BSD-style license that can be
+# found in the LICENSE file.
+
+# Compatibility Compatibility Test Framework templates are not part of the
+# Secular console image. Keep this import so SDK FIDL BUILD.gn files load.

@@ -1,0 +1,73 @@
+# Copyright 2026 The Fuchsia Authors. All rights reserved.
+# Use of this source code is governed by a BSD-style license that can be
+# found in the LICENSE file.
+
+import("//products/build/bazel/bazel_host_tool.gni")
+import("//products/build/go/go_binary.gni")
+import("//products/build/go/go_library.gni")
+
+assert(is_host, "measure-tape is a host tool.")
+
+if (secular_boot_build) {
+  go_library("measurer") {
+    source_dir = "measurer"
+    sources = [
+      "code_generator.go",
+      "expressions.go",
+      "measurer.go",
+      "ops.go",
+      "pruning.go",
+    ]
+    deps = [ "//tools/fidl/lib/fidlgen" ]
+  }
+
+  go_library("utils") {
+    source_dir = "utils"
+    sources = [ "utils.go" ]
+    deps = [
+      ":measurer",
+      "//tools/fidl/lib/fidlgen",
+    ]
+  }
+
+  go_library("hlcpp") {
+    source_dir = "hlcpp"
+    sources = [ "hlcpp.go" ]
+    deps = [
+      ":measurer",
+      ":utils",
+      "//tools/fidl/lib/fidlgen",
+    ]
+  }
+
+  go_library("rust") {
+    source_dir = "rust"
+    sources = [ "rust.go" ]
+    deps = [
+      ":measurer",
+      ":utils",
+      "//tools/fidl/lib/fidlgen",
+    ]
+  }
+
+  go_library("measure-tape_main") {
+    sources = [ "main.go" ]
+    deps = [
+      ":hlcpp",
+      ":measurer",
+      ":rust",
+      ":utils",
+      "//tools/fidl/lib/fidlgen",
+    ]
+  }
+
+  go_binary("measure-tape") {
+    embed = [ ":measure-tape_main" ]
+  }
+} else {
+  bazel_host_tool("measure-tape") {
+    bazel_target = ":measure-tape"
+    bazel_output_path = "{{BAZEL_TARGET_OUT_DIR}}/measure-tape_/measure-tape"
+    install_host_tool = true
+  }
+}

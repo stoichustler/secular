@@ -1,0 +1,176 @@
+# Copyright 2026 The Fuchsia Authors. All rights reserved.
+# Use of this source code is governed by a BSD-style license that can be
+# found in the LICENSE file.
+
+import("//products/build/component/component_id_index.gni")
+import("//products/build/components.gni")
+import("//products/build/zbi/kernel_cmdline.gni")
+import("//products/build/zbi/zbi.gni")
+import("//products/build/zbi/zbi_input.gni")
+import("//tools/cmc/build/cmc.gni")
+
+# GN-only Secular image: zircon kernel + userboot + component_manager +
+# bringup console (console, console-launcher, zxsh) packed as BOOTFS
+# packages. This is the Fuchsia bringup feature set without Bazel assembly.
+
+assert(current_toolchain == default_toolchain,
+       "//products/secular is only valid in the default toolchain")
+assert(current_cpu == "arm64",
+       "Secular currently supports qemu-arm64 (arm64) only")
+
+_bootfs_packages = [
+  ":root",
+  ":bootstrap",
+  ":config",
+  "//userspace/secular/bin/console:package",
+  "//userspace/secular/bin/console-launcher:package-eng",
+  "//userspace/secular/bin/critical-services:package",
+  "//userspace/secular/bin/kernel-args-forwarder:package",
+  "//userspace/secular/bin/kernel_debug_broker:pkg",
+  "//userspace/secular/bin/ptysvc:package",
+  "//userspace/diagnostics/archivist:package",
+  "//userspace/power/shutdown-shim:package",
+]
+
+_bootfs_package_manifests = []
+foreach(label, _bootfs_packages) {
+  _bootfs_package_manifests += [
+    get_label_info(label, "target_out_dir") + "/" +
+        get_label_info(label, "name") + "/package_manifest.json",
+  ]
+}
+
+cmc_merge("bootstrap.cml") {
+  sources = [
+    "meta/boot-drivers.shard.cml",
+    "meta/bootstrap.diagnostics.shard.cml",
+    "meta/console.shard.cml",
+    "//userspace/secular/bin/kernel-args-forwarder/meta/kernel_args_forwarder.bootstrap_shard.cml",
+    "//userspace/secular/bin/kernel_debug_broker/meta/kernel_debug_broker_userdebug.bootstrap_shard.cml",
+    "//userspace/secular/bin/ptysvc/meta/ptysvc.bootstrap_shard.cml",
+    "//userspace/diagnostics/archivist/meta/archivist.bootstrap_shard.cml",
+    "//userspace/sys/bootstrap/meta/bootstrap.cml",
+  ]
+  output_name = "bootstrap.cml"
+}
+
+fuchsia_component("config_component") {
+  component_name = "config"
+  manifest = "meta/config.cml"
+  check_includes = false
+  check_references = false
+}
+
+fuchsia_package("config") {
+  package_name = "config"
+  deps = [ ":config_component" ]
+}
+
+fuchsia_component("root_component") {
+  component_name = "root"
+  manifest = "meta/root.cml"
+  check_includes = false
+  check_references = false
+}
+
+fuchsia_package("root") {
+  package_name = "root"
+  deps = [ ":root_component" ]
+}
+
+_bootstrap_cml = get_target_outputs(":bootstrap.cml")
+
+fuchsia_component("bootstrap_component") {
+  component_name = "bootstrap"
+  manifest = _bootstrap_cml[0]
+  manifest_deps = [ ":bootstrap.cml" ]
+  restricted_features = [ "allow_long_names" ]
+  check_includes = false
+  check_references = false
+}
+
+fuchsia_package("bootstrap") {
+  package_name = "bootstrap"
+  deps = [ ":bootstrap_component" ]
+}
+
+action("pack_bootfs_packages") {
+  script = "pack_bootfs_packages.py"
+  deps = _bootfs_packages
+  inputs = _bootfs_package_manifests + [ "pack_bootfs_packages.py" ]
+  outputs = [
+    "$target_gen_dir/packed_bootfs_packages.fini",
+    "$target_gen_dir/packed_bootfs_packages.index",
+  ]
+  depfile = "$target_gen_dir/packed_bootfs_packages.d"
+  args = [
+    "--fini",
+    rebase_path(outputs[0], root_build_dir),
+    "--index",
+    rebase_path(outputs[1], root_build_dir),
+    "--depfile",
+    rebase_path(depfile, root_build_dir),
+  ]
+  foreach(manifest, _bootfs_package_manifests) {
+    args += [ rebase_path(manifest, root_build_dir) ]
+  }
+  hermetic_deps = false
+}
+
+zbi_input("bootfs_packages_zbi") {
+  sources = [ "$target_gen_dir/packed_bootfs_packages.fini" ]
+  deps = [ ":pack_bootfs_packages" ]
+}
+
+component_id_index("empty_component_id_index") {
+  source = "meta/component_id_index.json5"
+}
+
+component_id_index_config("component_id_index") {
+  deps = [ ":empty_component_id_index" ]
+}
+
+zbi_input("bootfs_files") {
+  deps = [
+    ":component_id_index",
+    "//products/build/info/bootfs:minimum_utc_stamp",
+    "//userspace/sys/bin/psutils:bootfs_binaries",
+    "//userspace/sys/component_manager:bin",
+    "//userspace/sys/component_manager:component_manager_bootfs_config",
+    "//userspace/zircon/bin/zxsh:sh",
+  ]
+}
+
+kernel_cmdline("cmdline") {
+  args = [
+    "console.shell=true",
+    "kernel.enable-debugging-syscalls=true",
+    "kernel.enable-serial-syscalls=true",
+    "netsvc.disable=true",
+  ]
+}
+
+zbi("secular") {
+  testonly = true
+  output_name = "secular"
+  output_dir = root_out_dir
+  deps = [
+    ":bootfs_files",
+    ":bootfs_packages_zbi",
+    ":cmdline",
+    "//zircon/kernel/image/eng",
+  ]
+}
+
+group("boot_shim") {
+  testonly = true
+  public_deps = [ "//zircon/kernel/arch/arm64/phys/boot-shim:linux-arm64-boot-shim(//zircon/kernel/phys:kernel.phys_arm64)" ]
+}
+
+group("default") {
+  testonly = true
+  deps = [
+    ":boot_shim",
+    ":secular",
+  ]
+}

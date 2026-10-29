@@ -1,0 +1,139 @@
+# Copyright 2020 The Fuchsia Authors. All rights reserved.
+# Use of this source code is governed by a BSD-style license that can be
+# found in the LICENSE file.
+
+import("//products/build/components.gni")
+import("//products/build/rust/rustc_binary.gni")
+import("//products/build/testing/perf/test.gni")
+import("//userspace/diagnostics/archivist/build/archivist.gni")
+
+archivist_optimized_binary("logging-bin") {
+  output_name = "archivist_logging_benchmarks"
+  edition = "2024"
+
+  source_root = "src/logging.rs"
+
+  deps = [
+    "//sdk/fidl/fuchsia.diagnostics:fuchsia.diagnostics_rust",
+    "//sdk/rust/zx",
+    "//userspace/developer/fuchsia-criterion",
+    "//userspace/diagnostics/archivist:lib",
+    "//userspace/lib/diagnostics/inspect/rust",
+    "//userspace/lib/diagnostics/log/encoding/rust",
+    "//userspace/lib/diagnostics/log/types",
+    "//userspace/lib/fuchsia-async",
+    "//userspace/sys/lib/moniker",
+  ]
+
+  sources = [ "src/logging.rs" ]
+}
+
+rustc_binary("logging-e2e-bin") {
+  testonly = true
+  name = "archivist_logging_e2e_benchmarks"
+  edition = "2024"
+
+  source_root = "src/logging_e2e.rs"
+
+  deps = [
+    "//sdk/fidl/fuchsia.diagnostics:fuchsia.diagnostics_rust",
+    "//sdk/fidl/fuchsia.logger:fuchsia.logger_rust",
+    "//userspace/developer/fuchsia-criterion",
+    "//userspace/lib/diagnostics/log/rust",
+    "//userspace/lib/diagnostics/reader/rust",
+    "//userspace/lib/fuchsia-async",
+    "//userspace/lib/fuchsia-component-test",
+    "//third_party/rust_crates:futures",
+    "//third_party/rust_crates:log",
+  ]
+
+  sources = [ "src/logging_e2e.rs" ]
+}
+
+archivist_optimized_binary("formatter-bin") {
+  output_name = "archivist_formatter_benchmarks"
+  edition = "2024"
+
+  source_root = "src/formatter.rs"
+
+  deps = [
+    "//sdk/fidl/fuchsia.diagnostics:fuchsia.diagnostics_rust",
+    "//userspace/developer/fuchsia-criterion",
+    "//userspace/diagnostics/archivist:lib",
+    "//userspace/lib/diagnostics/data/rust",
+    "//userspace/lib/diagnostics/hierarchy/rust",
+    "//userspace/lib/fuchsia-async",
+    "//third_party/rust_crates:futures",
+  ]
+
+  sources = [ "src/formatter.rs" ]
+}
+
+_formatter_benchmark_component = "formatter"
+_logging_benchmark_component = "logging"
+_logging_e2e_benchmark_component = "logging_e2e"
+
+fuchsia_component("formatter-benchmarks-component") {
+  component_name = _formatter_benchmark_component
+  deps = [ ":formatter-bin" ]
+  manifest = "meta/formatter.cml"
+}
+
+fuchsia_component("logging-benchmarks-component") {
+  component_name = _logging_benchmark_component
+  deps = [ ":logging-bin" ]
+  manifest = "meta/logging.cml"
+}
+
+fuchsia_component("logging-e2e-benchmarks-component") {
+  testonly = true
+  component_name = _logging_e2e_benchmark_component
+  deps = [ ":logging-e2e-bin" ]
+  manifest = "meta/logging_e2e.cml"
+}
+
+fuchsia_package("archivist-benchmarks") {
+  testonly = true
+  deps = [
+    ":formatter-benchmarks-component",
+    ":logging-benchmarks-component",
+    ":logging-e2e-benchmarks-component",
+  ]
+  subpackages = [ "//userspace/diagnostics/archivist:archivist-for-embedding" ]
+}
+
+fuchsia_component_perf_test("archivist-formatter-benchmark") {
+  package = ":archivist-benchmarks"
+  component_name = _formatter_benchmark_component
+  expected_metric_names_filepath = "//userspace/tests/end_to_end/perf/expected_metric_names/fuchsia.archivist.formatter.txt"
+}
+
+fuchsia_component_perf_test("archivist-logging-benchmark") {
+  package = ":archivist-benchmarks"
+  component_name = _logging_benchmark_component
+  expected_metric_names_filepath = "//userspace/tests/end_to_end/perf/expected_metric_names/fuchsia.archivist.logging.txt"
+}
+
+fuchsia_component_perf_test("archivist-logging-e2e-benchmark") {
+  package = ":archivist-benchmarks"
+  component_name = _logging_e2e_benchmark_component
+  expected_metric_names_filepath = "//userspace/tests/end_to_end/perf/expected_metric_names/fuchsia.archivist.logging_e2e.txt"
+}
+
+group("build-only") {
+  testonly = true
+  deps = [
+    ":formatter-benchmarks-component",
+    ":logging-benchmarks-component",
+    ":logging-e2e-benchmarks-component",
+  ]
+}
+
+group("bench") {
+  testonly = true
+  deps = [
+    ":archivist-formatter-benchmark",
+    ":archivist-logging-benchmark",
+    ":archivist-logging-e2e-benchmark",
+  ]
+}

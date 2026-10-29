@@ -1,0 +1,16 @@
+# Copyright 2024 The Fuchsia Authors. All rights reserved.
+# Use of this source code is governed by a BSD-style license that can be
+# found in the LICENSE file.
+
+# NOTE: This file is included from //products/build/config/BUILDCONFIG.gn and other
+# .gni files before host_tag and most other variables are defined.
+
+# Match ../../fuchsia-origin and manifests/toolchain (CPython 3.14 CIPD).
+python_version = "3.14"
+python_exe_src = "${secular_prebuilt_root}/third_party/python3/${secular_host_platform}/bin/python${python_version}"
+python_include_dir =
+    "${secular_prebuilt_root}/third_party/python3/${secular_host_platform}/include"
+
+# Variables used to refer to the in-tree python pip.
+pip_version = "3.14"
+pip_exe_src = "${secular_prebuilt_root}/third_party/python3/${secular_host_platform}/bin/pip${pip_version}"

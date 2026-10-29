@@ -1,0 +1,58 @@
+// Copyright 2026 The Fuchsia Authors
+//
+// Use of this source code is governed by a MIT-style
+// license that can be found in the LICENSE file or at
+// https://opensource.org/licenses/MIT
+
+pub mod syscall_signatures {
+    include!(rustenv_path::envpath!("SYSCALL_SIGS_PATH"));
+}
+
+mod bti;
+mod channel;
+mod clock;
+mod counter;
+mod cprng;
+mod debug;
+mod debuglog;
+mod event;
+mod exceptions;
+mod fifo;
+mod futex;
+mod guest;
+mod handle_ops;
+mod interrupt;
+mod iob;
+mod iommu;
+mod job;
+mod membarrier;
+mod msi;
+mod nanosleep;
+mod object;
+mod object_info;
+mod object_property;
+mod object_wait;
+mod pager;
+mod pmt;
+mod port;
+mod process;
+mod profile;
+mod resource;
+mod restricted;
+mod sampler;
+mod smc;
+mod socket;
+mod stream;
+mod system;
+#[cfg(all(target_arch = "x86_64", console_enabled))]
+mod system_x86;
+#[cfg(all(target_arch = "x86_64", console_enabled))]
+mod system_x86_ffi;
+mod task;
+mod test;
+mod thread;
+mod ticks;
+mod timer;
+mod vcpu;
+mod vmar;
+mod vmo;

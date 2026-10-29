@@ -1,0 +1,20 @@
+# Copyright 2026 The Fuchsia Authors. All rights reserved.
+# Use of this source code is governed by a BSD-style license that can be
+# found in the LICENSE file.
+
+import("//products/build/rust/rustc_library.gni")
+
+rustc_library("lib") {
+  sources = [ "src/lib.rs" ]
+  crate_name = "input_device_constants"
+  edition = "2024"
+  visibility = [
+    ":*",
+    "//userspace/lib/assembly/config_schema:*",
+  ]
+  deps = [
+    "//third_party/rust_crates:log",
+    "//third_party/rust_crates:schemars",
+    "//third_party/rust_crates:serde",
+  ]
+}

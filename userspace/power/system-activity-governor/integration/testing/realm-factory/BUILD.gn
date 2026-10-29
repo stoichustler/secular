@@ -1,0 +1,55 @@
+# Copyright 2023 The Fuchsia Authors. All rights reserved.
+# Use of this source code is governed by a BSD-style license that can be
+# found in the LICENSE file.
+
+import("//products/build/components.gni")
+import("//products/build/rust/rustc_binary.gni")
+
+rustc_binary("bin") {
+  testonly = true
+  edition = "2024"
+  name = "system_activity_governor_realm_factory"
+  sources = [ "src/main.rs" ]
+  deps = [
+    "//sdk/fidl/fuchsia.power.cpu.manager:fuchsia.power.cpu.manager_rust",
+    "//sdk/fidl/fuchsia.testing.harness:fuchsia.testing.harness_rust",
+    "//sdk/rust/zx",
+    "//userspace/lib/diagnostics/inspect/runtime/rust",
+    "//userspace/lib/diagnostics/inspect/rust",
+    "//userspace/lib/fake-clock/fidl:fidl_rust",
+    "//userspace/lib/fidl/rust/fidl",
+    "//userspace/lib/fuchsia",
+    "//userspace/lib/fuchsia-async",
+    "//userspace/lib/fuchsia-component",
+    "//userspace/lib/fuchsia-component-test",
+    "//userspace/power/broker:component",
+    "//userspace/power/system-activity-governor:component",
+    "//userspace/power/system-activity-governor/integration/testing/fidl:test.systemactivitygovernor_rust",
+    "//userspace/sys/lib/cm_rust",
+    "//userspace/testing/realm_proxy",
+    "//third_party/rust_crates:anyhow",
+    "//third_party/rust_crates:futures",
+    "//third_party/rust_crates:log",
+  ]
+}
+
+fuchsia_component("realm-factory-component") {
+  testonly = true
+  component_name = "realm-factory"
+  manifest = "meta/default.cml"
+  deps = [ ":bin" ]
+}
+
+fuchsia_package("realm-factory") {
+  package_name = "system-activity-governor-realm-factory"
+  testonly = true
+  deps = [
+    ":realm-factory-component",
+    "//userspace/developer/forensics/public/fakes:fake_crash_reporter",
+    "//userspace/lib/fake-clock/svc",
+    "//userspace/power/system-activity-governor:component_fake_time",
+    "//userspace/power/testing/fake-shutdown-shim",
+    "//userspace/power/testing/fake-suspend",
+  ]
+  subpackages = [ "//userspace/power/system-activity-governor/fake:package" ]
+}

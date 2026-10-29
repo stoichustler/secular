@@ -1,0 +1,71 @@
+# Copyright 2026 The Fuchsia Authors. All rights reserved.
+# Use of this source code is governed by a BSD-style license that can be
+# found in the LICENSE file.
+
+load("//products/build/bazel/platforms:constraints.bzl", "HOST_OS_CONSTRAINTS")
+load("//products/build/bazel/rules/host_tests:host_rustc_test.bzl", "host_rustc_test")
+load("//products/build/bazel/rules/rust:rustc_library.bzl", "rustc_library")
+load("//products/build/bazel/rules/rust:rustc_proc_macro.bzl", "rustc_proc_macro")
+
+package(default_applicable_licenses = ["//:license"])
+
+rustc_proc_macro(
+    name = "container_macro",
+    srcs = ["src/assembly_container_macro.rs"],
+    crate_name = "assembly_container_macro",
+    crate_root = "src/assembly_container_macro.rs",
+    edition = "2024",
+    target_compatible_with = HOST_OS_CONSTRAINTS,
+    deps = [
+        "//third_party/rust_crates/vendor:proc-macro2",
+        "//third_party/rust_crates/vendor:quote",
+        "//third_party/rust_crates/vendor:syn",
+    ],
+)
+
+rustc_library(
+    name = "container",
+    srcs = [
+        "src/assembly_container.rs",
+        "src/lib.rs",
+        "src/merge.rs",
+    ],
+    crate_name = "assembly_container",
+    edition = "2024",
+    proc_macro_deps = [":container_macro"],
+    target_compatible_with = HOST_OS_CONSTRAINTS,
+    version = "0.1.0",
+    visibility = [
+        "//products/build/assembly/tools:__subpackages__",
+        "//userspace/developer/ffx/plugins:__subpackages__",
+        "//userspace/lib/assembly:__subpackages__",
+        "//tools/pbtool:__pkg__",
+        "//tools/pkgstats:__pkg__",
+    ],
+    deps = [
+        "//userspace/lib/assembly/package_copy",
+        "//userspace/lib/assembly/util",
+        "//userspace/lib/depfile",
+        "//third_party/rust_crates/vendor:anyhow",
+        "//third_party/rust_crates/vendor:camino",
+        "//third_party/rust_crates/vendor:pathdiff",
+        "//third_party/rust_crates/vendor:schemars",
+        "//third_party/rust_crates/vendor:serde",
+        "//third_party/rust_crates/vendor:serde_json",
+        "//third_party/rust_crates/vendor:serde_json5",
+    ],
+)
+
+# TODO(https://fxbug.dev/574121341): Run this test in GN too.
+# @bazel2gn:skip
+host_rustc_test(
+    name = "container_test",
+    crate = ":container",
+    target_compatible_with = HOST_OS_CONSTRAINTS,
+    visibility = ["//userspace/lib/assembly:__pkg__"],
+    deps = [
+        "//userspace/sys/pkg/lib/fuchsia-hash",
+        "//userspace/sys/pkg/lib/fuchsia-pkg",
+        "//third_party/rust_crates/vendor:tempfile",
+    ],
+)

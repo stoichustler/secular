@@ -1,0 +1,23 @@
+# Copyright 2018 The Fuchsia Authors. All rights reserved.
+# Use of this source code is governed by a BSD-style license that can be
+# found in the LICENSE file.
+
+import("//products/build/bazel/bazel_host_tool.gni")
+
+assert(is_host, "json_merge is a host tool.")
+
+if (secular_boot_build) {
+  executable("json_merge") {
+    sources = [
+      "json_merge.cc",
+      "main.cc",
+    ]
+    deps = [ "//third_party/rapidjson" ]
+  }
+} else {
+  bazel_host_tool("json_merge") {
+    bazel_target = ":json_merge"
+    bazel_output_path = "{{BAZEL_TARGET_OUT_DIR}}/json_merge"
+    install_host_tool = true
+  }
+}

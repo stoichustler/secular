@@ -1,0 +1,45 @@
+# Copyright 2026 The Fuchsia Authors. All rights reserved.
+# Use of this source code is governed by a BSD-style license that can be
+# found in the LICENSE file.
+
+load("//products/build/bazel/rules/rust:defs.bzl", "rustc_library")
+
+package(
+    default_applicable_licenses = ["//:license"],
+    default_visibility = ["//visibility:public"],
+)
+
+rustc_library(
+    name = "lib",
+    srcs = [
+        "src/context.rs",
+        "src/error.rs",
+        "src/lib.rs",
+        "src/macros.rs",
+    ],
+    crate_name = "ffx_command_error",
+    edition = "2024",
+    proc_macro_deps = [
+        "//userspace/developer/ffx/lib/traceable_error/derive:lib",
+    ],
+    tags = [
+        "assert_no_deps=//userspace/developer/ffx/config/*",
+        "assert_no_deps=//userspace/developer/ffx/frontends/*",
+        "assert_no_deps=//userspace/developer/ffx/playground/*",
+        "assert_no_deps=//userspace/developer/ffx/plugins/*",
+        "assert_no_deps=//userspace/developer/ffx/tests/*",
+        "assert_no_deps=//userspace/developer/ffx/tools/*",
+    ],
+    test_deps = [
+        "//third_party/rust_crates/vendor:assert_matches",
+    ],
+    version = "0.1.0",
+    with_host_unit_tests = True,
+    deps = [
+        "//userspace/developer/ffx/lib/errors:lib",
+        "//userspace/developer/ffx/lib/traceable_error:lib",
+        "//third_party/rust_crates/vendor:anyhow",
+        "//third_party/rust_crates/vendor:argh",
+        "//third_party/rust_crates/vendor:thiserror",
+    ],
+)

@@ -1,0 +1,49 @@
+// Copyright 2024 The Fuchsia Authors. All rights reserved.
+// Use of this source code is governed by a BSD-style license that can be
+// found in the LICENSE file.
+{
+    include: [
+        "inspect/client.shard.cml",
+        "syslog/client.shard.cml",
+    ],
+    program: {
+        runner: "elf",
+        args: [ "detect" ],
+    },
+    use: [
+        {
+            protocol: [
+                "fuchsia.diagnostics.ArchiveAccessor.feedback",
+                "fuchsia.feedback.CrashReporter",
+                "fuchsia.feedback.CrashReportingProductRegister",
+            ],
+            from: "parent",
+        },
+        {
+            directory: "config-data",
+            rights: [ "r*" ],
+            path: "/config/data",
+        },
+        {
+            config: "fuchsia.diagnostics.detect.CheckEvery",
+            key: "check_every",
+            type: "string",
+            max_size: 100,
+            availability: "optional",
+            default: "Minutes(8)",
+        },
+        {
+            config: "fuchsia.diagnostics.detect.TestOnly",
+            key: "test_only",
+            type: "bool",
+            availability: "optional",
+            default: false,
+        },
+    ],
+    expose: [
+        {
+            protocol: "fuchsia.component.Binder",
+            from: "framework",
+        },
+    ],
+}

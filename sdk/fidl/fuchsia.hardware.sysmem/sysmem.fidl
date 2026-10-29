@@ -1,0 +1,53 @@
+// Copyright 2022 The Fuchsia Authors. All rights reserved.
+// Use of this source code is governed by a BSD-style license that can be
+// found in the LICENSE file.
+library fuchsia.hardware.sysmem;
+
+using fuchsia.sysmem2;
+using zx;
+
+/// Privileged backend registration interface for registering external heaps or
+/// secure memory with sysmem.
+///
+/// NOTE: Most clients (including nearly all drivers) that need to allocate or
+/// share buffers should use [`fuchsia.sysmem2/Allocator`] instead of this
+/// protocol. This protocol does NOT provide buffer allocation.
+///
+/// Security model:
+/// This protocol confers high privilege and trusts connected clients:
+/// - `RegisterHeap` allows a client to back allocations for a heap type.
+/// - `RegisterSecureMem` allows a client to specify physical address ranges for
+///   which sysmem will mint physical VMOs using its MMIO resource capability.
+///
+/// Sysmem relies on Component Framework capability routing to enforce access
+/// control. Only components/drivers that specifically and legitimately need to
+/// perform one of the operations in this protocol may `use` this protocol in
+/// their component manifest.
+@discoverable
+closed protocol Sysmem {
+    /// Takes the client end of a FIDL connection that'll serve
+    /// [`fuchsia.hardware.sysmem/Heap`].
+    ///
+    /// Only drivers that legitimately implement an external sysmem heap should
+    /// call this method.
+    strict RegisterHeap(resource struct {
+        heap uint64;
+        heap_connection client_end:Heap;
+    });
+
+    /// Takes the client end of a FIDL connection that'll serve
+    /// [`fuchsia.sysmem2/SecureMem`], which is a protocol that's specific to
+    /// sysmem<->securemem concerns.
+    ///
+    /// Security note: Sysmem trusts the physical address ranges reported by the
+    /// provided `secure_mem_connection` and creates physical VMOs over them.
+    /// Only the trusted securemem driver should be permitted to call this.
+    strict RegisterSecureMem(resource struct {
+        secure_mem_connection client_end:fuchsia.sysmem2.SecureMem;
+    });
+
+    /// Informs sysmem that the channel previously passed to RegisterSecureMem()
+    /// will be closing soon, and that this channel closure should not be
+    /// considered an error.
+    strict UnregisterSecureMem() -> () error zx.Status;
+};

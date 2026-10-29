@@ -1,0 +1,28 @@
+# Copyright 2020 The Fuchsia Authors. All rights reserved.
+# Use of this source code is governed by a BSD-style license that can be
+# found in the LICENSE file.
+
+import("//products/build/components.gni")
+import("//products/build/test.gni")
+
+group("tests") {
+  testonly = true
+  deps = [ ":ddk-unittest-package" ]
+}
+
+test("ddk-unittest") {
+  sources = [ "binding-test.cc" ]
+  deps = [
+    "//sdk/lib/fdio",
+    "//userspace/lib/ddk",
+
+    # TODO(https://fxbug.dev/42113849): Migrate to the new bind rules and delete the below
+    "//userspace/lib/ddk:ddk-deprecated-binding-headers",
+    "//zircon/system/ulib/zxtest",
+  ]
+}
+
+fuchsia_unittest_package("ddk-unittest-package") {
+  package_name = "ddk-unittest"
+  deps = [ ":ddk-unittest" ]
+}

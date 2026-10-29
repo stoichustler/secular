@@ -1,0 +1,128 @@
+# Copyright 2024 The Fuchsia Authors. All rights reserved.
+# Use of this source code is governed by a BSD-style license that can be
+# found in the LICENSE file.
+
+import("//products/build/components.gni")
+import("//products/build/rust/rustc_library.gni")
+import("//products/build/rust/rustc_staticlib.gni")
+import("//products/build/test.gni")
+
+block_server_sources = [
+  "src/async_interface.rs",
+  "src/c_interface.rs",
+  "src/callback_interface.rs",
+  "src/callback_interface/block_service.rs",
+  "src/decompression_tests.rs",
+  "src/lib.rs",
+  "src/mapper.rs",
+  "src/testing.rs",
+  "src/verifier.rs",
+]
+
+block_server_deps = [
+  "//sdk/fidl/fuchsia.storage.block:fuchsia.storage.block_rust",
+  "//sdk/rust/zx",
+  "//userspace/lib/fidl/rust/fidl",
+  "//userspace/lib/fuchsia-async",
+  "//userspace/lib/fuchsia-runtime",
+  "//userspace/lib/fuchsia-sync",
+  "//userspace/lib/trace/rust:trace",
+  "//userspace/storage/lib/block_protocol",
+  "//userspace/storage/lib/delivery_blob",
+  "//userspace/storage/lib/mapping",
+  "//userspace/storage/lib/ptr_slice",
+  "//userspace/storage/lib/storage_device",
+  "//userspace/storage/lib/vmo-fifo",
+  "//third_party/rust_crates:anyhow",
+  "//third_party/rust_crates:futures",
+  "//third_party/rust_crates:log",
+  "//third_party/rust_crates:scopeguard",
+  "//third_party/rust_crates:slab",
+  "//third_party/rust_crates:zstd",
+  "//third_party/zstd",
+]
+
+rustc_library("block_server") {
+  with_unit_tests = true
+  edition = "2024"
+  sources = block_server_sources
+  deps = block_server_deps
+  test_deps = [
+    "//userspace/lib/fuchsia",
+    "//userspace/storage/lib/blob_pager_and_verifier",
+    "//userspace/storage/lib/profile",
+    "//third_party/rust_crates:assert_matches",
+    "//third_party/rust_crates:event-listener",
+    "//third_party/rust_crates:rand",
+    "//third_party/rust_crates:test-case",
+  ]
+}
+
+fuchsia_unittest_package("block_server_tests") {
+  deps = [ ":block_server_test" ]
+  test_specs = {
+    log_settings = {
+      max_severity = "ERROR"
+    }
+  }
+}
+
+rustc_staticlib("block_server_c") {
+  visibility = [ ":*" ]
+  edition = "2024"
+  public = [ "block_server_c.h" ]
+  sources = block_server_sources
+  deps = block_server_deps
+}
+
+source_set("block_server_cc") {
+  sources = [ "block_server.cc" ]
+  public = [ "block_server.h" ]
+  public_deps = [
+    ":block_server_c",
+    "//sdk/fidl/fuchsia.storage.block:fuchsia.storage.block_cpp",
+    "//sdk/lib/async:async-cpp",
+    "//sdk/lib/driver/logging/cpp",
+    "//sdk/lib/driver/runtime:driver_runtime_cpp",
+    "//zircon/system/ulib/zx",
+  ]
+}
+
+source_set("fake_block_server_cc") {
+  sources = [ "fake_server.cc" ]
+  public = [ "fake_server.h" ]
+  public_deps = [
+    ":block_server_cc",
+    "//sdk/fidl/fuchsia.storage.block:fuchsia.storage.block_cpp",
+    "//userspace/storage/lib/block_client/cpp",
+    "//userspace/storage/lib/buffer",
+    "//zircon/system/ulib/zx",
+  ]
+}
+
+test("block_server_cc_tests") {
+  sources = [ "block_server_cc_tests.cc" ]
+  deps = [
+    ":block_server_cc",
+    "//sdk/lib/driver/testing/cpp",
+    "//userspace/devices/lib/block",
+    "//userspace/lib/fxl/test:gtest_main",
+    "//userspace/storage/lib/block_client/cpp",
+    "//userspace/storage/lib/buffer",
+  ]
+}
+
+fuchsia_unittest_package("block_server_cc_tests_package") {
+  package_name = "block-server-cc-tests"
+  deps = [ ":block_server_cc_tests" ]
+}
+
+group("tests") {
+  testonly = true
+  deps = [
+    ":block_server_cc_tests_package",
+    ":block_server_tests",
+    "integration:tests",
+    "vmo_backed:tests",
+  ]
+}

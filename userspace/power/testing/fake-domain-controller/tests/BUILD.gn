@@ -1,0 +1,36 @@
+# Copyright 2025 The Fuchsia Authors. All rights reserved.
+# Use of this source code is governed by a BSD-style license that can be
+# found in the LICENSE file.
+
+import("//products/build/components.gni")
+import("//products/build/fidl/fidl.gni")
+import("//products/build/rust/rustc_binary.gni")
+
+rustc_test("bin") {
+  name = "fake_domain_controller_integration_test"
+  testonly = true
+  edition = "2024"
+  deps = [
+    "//sdk/fidl/fuchsia.power.cpu:fuchsia.power.cpu_rust",
+    "//userspace/lib/fidl/rust/fidl",
+    "//userspace/lib/fuchsia",
+    "//userspace/lib/fuchsia-component-test",
+    "//userspace/power/testing/fake-domain-controller:component",
+    "//third_party/rust_crates:log",
+  ]
+
+  sources = [ "src/lib.rs" ]
+}
+
+fuchsia_unittest_package("fake-domain-controller-integration-test") {
+  manifest = "meta/test.cml"
+  deps = [ ":bin" ]
+  test_specs = {
+    environments = basic_envs
+  }
+}
+
+group("tests") {
+  testonly = true
+  deps = [ ":fake-domain-controller-integration-test" ]
+}

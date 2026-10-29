@@ -1,0 +1,54 @@
+# Copyright 2020 The Fuchsia Authors. All rights reserved.
+# Use of this source code is governed by a BSD-style license that can be
+# found in the LICENSE file.
+
+import("//userspace/developer/ffx/build/ffx_plugin.gni")
+
+ffx_plugin("ffx_fastboot_tool") {
+  sdk_category = "not-yet-specified"
+  version = "0.1.0"
+  edition = "2024"
+  with_unit_tests = true
+  args_with_unit_tests = true
+  args_deps = [
+    "//userspace/developer/ffx/core:lib",
+    "//third_party/rust_crates:argh",
+  ]
+
+  deps = [
+    "//userspace/developer/ffx/config:lib",
+    "//userspace/developer/ffx/lib/discovery:lib",
+    "//userspace/developer/ffx/lib/errors:lib",
+    "//userspace/developer/ffx/lib/fastboot:lib",
+    "//userspace/developer/ffx/lib/fastboot/connection_factory:lib",
+    "//userspace/developer/ffx/lib/fastboot/flash_manifest:lib",
+    "//userspace/developer/ffx/lib/fastboot/interface:lib",
+    "//userspace/developer/ffx/lib/fho:lib",
+    "//userspace/developer/ffx/lib/ssh:lib",
+    "//userspace/developer/ffx/lib/target:lib",
+    "//userspace/developer/ffx/lib/writer:lib",
+    "//userspace/lib/assembly/partitions_config",
+    "//userspace/lib/assembly/product_bundle",
+    "//userspace/storage/lib/sparse/rust:lib",
+    "//third_party/rust_crates:anyhow",
+    "//third_party/rust_crates:async-trait",
+    "//third_party/rust_crates:futures",
+    "//third_party/rust_crates:log",
+    "//third_party/rust_crates:schemars",
+    "//third_party/rust_crates:serde",
+    "//third_party/rust_crates:tokio",
+  ]
+
+  test_deps = [
+    "//userspace/lib/fuchsia",
+    "//third_party/rust_crates:chrono",
+    "//third_party/rust_crates:serde_json",
+    "//third_party/rust_crates:tempfile",
+  ]
+
+  args_test_deps = []
+
+  args_sources = [ "src/args.rs" ]
+
+  sources = [ "src/lib.rs" ]
+}

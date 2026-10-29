@@ -1,0 +1,192 @@
+// Copyright 2026 The Fuchsia Authors. All rights reserved.
+// Use of this source code is governed by a BSD-style license that can be
+// found in the LICENSE file.
+
+// Slim root realm for the Secular console image. The upstream root.cml
+// offers dozens of assembly-generated configs from #core; this file
+// only routes what the QEMU serial console needs.
+{
+    children: [
+        {
+            name: "bootstrap",
+            url: "fuchsia-boot:///bootstrap#meta/bootstrap.cm",
+            startup: "eager",
+            environment: "#elf-env",
+        },
+        {
+            name: "elf_runner",
+            url: "fuchsia-builtin://#elf_runner.cm",
+        },
+        {
+            name: "config",
+            url: "fuchsia-boot:///config#meta/config.cm",
+        },
+    ],
+    offer: [
+        {
+            config: [
+                "fuchsia.diagnostics.AllowSerialLogs",
+                "fuchsia.diagnostics.BindServices",
+                "fuchsia.diagnostics.ComponentInitialInterests",
+                "fuchsia.diagnostics.DenySerialLogs",
+                "fuchsia.diagnostics.ExceptionHandlerAvailable",
+                "fuchsia.diagnostics.LogsMaxCachedOriginalBytes",
+                "fuchsia.diagnostics.MaximumConcurrentSnapshotsPerReader",
+                "fuchsia.power.SuspendEnabled",
+            ],
+            from: "#config",
+            to: "#bootstrap",
+        },
+        {
+            dictionary: "diagnostics",
+            from: "parent",
+            to: [
+                "#bootstrap",
+                "#config",
+                "#elf_runner",
+            ],
+        },
+        {
+            protocol: "fuchsia.process.Launcher",
+            from: "parent",
+            to: "#elf_runner",
+        },
+        {
+            directory: "boot",
+            from: "parent",
+            to: "#bootstrap",
+        },
+        {
+            protocol: [
+                "fuchsia.boot.Arguments",
+                "fuchsia.boot.FactoryItems",
+                "fuchsia.boot.Items",
+                "fuchsia.boot.ReadOnlyLog",
+                "fuchsia.boot.SvcStashProvider",
+                "fuchsia.boot.WriteOnlyLog",
+                "fuchsia.kernel.CpuResource",
+                "fuchsia.kernel.DebuglogResource",
+                "fuchsia.kernel.DebugResource",
+                "fuchsia.kernel.EnergyInfoResource",
+                "fuchsia.kernel.HypervisorResource",
+                "fuchsia.kernel.InfoResource",
+                "fuchsia.kernel.IommuResource",
+                "fuchsia.kernel.IoportResource",
+                "fuchsia.kernel.IrqResource",
+                "fuchsia.kernel.MmioResource",
+                "fuchsia.kernel.MsiResource",
+                "fuchsia.kernel.PowerResource",
+                "fuchsia.kernel.ProfileResource",
+                "fuchsia.kernel.RootJob",
+                "fuchsia.kernel.RootJobForInspect",
+                "fuchsia.kernel.SamplingResource",
+                "fuchsia.kernel.SmcResource",
+                "fuchsia.kernel.Stats",
+                "fuchsia.kernel.TracingResource",
+                "fuchsia.kernel.VmexResource",
+                "fuchsia.pkg.PackageResolver-boot",
+                "fuchsia.process.Launcher",
+                "fuchsia.sys2.CrashIntrospect",
+                "fuchsia.update.verify.HealthVerification",
+            ],
+            from: "parent",
+            to: "#bootstrap",
+        },
+        {
+            event_stream: [
+                "capability_requested",
+                "debug_started",
+                "destroyed",
+                "started",
+                "stopped",
+            ],
+            from: "parent",
+            to: "#bootstrap",
+        },
+        {
+            protocol: [
+                "fuchsia.component.resolution.Resolver",
+                "fuchsia.sys2.SystemController",
+            ],
+            from: "parent",
+            to: "#bootstrap",
+        },
+        {
+            protocol: "fuchsia.exception.Handler",
+            from: "parent",
+            to: "#bootstrap",
+            availability: "optional",
+            source_availability: "unknown",
+        },
+        {
+            protocol: "fuchsia.sys2.RealmExplorer",
+            from: "framework",
+            as: "fuchsia.sys2.RealmExplorer.root",
+            to: "#bootstrap",
+        },
+        {
+            protocol: "fuchsia.sys2.RealmQuery",
+            from: "framework",
+            as: "fuchsia.sys2.RealmQuery.root",
+            to: "#bootstrap",
+        },
+        {
+            protocol: "fuchsia.component.Introspector",
+            from: "framework",
+            as: "fuchsia.component.Introspector.root",
+            to: "#bootstrap",
+        },
+        {
+            protocol: "fuchsia.sys2.LifecycleController",
+            from: "framework",
+            as: "fuchsia.sys2.LifecycleController.root",
+            to: "#bootstrap",
+        },
+        {
+            protocol: "fuchsia.sys2.RouteValidator",
+            from: "framework",
+            as: "fuchsia.sys2.RouteValidator.root",
+            to: "#bootstrap",
+        },
+        {
+            protocol: "fuchsia.sys2.ConfigOverride",
+            from: "framework",
+            as: "fuchsia.sys2.ConfigOverride.root",
+            to: "#bootstrap",
+        },
+        {
+            runner: [
+                "builtin_devfs",
+                "builtin_shutdown_shim",
+            ],
+            from: "parent",
+            to: "#bootstrap",
+        },
+        {
+            resolver: "boot_resolver",
+            from: "parent",
+            to: "#bootstrap",
+        },
+    ],
+    expose: [
+        {
+            protocol: [
+                "fuchsia.hardware.power.statecontrol.Admin",
+                "fuchsia.hardware.power.statecontrol.RebootMethodsWatcherRegister",
+            ],
+            from: "#bootstrap",
+        },
+    ],
+    environments: [
+        {
+            name: "elf-env",
+            extends: "realm",
+            runners: [
+                {
+                    runner: "elf",
+                    from: "#elf_runner",
+                },
+            ],
+        },
+    ],
+}

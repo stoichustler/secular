@@ -1,0 +1,178 @@
+// Copyright 2019 The Fuchsia Authors. All rights reserved.
+// Use of this source code is governed by a BSD-style license that can be
+// found in the LICENSE file.
+library fuchsia.developer.ffx;
+using fuchsia.net;
+
+type TargetIp = struct {
+    ip fuchsia.net.IpAddress;
+    scope_id uint32;
+};
+
+type TargetIpPort = struct {
+    ip fuchsia.net.IpAddress;
+    scope_id uint32;
+    port uint16;
+};
+
+type TargetVSockNamespace = strict enum {
+    VSOCK = 0;
+    USB = 1;
+};
+
+type TargetVSockCtx = struct {
+    cid uint32;
+    namespace TargetVSockNamespace;
+};
+
+type TargetIpAddrInfo = strict union {
+    1: ip TargetIp;
+    2: ip_port TargetIpPort;
+};
+
+type TargetAddrInfo = strict union {
+    1: ip TargetIp;
+    2: ip_port TargetIpPort;
+    3: vsock TargetVSockCtx;
+    /// A UART serial connection endpoint, represented by a TTY device path
+    /// (e.g. "/dev/ttyUSB0") or a UNIX domain socket path, up to 1024 bytes.
+    4: uart string:1024;
+};
+
+type TargetState = strict enum {
+    UNKNOWN = 1;
+    DISCONNECTED = 2;
+    PRODUCT = 3;
+    FASTBOOT = 4;
+    ZEDBOOT = 5;
+};
+
+type TargetInfo = table {
+    1: nodename string:64;
+    2: addresses vector<TargetAddrInfo>:256;
+    3: age_ms uint64;
+    // 4: reserved;
+    5: target_state TargetState;
+    // 6: reserved;
+    // 7: reserved;
+    8: serial_number string:256;
+    /// ssh_address is the preferred address to use to connect to the
+    /// device over SSH, and will include a port number if a custom SSH
+    /// port number has been set.
+    9: ssh_address TargetIpAddrInfo;
+    // 10: reserved;
+    // 11: reserved;
+    // 12: reserved;
+    /// Whether the target was added manually.
+    13: is_manual bool;
+};
+
+type TargetRebootState = strict enum {
+    PRODUCT = 1;
+    BOOTLOADER = 2;
+    RECOVERY = 3;
+};
+
+/// An iterator for which the client handles calls to the `Next` function. When
+/// a client calls `ListTargets` in the `TargetCollection` protocol, the targets
+/// will be sent to the client via the `Next` function, with acknowledgements
+/// sent via the responder to handle backpressure.
+///
+/// When there are no more targets to be sent to the client, an empty vector
+/// will be sent as the last call to `Next`.
+closed protocol TargetCollectionReader {
+    strict Next(struct {
+        entry vector<TargetInfo>:MAX;
+    }) -> ();
+};
+
+/// A query for a Fuchsia target device. If empty when supplied to a method, will be
+/// interpreted as requesting the first target to be seen on the network, or ALL
+/// targets that have been seen on the network.
+type TargetQuery = table {
+    /// A string matcher is something that can match either the:
+    /// - Target nodename
+    /// - Target IP (any that have been seen).
+    /// - Serial number
+    ///
+    /// IPv6 and IPv4 addresses are both acceptable queries. If the address being
+    /// queried is ipv6 and includes a port number, the address (and
+    /// scope id if present) must be enclosed in square brackets. Scope and port
+    /// number are both optional, but may be present.
+    ///
+    /// If a port number is specified, it will match only with targets with
+    /// that same port number (with no port set on the target being treated as
+    /// the default ssh port, 22).
+    ///
+    /// Specifying 0 for the port will match specifically with hosts with
+    /// no port specified.
+    1: string_matcher string:255;
+};
+
+type OpenTargetError = strict enum {
+    /// When querying for a target, an ambiguous query was received (one that
+    /// matched multiple targets).
+    QUERY_AMBIGUOUS = 1;
+    /// No targets were able to match the query after waiting.
+    TARGET_NOT_FOUND = 2;
+    /// When resolving the target, the discovery of potentially matching
+    /// targets failed.
+    FAILED_DISCOVERY = 3;
+};
+
+type TargetConnectionError = strict enum {
+    /// Permission was denied (from the public SSH key to the target).
+    PERMISSION_DENIED = 1;
+    /// SSH refused connection to the target.
+    CONNECTION_REFUSED = 2;
+    /// Hostname could not be resolved.
+    UNKNOWN_NAME_OR_SERVICE = 3;
+    /// Timed out trying to communicate with the target.
+    TIMEOUT = 4;
+    /// SSH Key verification could not proceed (usually a known_hosts issue).
+    KEY_VERIFICATION_FAILURE = 5;
+    /// There was no route to the specified host through SSH.
+    NO_ROUTE_TO_HOST = 6;
+    /// SSH could not reach the specified address.
+    NETWORK_UNREACHABLE = 7;
+    /// The address given was invalid for the target (likely containing a
+    /// scope-ID that does not exist).
+    INVALID_ARGUMENT = 8;
+    /// An as-yet unseen error was encountered preventing connection to the
+    /// device (user will need to check the logs).
+    UNKNOWN_ERROR = 9;
+    /// There was an error communicating via FIDL to the device. This happens
+    /// after a connection has been established.
+    FIDL_COMMUNICATION_ERROR = 10;
+    /// An error was encountered while trying to knock a service in RCS. This
+    /// means that RCS was unable to connect to a service in order to verify a
+    /// FIDL channel can be established.
+    RCS_CONNECTION_ERROR = 11;
+    /// On attempting to 'knock' a service connection, the service dropped the
+    /// channel prematurely, closing the connection.
+    FAILED_TO_KNOCK_SERVICE = 12;
+    /// Daemon's ABI does not match the target's.
+    TARGET_INCOMPATIBLE = 13;
+    /// The connection was closed by the remote host (unique from `connection
+    /// refused`).
+    CONNECTION_CLOSED_BY_REMOTE_HOST = 14;
+};
+
+/// A protocol defining a collection of Fuchsia targets. This is used to inspect
+/// and interact with fuchsia targets that the daemon has discovered.
+@discoverable
+closed protocol TargetCollection {
+    /// Sends a list of all active targets in the collection. An active target
+    /// is one that has responded over the network recently.
+    ///
+    /// An optional query string can be passed that will limit results to only
+    /// targets whose metadata matches. Matching is limited to string
+    /// matches via the target's nodename, serial number, or IP address.
+    ///
+    /// The client receives updates by handling calls to `Next` in the
+    /// `TargetCollectionReader` protocol.
+    strict ListTargets(resource struct {
+        query TargetQuery;
+        reader client_end:TargetCollectionReader;
+    });
+};

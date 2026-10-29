@@ -1,0 +1,515 @@
+{
+    project_id: 3676913920,
+    data_sets: [
+        {
+            metrics: [
+                {
+                    event_codes: [
+                        "minfs",
+                    ],
+                    metric_name: "data_bytes_used_migrated",
+                    metric_type: "Integer",
+                    selector: "bootstrap/fshost:root/data_stats/stats:used_bytes",
+                },
+                {
+                    event_codes: [
+                        "minfs",
+                    ],
+                    metric_name: "data_bytes_allocated_migrated",
+                    metric_type: "Integer",
+                    selector: "bootstrap/fshost:root/data_stats/stats:allocated_bytes",
+                },
+                {
+                    event_codes: [
+                        "minfs",
+                    ],
+                    metric_name: "inodes_used_migrated",
+                    metric_type: "Integer",
+                    selector: "bootstrap/fshost:root/data_stats/stats:used_inodes",
+                },
+                {
+                    event_codes: [
+                        "minfs",
+                    ],
+                    metric_name: "inodes_allocated_migrated",
+                    metric_type: "Integer",
+                    selector: "bootstrap/fshost:root/data_stats/stats:allocated_inodes",
+                },
+                {
+                    event_codes: [
+                        "Skipped",
+                    ],
+                    metric_name: "data_partition_upgrade_migrated",
+                    metric_type: "Occurrence",
+                    selector: "bootstrap/fshost:root/minfs_upgrade:skipped",
+                },
+                {
+                    event_codes: [
+                        "DetectedFailedUpgrade",
+                    ],
+                    metric_name: "data_partition_upgrade_migrated",
+                    metric_type: "Occurrence",
+                    selector: "bootstrap/fshost:root/minfs_upgrade:detected_failed_upgrade",
+                },
+                {
+                    event_codes: [
+                        "ReadOldData",
+                    ],
+                    metric_name: "data_partition_upgrade_migrated",
+                    metric_type: "Occurrence",
+                    selector: "bootstrap/fshost:root/minfs_upgrade:1_read_old",
+                },
+                {
+                    event_codes: [
+                        "WriteNewData",
+                    ],
+                    metric_name: "data_partition_upgrade_migrated",
+                    metric_type: "Occurrence",
+                    selector: "bootstrap/fshost:root/minfs_upgrade:2_write_new",
+                },
+                {
+                    event_codes: [
+                        "Done",
+                    ],
+                    metric_name: "data_partition_upgrade_migrated",
+                    metric_type: "Occurrence",
+                    selector: "bootstrap/fshost:root/minfs_upgrade:3_finished",
+                },
+                {
+                    event_codes: [
+                        "minfs",
+                    ],
+                    metric_name: "out_of_space_events",
+                    metric_type: "Occurrence",
+                    selector: "bootstrap/fshost/fvm2/fs-collection*:root/fs.fvm:out_of_space_events",
+                },
+                {
+                    event_codes: [
+                        "minfs",
+                    ],
+                    metric_name: "recovered_space_from_sync_events",
+                    metric_type: "Occurrence",
+                    selector: "bootstrap/fshost/fvm2/fs-collection*:root/fs.detail:recovered_space_events",
+                },
+                {
+                    event_codes: [
+                        "blobfs",
+                    ],
+                    metric_name: "version_migrated",
+                    metric_type: "String",
+                    selector: "bootstrap/fshost/fvm2/blobfs-collection*:root/fs.info:oldest_version",
+                    upload_once: true,
+                },
+                {
+                    event_codes: [
+                        "minfs",
+                    ],
+                    metric_name: "version_migrated",
+                    metric_type: "String",
+                    selector: "bootstrap/fshost/fvm2/fs-collection*:root/fs.info:oldest_version",
+                    upload_once: true,
+                },
+                {
+                    event_codes: [
+                        "fxfs",
+                    ],
+                    metric_name: "version_migrated",
+                    metric_type: "String",
+                    selector: "bootstrap/fshost/fxfs:root/fs.info:oldest_version",
+                    upload_once: true,
+                },
+                {
+                    event_codes: [
+                        "MinFs",
+                        "Metadata",
+                    ],
+                    metric_name: "corruption_events_migrated",
+                    metric_type: "Occurrence",
+                    selector: "bootstrap/fshost:root/corruption_events:minfs",
+                },
+                {
+                    event_codes: [
+                        "FxFs",
+                        "Metadata",
+                    ],
+                    metric_name: "corruption_events_migrated",
+                    metric_type: "Occurrence",
+                    selector: "bootstrap/fshost:root/corruption_events:fxfs",
+                },
+                {
+                    event_codes: [
+                        "FxFs",
+                    ],
+                    metric_name: "keymint_unseal_failure_events",
+                    metric_type: "Occurrence",
+                    selector: "bootstrap/fshost:root/keymint_unseal_failure_events:fxfs",
+                },
+                {
+                    event_codes: [
+                        "blobfs",
+                    ],
+                    metric_name: "total_inodes_migrated",
+                    metric_type: "Integer",
+                    selector: "bootstrap/fshost/fvm2/blobfs-collection*:root/fs.detail/fragmentation_metrics:total_nodes",
+                    upload_once: true,
+                },
+                {
+                    event_codes: [
+                        "blobfs",
+                    ],
+                    metric_name: "file_in_use_migrated",
+                    metric_type: "Integer",
+                    selector: "bootstrap/fshost/fvm2/blobfs-collection*:root/fs.detail/fragmentation_metrics:files_in_use",
+                    upload_once: true,
+                },
+                {
+                    event_codes: [
+                        "blobfs",
+                    ],
+                    metric_name: "extent_containers_in_use_migrated",
+                    metric_type: "Integer",
+                    selector: "bootstrap/fshost/fvm2/blobfs-collection*:root/fs.detail/fragmentation_metrics:extent_containers_in_use",
+                    upload_once: true,
+                },
+                {
+                    event_codes: [
+                        "blobfs",
+                    ],
+                    metric_name: "extents_per_file_migrated",
+                    metric_type: "IntHistogram",
+                    selector: "bootstrap/fshost/fvm2/blobfs-collection*:root/fs.detail/fragmentation_metrics:extents_per_file",
+                    upload_once: true,
+                },
+                {
+                    event_codes: [
+                        "blobfs",
+                    ],
+                    metric_name: "in_use_fragments_migrated",
+                    metric_type: "IntHistogram",
+                    selector: "bootstrap/fshost/fvm2/blobfs-collection*:root/fs.detail/fragmentation_metrics:in_use_fragments",
+                    upload_once: true,
+                },
+                {
+                    event_codes: [
+                        "blobfs",
+                    ],
+                    metric_name: "free_fragments_migrated",
+                    metric_type: "IntHistogram",
+                    selector: "bootstrap/fshost/fvm2/blobfs-collection*:root/fs.detail/fragmentation_metrics:free_fragments",
+                    upload_once: true,
+                },
+                {
+                    event_codes: [
+                        "BlobFs",
+                        "Uncompressed",
+                    ],
+                    metric_name: "compression_format_migrated",
+                    metric_type: "Integer",
+                    selector: "bootstrap/fshost/fvm2/blobfs-collection*:root/fs.detail/compression_metrics:uncompressed_bytes",
+                    upload_once: true,
+                },
+                {
+                    event_codes: [
+                        "BlobFs",
+                        "ZSTDChunked",
+                    ],
+                    metric_name: "compression_format_migrated",
+                    metric_type: "Integer",
+                    selector: "bootstrap/fshost/fvm2/blobfs-collection*:root/fs.detail/compression_metrics:zstd_chunked_bytes",
+                    upload_once: true,
+                },
+                {
+                    event_codes: [
+                        "blobfs",
+                        "append",
+                    ],
+                    metric_name: "vnode_operation_latency",
+                    metric_type: "IntHistogram",
+                    selector: "bootstrap/fshost/fvm2/blobfs-collection*:root/fs.opstats/append:latency",
+                },
+                {
+                    event_codes: [
+                        "blobfs",
+                        "close",
+                    ],
+                    metric_name: "vnode_operation_latency",
+                    metric_type: "IntHistogram",
+                    selector: "bootstrap/fshost/fvm2/blobfs-collection*:root/fs.opstats/close:latency",
+                },
+                {
+                    event_codes: [
+                        "blobfs",
+                        "create",
+                    ],
+                    metric_name: "vnode_operation_latency",
+                    metric_type: "IntHistogram",
+                    selector: "bootstrap/fshost/fvm2/blobfs-collection*:root/fs.opstats/create:latency",
+                },
+                {
+                    event_codes: [
+                        "blobfs",
+                        "get_attr",
+                    ],
+                    metric_name: "vnode_operation_latency",
+                    metric_type: "IntHistogram",
+                    selector: "bootstrap/fshost/fvm2/blobfs-collection*:root/fs.opstats/get_attr:latency",
+                },
+                {
+                    event_codes: [
+                        "blobfs",
+                        "link",
+                    ],
+                    metric_name: "vnode_operation_latency",
+                    metric_type: "IntHistogram",
+                    selector: "bootstrap/fshost/fvm2/blobfs-collection*:root/fs.opstats/link:latency",
+                },
+                {
+                    event_codes: [
+                        "blobfs",
+                        "lookup",
+                    ],
+                    metric_name: "vnode_operation_latency",
+                    metric_type: "IntHistogram",
+                    selector: "bootstrap/fshost/fvm2/blobfs-collection*:root/fs.opstats/lookup:latency",
+                },
+                {
+                    event_codes: [
+                        "blobfs",
+                        "read",
+                    ],
+                    metric_name: "vnode_operation_latency",
+                    metric_type: "IntHistogram",
+                    selector: "bootstrap/fshost/fvm2/blobfs-collection*:root/fs.opstats/read:latency",
+                },
+                {
+                    event_codes: [
+                        "blobfs",
+                        "read_dir",
+                    ],
+                    metric_name: "vnode_operation_latency",
+                    metric_type: "IntHistogram",
+                    selector: "bootstrap/fshost/fvm2/blobfs-collection*:root/fs.opstats/read_dir:latency",
+                },
+                {
+                    event_codes: [
+                        "blobfs",
+                        "set_attr",
+                    ],
+                    metric_name: "vnode_operation_latency",
+                    metric_type: "IntHistogram",
+                    selector: "bootstrap/fshost/fvm2/blobfs-collection*:root/fs.opstats/set_attr:latency",
+                },
+                {
+                    event_codes: [
+                        "blobfs",
+                        "sync",
+                    ],
+                    metric_name: "vnode_operation_latency",
+                    metric_type: "IntHistogram",
+                    selector: "bootstrap/fshost/fvm2/blobfs-collection*:root/fs.opstats/sync:latency",
+                },
+                {
+                    event_codes: [
+                        "blobfs",
+                        "truncate",
+                    ],
+                    metric_name: "vnode_operation_latency",
+                    metric_type: "IntHistogram",
+                    selector: "bootstrap/fshost/fvm2/blobfs-collection*:root/fs.opstats/truncate:latency",
+                },
+                {
+                    event_codes: [
+                        "blobfs",
+                        "unlink",
+                    ],
+                    metric_name: "vnode_operation_latency",
+                    metric_type: "IntHistogram",
+                    selector: "bootstrap/fshost/fvm2/blobfs-collection*:root/fs.opstats/unlink:latency",
+                },
+                {
+                    event_codes: [
+                        "blobfs",
+                        "write",
+                    ],
+                    metric_name: "vnode_operation_latency",
+                    metric_type: "IntHistogram",
+                    selector: "bootstrap/fshost/fvm2/blobfs-collection*:root/fs.opstats/write:latency",
+                },
+                {
+                    event_codes: [
+                        "minfs",
+                        "append",
+                    ],
+                    metric_name: "vnode_operation_latency",
+                    metric_type: "IntHistogram",
+                    selector: "bootstrap/fshost/fvm2/fs-collection*:root/fs.opstats/append:latency",
+                },
+                {
+                    event_codes: [
+                        "minfs",
+                        "close",
+                    ],
+                    metric_name: "vnode_operation_latency",
+                    metric_type: "IntHistogram",
+                    selector: "bootstrap/fshost/fvm2/fs-collection*:root/fs.opstats/close:latency",
+                },
+                {
+                    event_codes: [
+                        "minfs",
+                        "create",
+                    ],
+                    metric_name: "vnode_operation_latency",
+                    metric_type: "IntHistogram",
+                    selector: "bootstrap/fshost/fvm2/fs-collection*:root/fs.opstats/create:latency",
+                },
+                {
+                    event_codes: [
+                        "minfs",
+                        "get_attr",
+                    ],
+                    metric_name: "vnode_operation_latency",
+                    metric_type: "IntHistogram",
+                    selector: "bootstrap/fshost/fvm2/fs-collection*:root/fs.opstats/get_attr:latency",
+                },
+                {
+                    event_codes: [
+                        "minfs",
+                        "link",
+                    ],
+                    metric_name: "vnode_operation_latency",
+                    metric_type: "IntHistogram",
+                    selector: "bootstrap/fshost/fvm2/fs-collection*:root/fs.opstats/link:latency",
+                },
+                {
+                    event_codes: [
+                        "minfs",
+                        "lookup",
+                    ],
+                    metric_name: "vnode_operation_latency",
+                    metric_type: "IntHistogram",
+                    selector: "bootstrap/fshost/fvm2/fs-collection*:root/fs.opstats/lookup:latency",
+                },
+                {
+                    event_codes: [
+                        "minfs",
+                        "read",
+                    ],
+                    metric_name: "vnode_operation_latency",
+                    metric_type: "IntHistogram",
+                    selector: "bootstrap/fshost/fvm2/fs-collection*:root/fs.opstats/read:latency",
+                },
+                {
+                    event_codes: [
+                        "minfs",
+                        "read_dir",
+                    ],
+                    metric_name: "vnode_operation_latency",
+                    metric_type: "IntHistogram",
+                    selector: "bootstrap/fshost/fvm2/fs-collection*:root/fs.opstats/read_dir:latency",
+                },
+                {
+                    event_codes: [
+                        "minfs",
+                        "set_attr",
+                    ],
+                    metric_name: "vnode_operation_latency",
+                    metric_type: "IntHistogram",
+                    selector: "bootstrap/fshost/fvm2/fs-collection*:root/fs.opstats/set_attr:latency",
+                },
+                {
+                    event_codes: [
+                        "minfs",
+                        "sync",
+                    ],
+                    metric_name: "vnode_operation_latency",
+                    metric_type: "IntHistogram",
+                    selector: "bootstrap/fshost/fvm2/fs-collection*:root/fs.opstats/sync:latency",
+                },
+                {
+                    event_codes: [
+                        "minfs",
+                        "truncate",
+                    ],
+                    metric_name: "vnode_operation_latency",
+                    metric_type: "IntHistogram",
+                    selector: "bootstrap/fshost/fvm2/fs-collection*:root/fs.opstats/truncate:latency",
+                },
+                {
+                    event_codes: [
+                        "minfs",
+                        "unlink",
+                    ],
+                    metric_name: "vnode_operation_latency",
+                    metric_type: "IntHistogram",
+                    selector: "bootstrap/fshost/fvm2/fs-collection*:root/fs.opstats/unlink:latency",
+                },
+                {
+                    event_codes: [
+                        "minfs",
+                        "write",
+                    ],
+                    metric_name: "vnode_operation_latency",
+                    metric_type: "IntHistogram",
+                    selector: "bootstrap/fshost/fvm2/fs-collection*:root/fs.opstats/write:latency",
+                },
+                {
+                    event_codes: [],
+                    metric_name: "fxfs_bytes_reserved",
+                    metric_type: "Integer",
+                    selector: "bootstrap/fshost/fxfs:root/fs.detail/allocator:bytes_reserved",
+                },
+                {
+                    event_codes: [],
+                    metric_name: "fxfs_bytes_reserved_percentage",
+                    metric_type: "Integer",
+                    selector: "bootstrap/fshost/fxfs:root/fs.detail/allocator:bytes_reserved_percent",
+                },
+                {
+                    event_codes: [],
+                    metric_name: "fxfs_bytes_borrowed_to_reserved_percentage",
+                    metric_type: "Integer",
+                    selector: "bootstrap/fshost/fxfs:root/fs.detail/object_manager:borrowed_to_required_reservation_percent",
+                },
+                {
+                    event_codes: [],
+                    metric_name: "fxfs_journal_size",
+                    metric_type: "Integer",
+                    selector: "bootstrap/fshost/fxfs:root/fs.detail/journal:journal_size",
+                },
+                {
+                    event_codes: [],
+                    metric_name: "fxfs_journal_size_percentage",
+                    metric_type: "Integer",
+                    selector: "bootstrap/fshost/fxfs:root/fs.detail/journal:journal_size_to_disk_size_percent",
+                },
+                {
+                    metric_name: "allocation_size_histogram",
+                    metric_type: "IntHistogram",
+                    selector: "bootstrap/fshost/fxfs:root/fs.detail/allocator:allocation_size_histogram",
+                },
+                {
+                    metric_name: "rebuild_strategy_triggers",
+                    metric_type: "IntHistogram",
+                    selector: "bootstrap/fshost/fxfs:root/fs.detail/allocator:rebuild_strategy_triggers",
+                },
+                {
+                    event_codes: [
+                        "Compact",
+                    ],
+                    metric_name: "merkle_layout",
+                    metric_type: "Integer",
+                    selector: "bootstrap/fshost/fvm2/blobfs-collection*:root/blob_layout_stats:compact_layout_blobs",
+                },
+                {
+                    event_codes: [
+                        "Padded",
+                    ],
+                    metric_name: "merkle_layout",
+                    metric_type: "Integer",
+                    selector: "bootstrap/fshost/fvm2/blobfs-collection*:root/blob_layout_stats:padded_layout_blobs",
+                },
+            ],
+            poll_rate_sec: 600,
+        },
+    ],
+}

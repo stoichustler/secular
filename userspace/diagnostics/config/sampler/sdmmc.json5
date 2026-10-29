@@ -1,0 +1,46 @@
+{
+    project_id: 9,
+    data_sets: [
+        {
+            metrics: [
+                {
+                    event_codes: [],
+                    metric_name: "sdio_tx_error_integer",
+                    metric_type: "Integer",
+                    selector: "bootstrap/*-drivers\\:*:[name=sdmmc]root/sdio_core:tx_errors",
+                },
+                {
+                    event_codes: [],
+                    metric_name: "sdio_rx_error_integer",
+                    metric_type: "Integer",
+                    selector: "bootstrap/*-drivers\\:*:[name=sdmmc]root/sdio_core:rx_errors",
+                },
+                {
+                    event_codes: [],
+                    metric_name: "sdmmc_io_error",
+                    metric_type: "Occurrence",
+                    selector: "bootstrap/*-drivers\\:*:[name=sdmmc]root/sdmmc_core:io_errors",
+                },
+                {
+                    event_codes: [],
+                    metric_name: "sdmmc_io_retries",
+                    metric_type: "Occurrence",
+                    selector: "bootstrap/*-drivers\\:*:[name=sdmmc]root/sdmmc_core:io_retries",
+                },
+                {
+                    event_codes: [],
+                    metric_name: "emmc_type_a_lifetime_used",
+                    metric_type: "Integer",
+                    selector: "bootstrap/*-drivers\\:*:[name=sdmmc]root/sdmmc_core:type_a_lifetime_used",
+                },
+                {
+                    event_codes: [],
+                    metric_name: "emmc_type_b_lifetime_used",
+                    metric_type: "Integer",
+                    selector: "bootstrap/*-drivers\\:*:[name=sdmmc]root/sdmmc_core:type_b_lifetime_used",
+                },
+            ],
+            poll_rate_sec: 1800,
+        },
+    ],
+}

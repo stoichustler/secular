@@ -1,0 +1,55 @@
+# Copyright 2020 The Fuchsia Authors. All rights reserved.
+# Use of this source code is governed by a BSD-style license that can be
+# found in the LICENSE file.
+
+import("//products/build/components.gni")
+import("//products/build/rust/rustc_library.gni")
+
+rustc_library("ddk-log-lib") {
+  edition = "2024"
+  with_unit_tests = true
+  testonly = true
+
+  deps = [
+    "//sdk/lib/device-watcher/rust",
+    "//sdk/rust/zx",
+    "//userspace/diagnostics/validator/logs/fidl:fuchsia.validate.logs_rust",
+    "//userspace/lib/diagnostics/log/types",
+    "//userspace/lib/diagnostics/reader/rust",
+    "//userspace/lib/fuchsia-async",
+    "//userspace/lib/fuchsia-component-test",
+    "//third_party/rust_crates:anyhow",
+    "//third_party/rust_crates:futures",
+    "//third_party/rust_crates:log",
+  ]
+
+  test_deps = [
+    "//sdk/fidl/fuchsia.driver.test:fuchsia.driver.test_rust",
+    "//sdk/lib/driver_test_realm/realm_builder/rust",
+    "//userspace/lib/fuchsia",
+  ]
+
+  sources = [ "src/lib.rs" ]
+
+  configs += [ "//products/build/config/rust/lints:clippy_warn_all" ]
+}
+
+fuchsia_unittest_package("ddk-log-tests-package") {
+  manifest = "meta/ddk-log-test.cml"
+
+  test_specs = {
+    log_settings = {
+      max_severity = "ERROR"
+    }
+  }
+  deps = [
+    ":ddk-log-lib_test",
+    "//userspace/devices/misc/drivers/test-parent",
+    "//userspace/diagnostics/validator/logs/ddk/log-test-driver",
+  ]
+}
+
+group("tests") {
+  testonly = true
+  deps = [ ":ddk-log-tests-package" ]
+}
