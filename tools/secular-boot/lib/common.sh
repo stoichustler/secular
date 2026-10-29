@@ -23,6 +23,42 @@ require_arch() {
   esac
 }
 
+# Ninja lists these as source inputs for latest-commit-date.txt (kernel UTC
+# backstop). Fuchsia fills them with a jiri hook; Secular has no jiri, so
+# synthesize from this repo's HEAD.
+ensure_jiri_generated_commit_info() {
+  local root="$1"
+  local dir="$root/products/build/info/jiri_generated"
+  local hash stamp path contents
+  mkdir -p "$dir"
+  export GIT_CONFIG_GLOBAL=/dev/null
+  export GIT_OPTIONAL_LOCKS=0
+  export GIT_CONFIG_NOSYSTEM=1
+  if git -C "$root" rev-parse --verify HEAD >/dev/null 2>&1; then
+    hash="$(git -C "$root" rev-parse HEAD)"
+    stamp="$(git -C "$root" log -n1 --date=unix --format=%cd)"
+  else
+    hash="0000000000000000000000000000000000000000"
+    stamp="$(date -u +%s)"
+  fi
+  for path in \
+    "$dir/integration_commit_hash.txt" \
+    "$dir/integration_daily_commit_hash.txt"; do
+    contents="$hash"
+    if [[ ! -r "$path" ]] || [[ "$(cat "$path")" != "$contents" ]]; then
+      printf '%s\n' "$contents" >"$path"
+    fi
+  done
+  for path in \
+    "$dir/integration_commit_stamp.txt" \
+    "$dir/integration_daily_commit_stamp.txt"; do
+    contents="$stamp"
+    if [[ ! -r "$path" ]] || [[ "$(cat "$path")" != "$contents" ]]; then
+      printf '%s\n' "$contents" >"$path"
+    fi
+  done
+}
+
 resolve_sdk_root() {
   local sdk=""
   if [[ -n "${SECULAR_SDK:-}" ]]; then

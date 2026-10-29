@@ -20,6 +20,8 @@ build_arch() {
     "products/secular:boot_shim"
   )
 
+  ensure_jiri_generated_commit_info "$root"
+
   secular_stage "BLD: preflight (ARCH:$arch)"
   "$script_dir/preflight.sh" --root "$root" "$arch" || return $?
   if [[ ! -f "$out_dir/build.ninja" ]]; then

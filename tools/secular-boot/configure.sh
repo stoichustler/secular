@@ -14,6 +14,8 @@ arch="$1"
 require_arch "$arch" || exit $?
 out_name="secular-boot-$arch"
 
+ensure_jiri_generated_commit_info "$root"
+
 sdk_root="$(resolve_sdk_root)"
 [[ -n "$sdk_root" ]] || die "SECULAR_SDK is required (see README.md)"
 [[ -d "$sdk_root" ]] || die "SDK root is not a directory: $sdk_root"
