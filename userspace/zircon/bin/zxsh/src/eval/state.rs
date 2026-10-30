@@ -552,7 +552,7 @@ impl ShellState {
 
         // Align with dash: default prompts PS1, PS2, PS4, unexported.
         if !vars.contains_key(BStr::new(b"PS1")) {
-            let ps1 = if unsafe { libc::geteuid() } == 0 { "# " } else { "secular " };
+            let ps1 = if unsafe { libc::geteuid() } == 0 { "# " } else { "secular $ " };
             vars.insert(BString::from("PS1"), BString::from(ps1));
         }
         if !vars.contains_key(BStr::new(b"PS2")) {

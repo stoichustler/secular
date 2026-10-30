@@ -12,7 +12,6 @@ common = {
   visibility = [
     "*",
     "//userspace/virtualization/bin/vmm/arch/x64/*",
-    "//zircon/kernel/arch/x86/*",
   ]
 }
 

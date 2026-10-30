@@ -18,3 +18,12 @@ executable("bin") {
 fuchsia_package("time") {
   deps = [ ":bin" ]
 }
+
+# GN-only Secular image: put the tool in /boot/bin.
+group("bootfs_binaries") {
+  visibility = [
+    "//products/secular:*",
+    "//userspace/zircon/bin:*",
+  ]
+  deps = [ ":bin" ]
+}

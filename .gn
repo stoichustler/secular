@@ -46,7 +46,6 @@ exec_script_whitelist = [
   "//products/build/icu/build_config.gni",
   "//products/build/toolchain/default_concurrent_jobs.gni",
   "//products/build/toolchain/zircon/zircon_toolchain.gni",
-  "//zircon/kernel/arch/x86/phys/BUILD.gn",
   "//products/build/git/git_revisions.gni",
   "//products/build/config/userspace_include_alias.gni",
 ]

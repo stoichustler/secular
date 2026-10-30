@@ -15,6 +15,9 @@ import("efi_executable.gni")
 if (current_toolchain == default_toolchain) {
   # The default toolchain just defines the EFI environment.
   foreach(cpu, standard_fuchsia_cpus) {
+    if (cpu == "x64") {
+      # x86 kernel arch support has been removed.
+    } else {
     zircon_toolchain_suite("kernel.efi_$cpu") {
       cpu = cpu
 
@@ -47,6 +50,7 @@ if (current_toolchain == default_toolchain) {
         # There is no possibility of fancy runtimes like ASan for EFI.
         "instrumentation-runtime",
       ]
+    }
     }
   }
 } else if (toolchain_environment == "kernel.efi") {

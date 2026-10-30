@@ -22,10 +22,6 @@ namespace Riscv {
 #include <arch/riscv64/code-patches/include/arch/code-patches/case-id.h>
 }  // namespace Riscv
 
-namespace X86 {
-#include <arch/x86/code-patches/include/arch/code-patches/case-id.h>
-}  // namespace X86
-
 template <typename Id, typename WithNames>
 void EmitPatchNames(WithNames&& with_names, std::string_view arch, hwreg::AsmHeader& header) {
   header.Line({"#ifdef ", arch});
@@ -46,6 +42,5 @@ int main(int argc, char** argv) {
   auto header = hwreg::AsmHeader();
   EmitPatchNames<Arm::CodePatchId>(Arm::WithCodePatchNames, "__aarch64__", header);
   EmitPatchNames<Riscv::CodePatchId>(Riscv::WithCodePatchNames, "__riscv", header);
-  EmitPatchNames<X86::CodePatchId>(X86::WithCodePatchNames, "__x86_64__", header);
   return header.Main(argc, argv);
 }

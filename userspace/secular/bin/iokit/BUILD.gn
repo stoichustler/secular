@@ -22,9 +22,19 @@ rustc_binary("tree") {
   with_unit_tests = true
 }
 
+rustc_binary("clear") {
+  output_name = "clear"
+  edition = "2024"
+  source_root = "src/clear.rs"
+  sources = [ "src/clear.rs" ]
+  configs += [ "//products/build/config/rust:bootfs" ]
+  with_unit_tests = true
+}
+
 group("iokit") {
   deps = [
     ":cat",
+    ":clear",
     ":tree",
   ]
 }

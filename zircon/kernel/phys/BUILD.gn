@@ -30,51 +30,50 @@ not_needed([ "arch_phys" ])  # Not used in all toolchains.
 
 if (current_toolchain == default_toolchain) {
   # Default toolchain (current_cpu == "") just defines the phys environment.
-  # Note: see //zircon/kernel/arch/x86/phys:kernel.phys32 too.
   foreach(cpu, standard_fuchsia_cpus) {
-    kernel_cpu = cpu
-    if (kernel_cpu == "x64") {
-      kernel_cpu = "x86"
-    }
+    if (cpu != "x64") {
+      kernel_cpu = cpu
 
-    zircon_toolchain_suite("kernel.phys_$cpu") {
-      cpu = cpu
-      os = "fuchsia"
-      environment = "kernel.phys"
-      with_shared = false
-      is_pic_default = true
+      zircon_toolchain_suite("kernel.phys_$cpu") {
+        cpu = cpu
+        os = "fuchsia"
+        environment = "kernel.phys"
+        with_shared = false
+        is_pic_default = true
 
-      toolchain_tags = [
-        "kernel",
-        "no-floating-point",
-        "standalone",
-      ]
+        toolchain_tags = [
+          "kernel",
+          "no-floating-point",
+          "standalone",
+        ]
 
-      configs = [ "//zircon/kernel/phys:phys_config" ]
+        configs = [ "//zircon/kernel/phys:phys_config" ]
 
-      # Always enable frame pointers. This works because frame_pointers
-      # is added as part of :phys_config below.
-      remove_common_configs = [ "//products/build/config:default_frame_pointers" ]
+        # Always enable frame pointers. This works because frame_pointers
+        # is added as part of :phys_config below.
+        remove_common_configs =
+            [ "//products/build/config:default_frame_pointers" ]
 
-      exclude_variant_tags = [
-        # There is no GCC toolchain for phys, only Clang.
-        "gcc",
+        exclude_variant_tags = [
+          # There is no GCC toolchain for phys, only Clang.
+          "gcc",
 
-        # There is no possibility of fancy runtimes like ASan for phys.
-        "instrumentation-runtime",
-      ]
+          # There is no possibility of fancy runtimes like ASan for phys.
+          "instrumentation-runtime",
+        ]
 
-      # Append the arch-specific lists.  The phys/phys.gni file in each arch
-      # subdirectory defines phys_* lists to append to the parameters.  Since
-      # this is evaluated in the default toolchain where current_cpu is not
-      # necessarily the same as the cpu we're defining for, import the right
-      # phys.gni file only into a local scope.
-      phys = {
-        import("//zircon/kernel/arch/$kernel_cpu/phys/phys.gni")
+        # Append the arch-specific lists.  The phys/phys.gni file in each arch
+        # subdirectory defines phys_* lists to append to the parameters.  Since
+        # this is evaluated in the default toolchain where current_cpu is not
+        # necessarily the same as the cpu we're defining for, import the right
+        # phys.gni file only into a local scope.
+        phys = {
+          import("//zircon/kernel/arch/$kernel_cpu/phys/phys.gni")
+        }
+        configs += phys.phys_configs
+        toolchain_tags += phys.phys_tags
+        exclude_variant_tags += phys.phys_exclude_variant_tags
       }
-      configs += phys.phys_configs
-      toolchain_tags += phys.phys_tags
-      exclude_variant_tags += phys.phys_exclude_variant_tags
     }
   }
 } else if (toolchain_environment == "kernel.phys") {
@@ -128,8 +127,8 @@ if (toolchain_environment == "kernel.phys" ||
     visibility = [
       "./*",
 
-      # Required for legacy-boot-shim
-      "//zircon/kernel/arch/x86/*",
+      "//zircon/kernel/arch/arm64/*",
+      "//zircon/kernel/arch/riscv64/*",
     ]
 
     sources = [ "fixed-address-boot-zbi.cc" ]
@@ -802,9 +801,11 @@ group("boot_tests") {
   }
   if (all_cpu_phys_boot_tests) {
     foreach(cpu, standard_fuchsia_cpus) {
-      deps += [ "test:$cpu" ]
-      if (cpu != "riscv64") {  # TODO(mcgrathr): EFI not there yet
-        deps += [ "efi:boot_tests(//zircon/kernel/phys/efi:kernel.efi_$cpu)" ]
+      if (cpu != "x64") {
+        deps += [ "test:$cpu" ]
+        if (cpu != "riscv64") {  # TODO(mcgrathr): EFI not there yet
+          deps += [ "efi:boot_tests(//zircon/kernel/phys/efi:kernel.efi_$cpu)" ]
+        }
       }
     }
   }

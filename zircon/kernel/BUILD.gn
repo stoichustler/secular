@@ -80,10 +80,6 @@ group("tests") {
     "vm/phys:tests",
   ]
 
-  if (current_cpu == "x64") {
-    deps += [ "lib/libc/string/arch/x86:tests" ]
-  }
-
   # Don't let any test ZBIs roll up into the overall product image.
   metadata = {
     zbi_input_barrier = []

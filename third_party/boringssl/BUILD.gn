@@ -277,13 +277,17 @@ if (!is_kernel) {
 
   test_data_deps = []
   foreach(test_data, crypto_test_data) {
-    target_name = "test_data.${test_data}"
+    # Secular does not ship src/third_party/wycheproof_testvectors.
+    if (string_replace(test_data, "wycheproof_testvectors/", "") ==
+        test_data) {
+      target_name = "test_data.${test_data}"
 
-    resource(target_name) {
-      sources = [ test_data ]
-      outputs = [ "data/" + rebase_path(test_data, "src") ]
+      resource(target_name) {
+        sources = [ test_data ]
+        outputs = [ "data/" + rebase_path(test_data, "src") ]
+      }
+      test_data_deps += [ ":${target_name}" ]
     }
-    test_data_deps += [ ":${target_name}" ]
   }
 
   group("temp_storage") {

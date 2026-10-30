@@ -15,7 +15,7 @@ use std::io::{BufRead, IsTerminal, Write};
 
 mod completion;
 
-const DEFAULT_PS1: &str = "secular ";
+const DEFAULT_PS1: &str = "secular $ ";
 const DEFAULT_PS2: &str = "> ";
 
 fn get_prompt(input_buffer: &BStr, state: &mut ShellState, ctx: &ExecutionContext) -> BString {

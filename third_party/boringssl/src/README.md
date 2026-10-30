@@ -44,3 +44,14 @@ There are other files in this directory which might be helpful:
   * [CONTRIBUTING.md](./CONTRIBUTING.md): how to contribute to BoringSSL.
   * [BREAKING-CHANGES.md](./BREAKING-CHANGES.md): notes on potentially-breaking changes.
   * [SANDBOXING.md](./SANDBOXING.md): notes on using BoringSSL in a sandboxed environment.
+
+## Secular
+
+This checkout is trimmed for QEMU linux-arm64. See
+[../README.md](../README.md) for the removed trees:
+
+- `../apple-*` and `../win-*` (Fuchsia per-OS generated asm; GN uses
+  `gen/bcm/` instead)
+- `third_party/wycheproof_testvectors/` (crypto unit-test vectors only)
+
+Keep `third_party/fiat/` and `gen/bcm/`.

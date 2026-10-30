@@ -40,7 +40,6 @@ source_set("lib") {
     "//userspace/lib/cmdline",
     "//userspace/lib/fxl",
     "//userspace/lib/uuid",
-    "//userspace/storage/lib/fs_management",
     "//zircon/system/ulib/zx",
   ]
 
@@ -56,6 +55,15 @@ executable("bin") {
   sources = [ "main.cc" ]
 
   deps = [ ":lib" ]
+}
+
+# GN-only Secular image: put the tool in /boot/bin.
+group("bootfs_binaries") {
+  visibility = [
+    "//products/secular:*",
+    "//userspace/zircon/bin:*",
+  ]
+  deps = [ ":bin" ]
 }
 
 # Traditional CLI package.

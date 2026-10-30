@@ -445,9 +445,8 @@ config("kernel_image_max_size") {
       # 14 MB upperbound for non coverage builds.
       kernel_image_max_size = 14680064
     }
-  } else if (target_cpu == "x64") {
-    # x64 hard coded to support up to 64 MB.
-    kernel_image_max_size = 67108864
+  } else {
+    assert(false, "unsupported kernel cpu $target_cpu (x86 kernel arch removed)")
   }
 
   visibility = [

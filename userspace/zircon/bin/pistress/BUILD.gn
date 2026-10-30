@@ -28,3 +28,12 @@ executable("bin") {
 bootfs_files_for_assembly("bootfs") {
   deps = [ ":bin" ]
 }
+
+# GN-only Secular image: put the tool in /boot/bin.
+group("bootfs_binaries") {
+  visibility = [
+    "//products/secular:*",
+    "//userspace/zircon/bin:*",
+  ]
+  deps = [ ":bin" ]
+}

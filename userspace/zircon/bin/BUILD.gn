@@ -2,6 +2,21 @@
 # Use of this source code is governed by a BSD-style license that can be
 # found in the LICENSE file.
 
+# GN-only Secular image: put the zircon CLI tools in /boot/bin.
+# zxsh is packed separately as /boot/bin/sh.
+group("bootfs_binaries") {
+  visibility = [ "//products/secular:*" ]
+  deps = [
+    "hwstress:bootfs_binaries",
+    "kcounter:bootfs_binaries",
+    "ktrace:bootfs_binaries",
+    "loadgen:bootfs_binaries",
+    "pistress:bootfs_binaries",
+    "time:bootfs_binaries",
+    "uname:bootfs_binaries",
+  ]
+}
+
 group("tests") {
   testonly = true
   deps = [

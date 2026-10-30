@@ -128,6 +128,9 @@ how to install protobuf runtime for that specific language:
 | Dart                                 | [dart-lang/protobuf](https://github.com/dart-lang/protobuf) |
 | JavaScript                           | [protocolbuffers/protobuf-javascript](https://github.com/protocolbuffers/protobuf-javascript)|
 
+In this Secular checkout, `java/`, `csharp/`, `php/`, `objectivec/`, and
+`compatibility/` are not present. See [../README.md](../README.md).
+
 Quick Start
 -----------
 
@@ -153,3 +156,16 @@ Developer Community
 
 To be alerted to upcoming changes in Protocol Buffers and connect with protobuf developers and users,
 [join the Google Group](https://groups.google.com/g/protobuf).
+
+## Secular
+
+This checkout is trimmed for the C++/`protoc` path. See
+[../README.md](../README.md) for the removed trees:
+
+- `java/`
+- `csharp/`
+- `php/`
+- `objectivec/`
+- `compatibility/`
+
+C++ `protoc` plugins under `src/google/protobuf/compiler/` are kept.

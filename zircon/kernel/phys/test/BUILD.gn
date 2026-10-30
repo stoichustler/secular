@@ -763,8 +763,10 @@ if (current_toolchain == default_toolchain) {
 }
 
 foreach(cpu, standard_fuchsia_cpus) {
-  group(cpu) {
-    testonly = true
-    public_deps = [ ":test(//zircon/kernel/phys:kernel.phys_$cpu)" ]
+  if (cpu != "x64") {
+    group(cpu) {
+      testonly = true
+      public_deps = [ ":test(//zircon/kernel/phys:kernel.phys_$cpu)" ]
+    }
   }
 }

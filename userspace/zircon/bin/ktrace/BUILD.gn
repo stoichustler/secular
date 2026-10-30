@@ -20,3 +20,12 @@ executable("ktrace") {
 bootfs_files_for_assembly("bootfs") {
   deps = [ ":ktrace" ]
 }
+
+# GN-only Secular image: put the tool in /boot/bin.
+group("bootfs_binaries") {
+  visibility = [
+    "//products/secular:*",
+    "//userspace/zircon/bin:*",
+  ]
+  deps = [ ":ktrace" ]
+}

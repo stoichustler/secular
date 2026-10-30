@@ -119,6 +119,14 @@
             to: "#console-launcher",
         },
         {
+            protocol: [
+                "fuchsia.scheduler.RoleManager",
+                "fuchsia.scheduler.deprecated.ProfileProvider",
+            ],
+            from: "#role_manager",
+            to: "#console-launcher",
+        },
+        {
             dictionary: "diagnostics",
             from: "self",
             to: [

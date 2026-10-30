@@ -31,6 +31,7 @@ _bootfs_packages = [
   "//userspace/secular/bin/ptysvc:package",
   "//userspace/diagnostics/archivist:package",
   "//userspace/power/shutdown-shim:package",
+  "//userspace/zircon/bin/role_manager:package",
 ]
 
 _bootfs_package_manifests = []
@@ -51,6 +52,7 @@ cmc_merge("bootstrap.cml") {
     "//userspace/secular/bin/ptysvc/meta/ptysvc.bootstrap_shard.cml",
     "//userspace/diagnostics/archivist/meta/archivist.bootstrap_shard.cml",
     "//userspace/sys/bootstrap/meta/bootstrap.cml",
+    "//userspace/zircon/bin/role_manager/meta/role_manager.bootstrap_shard.cml",
   ]
   output_name = "bootstrap.cml"
 }
@@ -144,12 +146,15 @@ zbi_input("bootfs_files") {
     ":component_id_index",
     ":component_manager_bootfs",
     "//products/build/info/bootfs:minimum_utc_stamp",
+    "//userspace/secular:bringup-config",
     "//userspace/secular/bin/debuglog:bootfs_binaries",
     "//userspace/secular/bin/dlog:bootfs_binaries",
     "//userspace/secular/bin/iokit:cat",
+    "//userspace/secular/bin/iokit:clear",
     "//userspace/secular/bin/iokit:tree",
     "//userspace/sys/bin/psutils:bootfs_binaries",
     "//userspace/sys/component_manager:component_manager_bootfs_config",
+    "//userspace/zircon/bin:bootfs_binaries",
     "//userspace/zircon/bin/zxsh:sh",
   ]
 }

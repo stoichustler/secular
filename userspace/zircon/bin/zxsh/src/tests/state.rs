@@ -289,7 +289,7 @@ fn test_default_shell_variables_align_with_dash() {
     assert!(state.is_readonly(BStr::new("PPID")));
     assert!(!state.exported().contains(BStr::new("PPID")));
 
-    let expected_ps1 = if unsafe { libc::geteuid() } == 0 { "# " } else { "secular " };
+    let expected_ps1 = if unsafe { libc::geteuid() } == 0 { "# " } else { "secular $ " };
     assert_eq!(state.get_var(BStr::new("PS1")), Some(BString::from(expected_ps1)));
     assert_eq!(state.get_var(BStr::new("PS2")), Some(BString::from("> ")));
     assert_eq!(state.get_var(BStr::new("PS4")), Some(BString::from("+ ")));
