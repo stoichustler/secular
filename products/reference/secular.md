@@ -10,4 +10,4 @@
 
 ---
 
-Hustle Embedded.
+Everyday's a Hustle.

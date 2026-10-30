@@ -1,5 +1,5 @@
 This directory contains files that reflect the commit hash and timestamp of
-//integration/.git/HEAD.
+//products/integration/.git/HEAD.
 
 - integration_commit_hash.txt: git hash of HEAD in integration.git.
 - integration_commit_stamp.txt: commit time of HEAD in integration.git, as a UTC
@@ -11,7 +11,7 @@ This directory contains files that reflect the commit hash and timestamp of
 - integration_daily_commit_stamp.txt: commit time of the commit described in
   integration_daily_commit_hash.txt, as a UTC UNIX timestamp.
 
-A Jiri hook, in //integration/fuchsia/stem, is used to invoke
+A Jiri hook, in //products/integration/fuchsia/stem, is used to invoke
 `//products/build/info/create_jiri_hook_files.sh` which will overwrite them, on each
 `jiri sync` operation, with up-to-date values.
 

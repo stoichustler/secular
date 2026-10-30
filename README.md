@@ -5,11 +5,11 @@ bringup renamed: kernel, BOOTFS, interactive serial console (`zxsh`),
 and the basic component/driver framework. It boots on
 `qemu-system-aarch64`.
 
-User-space lives under `userspace/` (GN labels are `//userspace/...`).
-Bringup programs live under `userspace/secular/`. Boards, GN templates,
-bundles, and third-party manifests live under `products/`. C++ still uses
-`#include "src/..."` and `#include "build/..."`; `gn gen` maps those onto
-the moved trees.
+- User-space lives under `userspace/` (GN labels are `//userspace/...`).
+
+- Bringup programs live under `userspace/secular/`.
+
+- Boards, GN templates, bundles, integration, and third-party manifests live under `products/`.
 
 The compile toolchain lives in a separate SDK. Do not copy it into this
 tree.
@@ -29,4 +29,4 @@ Build outputs are written under `out/secular-boot-arm64/`, including
 
 ---
 
-Everyday's Hustle.
+Everyday's a Hustle.

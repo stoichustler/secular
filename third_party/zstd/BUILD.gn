@@ -17,7 +17,7 @@ import("//products/build/zircon/migrated_targets.gni")
 #      If so, update the crate accordingly.
 #   2. Disable the check below, adding a TODO comment referencing a bug tracking the zstd
 #      update, and indicate that the check will be re-enabled once the crate is updated.
-#   3. Update the pinned version of zstd in //integration/third_party/flower
+#   3. Update the pinned version of zstd in //products/integration/third_party/flower
 #   4. Run third_party/rust_crates/forks/zstd-sys/bindgen.sh to update the Rust bindings
 #      and re-enable the check below.
 verify_rust_zstd_sys_crate_binding_version = !secular_boot_build

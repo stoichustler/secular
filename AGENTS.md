@@ -111,6 +111,7 @@ not source.
 | `products/boards/` | qemu-arm64 board |
 | `products/build/` | GN templates; SDK path remapping |
 | `products/bundles/` | Assembly / bringup bundles |
+| `products/integration/` | Platform milestone pin (`MILESTONE`) |
 | `products/manifests/` | Third-party pin manifests |
 | `tools/secular-boot/` | configure / build / run / verify |
 | `tools/ai-coding/` | Project-only Grok/Codex skills, rules, and agent defs |

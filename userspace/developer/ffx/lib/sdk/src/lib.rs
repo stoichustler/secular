@@ -66,7 +66,7 @@ pub use sdk_metadata as metadata;
 const SDK_MANIFEST_PATH: &str = "meta/manifest.json";
 
 /// Current "F" milestone for Fuchsia (e.g. F38).
-const MILESTONE: &'static str = include_str!("../../../../../../integration/MILESTONE");
+const MILESTONE: &'static str = include_str!("../../../../../../products/integration/MILESTONE");
 
 const SDK_NOT_FOUND_HELP: &str = "\
 SDK directory could not be found. Please set with

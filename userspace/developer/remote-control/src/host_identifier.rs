@@ -29,7 +29,7 @@ impl DefaultIdentifier {
     }
 }
 
-const MILESTONE: &str = include_str!("../../../../integration/MILESTONE");
+const MILESTONE: &str = include_str!("../../../../products/integration/MILESTONE");
 
 pub(crate) fn current_f_release() -> Option<u32> {
     MILESTONE.trim().parse::<u32>().ok()

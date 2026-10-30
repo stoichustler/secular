@@ -131,7 +131,7 @@ exports_files(
 
     # MILESTONE file, used in //userspace/developer/ffx/lib/sdk.
     [
-        "integration/MILESTONE",
+        "products/integration/MILESTONE",
     ] +
 
     # Unicode data, used in //userspace/storage/fxfs/unicode.

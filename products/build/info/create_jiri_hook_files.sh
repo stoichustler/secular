@@ -4,7 +4,7 @@
 # found in the LICENSE file.
 
 # This script is expected to be invoked as a Jiri hook from
-# integration/fuchsia/stem.
+# products/integration/fuchsia/stem.
 
 # Its purpose is to generate a Unix timestamp and a commit hash
 # file under //products/build/info/jiri_generated/

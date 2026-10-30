@@ -9,6 +9,7 @@ group("tests") {
     "console-launcher:tests",
     "critical-services:tests",
     "iokit:cat_test",
+    "iokit:tree_test",
     "kernel-args-forwarder:tests",
     "ptysvc:tests",
     "userboot:tests",

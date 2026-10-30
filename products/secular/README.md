@@ -14,4 +14,4 @@ The ZBI is a bringup-class system assembled without Bazel:
 - BOOTFS packages: root, bootstrap, console, console-launcher,
   critical-services, ptysvc, archivist, shutdown-shim,
   kernel-args-forwarder
-- `/boot/bin/sh` (`zxsh`)
+- `/boot/bin`: `sh` (`zxsh`), `cat`, `tree`, `dlog`, `debuglog`, psutils

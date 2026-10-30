@@ -1,7 +1,7 @@
 # Products
 
-This directory holds the Secular product and the GN/board/bundle/manifest
-trees that used to sit at the repository root:
+This directory holds the Secular product and the board, build, bundle,
+integration, and manifest trees that used to sit at the repository root:
 
 | Path | Role |
 | --- | --- |
@@ -9,6 +9,7 @@ trees that used to sit at the repository root:
 | `boards/` | qemu-arm64 board |
 | `build/` | GN templates and SDK remapping |
 | `bundles/` | Assembly input bundles |
+| `integration/` | Platform milestone pin (`MILESTONE`) |
 | `manifests/` | Third-party pin manifests |
 
 Secular is the only in-tree product. It matches Fuchsia **bringup**:

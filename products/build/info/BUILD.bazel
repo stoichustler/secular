@@ -21,7 +21,7 @@ gen_latest_date_and_timestamp(
     name = "latest_date_and_timestamp",
 
     # This cannot run properly in a sandbox as it will access
-    # //:integration/.git/ content in unpredictable ways and
+    # //:products/integration/.git/ content in unpredictable ways and
     # there is no way to compute which exact set of inputs in
     # advance. The alternative is to expose all of the directory,
     # which creates a ton of symlinks in the sandbox, which is
