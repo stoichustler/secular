@@ -15,8 +15,12 @@ const MAX_NET_DEVICES uint8 = 32;
 
 /// Type of kernel used by a guest.
 type KernelType = strict enum {
+    /// ZBI payload (legacy Fuchsia guest images).
     ZIRCON = 0;
+    /// Linux Image + DTB boot protocol.
     LINUX = 1;
+    /// RTOS payload using the Linux Image + DTB boot protocol.
+    RTOS = 2;
 };
 
 /// Properties describing a block device.

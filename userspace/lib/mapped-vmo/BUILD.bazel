@@ -26,7 +26,7 @@ rustc_library(
         "//userspace/sys:__subpackages__",
         "//userspace/testing/system-validation:__pkg__",
         "//userspace/ui:__subpackages__",
-        "//userspace/virtualization:__subpackages__",
+        "//userspace/hypervisor:__subpackages__",
         "//vendor/google:__subpackages__",
         "//zircon:__subpackages__",
     ],

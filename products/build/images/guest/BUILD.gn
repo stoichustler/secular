@@ -14,7 +14,7 @@ bazel_product_image("guest") {
     "//userspace/devices/board/drivers/x86:package.bazel_input",
     "//userspace/devices/i2c/drivers/intel-i2c:package.bazel_input",
     "//userspace/devices/serial/drivers/uart16550:package.bazel_input",
-    "//userspace/virtualization/tests:virtualization_test_utils_pkg_bazel",
+    "//userspace/hypervisor/tests:virtualization_test_utils_pkg_bazel",
     "//userspace/performance/trace:trace_bazel",
     "//products/boards/emulation/virtio:virtio.bazel_inputs",
   ]

@@ -1,0 +1,136 @@
+# Copyright 2018 The Fuchsia Authors. All rights reserved.
+# Use of this source code is governed by a BSD-style license that can be
+# found in the LICENSE file.
+
+import("//products/build/components.gni")
+import("//products/build/dist/resource.gni")
+import("//products/build/testing/cc_test_executable.gni")
+
+group("packages") {
+  deps = [ ":guest_manager" ]
+}
+
+group("tests") {
+  testonly = true
+  deps = [ ":guest_manager_test" ]
+}
+
+source_set("lib") {
+  visibility = [ "//userspace/hypervisor/*" ]
+
+  sources = [
+    "guest_manager.cc",
+    "guest_manager.h",
+    "memory_pressure_handler.cc",
+    "memory_pressure_handler.h",
+  ]
+
+  deps = [ "//zircon/system/ulib/virtio" ]
+  public_deps = [
+    "//sdk/fidl/fuchsia.memorypressure:fuchsia.memorypressure_cpp",
+    "//sdk/fidl/fuchsia.net.interfaces:fuchsia.net.interfaces_hlcpp",
+    "//sdk/fidl/fuchsia.virtualization:fuchsia.virtualization_cpp",
+    "//sdk/fidl/fuchsia.virtualization:fuchsia.virtualization_hlcpp",
+    "//sdk/lib/component/incoming/cpp",
+    "//sdk/lib/sys/cpp",
+    "//sdk/lib/syslog/cpp",
+    "//userspace/lib/fxl",
+    "//userspace/hypervisor/lib/guest_config",
+    "//zircon/system/ulib/bitmap",
+  ]
+
+  if (!defined(public_configs)) {
+    public_configs = []
+  }
+  public_configs += [ "//userspace/hypervisor/bin:args" ]
+}
+
+executable("bin") {
+  output_name = "guest_manager"
+
+  sources = [ "guest_manager_main.cc" ]
+
+  deps = [
+    ":lib",
+    "//sdk/lib/async-loop:async-loop-cpp",
+    "//sdk/lib/async-loop:async-loop-default",
+  ]
+}
+
+# Placeholder guest package: data/guest.cfg only. Launch still needs a
+# kernel image once one is provided in this package.
+resource("secular_guest_cfg") {
+  sources = [ "data/secular_guest.cfg" ]
+  outputs = [ "data/guest.cfg" ]
+}
+
+fuchsia_component("secular_guest_pkg") {
+  component_name = "secular_guest_pkg"
+  manifest = "meta/secular_guest_pkg.cml"
+  check_includes = false
+  check_references = false
+  deps = [
+    ":secular_guest_cfg",
+    "//userspace/hypervisor/packages:guest_package_bin",
+  ]
+}
+
+fuchsia_component("guest_manager_cmp") {
+  component_name = "guest_manager"
+  manifest = "meta/guest_manager.cml"
+  check_includes = false
+  check_references = false
+  deps = [
+    ":bin",
+    ":secular_guest_pkg",
+    "//userspace/hypervisor/bin/vmm:vmm_component",
+  ]
+}
+
+fuchsia_package("guest_manager") {
+  package_name = "guest_manager"
+  deps = [ ":guest_manager_cmp" ]
+}
+
+cc_test_executable("guest_manager_test_bin") {
+  testonly = true
+
+  sources = [
+    "guest_manager_test.cc",
+    "memory_pressure_handler_test.cc",
+  ]
+
+  deps = [
+    ":lib",
+    "//sdk/fidl/fuchsia.memorypressure:fuchsia.memorypressure_hlcpp",
+    "//sdk/fidl/fuchsia.virtualization.hardware:fuchsia.virtualization.hardware_hlcpp",
+    "//sdk/lib/sys/cpp/testing:unit",
+    "//sdk/lib/syslog/cpp",
+    "//userspace/lib/fxl/test:gtest_main",
+    "//userspace/lib/testing/loop_fixture",
+    "//userspace/testing/fidl:placeholders_hlcpp",
+    "//zircon/system/ulib/virtio",
+  ]
+}
+
+resource("test_configs") {
+  sources = [
+    "test_files/bad_schema_invalid_field.cfg",
+    "test_files/valid_guest.cfg",
+  ]
+
+  outputs = [ "data/configs/{{source_file_part}}" ]
+}
+
+fuchsia_unittest_package("guest_manager_test") {
+  deps = [
+    ":guest_manager_test_bin",
+    ":test_configs",
+  ]
+
+  test_specs = {
+    log_settings = {
+      max_severity = "ERROR"
+    }
+  }
+}

@@ -68,7 +68,7 @@ zx_library("svc") {
     "//userspace/graphics/drivers/misc/goldfish_sync/*",
     "//userspace/sys/component_manager/tests/rights/*",
     "//userspace/sys/component_manager/tests/security_policy/capability_allowlist/*",
-    "//userspace/virtualization/packages/*",
+    "//userspace/hypervisor/packages/*",
     "//zircon/system/ulib/kcounter/*",
     "//zircon/system/ulib/kernel-debug/*",
     "//zircon/system/ulib/ktrace/*",

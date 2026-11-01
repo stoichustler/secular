@@ -135,7 +135,7 @@ idk_cc_source_library(
         "//userspace/devices:__subpackages__",
         "//userspace/tests/benchmarks/fidl/driver_cpp:__pkg__",
         "//userspace/tests/benchmarks/fidl/driver_llcpp:__pkg__",
-        "//userspace/virtualization:__subpackages__",
+        "//userspace/hypervisor:__subpackages__",
     ],
     deps = [
         ":driver_runtime_cpp",

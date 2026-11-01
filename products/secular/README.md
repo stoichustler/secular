@@ -13,7 +13,9 @@ The ZBI is a bringup-class system assembled without Bazel:
 - `component_manager` and its boot config
 - BOOTFS packages: root, bootstrap, console, console-launcher,
   critical-services, ptysvc, archivist, shutdown-shim,
-  kernel-args-forwarder, role_manager
-- `/boot/bin`: `sh` (`zxsh`), `cat`, `clear`, `tree`, `dlog`, `debuglog`, psutils,
-  `kcounter`, `ktrace`, `loadgen`, `pistress`, `time`, `uname`, `hwstress`
+  kernel-args-forwarder, role_manager, vmm_launcher (lazy VMM),
+  guest_manager (eager; Linux/RTOS guests; no guest kernel image yet)
+- `/boot/bin`: `sh` (`zxsh`), `guest`, `cat`, `clear`, `tree`, `dlog`, `debuglog`,
+  psutils, `kcounter`, `ktrace`, `loadgen`, `pistress`, `time`, `uname`, `hwstress`
 - `/boot/config/profiles`: bringup scheduler profiles for `role_manager`
+- `/boot/meta/secular.txt`: microkernel identity, version, and toolchain stamp

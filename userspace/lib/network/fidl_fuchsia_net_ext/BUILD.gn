@@ -51,7 +51,7 @@ rustc_library("fidl_fuchsia_net_ext") {
     "//userspace/lib/fuchsia-hyper:*",
     "//userspace/lib/network/*",
     "//userspace/testing/sl4f:*",
-    "//userspace/virtualization/*",
+    "//userspace/hypervisor/*",
   ]
   deps = [
     "//sdk/fidl/fuchsia.net:fuchsia.net_rust_common",

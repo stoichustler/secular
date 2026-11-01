@@ -1,0 +1,75 @@
+-----------------------
+- EVERYDAY'S A HUSTLE -
+-----------------------
+
+Secular Microkernel
+===================
+
+Secular is a Zircon-microkernel operating system. The product is the
+smallest bootable system that still provides an interactive serial
+console:
+
+    zircon kernel + phys/boot-shim + BOOTFS + console + basic framework
+
+Privileged code lives in the Zircon kernel (`vmzircon`). The kernel
+keeps the capability-based object and syscall ABI: processes, threads,
+jobs, VMOs, channels, sockets, interrupts, and resources. User policy
+belongs in user space. This tree is not a full Fuchsia product; it does
+not ship graphics, UI, netstack, WLAN, Bluetooth, Starnix, update, or
+recovery.
+
+Architecture
+------------
+
+    QEMU (qemu-system-aarch64)
+      |
+      v
+    linux-arm64-boot-shim  ->  secular.zbi
+      |                          |- Zircon kernel
+      |                          `- BOOTFS
+      v
+    userboot -> component_manager -> driver_manager / console-launcher
+                                       `- serial console + zxsh
+
+userboot is the first user-space process. It unpacks BOOTFS, loads the
+vDSO, and launches `component_manager`, which starts the bootstrap
+realm: board/UART drivers, console, console-launcher, and `zxsh`.
+
+Boot image
+----------
+
+    /boot/libexec/component_manager
+    /boot/bin                     zxsh (sh), guest, iokit, psutils, uname, ...
+    /boot/pkg/...                 BOOTFS packages (console, bootstrap, ...)
+    /boot/config/profiles         bringup scheduler profiles
+    /boot/meta/secular.txt        this file
+
+Supported target: arm64 QEMU virt. Host tools come from SECULAR_SDK
+(clang, rustc, gn, ninja, qemu). They are not vendored in this source
+tree.
+
+Version
+-------
+
+    Product:              {{PRODUCT}}
+    Kernel version:       {{KERNEL_VERSION}}
+    Board:                {{BOARD}}
+    CPU:                  {{CPU}}
+    Compilation mode:     {{COMPILATION_MODE}}
+    Platform milestone:   {{MILESTONE}}
+    Commit:               {{COMMIT_HASH}}
+    Commit date:          {{COMMIT_DATE}}
+
+Toolchain
+---------
+
+    SDK:                  {{SDK_ROOT}}
+    Host platform:        {{HOST_PLATFORM}}
+    Clang:                {{CLANG_VERSION}}
+    Clang CIPD:           {{CLANG_CIPD}}
+    Rustc:                {{RUSTC_VERSION}}
+    Rustc CIPD:           {{RUSTC_CIPD}}
+    GN:                   {{GN_VERSION}}
+    Ninja:                {{NINJA_VERSION}}
+    QEMU:                 {{QEMU_VERSION}}
+    Target:               {{TARGET}}

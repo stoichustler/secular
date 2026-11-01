@@ -1,0 +1,33 @@
+# Copyright 2019 The Fuchsia Authors. All rights reserved.
+# Use of this source code is governed by a BSD-style license that can be
+# found in the LICENSE file.
+
+import("//userspace/hypervisor/bin/args.gni")
+
+config("args") {
+  defines = []
+  if (rust_virtio_net) {
+    defines += [ "USE_RUST_VIRTIO_NET" ]
+  }
+}
+
+group("bin") {
+  deps = [
+    "guest",
+    "guest_manager:packages",
+    "vmm",
+    "vmm_launcher",
+  ]
+}
+
+group("tests") {
+  testonly = true
+
+  deps = [
+    "guest:tests",
+    "guest_manager:tests",
+    "guest_manager_rs:tests",
+    "vmm:tests",
+    "vmm_launcher:tests",
+  ]
+}

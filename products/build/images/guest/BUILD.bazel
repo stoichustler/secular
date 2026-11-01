@@ -79,7 +79,7 @@ fuchsia_board_configuration(
 fuchsia_product_configuration(
     name = "product_assembly_config",
     base_packages = [
-        "//userspace/virtualization/tests:virtualization_test_utils_pkg",
+        "//userspace/hypervisor/tests:virtualization_test_utils_pkg",
         "//userspace/performance/trace:trace",
         "//userspace/security/bin/root_ssl_certificates",
     ],

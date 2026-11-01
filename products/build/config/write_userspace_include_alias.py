@@ -13,9 +13,10 @@ C++ keeps Fuchsia include spelling. The source tree is:
 
 This script builds:
 
-  <alias>/src/<dir>      -> <userspace>/<dir>
-  <alias>/src/bringup    -> <userspace>/secular
-  <alias>/build          -> <products>/build
+  <alias>/src/<dir>           -> <userspace>/<dir>
+  <alias>/src/bringup         -> <userspace>/secular
+  <alias>/src/virtualization  -> <userspace>/hypervisor
+  <alias>/build               -> <products>/build
   <alias>/boards         -> <products>/boards
   <alias>/bundles        -> <products>/bundles
   <alias>/manifests      -> <products>/manifests
@@ -68,6 +69,13 @@ def main(argv: list[str]) -> int:
         wanted["bringup"] = secular
         wanted["secular"] = secular
 
+    # src/virtualization was moved to userspace/hypervisor. Keep the
+    # Fuchsia include spelling (#include "src/virtualization/...") while
+    # GN labels use //userspace/hypervisor.
+    hypervisor = os.path.join(userspace, "hypervisor")
+    if os.path.isdir(hypervisor):
+        wanted["virtualization"] = hypervisor
+
     existing = set(os.listdir(src_dir))
     for name in existing - set(wanted):
         os.unlink(os.path.join(src_dir, name))
@@ -85,6 +93,8 @@ def main(argv: list[str]) -> int:
         for name in wanted:
             if name == "bringup":
                 gen_wanted[name] = os.path.join(obj_dir, "userspace", "secular")
+            elif name == "virtualization":
+                gen_wanted[name] = os.path.join(obj_dir, "userspace", "hypervisor")
             else:
                 gen_wanted[name] = os.path.join(obj_dir, "userspace", name)
         existing_gen = set(os.listdir(gen_src))

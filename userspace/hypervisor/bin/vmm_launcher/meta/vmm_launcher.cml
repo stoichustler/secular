@@ -1,0 +1,69 @@
+// Copyright 2022 The Fuchsia Authors. All rights reserved.
+// Use of this source code is governed by a BSD-style license that can be
+// found in the LICENSE file.
+
+// VMM launcher for Secular. GPU, audio, net, and UI capabilities are not
+// offered to launched VMM instances.
+{
+    include: [
+        "inspect/offer.shard.cml",
+        "syslog/client.shard.cml",
+        "trace/client.shard.cml",
+    ],
+    program: {
+        runner: "elf",
+        binary: "bin/vmm_launcher",
+    },
+    collections: [
+        {
+            name: "virtual_machine_managers",
+            durability: "single_run",
+        },
+    ],
+    capabilities: [
+        {
+            protocol: [ "fuchsia.virtualization.GuestLifecycle" ],
+        },
+    ],
+    use: [
+        {
+            protocol: "fuchsia.component.Realm",
+            from: "framework",
+        },
+        {
+            // Optional so parents can route from `void` to fall back to `default`.
+            config: "fuchsia.virtualization.VmmComponentUrl",
+            key: "vmm_component_url",
+            type: "string",
+            max_size: 512,
+            availability: "optional",
+            default: "#meta/vmm.cm",
+        },
+    ],
+    offer: [
+        {
+            protocol: [
+                "fuchsia.kernel.HypervisorResource",
+                "fuchsia.kernel.VmexResource",
+            ],
+            from: "parent",
+            to: "#virtual_machine_managers",
+        },
+        {
+            protocol: [ "fuchsia.scheduler.RoleManager" ],
+            from: "parent",
+            to: "#virtual_machine_managers",
+            availability: "optional",
+        },
+    ],
+    expose: [
+        {
+            protocol: [ "fuchsia.component.Realm" ],
+            from: "framework",
+        },
+        {
+            protocol: [ "fuchsia.virtualization.GuestLifecycle" ],
+            from: "self",
+        },
+    ],
+}

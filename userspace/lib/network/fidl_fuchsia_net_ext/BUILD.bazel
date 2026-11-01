@@ -22,7 +22,7 @@ rustc_library(
         "//userspace/lib/fuchsia-hyper:__pkg__",
         "//userspace/lib/network:__subpackages__",
         "//userspace/testing/sl4f:__pkg__",
-        "//userspace/virtualization:__subpackages__",
+        "//userspace/hypervisor:__subpackages__",
     ],
     deps = [
         "//sdk/fidl/fuchsia.net:fuchsia.net_rust_common",

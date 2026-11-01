@@ -1,0 +1,62 @@
+// Copyright 2022 The Fuchsia Authors. All rights reserved.
+// Use of this source code is governed by a BSD-style license that can be
+// found in the LICENSE file.
+
+// Test-only rust guest_manager. Product images use the C++ guest_manager.cml.
+{
+    include: [
+        "inspect/offer.shard.cml",
+        "syslog/client.shard.cml",
+        "trace/client.shard.cml",
+    ],
+    program: {
+        runner: "elf",
+        binary: "bin/guest_manager_bin",
+    },
+    children: [
+        {
+            name: "vmm",
+            url: "#meta/vmm.cm",
+        },
+        {
+            name: "guest_pkg",
+            url: "debian_guest#meta/debian_guest.cm",
+        },
+    ],
+    capabilities: [
+        {
+            protocol: [ "fuchsia.virtualization.GuestManager" ],
+        },
+    ],
+    use: [
+        {
+            directory: "pkg",
+            from: "#guest_pkg",
+            rights: [ "r*" ],
+            path: "/guest_pkg",
+        },
+        {
+            protocol: [
+                "fuchsia.virtualization.Guest",
+                "fuchsia.virtualization.GuestLifecycle",
+            ],
+            from: "#vmm",
+        },
+    ],
+    offer: [
+        {
+            protocol: [
+                "fuchsia.kernel.HypervisorResource",
+                "fuchsia.kernel.VmexResource",
+            ],
+            from: "parent",
+            to: "#vmm",
+        },
+    ],
+    expose: [
+        {
+            protocol: "fuchsia.virtualization.GuestManager",
+            from: "self",
+        },
+    ],
+}

@@ -152,7 +152,7 @@ sdk_source_set("driver_runtime_env_cpp") {
     "//userspace/devices/*",
     "//userspace/tests/benchmarks/fidl/driver_cpp:*",
     "//userspace/tests/benchmarks/fidl/driver_llcpp:*",
-    "//userspace/virtualization/*",
+    "//userspace/hypervisor/*",
   ]
   public_deps = [
     ":driver_runtime_cpp",

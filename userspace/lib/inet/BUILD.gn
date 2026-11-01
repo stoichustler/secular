@@ -42,7 +42,7 @@ static_library("inet") {
     ":*",
     "//userspace/connectivity/network/mdns/service:*",
     "//userspace/connectivity/network/mdns/util:*",
-    "//userspace/virtualization/tests/*",
+    "//userspace/hypervisor/tests/*",
     "//vendor/google/*",
   ]
   public_deps = [

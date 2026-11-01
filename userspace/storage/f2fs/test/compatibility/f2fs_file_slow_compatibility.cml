@@ -3,7 +3,7 @@
 // found in the LICENSE file.
 {
     include: [
-        "//userspace/virtualization/tests/meta/virtualization_integration_test.cml",
+        "//userspace/hypervisor/tests/meta/virtualization_integration_test.cml",
         "inspect/client.shard.cml",
         "syslog/client.shard.cml",
     ],

@@ -355,7 +355,7 @@ config("fidl-wire-deprecated-mutable-tables") {
 
     #------------------
     #------------------
-    "//userspace/virtualization/bin/vmm/device/virtio_magma:magma_image",
+    "//userspace/hypervisor/bin/vmm/device/virtio_magma:magma_image",
 
     #------------------
     #------------------

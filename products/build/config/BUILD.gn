@@ -1147,7 +1147,7 @@ config("Wno-conversion") {
     "//userspace/ui/lib/escher/test/common:*",
     "//userspace/ui/lib/yuv:*",
     "//userspace/ui/scenic/bin:*",
-    "//userspace/virtualization/third_party/fdt:*",
+    "//userspace/hypervisor/third_party/fdt:*",
     "//third_party/crashpad/src/*",
     "//third_party/glfw/*",
     "//third_party/iperf/*",

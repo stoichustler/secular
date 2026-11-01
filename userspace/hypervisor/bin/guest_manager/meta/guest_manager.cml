@@ -1,0 +1,82 @@
+// Copyright 2022 The Fuchsia Authors. All rights reserved.
+// Use of this source code is governed by a BSD-style license that can be
+// found in the LICENSE file.
+
+// Unified guest manager for Secular. One component launches Linux and RTOS
+// guests through fuchsia.virtualization.GuestManager. GPU, audio, and net
+// virtio devices are not routed.
+{
+    include: [
+        "inspect/offer.shard.cml",
+        "syslog/client.shard.cml",
+        "trace/client.shard.cml",
+    ],
+    program: {
+        runner: "elf",
+        binary: "bin/guest_manager",
+    },
+    children: [
+        {
+            name: "vmm",
+            url: "#meta/vmm.cm",
+        },
+        {
+            name: "guest_pkg",
+            url: "#meta/secular_guest_pkg.cm",
+        },
+    ],
+    capabilities: [
+        {
+            protocol: [ "fuchsia.virtualization.GuestManager" ],
+        },
+    ],
+    use: [
+        {
+            directory: "pkg",
+            from: "#guest_pkg",
+            rights: [ "r*" ],
+            path: "/guest_pkg",
+        },
+        {
+            protocol: [
+                "fuchsia.virtualization.Guest",
+                "fuchsia.virtualization.GuestLifecycle",
+            ],
+            from: "#vmm",
+        },
+        {
+            protocol: [ "fuchsia.memorypressure.Provider" ],
+            availability: "optional",
+        },
+    ],
+    offer: [
+        {
+            protocol: [
+                "fuchsia.kernel.HypervisorResource",
+                "fuchsia.kernel.VmexResource",
+            ],
+            from: "parent",
+            to: "#vmm",
+        },
+        {
+            protocol: [ "fuchsia.scheduler.RoleManager" ],
+            from: "parent",
+            to: "#vmm",
+            availability: "optional",
+        },
+        {
+            dictionary: "diagnostics",
+            from: "parent",
+            to: [
+                "#vmm",
+                "#guest_pkg",
+            ],
+        },
+    ],
+    expose: [
+        {
+            protocol: "fuchsia.virtualization.GuestManager",
+            from: "self",
+        },
+    ],
+}

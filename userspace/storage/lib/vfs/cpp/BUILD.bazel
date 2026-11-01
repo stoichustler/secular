@@ -202,7 +202,7 @@ cc_library(
         "//userspace/storage/testing:__pkg__",
         "//userspace/sys/component_manager/tests/rights:__pkg__",
         "//userspace/tests/microbenchmarks:__pkg__",
-        "//userspace/virtualization/packages:__pkg__",
+        "//userspace/hypervisor/packages:__pkg__",
         "//zircon/system/ulib/debugdata:__pkg__",
         "//zircon/system/ulib/debugdata/test:__pkg__",
         "//zircon/system/ulib/runtests-utils:__pkg__",

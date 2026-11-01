@@ -15,8 +15,123 @@ group("boot_tests") {
   deps = [ "bin:boot_tests" ]
 }
 
+_bootfs_deps = [ ":bringup-config" ]
+
+# Identity file for the compact console image. Generated only when the
+# external Secular SDK is in use so clang/rustc/gn/ninja/qemu paths exist.
+if (secular_boot_build) {
+  _clang_dir =
+      "${secular_prebuilt_root}/third_party/clang/${secular_host_platform}"
+  _rust_dir =
+      "${secular_prebuilt_root}/third_party/rust/host/${secular_host_platform}"
+  _clang_bin = "$_clang_dir/bin/clang"
+  _rustc_bin = "$_rust_dir/bin/rustc"
+  _gn_bin = "${secular_prebuilt_root}/third_party/gn/${secular_host_platform}/gn"
+  _ninja_bin =
+      "${secular_prebuilt_root}/third_party/ninja/${secular_host_platform}/ninja"
+  _qemu_bin = "${secular_prebuilt_root}/third_party/qemu/" +
+              "${secular_host_platform}/bin/qemu-system-aarch64"
+
+  _clang_cipd = read_file("$_clang_dir/.versions/clang.cipd_version", "json")
+  _rustc_cipd = read_file("$_rust_dir/.versions/rust.cipd_version", "json")
+  _milestone = read_file("//products/integration/MILESTONE", "trim string")
+  _commit_hash = read_file(
+          "//products/build/info/jiri_generated/integration_commit_hash.txt",
+          "trim string")
+  _commit_stamp = read_file(
+          "//products/build/info/jiri_generated/integration_commit_stamp.txt",
+          "trim string")
+
+  # Match tools/secular-boot/configure.sh. The kernel arg is declared in
+  # //zircon/kernel:BUILD.gn, so it is not always in scope here.
+  _kernel_version = "secular 0.1"
+  if (defined(kernel_version_string) && kernel_version_string != "") {
+    _kernel_version = kernel_version_string
+  }
+
+  _sdk_root = secular_sdk_root
+  if (_sdk_root == "") {
+    _sdk_root = "(in-tree prebuilt)"
+  }
+
+  _product = "secular"
+  if (defined(build_info_product) && build_info_product != "") {
+    _product = build_info_product
+  }
+
+  _board = "qemu-${current_cpu}"
+  if (defined(board_name) && board_name != "") {
+    _board = board_name
+  }
+
+  action("gen-secular-txt") {
+    script = "meta/gen_secular_txt.py"
+    sources = [ "meta/secular.txt" ]
+    inputs = [
+      "meta/secular.txt",
+      _clang_bin,
+      _rustc_bin,
+      _gn_bin,
+      _ninja_bin,
+      _qemu_bin,
+    ]
+    outputs = [ "$target_gen_dir/secular.txt" ]
+    args = [
+      "--template",
+      rebase_path("meta/secular.txt", root_build_dir),
+      "--output",
+      rebase_path(outputs[0], root_build_dir),
+      "--clang",
+      rebase_path(_clang_bin, root_build_dir),
+      "--rustc",
+      rebase_path(_rustc_bin, root_build_dir),
+      "--gn",
+      rebase_path(_gn_bin, root_build_dir),
+      "--ninja",
+      rebase_path(_ninja_bin, root_build_dir),
+      "--qemu",
+      rebase_path(_qemu_bin, root_build_dir),
+      "--commit-stamp",
+      _commit_stamp,
+      "--set",
+      "PRODUCT=$_product",
+      "--set",
+      "KERNEL_VERSION=$_kernel_version",
+      "--set",
+      "BOARD=$_board",
+      "--set",
+      "CPU=$current_cpu",
+      "--set",
+      "COMPILATION_MODE=$compilation_mode",
+      "--set",
+      "MILESTONE=$_milestone",
+      "--set",
+      "COMMIT_HASH=$_commit_hash",
+      "--set",
+      "SDK_ROOT=$_sdk_root",
+      "--set",
+      "HOST_PLATFORM=$secular_host_platform",
+      "--set",
+      "CLANG_CIPD=${_clang_cipd.instance_id}",
+      "--set",
+      "RUSTC_CIPD=${_rustc_cipd.instance_id}",
+      "--set",
+      "TARGET=${current_cpu}-unknown-fuchsia",
+    ]
+    hermetic_deps = false
+  }
+
+  resource("secular-txt") {
+    sources = [ "$target_gen_dir/secular.txt" ]
+    outputs = [ "meta/secular.txt" ]
+    deps = [ ":gen-secular-txt" ]
+  }
+
+  _bootfs_deps += [ ":secular-txt" ]
+}
+
 bootfs_files_for_assembly("bootfs") {
-  deps = [ ":bringup-config" ]
+  deps = _bootfs_deps
 }
 
 resource("bringup-config") {

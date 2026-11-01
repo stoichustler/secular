@@ -42,7 +42,7 @@ fidl("fuchsia.net.stack") {
     "//userspace/connectivity/policy/netcfg/*",
     "//userspace/connectivity/weave/adaptation/*",
     "//userspace/lib/network/fidl_fuchsia_net_routes_ext/*",
-    "//userspace/virtualization/lib/guest_interaction/*",
+    "//userspace/hypervisor/lib/guest_interaction/*",
     "//third_party/openweave-core/src/inet/*",
     "//third_party/tcpdump/tests/*",
   ]

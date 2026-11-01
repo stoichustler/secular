@@ -235,12 +235,7 @@
             source_availability: "unknown",
         },
         {
-            protocol: [
-                "fuchsia.virtualization.DebianGuestManager",
-                "fuchsia.virtualization.LinuxManager",
-                "fuchsia.virtualization.TerminaGuestManager",
-                "fuchsia.virtualization.ZirconGuestManager",
-            ],
+            protocol: [ "fuchsia.virtualization.GuestManager" ],
             from: "#core",
             to: "#bootstrap",
             dependency: "weak",

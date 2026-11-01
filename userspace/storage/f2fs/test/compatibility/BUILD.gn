@@ -21,8 +21,8 @@ test_deps = [
   "//sdk/fidl/fuchsia.storage.block:fuchsia.storage.block_cpp",
   "//userspace/storage/f2fs",
   "//userspace/storage/lib/block_client/cpp",
-  "//userspace/virtualization/tests/lib",
-  "//userspace/virtualization/tests/lib:test_main",
+  "//userspace/hypervisor/tests/lib",
+  "//userspace/hypervisor/tests/lib:test_main",
   "//third_party/googletest:gtest",
   "//zircon/system/ulib/fbl",
 ]
@@ -83,7 +83,7 @@ test("f2fs-mkfs-fsck-compatibility-test") {
   deps = test_deps
 }
 
-component_deps = [ "//userspace/virtualization/tests:test_images" ]
+component_deps = [ "//userspace/hypervisor/tests:test_images" ]
 
 fuchsia_test_component("f2fs-dir-compatibility-test-cmp") {
   component_name = "f2fs-dir-compatibility-test-cmp"
@@ -159,8 +159,7 @@ fuchsia_test_package("f2fs-compatibility-test-pkg") {
     ":f2fs-inline-compatibility-test-cmp",
     ":f2fs-mkfs-fsck-compatibility-test-cmp",
   ]
-  subpackages =
-      [ "//userspace/virtualization/bin/guest_manager:debian_guest_manager" ]
+  subpackages = [ "//userspace/hypervisor/bin/guest_manager" ]
   test_specs = {
     environments = guest_envs
     log_settings = {

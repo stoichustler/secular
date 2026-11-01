@@ -1,0 +1,76 @@
+// Copyright 2022 The Fuchsia Authors. All rights reserved.
+// Use of this source code is governed by a BSD-style license that can be
+// found in the LICENSE file.
+
+// VMM for Linux and RTOS guests. GPU, net, sound, input, and wayland
+// collections are omitted.
+{
+    include: [
+        "inspect/offer.shard.cml",
+        "syslog/client.shard.cml",
+        "trace/client.shard.cml",
+    ],
+    program: {
+        runner: "elf",
+        binary: "bin/vmm",
+    },
+    collections: [
+        {
+            name: "virtio_block_devices",
+            durability: "single_run",
+        },
+        {
+            name: "virtio_balloon_devices",
+            durability: "single_run",
+        },
+        {
+            name: "virtio_console_devices",
+            durability: "single_run",
+        },
+        {
+            name: "virtio_rng_devices",
+            durability: "single_run",
+        },
+        {
+            name: "virtio_vsock_devices",
+            durability: "single_run",
+        },
+        {
+            name: "virtio_mem_devices",
+            durability: "single_run",
+        },
+    ],
+    capabilities: [
+        {
+            protocol: [
+                "fuchsia.virtualization.Guest",
+                "fuchsia.virtualization.GuestLifecycle",
+            ],
+        },
+    ],
+    use: [
+        {
+            protocol: [
+                "fuchsia.kernel.HypervisorResource",
+                "fuchsia.kernel.VmexResource",
+            ],
+        },
+        {
+            protocol: [ "fuchsia.scheduler.RoleManager" ],
+            availability: "optional",
+        },
+        {
+            protocol: "fuchsia.component.Realm",
+            from: "framework",
+        },
+    ],
+    expose: [
+        {
+            protocol: [
+                "fuchsia.virtualization.Guest",
+                "fuchsia.virtualization.GuestLifecycle",
+            ],
+            from: "self",
+        },
+    ],
+}

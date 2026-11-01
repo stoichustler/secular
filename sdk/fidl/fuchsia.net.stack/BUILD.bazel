@@ -25,7 +25,7 @@ fidl_library(
         "//userspace/connectivity/policy/netcfg:__subpackages__",
         "//userspace/connectivity/weave/adaptation:__subpackages__",
         "//userspace/lib/network/fidl_fuchsia_net_routes_ext:__subpackages__",
-        "//userspace/virtualization/lib/guest_interaction:__subpackages__",
+        "//userspace/hypervisor/lib/guest_interaction:__subpackages__",
         "//third_party/openweave-core/src/inet:__subpackages__",
         "//third_party/tcpdump/tests:__subpackages__",
     ],

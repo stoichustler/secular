@@ -199,12 +199,7 @@
         {
             // Virtualization is not present in all configurations.
             // See: https://fxbug.dev/42054333
-            protocol: [
-                "fuchsia.virtualization.DebianGuestManager",
-                "fuchsia.virtualization.LinuxManager",
-                "fuchsia.virtualization.TerminaGuestManager",
-                "fuchsia.virtualization.ZirconGuestManager",
-            ],
+            protocol: [ "fuchsia.virtualization.GuestManager" ],
             availability: "optional",
         },
         {

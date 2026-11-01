@@ -127,18 +127,4 @@ closed protocol GuestManager {
     });
 };
 
-// TODO(https://fxbug.dev/42051238): Reconsider the use of composition here
-@discoverable
-closed protocol ZirconGuestManager {
-    compose GuestManager;
-};
 
-@discoverable
-closed protocol DebianGuestManager {
-    compose GuestManager;
-};
-
-@discoverable
-closed protocol TerminaGuestManager {
-    compose GuestManager;
-};

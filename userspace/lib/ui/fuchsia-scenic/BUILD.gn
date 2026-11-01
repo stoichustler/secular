@@ -56,7 +56,7 @@ rustc_library("fuchsia-scenic") {
     "//userspace/starnix/*",
     "//userspace/testing/system-validation/ui:*",
     "//userspace/ui/*",
-    "//userspace/virtualization/*",
+    "//userspace/hypervisor/*",
     "//vendor/google/*",
   ]
   deps = [

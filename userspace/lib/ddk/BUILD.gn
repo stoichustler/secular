@@ -320,7 +320,7 @@ static_library("ddk") {
     "//userspace/ui/input/lib/hid-input-report:*",
     "//userspace/ui/input/tests/hid:*",
     "//userspace/ui/light/drivers/aml-light:*",
-    "//userspace/virtualization/bin/vmm:*",
+    "//userspace/hypervisor/bin/vmm:*",
     "//third_party/pigweed/backends/pw_log:*",
     "//vendor/*",
     "//zircon/system/ulib/acpica:*",

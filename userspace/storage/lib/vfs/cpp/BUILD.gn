@@ -313,7 +313,7 @@ static_library("cpp") {
     "//userspace/storage/testing:*",
     "//userspace/sys/component_manager/tests/rights:*",
     "//userspace/tests/microbenchmarks:*",
-    "//userspace/virtualization/packages:*",
+    "//userspace/hypervisor/packages:*",
     "//zircon/system/ulib/debugdata:*",
     "//zircon/system/ulib/debugdata/test:*",
     "//zircon/system/ulib/runtests-utils:*",

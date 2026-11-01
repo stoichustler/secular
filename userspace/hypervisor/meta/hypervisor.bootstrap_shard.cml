@@ -1,0 +1,55 @@
+// Copyright 2026 The Fuchsia Authors. All rights reserved.
+// Use of this source code is governed by a BSD-style license that can be
+// found in the LICENSE file.
+
+// Compact hypervisor graph for the Secular console image. One guest_manager
+// serves Linux and RTOS guests. GPU, net, and audio routes stay omitted.
+// guest_manager starts eagerly so `guest` can resolve GuestManager;
+// vmm_launcher stays lazy.
+{
+    children: [
+        {
+            name: "vmm_launcher",
+            url: "fuchsia-boot:///vmm_launcher#meta/vmm_launcher.cm",
+        },
+        {
+            name: "guest-manager",
+            url: "fuchsia-boot:///guest_manager#meta/guest_manager.cm",
+            startup: "eager",
+        },
+    ],
+    offer: [
+        {
+            protocol: [
+                "fuchsia.kernel.HypervisorResource",
+                "fuchsia.kernel.VmexResource",
+            ],
+            from: "parent",
+            to: [
+                "#vmm_launcher",
+                "#guest-manager",
+            ],
+        },
+        {
+            protocol: "fuchsia.scheduler.RoleManager",
+            from: "#role_manager",
+            to: [
+                "#vmm_launcher",
+                "#guest-manager",
+            ],
+        },
+        {
+            dictionary: "diagnostics",
+            from: "self",
+            to: [
+                "#vmm_launcher",
+                "#guest-manager",
+            ],
+        },
+        {
+            protocol: "fuchsia.virtualization.GuestManager",
+            from: "#guest-manager",
+            to: "#console-launcher",
+        },
+    ],
+}

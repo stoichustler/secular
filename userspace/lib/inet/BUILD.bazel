@@ -24,7 +24,7 @@ fx_cc_library(
     visibility = [
         "//userspace/connectivity/network/mdns/service:__pkg__",
         "//userspace/connectivity/network/mdns/util:__pkg__",
-        "//userspace/virtualization/tests:__subpackages__",
+        "//userspace/hypervisor/tests:__subpackages__",
         "//vendor/google:__subpackages__",
     ],
     deps = [
