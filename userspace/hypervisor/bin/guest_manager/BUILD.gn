@@ -67,6 +67,11 @@ resource("secular_guest_cfg") {
 fuchsia_component("secular_guest_pkg") {
   component_name = "secular_guest_pkg"
   manifest = "meta/secular_guest_pkg.cml"
+
+  # Nested into the guest_manager package. Skip cmc check-includes
+  # (CML shards expected by library deps) and cmc validate-references
+  # (program.binary vs package files). `gn gen` prints
+  # "Not validated: <this label>"; the compiled .cm is still packaged.
   check_includes = false
   check_references = false
   deps = [
@@ -78,6 +83,9 @@ fuchsia_component("secular_guest_pkg") {
 fuchsia_component("guest_manager_cmp") {
   component_name = "guest_manager"
   manifest = "meta/guest_manager.cml"
+
+  # Skip cmc check-includes / validate-references. `gn gen` prints
+  # "Not validated: <this label>"; the compiled .cm is still packaged.
   check_includes = false
   check_references = false
   deps = [

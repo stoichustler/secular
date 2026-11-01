@@ -323,7 +323,8 @@ zx_status_t EnclosedGuest::LaunchInternal(GuestLaunchInfo& guest_launch_info, zx
 
   fuchsia::virtualization::GuestManager_Launch_Result res;
   auto status =
-      guest_manager_->Launch(std::move(guest_launch_info.config), guest_.NewRequest(), &res);
+      guest_manager_->Launch(/*vmid=*/0, std::move(guest_launch_info.config), guest_.NewRequest(),
+                             &res);
   if (status != ZX_OK) {
     FX_PLOGS(ERROR, status) << "Failure launching guest " << guest_launch_info.url;
     return status;
@@ -417,7 +418,7 @@ zx_status_t EnclosedGuest::LaunchInternal(GuestLaunchInfo& guest_launch_info, zx
 }
 
 zx_status_t EnclosedGuest::ForceRestart(GuestLaunchInfo& guest_launch_info, zx::time deadline) {
-  guest_manager_->ForceShutdown();
+  guest_manager_->ForceShutdown(/*vmid=*/0);
 
   // Instead of waiting on the guest closed signal to determine whether a VM has shutdown, this
   // polls the guest status. This is done to avoid a race where the VM object has stopped but the
@@ -425,7 +426,7 @@ zx_status_t EnclosedGuest::ForceRestart(GuestLaunchInfo& guest_launch_info, zx::
   const bool shutdown_complete = RunLoopUntil(
       [this] {
         ::fuchsia::virtualization::GuestInfo info;
-        guest_manager_->GetInfo(&info);
+        guest_manager_->GetInfo(/*vmid=*/0, &info);
         return info.guest_status() == ::fuchsia::virtualization::GuestStatus::STOPPED;
       },
       zx::deadline_after(zx::sec(20)));

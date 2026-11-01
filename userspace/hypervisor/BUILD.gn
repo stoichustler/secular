@@ -13,8 +13,8 @@ group("virtualization") {
 }
 
 # Compact userspace hypervisor: VMM + launcher + guest CLI + virtio
-# console/block/rng/balloon/vsock/mem. One guest_manager serves Linux
-# and RTOS guests. No guest images, GPU, net, or sound. GN labels are
+# console/block/rng/balloon/vsock/mem. One guest_manager serves guests
+# identified by vmid. No guest images, GPU, net, or sound. GN labels are
 # //userspace/hypervisor (was //src/virtualization).
 group("framework") {
   deps = [

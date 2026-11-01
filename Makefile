@@ -17,7 +17,7 @@ endif
 
 .DEFAULT_GOAL := help
 
-.PHONY: help configure build verify run qemu all clean tags
+.PHONY: help configure build verify run qemu kick all clean tags
 
 help: ## Show available build and verification targets.
 	$(Q)awk 'BEGIN { FS = ":.*##" } /^[a-zA-Z][a-zA-Z0-9_-]*:.*##/ { printf "  %-16s %s\n", $$1, $$2 }' $(MAKEFILE_LIST)
@@ -36,6 +36,12 @@ run: build ## Build and start an interactive QEMU console; set QEMU_ARGS as need
 
 qemu:
 	$(Q)$(TOOLCHAIN_PATH)/run-qemu.sh $(ARCH) -- $(QEMU_ARGS)
+
+# Boot the existing image through zircon/scripts/run-zircon. Does not rebuild.
+# KICK_ARGS are run-zircon flags (-s, -m, -c, --dry-run, ...); QEMU_ARGS go
+# after `--` to QEMU. Later flags override the script defaults (8 cpus, 1 GiB).
+kick: ## Boot via run-zircon; set KICK_ARGS for run-zircon, QEMU_ARGS for QEMU.
+	$(Q)$(TOOLCHAIN_PATH)/run-qemu.sh $(ARCH) $(KICK_ARGS) -- $(QEMU_ARGS)
 
 all: verify ## Configure, build, and verify the default architecture.
 

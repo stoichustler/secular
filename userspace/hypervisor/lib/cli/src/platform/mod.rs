@@ -7,7 +7,7 @@ use async_trait::async_trait;
 use blocking::Unblock;
 use fidl_fuchsia_virtualization::{GuestManagerProxy, GuestMarker, GuestProxy};
 use fuchsia_async as fasync;
-use guest_cli_args::GuestType;
+use guest_cli_args::Vmid;
 use std::io::{Read, Write};
 use std::os::fd::{AsFd, AsRawFd, BorrowedFd, FromRawFd, IntoRawFd, RawFd};
 
@@ -134,12 +134,15 @@ impl GuestConsole {
 
 #[async_trait(?Send)]
 pub trait PlatformServices {
-    async fn connect_to_manager(&self, guest_type: GuestType) -> Result<GuestManagerProxy>;
+    async fn connect_to_manager(&self) -> Result<GuestManagerProxy>;
 
-    async fn connect_to_guest(&self, guest_type: GuestType) -> Result<GuestProxy> {
-        let guest_manager = self.connect_to_manager(guest_type).await?;
+    async fn connect_to_guest(&self, vmid: Vmid) -> Result<GuestProxy> {
+        let guest_manager = self.connect_to_manager().await?;
         let (guest, guest_server_end) = fidl::endpoints::create_proxy::<GuestMarker>();
-        guest_manager.connect(guest_server_end).await?.map_err(|err| anyhow!("{:?}", err))?;
+        guest_manager
+            .connect(vmid.get(), guest_server_end)
+            .await?
+            .map_err(|err| anyhow!("{:?}", err))?;
         Ok(guest)
     }
 }

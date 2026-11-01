@@ -155,7 +155,11 @@ void InteractiveGuestImpl::Start(StartRequest& request, StartCompleter::Sync& co
 
   auto [guest_client_end, guest_server_end] = *std::move(guest_endpoints);
   fidl::Result<fuchsia_virtualization::GuestManager::Launch> launch_result =
-      guest_manager_sync_->Launch({std::move(request.guest_config()), std::move(guest_server_end)});
+      guest_manager_sync_->Launch({
+          .vmid = 0,
+          .guest_config = std::move(request.guest_config()),
+          .controller = std::move(guest_server_end),
+      });
 
   if (launch_result.is_error()) {
     FX_LOGST(ERROR, request_name) << "Failed to launch guest with error: "
@@ -230,7 +234,7 @@ void InteractiveGuestImpl::DoShutdown() {
   }
   if (guest_manager_sync_.is_valid()) {
     fidl::Result<fuchsia_virtualization::GuestManager::ForceShutdown> shutdown_result =
-        guest_manager_sync_->ForceShutdown();
+        guest_manager_sync_->ForceShutdown({.vmid = 0});
     if (shutdown_result.is_error()) {
       FX_LOGS(WARNING) << "ForceShutdown failed: "
                        << shutdown_result.error_value().FormatDescription();

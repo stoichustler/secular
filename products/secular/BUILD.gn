@@ -60,9 +60,14 @@ cmc_merge("bootstrap.cml") {
   output_name = "bootstrap.cml"
 }
 
+# Realm / structured-config components with no `program.binary`. Both
+# CMC checks are off, so `gn gen` prints "Not validated: <label>" for
+# each. The compiled .cm is still packed into BOOTFS.
 fuchsia_component("config_component") {
   component_name = "config"
   manifest = "meta/config.cml"
+
+  # No ELF program or expect_includes() deps.
   check_includes = false
   check_references = false
 }
@@ -75,6 +80,8 @@ fuchsia_package("config") {
 fuchsia_component("root_component") {
   component_name = "root"
   manifest = "meta/root.cml"
+
+  # Realm-only CML (children + offers); no program.binary.
   check_includes = false
   check_references = false
 }
@@ -91,6 +98,9 @@ fuchsia_component("bootstrap_component") {
   manifest = _bootstrap_cml[0]
   manifest_deps = [ ":bootstrap.cml" ]
   restricted_features = [ "allow_long_names" ]
+
+  # Merged realm CML; child binaries live in sibling BOOTFS packages,
+  # not this component's distribution manifest.
   check_includes = false
   check_references = false
 }
@@ -156,6 +166,7 @@ zbi_input("bootfs_files") {
     "//userspace/secular/bin/iokit:bootstat",
     "//userspace/secular/bin/iokit:cat",
     "//userspace/secular/bin/iokit:clear",
+    "//userspace/secular/bin/iokit:cpustat",
     "//userspace/secular/bin/iokit:elfdump",
     "//userspace/secular/bin/iokit:hexdump",
     "//userspace/secular/bin/iokit:kdmips",

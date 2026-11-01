@@ -7,7 +7,7 @@ use anyhow::{Context, Result};
 use async_trait::async_trait;
 use fidl_fuchsia_virtualization::{GuestManagerMarker, GuestManagerProxy};
 use fuchsia_component::client::connect_to_protocol_at_path;
-use guest_cli_args::GuestType;
+use guest_cli_args::GUEST_MANAGER_INTERFACE;
 
 pub struct FuchsiaPlatformServices;
 
@@ -19,9 +19,9 @@ impl FuchsiaPlatformServices {
 
 #[async_trait(?Send)]
 impl PlatformServices for FuchsiaPlatformServices {
-    async fn connect_to_manager(&self, guest_type: GuestType) -> Result<GuestManagerProxy> {
+    async fn connect_to_manager(&self) -> Result<GuestManagerProxy> {
         let manager = connect_to_protocol_at_path::<GuestManagerMarker>(
-            format!("/svc/{}", guest_type.guest_manager_interface()).as_str(),
+            format!("/svc/{}", GUEST_MANAGER_INTERFACE).as_str(),
         )
         .context("Failed to connect to manager service")?;
         Ok(manager)

@@ -5,7 +5,9 @@
 use crate::platform::PlatformServices;
 use anyhow::{Error, anyhow};
 use fidl::endpoints::{Proxy, create_proxy};
-use fidl_fuchsia_virtualization::{GuestManagerProxy, GuestMarker, GuestProxy, GuestStatus};
+use fidl_fuchsia_virtualization::{
+    GuestManagerProxy, GuestMarker, GuestProxy, GuestStatus, KernelType,
+};
 use fuchsia_async::{self as fasync, TimeoutExt};
 use guest_cli_args as arguments;
 use std::fmt;
@@ -59,16 +61,20 @@ pub async fn handle_stop<P: PlatformServices>(
     services: &P,
     args: &arguments::stop_args::StopArgs,
 ) -> Result<StopResult, Error> {
-    let manager = services.connect_to_manager(args.guest_type).await?;
-    let status = manager.get_info().await?.guest_status.expect("guest status should always be set");
+    let manager = services.connect_to_manager().await?;
+    let status = manager
+        .get_info(args.vmid.get())
+        .await?
+        .guest_status
+        .expect("guest status should always be set");
     if status != GuestStatus::Starting && status != GuestStatus::Running {
         return Ok(StopResult { status: StopStatus::NotRunning, ..StopResult::default() });
     }
 
     if args.force {
-        force_stop_guest(args.guest_type, manager).await
+        force_stop_guest(args.vmid, manager).await
     } else {
-        graceful_stop_guest(args.guest_type, manager).await
+        graceful_stop_guest(args.vmid, manager).await
     }
 }
 
@@ -109,26 +115,22 @@ async fn send_stop_shell_command(
 }
 
 async fn graceful_stop_guest(
-    guest: arguments::GuestType,
+    vmid: arguments::Vmid,
     manager: GuestManagerProxy,
 ) -> Result<StopResult, Error> {
+    let info = manager.get_info(vmid.get()).await?;
     let (guest_endpoint, guest_server_end) = create_proxy::<GuestMarker>();
     manager
-        .connect(guest_server_end)
+        .connect(vmid.get(), guest_server_end)
         .await
         .map_err(|err| anyhow!("failed to get a connect response: {}", err))?
         .map_err(|err| anyhow!("connect failed with: {:?}", err))?;
 
-    match guest {
-        arguments::GuestType::Linux => {
-            send_stop_shell_command(ShutdownCommand::LinuxShutdownCommand, guest_endpoint.clone())
-                .await
-        }
-        arguments::GuestType::Rtos => {
-            send_stop_shell_command(ShutdownCommand::RtosShutdownCommand, guest_endpoint.clone())
-                .await
-        }
-    }?;
+    let shutdown = match info.guest_descriptor.and_then(|d| d.kernel_type) {
+        Some(KernelType::Rtos) => ShutdownCommand::RtosShutdownCommand,
+        _ => ShutdownCommand::LinuxShutdownCommand,
+    };
+    send_stop_shell_command(shutdown, guest_endpoint.clone()).await?;
 
     let start = fasync::MonotonicInstant::now();
     println!("Waiting for guest to stop");
@@ -153,12 +155,12 @@ async fn graceful_stop_guest(
 }
 
 async fn force_stop_guest(
-    guest: arguments::GuestType,
+    vmid: arguments::Vmid,
     manager: GuestManagerProxy,
 ) -> Result<StopResult, Error> {
-    println!("Forcing {} to stop", guest);
+    println!("Forcing {} to stop", vmid);
     let start = fasync::MonotonicInstant::now();
-    manager.force_shutdown().await?;
+    manager.force_shutdown(vmid.get()).await?;
 
     let stop_time_nanos = get_time_nanos(fasync::MonotonicInstant::now() - start);
     Ok(StopResult { status: StopStatus::Forced, stop_time_nanos })
@@ -180,7 +182,7 @@ mod test {
     use async_utils::PollExt;
     use fidl::Socket;
     use fidl::endpoints::create_proxy_and_stream;
-    use fidl_fuchsia_virtualization::GuestManagerMarker;
+    use fidl_fuchsia_virtualization::{GuestInfo, GuestManagerMarker};
     use futures::TryStreamExt;
 
     #[test]
@@ -190,18 +192,33 @@ mod test {
 
         let (manager_proxy, mut manager_stream) = create_proxy_and_stream::<GuestManagerMarker>();
 
-        let fut = graceful_stop_guest(arguments::GuestType::Linux, manager_proxy);
+        let fut = graceful_stop_guest(arguments::Vmid(0), manager_proxy);
         futures::pin_mut!(fut);
 
         assert!(executor.run_until_stalled(&mut fut).is_pending());
 
-        let (guest_server_end, responder) = executor
+        let (vmid, info_responder) = executor
+            .run_until_stalled(&mut manager_stream.try_next())
+            .expect("future should be ready")
+            .unwrap()
+            .unwrap()
+            .into_get_info()
+            .expect("received unexpected request on stream");
+        assert_eq!(vmid, 0);
+        info_responder
+            .send(&GuestInfo { guest_status: Some(GuestStatus::Running), ..Default::default() })
+            .expect("failed to send response");
+
+        assert!(executor.run_until_stalled(&mut fut).is_pending());
+
+        let (vmid, guest_server_end, responder) = executor
             .run_until_stalled(&mut manager_stream.try_next())
             .expect("future should be ready")
             .unwrap()
             .unwrap()
             .into_connect()
             .expect("received unexpected request on stream");
+        assert_eq!(vmid, 0);
 
         responder.send(Ok(())).expect("failed to send response");
         let mut guest_stream = guest_server_end.into_stream();
@@ -246,18 +263,19 @@ mod test {
         let mut executor = fasync::TestExecutor::new();
         let (proxy, mut stream) = create_proxy_and_stream::<GuestManagerMarker>();
 
-        let fut = force_stop_guest(arguments::GuestType::Linux, proxy);
+        let fut = force_stop_guest(arguments::Vmid(0), proxy);
         futures::pin_mut!(fut);
 
         assert!(executor.run_until_stalled(&mut fut).is_pending());
 
-        let responder = executor
+        let (vmid, responder) = executor
             .run_until_stalled(&mut stream.try_next())
             .expect("future should be ready")
             .unwrap()
             .unwrap()
             .into_force_shutdown()
             .expect("received unexpected request on stream");
+        assert_eq!(vmid, 0);
         responder.send().expect("failed to send response");
 
         let result = executor.run_until_stalled(&mut fut).expect("future should be ready").unwrap();

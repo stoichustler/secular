@@ -8,68 +8,39 @@ use std::fmt;
 #[cfg(not(target_os = "fuchsia"))]
 use ffx_core::ffx_command;
 
-#[derive(Copy, Clone, Debug, PartialEq, serde::Serialize, serde::Deserialize)]
-pub enum GuestType {
-    Linux,
-    Rtos,
+/// Userspace identifier of a guest. Parsed from `vmid=<id>` or a bare integer.
+#[derive(Copy, Clone, Debug, PartialEq, Eq, Hash, serde::Serialize, serde::Deserialize)]
+pub struct Vmid(pub u32);
+
+impl Vmid {
+    pub fn get(self) -> u32 {
+        self.0
+    }
 }
 
-impl FromArgValue for GuestType {
+impl FromArgValue for Vmid {
     fn from_arg_value(value: &str) -> Result<Self, String> {
-        match value {
-            "linux" | "debian" => Ok(Self::Linux),
-            "rtos" => Ok(Self::Rtos),
-            _ => Err(format!(
-                "Unrecognized guest type \"{}\". Supported guest types are: \
-                \"linux\", \"rtos\".",
+        let rest = value.strip_prefix("vmid=").unwrap_or(value);
+        rest.parse::<u32>().map(Vmid).map_err(|_| {
+            format!(
+                "Invalid vmid \"{}\". Expected `vmid=<id>` (for example `vmid=0`) \
+                 or a non-negative integer.",
                 value
-            )),
-        }
+            )
+        })
     }
 }
 
-impl fmt::Display for GuestType {
+impl fmt::Display for Vmid {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        match *self {
-            GuestType::Linux => write!(f, "linux"),
-            GuestType::Rtos => write!(f, "rtos"),
-        }
+        write!(f, "vmid={}", self.0)
     }
 }
 
-impl GuestType {
-    /// Unified guest_manager is a bootstrap child on Secular.
-    pub fn moniker(&self) -> &str {
-        "/bootstrap/guest-manager"
-    }
-
-    pub fn guest_manager_interface(&self) -> &str {
-        "fuchsia.virtualization.GuestManager"
-    }
-
-    pub fn gn_target_label(self) -> &'static str {
-        "//userspace/hypervisor:framework"
-    }
-
-    pub fn gn_core_shard_label(&self) -> &'static str {
-        "//userspace/hypervisor/meta/hypervisor.bootstrap_shard.cml"
-    }
-
-    pub fn package_url(&self) -> &'static str {
-        match self {
-            GuestType::Linux => {
-                "fuchsia-boot:///guest_manager#meta/secular_guest_pkg.cm"
-            }
-            GuestType::Rtos => {
-                "fuchsia-boot:///guest_manager#meta/secular_guest_pkg.cm"
-            }
-        }
-    }
-
-    pub fn all_guests() -> Vec<GuestType> {
-        vec![GuestType::Linux, GuestType::Rtos]
-    }
-}
+/// Unified guest_manager is a bootstrap child on Secular.
+pub const GUEST_MANAGER_MONIKER: &str = "/bootstrap/guest-manager";
+pub const GUEST_MANAGER_INTERFACE: &str = "fuchsia.virtualization.GuestManager";
+pub const GUEST_PACKAGE_URL: &str = "fuchsia-boot:///guest_manager#meta/secular_guest_pkg.cm";
 
 #[derive(ArgsInfo, FromArgs, PartialEq, Debug)]
 /// Top-level command.
@@ -109,30 +80,30 @@ pub mod mem_args {
     }
 
     #[derive(ArgsInfo, FromArgs, PartialEq, Debug)]
-    /// Modify the requested amount of the dynamically plugged memory. Usage: guest mem request-plugged guest-type size
+    /// Modify the requested amount of the dynamically plugged memory. Usage: guest mem request-plugged vmid=0 size
     #[argh(subcommand, name = "request-plugged")]
     pub struct RequestPluggedMem {
         #[argh(positional)]
-        /// type of the guest
-        pub guest_type: GuestType,
+        /// guest identifier, for example vmid=0
+        pub vmid: Vmid,
         #[argh(positional)]
         /// target amount of memory to be dynamically plugged
         pub size: u64,
     }
     #[derive(ArgsInfo, FromArgs, PartialEq, Debug)]
-    /// See the stats of a guest's virtio-mem. Usage: guest mem stats guest-type
+    /// See the stats of a guest's virtio-mem. Usage: guest mem stats vmid=0
     #[argh(subcommand, name = "stats")]
     pub struct StatsMem {
         #[argh(positional)]
-        /// type of the guest
-        pub guest_type: GuestType,
+        /// guest identifier, for example vmid=0
+        pub vmid: Vmid,
     }
 }
 
 pub mod balloon_args {
     use super::*;
     #[derive(ArgsInfo, FromArgs, PartialEq, Debug)]
-    /// Interact with the guest memory balloon. Usage: guest balloon sub-command guest-type ...
+    /// Interact with the guest memory balloon. Usage: guest balloon sub-command vmid=0 ...
     #[argh(subcommand, name = "balloon")]
     #[cfg_attr(not(target_os = "fuchsia"), ffx_command())]
     pub struct BalloonArgs {
@@ -148,24 +119,24 @@ pub mod balloon_args {
     }
 
     #[derive(ArgsInfo, FromArgs, PartialEq, Debug)]
-    /// Modify the size of a memory balloon. Usage: guest balloon set guest-type num-pages
+    /// Modify the size of a memory balloon. Usage: guest balloon set vmid=0 num-pages
     #[argh(subcommand, name = "set")]
     pub struct BalloonSet {
         #[argh(positional)]
-        /// type of the guest
-        pub guest_type: GuestType,
+        /// guest identifier, for example vmid=0
+        pub vmid: Vmid,
         #[argh(positional)]
         /// number of pages guest balloon will have after use.
         pub num_pages: u32,
     }
 
     #[derive(ArgsInfo, FromArgs, PartialEq, Debug)]
-    /// See the stats of a guest's memory balloon. Usage: guest balloon stats guest-type
+    /// See the stats of a guest's memory balloon. Usage: guest balloon stats vmid=0
     #[argh(subcommand, name = "stats")]
     pub struct BalloonStats {
         #[argh(positional)]
-        /// type of the guest
-        pub guest_type: GuestType,
+        /// guest identifier, for example vmid=0
+        pub vmid: Vmid,
     }
 }
 
@@ -177,8 +148,8 @@ pub mod list_args {
     #[cfg_attr(not(target_os = "fuchsia"), ffx_command())]
     pub struct ListArgs {
         #[argh(positional)]
-        /// optional guest type to get detailed information about
-        pub guest_type: Option<GuestType>,
+        /// optional guest identifier to get detailed information about, for example vmid=0
+        pub vmid: Option<Vmid>,
     }
 }
 
@@ -201,24 +172,24 @@ pub mod socat_args {
     }
 
     #[derive(ArgsInfo, FromArgs, PartialEq, Debug)]
-    /// Create a socat connection on the specified port. Usage: guest socat connect guest-type port
+    /// Create a socat connection on the specified port. Usage: guest socat connect vmid=0 port
     #[argh(subcommand, name = "connect")]
     pub struct SocatConnect {
         #[argh(positional)]
-        /// type of the guest
-        pub guest_type: GuestType,
+        /// guest identifier, for example vmid=0
+        pub vmid: Vmid,
         #[argh(positional)]
         /// guest port number to attempt to connect to
         pub guest_port: u32,
     }
 
     #[derive(ArgsInfo, FromArgs, PartialEq, Debug)]
-    /// Listen through socat on the specified port. Usage: guest socat listen guest-type host-port
+    /// Listen through socat on the specified port. Usage: guest socat listen vmid=0 host-port
     #[argh(subcommand, name = "listen")]
     pub struct SocatListen {
         #[argh(positional)]
-        /// type of the guest
-        pub guest_type: GuestType,
+        /// guest identifier, for example vmid=0
+        pub vmid: Vmid,
         #[argh(positional)]
         /// host port number to accept incoming guest connections on
         pub host_port: u32,
@@ -228,26 +199,26 @@ pub mod socat_args {
 pub mod vsockperf_args {
     use super::*;
     #[derive(ArgsInfo, FromArgs, PartialEq, Debug)]
-    /// Perform a vsock micro benchmark on the target guest. Only Linux is supported.
+    /// Perform a vsock micro benchmark on the target guest.
     #[argh(subcommand, name = "vsock-perf")]
     #[cfg_attr(not(target_os = "fuchsia"), ffx_command())]
     pub struct VsockPerfArgs {
         #[argh(positional)]
-        /// type of the guest
-        pub guest_type: GuestType,
+        /// guest identifier, for example vmid=0
+        pub vmid: Vmid,
     }
 }
 
 pub mod launch_args {
     use super::*;
     #[derive(ArgsInfo, FromArgs, PartialEq, Debug)]
-    /// Launch a guest image. Usage: guest launch guest_type [--cmdline-add <arg>...] [--memory <memory-size>] [--cpus <num-cpus>] [--virtio-* <bool>]
+    /// Launch a guest image. Usage: guest launch vmid=0 [--cmdline-add <arg>...] [--memory <memory-size>] [--cpus <num-cpus>] [--virtio-* <bool>]
     #[argh(subcommand, name = "launch")]
     #[cfg_attr(not(target_os = "fuchsia"), ffx_command())]
     pub struct LaunchArgs {
         #[argh(positional)]
-        /// guest type to launch: 'linux' or 'rtos'.
-        pub guest_type: GuestType,
+        /// guest identifier to launch, for example vmid=0
+        pub vmid: Vmid,
         /// adds provided strings to the existing kernel command line
         #[argh(option)]
         pub cmdline_add: Vec<String>,
@@ -290,13 +261,13 @@ pub mod launch_args {
 pub mod stop_args {
     use super::*;
     #[derive(ArgsInfo, FromArgs, PartialEq, Debug)]
-    /// Stop a running guest. Usage: guest stop guest_type [-f]
+    /// Stop a running guest. Usage: guest stop vmid=0 [-f]
     #[argh(subcommand, name = "stop")]
     #[cfg_attr(not(target_os = "fuchsia"), ffx_command())]
     pub struct StopArgs {
-        /// guest type to stop: 'linux' or 'rtos'
+        /// guest identifier to stop, for example vmid=0
         #[argh(positional)]
-        pub guest_type: GuestType,
+        pub vmid: Vmid,
         /// force stop the guest
         #[argh(switch, short = 'f')]
         pub force: bool,
@@ -306,13 +277,13 @@ pub mod stop_args {
 pub mod attach_args {
     use super::*;
     #[derive(ArgsInfo, FromArgs, PartialEq, Debug)]
-    /// Attach console and serial to a running guest. Usage: guest attach guest_type
+    /// Attach console and serial to a running guest. Usage: guest attach vmid=0
     #[argh(subcommand, name = "attach")]
     #[cfg_attr(not(target_os = "fuchsia"), ffx_command())]
     pub struct AttachArgs {
-        /// guest type to attach to: 'linux' or 'rtos'
+        /// guest identifier to attach to, for example vmid=0
         #[argh(positional)]
-        pub guest_type: GuestType,
+        pub vmid: Vmid,
         /// attach via serial instead of virtio-console
         #[argh(switch)]
         pub serial: bool,

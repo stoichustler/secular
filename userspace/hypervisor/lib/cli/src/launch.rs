@@ -11,7 +11,7 @@ use std::fmt;
 pub enum LaunchResult {
     LaunchCompleted,
     AttachFailed(String),
-    RoutingError(arguments::GuestType),
+    RoutingError,
     FidlError(String),
     LaunchFailure(u32),
 }
@@ -29,7 +29,7 @@ impl fmt::Display for LaunchResult {
                 "Failed to launch guest: {:?}",
                 GuestManagerError::from_primitive(*err).expect("expected a valid error")
             ),
-            LaunchResult::RoutingError(_guest_type) => {
+            LaunchResult::RoutingError => {
                 writeln!(f, "")?;
                 writeln!(f, "Unable to connect to the guest manager.")?;
                 writeln!(
@@ -47,7 +47,7 @@ pub async fn handle_launch<P: PlatformServices>(
     args: &arguments::launch_args::LaunchArgs,
 ) -> LaunchResult {
     let config = parse_vmm_args(args);
-    let guest = launch(services, args.guest_type, config).await;
+    let guest = launch(services, args.vmid, config).await;
     if let Err(err) = guest {
         return err;
     }
@@ -86,19 +86,19 @@ fn parse_vmm_args(arguments: &arguments::launch_args::LaunchArgs) -> GuestConfig
 // Connect to a guest manager and launch the corresponding guest.
 async fn launch<P: PlatformServices>(
     services: &P,
-    guest_type: arguments::GuestType,
+    vmid: arguments::Vmid,
     config: GuestConfig,
 ) -> Result<GuestProxy, LaunchResult> {
     let (guest, guest_server_end) = fidl::endpoints::create_proxy::<GuestMarker>();
 
-    println!("Starting {}", guest_type);
+    println!("Starting {}", vmid);
     let manager = services
-        .connect_to_manager(guest_type)
+        .connect_to_manager()
         .await
         .map_err(|err| LaunchResult::FidlError(format!("Connect to manager - {}", err)))?;
 
-    match manager.launch(config, guest_server_end).await {
-        Err(fidl::Error::ClientChannelClosed { .. }) => Err(LaunchResult::RoutingError(guest_type)),
+    match manager.launch(vmid.get(), config, guest_server_end).await {
+        Err(fidl::Error::ClientChannelClosed { .. }) => Err(LaunchResult::RoutingError),
         Err(err) => Err(LaunchResult::FidlError(format!("Send launch message - {}", err))),
         Ok(launch_result) => match launch_result {
             Ok(()) => Ok(guest),

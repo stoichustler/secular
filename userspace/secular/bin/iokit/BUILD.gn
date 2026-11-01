@@ -52,6 +52,24 @@ rustc_binary("hexdump") {
   with_unit_tests = true
 }
 
+rustc_binary("cpustat") {
+  output_name = "cpustat"
+  edition = "2024"
+  source_root = "src/cpustat.rs"
+  sources = [ "src/cpustat.rs" ]
+  configs += [ "//products/build/config/rust:bootfs" ]
+  if (is_fuchsia) {
+    deps = [
+      "//sdk/fidl/fuchsia.kernel:fuchsia.kernel_rust",
+      "//sdk/rust/zx",
+      "//sdk/rust/zx-sys",
+      "//userspace/lib/fuchsia-async",
+      "//userspace/lib/fuchsia-component",
+    ]
+  }
+  with_unit_tests = true
+}
+
 rustc_binary("kdmips") {
   output_name = "kdmips"
   edition = "2024"
@@ -75,6 +93,7 @@ group("iokit") {
     ":bootstat",
     ":cat",
     ":clear",
+    ":cpustat",
     ":elfdump",
     ":hexdump",
     ":kdmips",

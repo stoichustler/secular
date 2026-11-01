@@ -100,7 +100,7 @@ void GuestInteractionTest::SetUp() {
       realm_root_->component().ConnectSync<fuchsia::virtualization::GuestManager>();
 
   FX_LOGS(INFO) << "Starting Debian Guest";
-  ASSERT_OK(guest_manager_->Launch(std::move(cfg), guest_.NewRequest(), &res));
+  ASSERT_OK(guest_manager_->Launch(/*vmid=*/0, std::move(cfg), guest_.NewRequest(), &res));
   if (res.is_err()) {
     FAIL() << "Failed to launch guest with error: " << static_cast<uint32_t>(res.err());
   }

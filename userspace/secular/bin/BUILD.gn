@@ -11,6 +11,7 @@ group("tests") {
     "iokit:bootstat_test",
     "iokit:cat_test",
     "iokit:clear_test",
+    "iokit:cpustat_test",
     "iokit:elfdump_test",
     "iokit:hexdump_test",
     "iokit:kdmips_test",

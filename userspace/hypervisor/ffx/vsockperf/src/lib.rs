@@ -26,7 +26,7 @@ impl FfxMain for GuestVsockPerfTool {
         return_user_error!(
             "The ffx guest plugin doesn't support duplicating handles for socket io. \
     Use the guest tool instead: `fx shell guest vsock-perf {}`. See https://fxbug.dev/42068091 for updates.",
-            self.cmd.guest_type
+            self.cmd.vmid
         );
 
         // TODO(https://fxbug.dev/42068091): Enable when overnet supports duplicated socket handles.

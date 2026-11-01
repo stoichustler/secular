@@ -11,6 +11,9 @@
 #include <lib/zx/result.h>
 #include <zircon/types.h>
 
+#include <map>
+#include <memory>
+
 #include "src/virtualization/bin/guest_manager/memory_pressure_handler.h"
 #include "src/virtualization/lib/guest_config/guest_config.h"
 
@@ -52,27 +55,33 @@ class GuestManager : public fuchsia::virtualization::GuestManager {
       : GuestManager(dispatcher, context, "/guest_pkg/", "data/guest.cfg") {}
 
   // |fuchsia::virtualization::GuestManager|
-  void Launch(fuchsia::virtualization::GuestConfig user_config,
+  void Launch(uint32_t vmid, fuchsia::virtualization::GuestConfig user_config,
               fidl::InterfaceRequest<fuchsia::virtualization::Guest> controller,
               LaunchCallback callback) override;
-  void ForceShutdown(ForceShutdownCallback callback) override;
-  void Connect(fidl::InterfaceRequest<fuchsia::virtualization::Guest> controller,
+  void ForceShutdown(uint32_t vmid, ForceShutdownCallback callback) override;
+  void Connect(uint32_t vmid, fidl::InterfaceRequest<fuchsia::virtualization::Guest> controller,
                ConnectCallback) override;
-  void GetInfo(GetInfoCallback callback) override;
+  void GetInfo(uint32_t vmid, GetInfoCallback callback) override;
+  void List(ListCallback callback) override;
 
   // Store a subset of the configuration. This can be queried while the guest is running using
   // the GuestManager::GetInfo FIDL message.
-  void SnapshotConfig(const fuchsia::virtualization::GuestConfig& config);
+  void SnapshotConfig(const fuchsia::virtualization::GuestConfig& config,
+                      fuchsia::virtualization::GuestDescriptor* guest_descriptor);
 
   // Attempt to query the guest network state by iterating over the host network interfaces.
-  GuestNetworkState QueryGuestNetworkState();
+  GuestNetworkState QueryGuestNetworkState(uint32_t vmid);
+  GuestNetworkState QueryGuestNetworkState(
+      const fuchsia::virtualization::GuestDescriptor& guest_descriptor);
   static std::string GuestNetworkStateToStringExplanation(GuestNetworkState state);
 
   // Check for suspected problems with a running guest.
-  std::vector<std::string> CheckForProblems();
+  std::vector<std::string> CheckForProblems(
+      const fuchsia::virtualization::GuestDescriptor& guest_descriptor,
+      MemoryPressureHandler* memory_pressure_handler);
 
-  // Returns true if the guest was started, but hasn't stopped.
-  bool is_guest_started() const;
+  // Returns true if any guest identified by vmid is started.
+  bool is_guest_started(uint32_t vmid) const;
 
  protected:
   virtual fit::result<::fuchsia::virtualization::GuestManagerError,
@@ -82,10 +91,31 @@ class GuestManager : public fuchsia::virtualization::GuestManager {
   virtual void OnGuestStopped() {}
 
  private:
-  void HandleCreateResult(::fuchsia::virtualization::GuestLifecycle_Create_Result result,
+  struct GuestInstance {
+    uint32_t vmid = 0;
+    ::fuchsia::virtualization::GuestLifecyclePtr lifecycle;
+    std::optional<fuchsia::virtualization::GuestError> last_error;
+    zx::time start_time = zx::time::infinite_past();
+    zx::time stop_time = zx::time::infinite_past();
+    fuchsia::virtualization::GuestDescriptor guest_descriptor;
+    fuchsia::virtualization::GuestStatus state =
+        fuchsia::virtualization::GuestStatus::NOT_STARTED;
+    std::unique_ptr<MemoryPressureHandler> memory_pressure_handler;
+    std::vector<ForceShutdownCallback> pending_force_shutdowns;
+
+    bool is_started() const;
+  };
+
+  GuestInstance& GetOrCreateInstance(uint32_t vmid);
+  GuestInstance* FindInstance(uint32_t vmid);
+  const GuestInstance* FindInstance(uint32_t vmid) const;
+
+  void HandleCreateResult(uint32_t vmid,
+                          ::fuchsia::virtualization::GuestLifecycle_Create_Result result,
                           bool balloon_enabled, LaunchCallback callback);
-  void HandleRunResult(::fuchsia::virtualization::GuestLifecycle_Run_Result result);
-  void HandleGuestStopped(fit::result<::fuchsia::virtualization::GuestError> err);
+  void HandleRunResult(uint32_t vmid,
+                       ::fuchsia::virtualization::GuestLifecycle_Run_Result result);
+  void HandleGuestStopped(uint32_t vmid, fit::result<::fuchsia::virtualization::GuestError> err);
 
   async_dispatcher_t* dispatcher_;
   sys::ComponentContext* context_;
@@ -93,29 +123,7 @@ class GuestManager : public fuchsia::virtualization::GuestManager {
   std::string config_pkg_dir_path_;
   std::string config_path_;
 
-  // The VMM lifecycle control channel. If closed, this will terminate the VMM component.
-  ::fuchsia::virtualization::GuestLifecyclePtr lifecycle_;
-
-  // Cached error reported by the VMM upon stopping if not stopped due to a clean shutdown.
-  std::optional<fuchsia::virtualization::GuestError> last_error_;
-
-  // Used to calculate the guest's uptime for guest info reporting.
-  zx::time start_time_ = zx::time::infinite_past();
-  zx::time stop_time_ = zx::time::infinite_past();
-
-  // Snapshot of some of the configuration settings used to start this guest. This is
-  // informational only, and sent in response to a GetInfo call.
-  fuchsia::virtualization::GuestDescriptor guest_descriptor_;
-
-  // Current state of the guest.
-  fuchsia::virtualization::GuestStatus state_ = fuchsia::virtualization::GuestStatus::NOT_STARTED;
-  // Inflates / deflates the guest balloon in response to the host memory pressure events
-  std::unique_ptr<MemoryPressureHandler> memory_pressure_handler_;
-
-  // Callbacks that should be triggered when the guest enters a STOPPED state. The guest shutting
-  // down is an asynchronous process, so multiple penidng callbacks can be registered while the
-  // guest spins down.
-  std::vector<ForceShutdownCallback> pending_force_shutdowns_;
+  std::map<uint32_t, std::unique_ptr<GuestInstance>> guests_;
 };
 
 #endif  // SRC_VIRTUALIZATION_BIN_GUEST_MANAGER_GUEST_MANAGER_H_

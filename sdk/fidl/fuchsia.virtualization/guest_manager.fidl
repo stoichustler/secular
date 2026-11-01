@@ -5,6 +5,8 @@ library fuchsia.virtualization;
 
 using zx;
 
+const MAX_GUESTS uint32 = 64;
+
 type GuestManagerError = strict enum {
     /// The guest manager failed to parse the configuration from the guest package, or it was
     /// otherwise invalid.
@@ -22,6 +24,9 @@ type GuestManagerError = strict enum {
     /// The guest required allocating some persistant storage but was unable to
     /// do so.
     NO_STORAGE = 5;
+
+    /// No guest exists for the requested vmid.
+    UNKNOWN_VMID = 6;
 };
 
 type GuestStatus = strict enum {
@@ -70,6 +75,9 @@ type GuestDescriptor = table {
     /// virtual net device (and the guest will have no networking).
     11: networks vector<NetSpec>:MAX_NET_DEVICES;
     12: mem bool;
+
+    /// Kernel type used to start the guest.
+    13: kernel_type KernelType;
 };
 
 type GuestInfo = table {
@@ -91,39 +99,61 @@ type GuestInfo = table {
     /// Note that these strings are for diagnostic purposes only. Consumers should not take any
     /// action based on specific strings as they are subject to change without warning.
     5: detected_problems vector<string:MAX>:8;
+
+    /// Userspace identifier of this guest. Assigned by the client at Launch.
+    6: vmid uint32;
+};
+
+/// Summary of one guest returned by GuestManager.List.
+type GuestListEntry = table {
+    1: vmid uint32;
+    2: guest_status GuestStatus;
+    3: uptime zx.Duration;
 };
 
 @discoverable
 closed protocol GuestManager {
-    /// Launch a new guest instance.
+    /// Launch a guest identified by `vmid`.
     ///
     /// Possible errors:
     ///     - BAD_CONFIG: Failed to parse the config from the guest package, or other config
     ///         problems detected by the guest manager.
-    ///     - ALREADY_RUNNING: The guest is already running. Stop the guest before launching again.
+    ///     - ALREADY_RUNNING: A guest with this vmid is already running.
     ///     - START_FAILURE: Failed to initialize the VMM and devices, and start the guest. See
     ///         component logs for a more specific failure.
     strict Launch(resource struct {
+        vmid uint32;
         guest_config GuestConfig;
         controller server_end:Guest;
     }) -> () error GuestManagerError;
 
-    /// Forcibly shuts down a running guest. Immediately after ForceShutdown returns, Launch can
-    /// be used to launch another guest.
-    strict ForceShutdown() -> ();
+    /// Forcibly shuts down the guest identified by `vmid`. Immediately after ForceShutdown
+    /// returns, Launch can be used to launch the same vmid again.
+    strict ForceShutdown(struct {
+        vmid uint32;
+    }) -> ();
 
-    /// Connect to a currently running guest.
+    /// Connect to a currently running guest identified by `vmid`.
     ///
     /// Possible errors:
     ///     - NOT_RUNNING: Attempted to connect to a guest in a non-running state. Ensure the guest
     ///         has launched before attempting to reconnect.
+    ///     - UNKNOWN_VMID: No guest has been launched with this vmid.
     strict Connect(resource struct {
+        vmid uint32;
         controller server_end:Guest;
     }) -> () error GuestManagerError;
 
-    /// Query guest info
-    strict GetInfo() -> (resource struct {
+    /// Query info for the guest identified by `vmid`. A never-launched vmid reports NOT_STARTED.
+    strict GetInfo(struct {
+        vmid uint32;
+    }) -> (resource struct {
         guest_info GuestInfo;
+    });
+
+    /// List guests that have been launched at least once (including stopped guests).
+    strict List() -> (struct {
+        guests vector<GuestListEntry>:MAX_GUESTS;
     });
 };
 

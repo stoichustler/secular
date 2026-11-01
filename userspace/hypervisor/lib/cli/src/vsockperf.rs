@@ -153,7 +153,6 @@ impl fmt::Display for Measurements {
 #[derive(serde::Serialize, serde::Deserialize)]
 pub enum VsockPerfResult {
     BenchmarkComplete(Box<Measurements>),
-    UnsupportedGuest(arguments::GuestType),
     Internal(String),
 }
 
@@ -161,9 +160,6 @@ impl fmt::Display for VsockPerfResult {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         match self {
             VsockPerfResult::BenchmarkComplete(result) => write!(f, "{}", result),
-            VsockPerfResult::UnsupportedGuest(guest) => {
-                write!(f, "VsockPerf is not supported for '{}'. Only 'linux' is supported", guest)
-            }
             VsockPerfResult::Internal(context) => {
                 write!(f, "Internal error: {}", context)
             }
@@ -187,12 +183,8 @@ pub async fn handle_vsockperf<P: PlatformServices>(
     services: &P,
     args: &arguments::vsockperf_args::VsockPerfArgs,
 ) -> Result<VsockPerfResult, Error> {
-    if args.guest_type != arguments::GuestType::Linux {
-        return Ok(VsockPerfResult::UnsupportedGuest(args.guest_type));
-    }
-
-    let guest_manager = services.connect_to_manager(args.guest_type).await?;
-    Ok(match run_micro_benchmark(guest_manager).await {
+    let guest_manager = services.connect_to_manager().await?;
+    Ok(match run_micro_benchmark(guest_manager, args.vmid).await {
         Err(err) => VsockPerfResult::Internal(format!("{}", err)),
         Ok(result) => VsockPerfResult::BenchmarkComplete(Box::new(result)),
     })
@@ -560,15 +552,18 @@ async fn run_latency_test(
     Ok(())
 }
 
-async fn run_micro_benchmark(guest_manager: GuestManagerProxy) -> Result<Measurements, Error> {
-    let guest_info = guest_manager.get_info().await?;
+async fn run_micro_benchmark(
+    guest_manager: GuestManagerProxy,
+    vmid: arguments::Vmid,
+) -> Result<Measurements, Error> {
+    let guest_info = guest_manager.get_info(vmid.get()).await?;
     if guest_info.guest_status.unwrap() != GuestStatus::Running {
         return Err(anyhow!(zx_status::Status::NOT_CONNECTED));
     }
 
     let (guest_endpoint, guest_server_end) = create_proxy::<GuestMarker>();
     guest_manager
-        .connect(guest_server_end)
+        .connect(vmid.get(), guest_server_end)
         .await
         .map_err(|err| anyhow!("failed to get a connect response: {}", err))?
         .map_err(|err| anyhow!("connect failed with: {:?}", err))?;

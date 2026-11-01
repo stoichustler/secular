@@ -27,7 +27,7 @@ impl FfxMain for GuestAttachTool {
             "The ffx guest plugin doesn't support attaching to a running guest. \
     Use the guest tool instead: `fx shell guest attach {}`. \
     See https://fxbug.dev/42068091 for updates.",
-            self.cmd.guest_type
+            self.cmd.vmid
         );
 
         // TODO(https://fxbug.dev/42068091): Enable when overnet supports duplicated socket handles.

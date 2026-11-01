@@ -4,7 +4,7 @@
 
 use crate::platform::PlatformServices;
 use anyhow::{Error, anyhow};
-use fidl_fuchsia_virtualization::{GuestManagerProxy, GuestStatus};
+use fidl_fuchsia_virtualization::{GuestListEntry, GuestManagerProxy, GuestStatus};
 use guest_cli_args as arguments;
 use prettytable::format::consts::FORMAT_CLEAN;
 use prettytable::{Table, row};
@@ -40,6 +40,7 @@ fn uptime_to_string(uptime_nanos: Option<i64>) -> String {
 
 #[derive(Default, serde::Serialize, serde::Deserialize)]
 pub struct GuestDetails {
+    pub vmid: String,
     pub package_url: String,
     pub status: String,
     pub uptime_nanos: i64,
@@ -54,6 +55,7 @@ impl fmt::Display for GuestDetails {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         let mut table = Table::new();
         table.set_format(*FORMAT_CLEAN);
+        table.add_row(row!["Guest vmid:", self.vmid]);
         table.add_row(row!["Guest package:", self.package_url]);
         table.add_row(row!["Guest status:", self.status]);
         table.add_row(row!["Guest uptime:", uptime_to_string(Some(self.uptime_nanos))]);
@@ -130,18 +132,19 @@ impl fmt::Display for GuestDetails {
 }
 
 async fn get_detailed_information(
-    guest_type: arguments::GuestType,
+    vmid: arguments::Vmid,
     manager: GuestManagerProxy,
 ) -> Result<GuestDetails, Error> {
-    let guest_info = manager.get_info().await;
+    let guest_info = manager.get_info(vmid.get()).await;
     if let Err(_) = guest_info {
-        return Err(anyhow!("Failed to query guest information: {}", guest_type));
+        return Err(anyhow!("Failed to query guest information: {}", vmid));
     }
     let guest_info = guest_info.unwrap();
     let guest_status = guest_info.guest_status.expect("guest status should always be set");
 
     let mut details: GuestDetails = Default::default();
-    details.package_url = guest_type.package_url().to_string();
+    details.vmid = vmid.to_string();
+    details.package_url = arguments::GUEST_PACKAGE_URL.to_string();
     details.status = guest_status_to_string(guest_status).to_string();
     details.uptime_nanos = guest_info.uptime.unwrap_or(0);
 
@@ -194,7 +197,7 @@ pub struct GuestSummary {
 impl fmt::Display for GuestSummary {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         let mut table = Table::new();
-        table.set_titles(row!["Guest", "Status", "Uptime"]);
+        table.set_titles(row!["VMID", "Status", "Uptime"]);
         for guest in &self.guests {
             table.add_row(row![guest.name, guest.status, uptime_to_string(guest.uptime_nanos)]);
         }
@@ -202,28 +205,20 @@ impl fmt::Display for GuestSummary {
     }
 }
 
-async fn get_environment_summary(
-    managers: Vec<(String, GuestManagerProxy)>,
-) -> Result<GuestSummary, Error> {
-    let mut summary = GuestSummary { guests: Vec::new() };
-    for (name, manager) in managers {
-        match manager.get_info().await {
-            Ok(guest_info) => summary.guests.push(GuestOverview {
-                name,
-                status: guest_status_to_string(
-                    guest_info.guest_status.expect("guest status should always be set"),
-                )
-                .to_string(),
-                uptime_nanos: guest_info.uptime,
-            }),
-            Err(_) => summary.guests.push(GuestOverview {
-                name,
-                status: "Unavailable".to_string(),
-                uptime_nanos: None,
-            }),
-        }
+fn list_entry_to_overview(entry: GuestListEntry) -> GuestOverview {
+    GuestOverview {
+        name: format!("vmid={}", entry.vmid.unwrap_or(0)),
+        status: guest_status_to_string(
+            entry.guest_status.expect("guest status should always be set"),
+        )
+        .to_string(),
+        uptime_nanos: entry.uptime,
     }
-    Ok(summary)
+}
+
+async fn get_environment_summary(manager: GuestManagerProxy) -> Result<GuestSummary, Error> {
+    let guests = manager.list().await.map_err(|err| anyhow!("Failed to list guests: {}", err))?;
+    Ok(GuestSummary { guests: guests.into_iter().map(list_entry_to_overview).collect() })
 }
 
 #[derive(serde::Serialize, serde::Deserialize)]
@@ -246,18 +241,10 @@ pub async fn handle_list<P: PlatformServices>(
     services: &P,
     args: &arguments::list_args::ListArgs,
 ) -> Result<GuestList, Error> {
-    match args.guest_type {
-        Some(guest_type) => {
-            let manager = services.connect_to_manager(guest_type).await?;
-            Ok(GuestList::Details(get_detailed_information(guest_type, manager).await?))
-        }
-        None => {
-            // One GuestManager serves Linux and RTOS guests.
-            let manager = services.connect_to_manager(arguments::GuestType::Linux).await?;
-            Ok(GuestList::Summary(
-                get_environment_summary(vec![("guest".to_string(), manager)]).await?,
-            ))
-        }
+    let manager = services.connect_to_manager().await?;
+    match args.vmid {
+        Some(vmid) => Ok(GuestList::Details(get_detailed_information(vmid, manager).await?)),
+        None => Ok(GuestList::Summary(get_environment_summary(manager).await?)),
     }
 }
 
@@ -265,14 +252,16 @@ pub async fn handle_list<P: PlatformServices>(
 mod test {
     use super::*;
     use fidl::endpoints::create_proxy_and_stream;
-    use fidl_fuchsia_virtualization::{GuestDescriptor, GuestError, GuestInfo, GuestManagerMarker};
+    use fidl_fuchsia_virtualization::{
+        GuestDescriptor, GuestError, GuestInfo, GuestListEntry, GuestManagerMarker,
+    };
     use fuchsia_async as fasync;
     use futures::StreamExt;
 
     fn serve_mock_manager(response: Option<GuestInfo>) -> GuestManagerProxy {
         let (proxy, mut stream) = create_proxy_and_stream::<GuestManagerMarker>();
         fasync::Task::local(async move {
-            let responder = stream
+            let (_vmid, responder) = stream
                 .next()
                 .await
                 .expect("mock manager expected a request")
@@ -288,6 +277,22 @@ mod test {
         })
         .detach();
 
+        proxy
+    }
+
+    fn serve_mock_list(entries: Vec<GuestListEntry>) -> GuestManagerProxy {
+        let (proxy, mut stream) = create_proxy_and_stream::<GuestManagerMarker>();
+        fasync::Task::local(async move {
+            let responder = stream
+                .next()
+                .await
+                .expect("mock manager expected a request")
+                .unwrap()
+                .into_list()
+                .expect("unexpected call to mock manager");
+            responder.send(&entries).expect("failed to send mock response");
+        })
+        .detach();
         proxy
     }
 
@@ -317,30 +322,30 @@ mod test {
 
     #[fuchsia::test(allow_stalls = false)]
     async fn summarize_existing_managers() {
-        let managers = vec![
-            ("zircon".to_string(), serve_mock_manager(None)),
-            ("termina".to_string(), serve_mock_manager(None)),
-            (
-                "debian".to_string(),
-                serve_mock_manager(Some(GuestInfo {
-                    guest_status: Some(GuestStatus::Running),
-                    uptime: Some(std::time::Duration::from_secs(123).as_nanos() as i64),
-                    ..Default::default()
-                })),
-            ),
-        ];
+        let manager = serve_mock_list(vec![
+            GuestListEntry {
+                vmid: Some(0),
+                guest_status: Some(GuestStatus::Running),
+                uptime: Some(std::time::Duration::from_secs(123).as_nanos() as i64),
+                ..Default::default()
+            },
+            GuestListEntry {
+                vmid: Some(1),
+                guest_status: Some(GuestStatus::Stopped),
+                uptime: Some(std::time::Duration::from_secs(5).as_nanos() as i64),
+                ..Default::default()
+            },
+        ]);
 
-        let actual = format!("{}", get_environment_summary(managers).await.unwrap());
+        let actual = format!("{}", get_environment_summary(manager).await.unwrap());
         let expected = concat!(
-            "+---------+-------------+-------------------+\n",
-            "| Guest   | Status      | Uptime            |\n",
-            "+=========+=============+===================+\n",
-            "| zircon  | Unavailable | --:--:-- HH:MM:SS |\n",
-            "+---------+-------------+-------------------+\n",
-            "| termina | Unavailable | --:--:-- HH:MM:SS |\n",
-            "+---------+-------------+-------------------+\n",
-            "| debian  | Running     | 00:02:03 HH:MM:SS |\n",
-            "+---------+-------------+-------------------+\n"
+            "+--------+---------+-------------------+\n",
+            "| VMID   | Status  | Uptime            |\n",
+            "+========+=========+===================+\n",
+            "| vmid=0 | Running | 00:02:03 HH:MM:SS |\n",
+            "+--------+---------+-------------------+\n",
+            "| vmid=1 | Stopped | 00:00:05 HH:MM:SS |\n",
+            "+--------+---------+-------------------+\n"
         );
 
         assert_eq!(actual, expected);
@@ -356,9 +361,10 @@ mod test {
 
         let actual = format!(
             "{}",
-            get_detailed_information(arguments::GuestType::Linux, manager).await.unwrap()
+            get_detailed_information(arguments::Vmid(0), manager).await.unwrap()
         );
         let expected = concat!(
+            " Guest vmid:     vmid=0 \n",
             " Guest package:  fuchsia-boot:///guest_manager#meta/secular_guest_pkg.cm \n",
             " Guest status:   Stopped \n",
             " Guest uptime:   00:00:05 HH:MM:SS \n",
@@ -380,9 +386,10 @@ mod test {
 
         let actual = format!(
             "{}",
-            get_detailed_information(arguments::GuestType::Rtos, manager).await.unwrap()
+            get_detailed_information(arguments::Vmid(1), manager).await.unwrap()
         );
         let expected = concat!(
+            " Guest vmid:     vmid=1 \n",
             " Guest package:  fuchsia-boot:///guest_manager#meta/secular_guest_pkg.cm \n",
             " Guest status:   Stopped \n",
             " Guest uptime:   00:01:05 HH:MM:SS \n",
@@ -417,9 +424,10 @@ mod test {
 
         let actual = format!(
             "{}",
-            get_detailed_information(arguments::GuestType::Linux, manager).await.unwrap()
+            get_detailed_information(arguments::Vmid(0), manager).await.unwrap()
         );
         let expected = concat!(
+            " Guest vmid:        vmid=0 \n",
             " Guest package:     fuchsia-boot:///guest_manager#meta/secular_guest_pkg.cm \n",
             " Guest status:      Running \n",
             " Guest uptime:      02:05:00 HH:MM:SS \n",

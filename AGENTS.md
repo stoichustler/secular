@@ -63,6 +63,7 @@ the requester explicitly expands scope.
 export SECULAR_SDK=/absolute/path/to/secular-sdk   # default: ../secular-sdk
 make build        # configure + compile arm64 console image
 make run          # interactive QEMU serial console
+make kick         # boot existing image via run-zircon; KICK_ARGS for its flags
 make verify       # automated boot + console check
 make clean        # remove out/
 ```
@@ -72,7 +73,8 @@ make clean        # remove out/
 | `SECULAR_SDK` | Standalone SDK root. Required. Must not equal the source root. |
 | `SECULAR_PREBUILT` | Optional rust sysroot view (`linux-amd64` host+target rustlib). Default: `out/sdk-prebuilt`. |
 | `ARCH` | Target architecture. Default: `arm64`. |
-| `QEMU_ARGS` | Extra QEMU arguments forwarded by `make run`. |
+| `QEMU_ARGS` | Extra QEMU arguments forwarded by `make run` / `make kick`. |
+| `KICK_ARGS` | Extra `zircon/scripts/run-zircon` flags for `make kick` (`-s`, `-m`, `-c`, …). |
 
 The SDK is prepared outside this tree (`linux-amd64` clang/gn/ninja/rustc
 and `qemu-system-aarch64`). GN uses `${SECULAR_SDK}/prebuilt/.../linux-amd64`

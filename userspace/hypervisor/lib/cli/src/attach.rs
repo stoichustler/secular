@@ -33,15 +33,19 @@ pub async fn handle_attach<P: PlatformServices>(
     services: &P,
     args: &arguments::attach_args::AttachArgs,
 ) -> Result<AttachResult, Error> {
-    let manager = services.connect_to_manager(args.guest_type).await?;
-    let status = manager.get_info().await?.guest_status.expect("guest status should always be set");
+    let manager = services.connect_to_manager().await?;
+    let status = manager
+        .get_info(args.vmid.get())
+        .await?
+        .guest_status
+        .expect("guest status should always be set");
     if status != GuestStatus::Starting && status != GuestStatus::Running {
         return Ok(AttachResult::NotRunning);
     }
 
     let (guest_endpoint, guest_server_end) = create_proxy::<GuestMarker>();
     manager
-        .connect(guest_server_end)
+        .connect(args.vmid.get(), guest_server_end)
         .await
         .map_err(|err| anyhow!("failed to get a connect response: {}", err))?
         .map_err(|err| anyhow!("connect failed with: {:?}", err))?;

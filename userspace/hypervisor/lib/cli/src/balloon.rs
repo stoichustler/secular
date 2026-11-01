@@ -119,15 +119,15 @@ const VIRTIO_BALLOON_S_HTLB_PGFAIL: u16 = 9; // HugeTLB page allocation failures
 #[allow(clippy::result_large_err)] // TODO(https://fxbug.dev/401253790)
 pub async fn connect_to_balloon_controller<P: PlatformServices>(
     services: &P,
-    guest_type: arguments::GuestType,
+    vmid: arguments::Vmid,
 ) -> Result<BalloonControllerProxy, BalloonResult> {
     let guest_manager = services
-        .connect_to_manager(guest_type)
+        .connect_to_manager()
         .await
         .map_err(|err| BalloonResult::Internal(format!("failed to connect to manager: {}", err)))?;
 
     let guest_info = guest_manager
-        .get_info()
+        .get_info(vmid.get())
         .await
         .map_err(|err| BalloonResult::Internal(format!("failed to get guest info: {}", err)))?;
     let status = guest_info.guest_status.expect("guest status should always be set");
@@ -137,7 +137,7 @@ pub async fn connect_to_balloon_controller<P: PlatformServices>(
 
     let (guest_endpoint, guest_server_end) = fidl::endpoints::create_proxy::<GuestMarker>();
     guest_manager
-        .connect(guest_server_end)
+        .connect(vmid.get(), guest_server_end)
         .await
         .map_err(|err| BalloonResult::Internal(format!("failed to send msg: {:?}", err)))?
         .map_err(|err| BalloonResult::Internal(format!("failed to connect: {:?}", err)))?;
@@ -208,7 +208,7 @@ pub async fn handle_balloon<P: PlatformServices>(
 ) -> BalloonResult {
     match &args.balloon_cmd {
         arguments::balloon_args::BalloonCommands::Set(args) => {
-            let controller = match connect_to_balloon_controller(services, args.guest_type).await {
+            let controller = match connect_to_balloon_controller(services, args.vmid).await {
                 Ok(controller) => controller,
                 Err(result) => {
                     return result;
@@ -218,7 +218,7 @@ pub async fn handle_balloon<P: PlatformServices>(
             handle_balloon_set(controller, args.num_pages)
         }
         arguments::balloon_args::BalloonCommands::Stats(args) => {
-            let controller = match connect_to_balloon_controller(services, args.guest_type).await {
+            let controller = match connect_to_balloon_controller(services, args.vmid).await {
                 Ok(controller) => controller,
                 Err(result) => {
                     return result;

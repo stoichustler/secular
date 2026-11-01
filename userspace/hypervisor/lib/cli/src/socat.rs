@@ -149,10 +149,11 @@ async fn handle_socat_connect(
 
 async fn connect_to_vsock_endpoint(
     manager: GuestManagerProxy,
+    vmid: arguments::Vmid,
 ) -> Result<HostVsockEndpointProxy, SocatError> {
     let (guest_endpoint, guest_server_end) = fidl::endpoints::create_proxy::<GuestMarker>();
     manager
-        .connect(guest_server_end)
+        .connect(vmid.get(), guest_server_end)
         .await?
         .map_err(|err| SocatError::InternalFailure(format!("failed to connect: {:?}", err)))?;
 
@@ -169,13 +170,13 @@ async fn connect_to_vsock_endpoint(
 
 async fn get_manager<P: PlatformServices>(
     services: &P,
-    guest_type: arguments::GuestType,
+    vmid: arguments::Vmid,
 ) -> Result<GuestManagerProxy, SocatError> {
-    let guest_manager = services.connect_to_manager(guest_type).await.map_err(|err| {
+    let guest_manager = services.connect_to_manager().await.map_err(|err| {
         SocatError::InternalFailure(format!("failed to connect to manager: {}", err))
     })?;
 
-    let guest_info = guest_manager.get_info().await?;
+    let guest_info = guest_manager.get_info(vmid.get()).await?;
     let status = guest_info.guest_status.expect("guest status should always be set");
     if status != GuestStatus::Starting && status != GuestStatus::Running {
         return Err(SocatError::NotRunning);
@@ -190,13 +191,13 @@ async fn handle_impl<P: PlatformServices>(
 ) -> Result<SocatSuccess, SocatError> {
     match &args.socat_cmd {
         arguments::socat_args::SocatCommands::Listen(args) => {
-            let manager = get_manager(services, args.guest_type).await?;
-            let endpoint = connect_to_vsock_endpoint(manager).await?;
+            let manager = get_manager(services, args.vmid).await?;
+            let endpoint = connect_to_vsock_endpoint(manager, args.vmid).await?;
             handle_socat_listen(endpoint, args.host_port).await
         }
         arguments::socat_args::SocatCommands::Connect(args) => {
-            let manager = get_manager(services, args.guest_type).await?;
-            let endpoint = connect_to_vsock_endpoint(manager).await?;
+            let manager = get_manager(services, args.vmid).await?;
+            let endpoint = connect_to_vsock_endpoint(manager, args.vmid).await?;
             handle_socat_connect(endpoint, args.guest_port).await
         }
     }

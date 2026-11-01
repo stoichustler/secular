@@ -20,3 +20,7 @@ Secular is the only in-tree product. It matches Fuchsia **bringup**:
 
 The GN target is `//products/secular:secular` (the ZBI) plus
 `//products/secular:boot_shim` for QEMU.
+
+Hardware bring-up (RK35xx and similar) is documented in
+[reference/PORTING.md](reference/PORTING.md). QEMU virt remains the
+supported CI board until a port meets that note's serial-console bar.

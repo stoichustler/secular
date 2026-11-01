@@ -74,16 +74,47 @@ fit::result<GuestManagerError, GuestConfig> GuestManager::GetDefaultGuestConfig(
   return fit::ok(std::move(*config));
 }
 
+bool GuestManager::GuestInstance::is_started() const {
+  switch (state) {
+    case GuestStatus::STARTING:
+    case GuestStatus::RUNNING:
+    case GuestStatus::STOPPING:
+      return true;
+    default:
+      return false;
+  }
+}
+
+GuestManager::GuestInstance& GuestManager::GetOrCreateInstance(uint32_t vmid) {
+  auto& instance = guests_[vmid];
+  if (!instance) {
+    instance = std::make_unique<GuestInstance>();
+    instance->vmid = vmid;
+  }
+  return *instance;
+}
+
+GuestManager::GuestInstance* GuestManager::FindInstance(uint32_t vmid) {
+  auto it = guests_.find(vmid);
+  return it == guests_.end() ? nullptr : it->second.get();
+}
+
+const GuestManager::GuestInstance* GuestManager::FindInstance(uint32_t vmid) const {
+  auto it = guests_.find(vmid);
+  return it == guests_.end() ? nullptr : it->second.get();
+}
+
 // |fuchsia::virtualization::GuestManager|
-void GuestManager::Launch(GuestConfig user_config,
+void GuestManager::Launch(uint32_t vmid, GuestConfig user_config,
                           fidl::InterfaceRequest<fuchsia::virtualization::Guest> controller,
                           LaunchCallback callback) {
-  if (is_guest_started()) {
+  GuestInstance& instance = GetOrCreateInstance(vmid);
+  if (instance.is_started()) {
     callback(fpromise::error(GuestManagerError::ALREADY_RUNNING));
     return;
   }
 
-  if (!lifecycle_.is_bound()) {
+  if (!instance.lifecycle.is_bound()) {
     // Opening the lifecycle channel will start the VMM component, and closing the channel will
     // destroy the VMM component.
     //
@@ -91,9 +122,13 @@ void GuestManager::Launch(GuestConfig user_config,
     // guest manager closes the channel to destroy the VMM component. As the VMM component will
     // never intentionally close the channel, this channel closing means that the component has
     // terminated unexpectedly.
-    context_->svc()->Connect(lifecycle_.NewRequest());
-    lifecycle_.set_error_handler([this](zx_status_t) {
-      state_ = GuestStatus::VMM_UNEXPECTED_TERMINATION;
+    context_->svc()->Connect(instance.lifecycle.NewRequest());
+    instance.lifecycle.set_error_handler([this, vmid](zx_status_t) {
+      GuestInstance* crashed = FindInstance(vmid);
+      if (crashed == nullptr) {
+        return;
+      }
+      crashed->state = GuestStatus::VMM_UNEXPECTED_TERMINATION;
       OnGuestStopped();
     });
   }
@@ -138,30 +173,38 @@ void GuestManager::Launch(GuestConfig user_config,
     }
   }
 
-  start_time_ = zx::clock::get_monotonic();
-  state_ = GuestStatus::STARTING;
-  last_error_ = std::nullopt;
-  SnapshotConfig(merged_cfg);
+  instance.start_time = zx::clock::get_monotonic();
+  instance.state = GuestStatus::STARTING;
+  instance.last_error = std::nullopt;
+  SnapshotConfig(merged_cfg, &instance.guest_descriptor);
   bool balloon_enabled = merged_cfg.has_virtio_balloon();
-  lifecycle_->Create(std::move(merged_cfg), [this, callback = std::move(callback), balloon_enabled](
-                                                GuestLifecycle_Create_Result result) mutable {
-    this->HandleCreateResult(std::move(result), balloon_enabled, std::move(callback));
-  });
-  lifecycle_->Bind(std::move(controller));
+  instance.lifecycle->Create(
+      std::move(merged_cfg),
+      [this, vmid, callback = std::move(callback), balloon_enabled](
+          GuestLifecycle_Create_Result result) mutable {
+        this->HandleCreateResult(vmid, std::move(result), balloon_enabled, std::move(callback));
+      });
+  instance.lifecycle->Bind(std::move(controller));
 }
 
-void GuestManager::HandleCreateResult(GuestLifecycle_Create_Result result, bool balloon_enabled,
-                                      LaunchCallback callback) {
+void GuestManager::HandleCreateResult(uint32_t vmid, GuestLifecycle_Create_Result result,
+                                      bool balloon_enabled, LaunchCallback callback) {
+  GuestInstance* instance = FindInstance(vmid);
+  if (instance == nullptr) {
+    callback(fpromise::error(GuestManagerError::START_FAILURE));
+    return;
+  }
   if (result.is_err()) {
-    HandleGuestStopped(fit::error(result.err()));
+    HandleGuestStopped(vmid, fit::error(result.err()));
     callback(fpromise::error(GuestManagerError::START_FAILURE));
   } else {
-    state_ = GuestStatus::RUNNING;
-    lifecycle_->Run(
-        [this](GuestLifecycle_Run_Result result) { this->HandleRunResult(std::move(result)); });
+    instance->state = GuestStatus::RUNNING;
+    instance->lifecycle->Run([this, vmid](GuestLifecycle_Run_Result result) {
+      this->HandleRunResult(vmid, std::move(result));
+    });
     if (balloon_enabled) {
-      memory_pressure_handler_ = std::make_unique<MemoryPressureHandler>(dispatcher_);
-      zx_status_t status = memory_pressure_handler_->Start(context_);
+      instance->memory_pressure_handler = std::make_unique<MemoryPressureHandler>(dispatcher_);
+      zx_status_t status = instance->memory_pressure_handler->Start(context_);
       if (status != ZX_OK) {
         FX_PLOGS(ERROR, status) << "Failed to start memory pressure handler";
       }
@@ -171,47 +214,61 @@ void GuestManager::HandleCreateResult(GuestLifecycle_Create_Result result, bool 
   }
 }
 
-void GuestManager::HandleRunResult(GuestLifecycle_Run_Result result) {
+void GuestManager::HandleRunResult(uint32_t vmid, GuestLifecycle_Run_Result result) {
   if (result.is_response()) {
-    HandleGuestStopped(fit::ok());
+    HandleGuestStopped(vmid, fit::ok());
   } else {
-    HandleGuestStopped(fit::error(result.err()));
+    HandleGuestStopped(vmid, fit::error(result.err()));
   }
 }
 
-void GuestManager::HandleGuestStopped(fit::result<GuestError> err) {
+void GuestManager::HandleGuestStopped(uint32_t vmid, fit::result<GuestError> err) {
+  GuestInstance* instance = FindInstance(vmid);
+  if (instance == nullptr) {
+    return;
+  }
   if (err.is_ok()) {
-    last_error_ = std::nullopt;
+    instance->last_error = std::nullopt;
   } else {
-    last_error_ = err.error_value();
+    instance->last_error = err.error_value();
   }
 
-  stop_time_ = zx::clock::get_monotonic();
-  state_ = GuestStatus::STOPPED;
+  instance->stop_time = zx::clock::get_monotonic();
+  instance->state = GuestStatus::STOPPED;
 
-  for (auto& pending_force_shutdown : pending_force_shutdowns_) {
+  for (auto& pending_force_shutdown : instance->pending_force_shutdowns) {
     auto callback = std::move(pending_force_shutdown);
     callback();
   }
-  pending_force_shutdowns_.clear();
+  instance->pending_force_shutdowns.clear();
 
   OnGuestStopped();
 }
 
-void GuestManager::ForceShutdown(ForceShutdownCallback callback) {
-  if (!lifecycle_.is_bound() || !is_guest_started()) {
+void GuestManager::ForceShutdown(uint32_t vmid, ForceShutdownCallback callback) {
+  GuestInstance* instance = FindInstance(vmid);
+  if (instance == nullptr || !instance->lifecycle.is_bound() || !instance->is_started()) {
     // VMM component isn't running.
     callback();
     return;
   }
 
-  state_ = GuestStatus::STOPPING;
-  pending_force_shutdowns_.push_back(std::move(callback));
-  lifecycle_->Stop([]() {});
+  instance->state = GuestStatus::STOPPING;
+  instance->pending_force_shutdowns.push_back(std::move(callback));
+  instance->lifecycle->Stop([]() {});
 }
 
-GuestNetworkState GuestManager::QueryGuestNetworkState() {
-  if (!guest_descriptor_.has_networks() || guest_descriptor_.networks().empty()) {
+GuestNetworkState GuestManager::QueryGuestNetworkState(uint32_t vmid) {
+  GuestInstance* instance = FindInstance(vmid);
+  if (instance == nullptr) {
+    return GuestNetworkState::NO_NETWORK_DEVICE;
+  }
+  return QueryGuestNetworkState(instance->guest_descriptor);
+}
+
+GuestNetworkState GuestManager::QueryGuestNetworkState(
+    const fuchsia::virtualization::GuestDescriptor& guest_descriptor) {
+  if (!guest_descriptor.has_networks() || guest_descriptor.networks().empty()) {
     return GuestNetworkState::NO_NETWORK_DEVICE;
   }
 
@@ -280,7 +337,7 @@ GuestNetworkState GuestManager::QueryGuestNetworkState() {
     return GuestNetworkState::NO_HOST_NETWORKING;
   }
 
-  if (num_virtual < guest_descriptor_.networks().size()) {
+  if (num_virtual < guest_descriptor.networks().size()) {
     // Something went wrong during virtio-net device initialization, and there are fewer virtual
     // interfaces than there should be. This is an unlikely state as virtual interfaces may be
     // non-functional, but they should at least be present.
@@ -289,7 +346,7 @@ GuestNetworkState GuestManager::QueryGuestNetworkState() {
 
   // See if a bridge is expected from the guest network configurations.
   bool expected_bridge =
-      std::any_of(guest_descriptor_.networks().begin(), guest_descriptor_.networks().end(),
+      std::any_of(guest_descriptor.networks().begin(), guest_descriptor.networks().end(),
                   [](auto& spec) { return spec.enable_bridge; });
 
   if (expected_bridge && !has_bridge) {
@@ -333,21 +390,30 @@ std::string GuestManager::GuestNetworkStateToStringExplanation(GuestNetworkState
   }
 }
 
-void GuestManager::Connect(fidl::InterfaceRequest<fuchsia::virtualization::Guest> controller,
+void GuestManager::Connect(uint32_t vmid,
+                           fidl::InterfaceRequest<fuchsia::virtualization::Guest> controller,
                            fuchsia::virtualization::GuestManager::ConnectCallback callback) {
-  if (is_guest_started()) {
-    lifecycle_->Bind(std::move(controller));
+  GuestInstance* instance = FindInstance(vmid);
+  if (instance == nullptr) {
+    FX_LOGS(ERROR) << "Failed to connect to guest vmid=" << vmid << ". Unknown vmid";
+    callback(fpromise::error(GuestManagerError::UNKNOWN_VMID));
+    return;
+  }
+  if (instance->is_started()) {
+    instance->lifecycle->Bind(std::move(controller));
     callback(fpromise::ok());
   } else {
-    FX_LOGS(ERROR) << "Failed to connect to guest. Guest is not running";
+    FX_LOGS(ERROR) << "Failed to connect to guest vmid=" << vmid << ". Guest is not running";
     callback(fpromise::error(GuestManagerError::NOT_RUNNING));
   }
 }
 
-std::vector<std::string> GuestManager::CheckForProblems() {
+std::vector<std::string> GuestManager::CheckForProblems(
+    const fuchsia::virtualization::GuestDescriptor& guest_descriptor,
+    MemoryPressureHandler* memory_pressure_handler) {
   std::vector<std::string> problems;
 
-  GuestNetworkState network_state = QueryGuestNetworkState();
+  GuestNetworkState network_state = QueryGuestNetworkState(guest_descriptor);
   switch (network_state) {
     case GuestNetworkState::OK:
     case GuestNetworkState::NO_NETWORK_DEVICE:
@@ -362,8 +428,8 @@ std::vector<std::string> GuestManager::CheckForProblems() {
       break;
   }
 
-  if (memory_pressure_handler_ != nullptr) {
-    switch (memory_pressure_handler_->get_latest_memory_pressure_event()) {
+  if (memory_pressure_handler != nullptr) {
+    switch (memory_pressure_handler->get_latest_memory_pressure_event()) {
       case fuchsia_memorypressure::Level::kNormal:
         // Do nothing.
         break;
@@ -379,24 +445,33 @@ std::vector<std::string> GuestManager::CheckForProblems() {
   return problems;
 }
 
-void GuestManager::GetInfo(GetInfoCallback callback) {
+void GuestManager::GetInfo(uint32_t vmid, GetInfoCallback callback) {
   fuchsia::virtualization::GuestInfo info;
-  info.set_guest_status(state_);
+  info.set_vmid(vmid);
 
-  switch (state_) {
+  const GuestInstance* instance = FindInstance(vmid);
+  if (instance == nullptr) {
+    info.set_guest_status(GuestStatus::NOT_STARTED);
+    callback(std::move(info));
+    return;
+  }
+
+  info.set_guest_status(instance->state);
+
+  switch (instance->state) {
     case GuestStatus::STARTING:
     case GuestStatus::RUNNING:
     case GuestStatus::STOPPING: {
       GuestDescriptor descriptor;
-      FX_CHECK(guest_descriptor_.Clone(&descriptor) == ZX_OK);
+      FX_CHECK(instance->guest_descriptor.Clone(&descriptor) == ZX_OK);
       info.set_guest_descriptor(std::move(descriptor));
-      info.set_uptime((zx::clock::get_monotonic() - start_time_).to_nsecs());
+      info.set_uptime((zx::clock::get_monotonic() - instance->start_time).to_nsecs());
       break;
     }
     case GuestStatus::STOPPED: {
-      info.set_uptime((stop_time_ - start_time_).to_nsecs());
-      if (last_error_.has_value()) {
-        info.set_stop_error(last_error_.value());
+      info.set_uptime((instance->stop_time - instance->start_time).to_nsecs());
+      if (instance->last_error.has_value()) {
+        info.set_stop_error(instance->last_error.value());
       }
       break;
     }
@@ -406,37 +481,60 @@ void GuestManager::GetInfo(GetInfoCallback callback) {
       break;
   }
 
-  *info.mutable_detected_problems() = CheckForProblems();
+  *info.mutable_detected_problems() =
+      CheckForProblems(instance->guest_descriptor, instance->memory_pressure_handler.get());
 
   callback(std::move(info));
 }
 
-void GuestManager::SnapshotConfig(const fuchsia::virtualization::GuestConfig& config) {
-  guest_descriptor_.set_num_cpus(config.cpus());
-  guest_descriptor_.set_guest_memory(config.guest_memory());
+void GuestManager::List(ListCallback callback) {
+  std::vector<fuchsia::virtualization::GuestListEntry> entries;
+  for (const auto& [vmid, instance] : guests_) {
+    fuchsia::virtualization::GuestListEntry entry;
+    entry.set_vmid(vmid);
+    entry.set_guest_status(instance->state);
+    switch (instance->state) {
+      case GuestStatus::STARTING:
+      case GuestStatus::RUNNING:
+      case GuestStatus::STOPPING:
+        entry.set_uptime((zx::clock::get_monotonic() - instance->start_time).to_nsecs());
+        break;
+      case GuestStatus::STOPPED:
+        entry.set_uptime((instance->stop_time - instance->start_time).to_nsecs());
+        break;
+      case GuestStatus::VMM_UNEXPECTED_TERMINATION:
+      case GuestStatus::NOT_STARTED:
+        break;
+    }
+    entries.push_back(std::move(entry));
+  }
+  callback(std::move(entries));
+}
 
-  guest_descriptor_.set_balloon(config.has_virtio_balloon() && config.virtio_balloon());
-  guest_descriptor_.set_console(config.has_virtio_console() && config.virtio_console());
-  guest_descriptor_.set_gpu(config.has_virtio_gpu() && config.virtio_gpu());
-  guest_descriptor_.set_rng(config.has_virtio_rng() && config.virtio_rng());
-  guest_descriptor_.set_vsock(config.has_virtio_vsock() && config.virtio_vsock());
-  guest_descriptor_.set_sound(config.has_virtio_sound() && config.virtio_sound());
+void GuestManager::SnapshotConfig(const fuchsia::virtualization::GuestConfig& config,
+                                  fuchsia::virtualization::GuestDescriptor* guest_descriptor) {
+  guest_descriptor->set_num_cpus(config.cpus());
+  guest_descriptor->set_guest_memory(config.guest_memory());
+
+  guest_descriptor->set_balloon(config.has_virtio_balloon() && config.virtio_balloon());
+  guest_descriptor->set_console(config.has_virtio_console() && config.virtio_console());
+  guest_descriptor->set_gpu(config.has_virtio_gpu() && config.virtio_gpu());
+  guest_descriptor->set_rng(config.has_virtio_rng() && config.virtio_rng());
+  guest_descriptor->set_vsock(config.has_virtio_vsock() && config.virtio_vsock());
+  guest_descriptor->set_sound(config.has_virtio_sound() && config.virtio_sound());
 
   if (config.has_net_devices()) {
-    *guest_descriptor_.mutable_networks() = config.net_devices();
+    *guest_descriptor->mutable_networks() = config.net_devices();
   }
   // TODO(https://fxbug.dev/42051237): After updating FIDL, this should also return the full
   // MemoryDevice structure.
-  guest_descriptor_.set_mem(config.has_virtio_mem() && config.virtio_mem());
+  guest_descriptor->set_mem(config.has_virtio_mem() && config.virtio_mem());
+  if (config.has_kernel_type()) {
+    guest_descriptor->set_kernel_type(config.kernel_type());
+  }
 }
 
-bool GuestManager::is_guest_started() const {
-  switch (state_) {
-    case GuestStatus::STARTING:
-    case GuestStatus::RUNNING:
-    case GuestStatus::STOPPING:
-      return true;
-    default:
-      return false;
-  }
+bool GuestManager::is_guest_started(uint32_t vmid) const {
+  const GuestInstance* instance = FindInstance(vmid);
+  return instance != nullptr && instance->is_started();
 }

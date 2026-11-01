@@ -78,6 +78,9 @@ fuchsia_test_package("vmm_launcher_tests") {
 
 fuchsia_component("vmm_launcher_component") {
   cm_label = ":manifest"
+
+  # Skip cmc check-includes / validate-references. `gn gen` prints
+  # "Not validated: <this label>"; the compiled .cm is still packaged.
   check_includes = false
   check_references = false
   deps = [

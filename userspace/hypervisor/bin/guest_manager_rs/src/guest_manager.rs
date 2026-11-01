@@ -227,7 +227,7 @@ impl GuestManager {
                     };
 
                     match request {
-                        GuestManagerRequest::Launch { guest_config, controller, responder } => {
+                        GuestManagerRequest::Launch { vmid: _, guest_config, controller, responder } => {
                             if self.is_guest_started() {
                                 send_checked!(responder, Err(GuestManagerError::AlreadyRunning));
                                 continue;
@@ -265,7 +265,7 @@ impl GuestManager {
                             run_futures.push(
                                 Box::pin(GuestManager::send_run_request(lifecycle.clone())));
                         }
-                        GuestManagerRequest::ForceShutdown { responder } => {
+                        GuestManagerRequest::ForceShutdown { vmid: _, responder } => {
                             if !self.is_guest_started() {
                                 // Respond immediately if guest isn't started.
                                 send_checked!(responder);
@@ -280,7 +280,7 @@ impl GuestManager {
                             pending_shutdowns.push(responder);
 
                         }
-                        GuestManagerRequest::Connect { controller, responder } => {
+                        GuestManagerRequest::Connect { vmid: _, controller, responder } => {
                             if !self.is_guest_started() {
                                 send_checked!(responder, Err(GuestManagerError::NotRunning));
                             } else {
@@ -288,7 +288,7 @@ impl GuestManager {
                                           .map_err(|_| GuestManagerError::NotRunning ));
                             }
                         }
-                        GuestManagerRequest::GetInfo { responder } => {
+                        GuestManagerRequest::GetInfo { vmid: _, responder } => {
                             let network_state = GuestManager::host_network_state().await
                                 .map(|host_state| self.guest_network_state(host_state))
                                 .unwrap_or_else(|err| {
@@ -298,6 +298,11 @@ impl GuestManager {
 
 
                             send_checked!(responder, &self.guest_info(GuestManager::check_for_problems(network_state)));
+                        }
+                        GuestManagerRequest::List { responder } => {
+                            let guests: Vec<fidl_fuchsia_virtualization::GuestListEntry> =
+                                Vec::new();
+                            send_checked!(responder, &guests);
                         }
                     }
                 }
@@ -807,7 +812,7 @@ mod tests {
             _ = run_fut => {
                 panic!("run should not complete")
             }
-            result = join(manager_proxy.launch(GuestConfig::default(), guest_server_end),
+            result = join(manager_proxy.launch(0, GuestConfig::default(), guest_server_end),
                           vmm.run_launch()).fuse()
                 => {
                     assert!(result.0.is_ok());
@@ -821,7 +826,7 @@ mod tests {
             _ = run_fut => {
                 panic!("run should not complete");
             }
-            result = manager_proxy.get_info() => {
+            result = manager_proxy.get_info(0) => {
                 result.unwrap()
             }
         };
@@ -843,7 +848,7 @@ mod tests {
             _ = run_fut => {
                 panic!("run should not complete");
             }
-            result = manager_proxy.launch(GuestConfig::default(), guest_server_end).fuse() => {
+            result = manager_proxy.launch(0, GuestConfig::default(), guest_server_end).fuse() => {
                 assert_eq!(result.unwrap(), Err(GuestManagerError::BadConfig));
             }
         }
@@ -865,7 +870,7 @@ mod tests {
             _ = run_fut => {
                 panic!("run should not complete");
             }
-            result = manager_proxy.launch(GuestConfig::default(), guest_server_end).fuse() => {
+            result = manager_proxy.launch(0, GuestConfig::default(), guest_server_end).fuse() => {
                 assert_eq!(result.unwrap(), Err(GuestManagerError::BadConfig));
             }
         }
@@ -891,7 +896,7 @@ mod tests {
             _ = manager.run_vmm().fuse() => {
                 panic!("vmm should not complete");
             }
-            result = manager_proxy.launch(GuestConfig::default(), guest_server_end1).fuse() => {
+            result = manager_proxy.launch(0, GuestConfig::default(), guest_server_end1).fuse() => {
                 assert!(result.is_ok());
             }
         }
@@ -904,7 +909,7 @@ mod tests {
             _ = manager.run_vmm().fuse() => {
                 panic!("vmm should not complete");
             }
-            result = manager_proxy.launch(GuestConfig::default(), guest_server_end2).fuse() => {
+            result = manager_proxy.launch(0, GuestConfig::default(), guest_server_end2).fuse() => {
                 assert_eq!(result.unwrap(), Err(GuestManagerError::AlreadyRunning));
             }
         }
@@ -923,7 +928,7 @@ mod tests {
 
         // Launch Guest and fail to start the VMM
         let launch_fut =
-            join(manager_proxy.launch(GuestConfig::default(), guest_server_end1), async {
+            join(manager_proxy.launch(0, GuestConfig::default(), guest_server_end1), async {
                 match manager.vmm.borrow_mut().next().await {
                     GuestLifecycleRequest::Create { guest_config, responder } => {
                         responder
@@ -952,7 +957,7 @@ mod tests {
             _ = manager.run_vmm().fuse() => {
                 panic!("vmm should not complete");
             }
-            result = manager_proxy.launch(GuestConfig::default(), guest_server_end2).fuse() => {
+            result = manager_proxy.launch(0, GuestConfig::default(), guest_server_end2).fuse() => {
                 assert!(result.is_ok());
             }
         }
@@ -988,7 +993,7 @@ mod tests {
             _ = manager.run_vmm().fuse() => {
                 panic!("vmm should not complete");
             }
-            result = manager_proxy.launch(GuestConfig::default(), guest_server_end).fuse() => {
+            result = manager_proxy.launch(0, GuestConfig::default(), guest_server_end).fuse() => {
                 assert!(result.is_ok());
             }
         }
@@ -998,7 +1003,7 @@ mod tests {
             _ = run_fut => {
                 panic!("run should not complete");
             }
-            result = manager_proxy.get_info().fuse() => {
+            result = manager_proxy.get_info(0).fuse() => {
                 result.unwrap()
             }
         };
@@ -1039,7 +1044,7 @@ mod tests {
             _ = manager.run_vmm().fuse() => {
                 panic!("vmm should not complete");
             }
-            result = manager_proxy.launch(user_config, guest_server_end).fuse() => {
+            result = manager_proxy.launch(0, user_config, guest_server_end).fuse() => {
                 assert!(result.is_ok());
             }
         }
@@ -1049,7 +1054,7 @@ mod tests {
             _ = run_fut => {
                 panic!("run should not complete");
             }
-            result = manager_proxy.get_info() => {
+            result = manager_proxy.get_info(0) => {
                 result.unwrap().guest_descriptor.unwrap()
             }
         };
@@ -1076,7 +1081,7 @@ mod tests {
             _ = manager.run_vmm().fuse() => {
                 panic!("vmm should not complete");
             }
-            result = manager_proxy.force_shutdown().fuse() => {
+            result = manager_proxy.force_shutdown(0).fuse() => {
                 assert!(result.is_ok());
             }
         };
@@ -1086,7 +1091,7 @@ mod tests {
             _ = run_fut => {
                 panic!("run should not complete");
             }
-            info = manager_proxy.get_info().fuse() => {
+            info = manager_proxy.get_info(0).fuse() => {
                 info.unwrap()
             }
         };
@@ -1115,19 +1120,19 @@ mod tests {
             _ = vmm_fut => {
                 panic!("vmm should not complete");
             }
-            result = manager_proxy.launch(GuestConfig::default(), guest_server_end).fuse() => {
+            result = manager_proxy.launch(0, GuestConfig::default(), guest_server_end).fuse() => {
                 assert!(result.is_ok());
             }
         }
 
         // Future returning guest info before and after a shutdown.
         let chain_fut = manager_proxy
-            .get_info()
+            .get_info(0)
             .then(|pre_shutdown| async {
-                assert!(manager_proxy.force_shutdown().await.is_ok());
+                assert!(manager_proxy.force_shutdown(0).await.is_ok());
                 pre_shutdown
             })
-            .then(|pre_shutdown| async { (pre_shutdown, manager_proxy.get_info().await) });
+            .then(|pre_shutdown| async { (pre_shutdown, manager_proxy.get_info(0).await) });
         futures::pin_mut!(chain_fut);
 
         let (pre_shutdown, post_shutdown) = select! {
@@ -1164,7 +1169,7 @@ mod tests {
             _ = run_fut => {
                 panic!("run should not complete");
             }
-            result = join(manager_proxy.launch(GuestConfig::default(), guest_server_end),
+            result = join(manager_proxy.launch(0, GuestConfig::default(), guest_server_end),
                           vmm.run_launch()).fuse()
                 => {
                     assert!(result.0.is_ok());
@@ -1174,13 +1179,13 @@ mod tests {
         // Check that guest is running, respond via lifecycle callback and check again to
         // confirm guest has stopped.
         let chain_fut = manager_proxy
-            .get_info()
+            .get_info(0)
             .then(|pre_shutdown| async {
                 assert_eq!(vmm.state, VmmState::Running);
                 vmm.stop();
                 pre_shutdown
             })
-            .then(|pre_shutdown| async { (pre_shutdown, manager_proxy.get_info().await) });
+            .then(|pre_shutdown| async { (pre_shutdown, manager_proxy.get_info(0).await) });
         futures::pin_mut!(chain_fut);
 
         let (pre_shutdown, post_shutdown) = select! {
@@ -1216,7 +1221,7 @@ mod tests {
             _ = run_fut => {
                 panic!("run should not complete");
             }
-            connection = manager_proxy.connect(guest_server_end_connect_fail).fuse() => {
+            connection = manager_proxy.connect(0,guest_server_end_connect_fail).fuse() => {
                 assert_eq!(connection.unwrap(), Err(GuestManagerError::NotRunning));
             }
         }
@@ -1229,7 +1234,7 @@ mod tests {
             _ = manager.run_vmm().fuse() => {
                 panic!("vmm should not complete");
             }
-            result = manager_proxy.launch(GuestConfig::default(), guest_server_end_launch).fuse() => {
+            result = manager_proxy.launch(0, GuestConfig::default(), guest_server_end_launch).fuse() => {
                 assert!(result.is_ok());
             }
         }
@@ -1239,7 +1244,7 @@ mod tests {
             _ = run_fut => {
                 panic!("run should not complete");
             }
-            connection = manager_proxy.connect(guest_server_end_connect_success).fuse() => {
+            connection = manager_proxy.connect(0,guest_server_end_connect_success).fuse() => {
                 assert!(connection.unwrap().is_ok());
             }
         }

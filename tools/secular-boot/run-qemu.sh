@@ -9,17 +9,24 @@ script_dir="$(cd "${BASH_SOURCE[0]%/*}" && pwd)"
 source "$script_dir/lib/common.sh"
 root="$(cd "$script_dir/../.." && pwd)"
 
-[[ "$#" -ge 1 ]] || die "usage: run-qemu.sh ARCH [-- QEMU_ARGS...]"
+[[ "$#" -ge 1 ]] || die "usage: run-qemu.sh ARCH [run-zircon args...] [-- QEMU_ARGS...]"
 arch="$1"
 shift
 require_arch "$arch" || exit $?
 out_name="secular-boot-$arch"
 secular_stage "validate invocation (ARCH:$arch)"
 
-if [[ "$#" -gt 0 ]]; then
-  [[ "$1" == "--" ]] || die "QEMU arguments must follow --"
+# Flags before `--` go to zircon/scripts/run-zircon (e.g. -s, -m, -c).
+# Everything after `--` is passed through to QEMU.
+run_zircon_args=()
+while [[ "$#" -gt 0 ]]; do
+  if [[ "$1" == "--" ]]; then
+    shift
+    break
+  fi
+  run_zircon_args+=("$1")
   shift
-fi
+done
 
 secular_stage "validate host tools (ARCH:$arch)"
 "$script_dir/preflight.sh" --root "$root" "$arch"
@@ -63,9 +70,10 @@ exec "$runner" \
   -t "$QEMU_KERNEL" \
   -z "$ZBI" \
   -m 1024 \
-  -s 4 \
+  -s 8 \
   --no-kvm \
   --no-virtio \
   --gic=3 \
   -q "$qemu_dir" \
+  "${run_zircon_args[@]}" \
   -- "$@"

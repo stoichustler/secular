@@ -229,16 +229,20 @@ template("fuchsia_component_manifest") {
 #     Default: target_name
 #
 #   check_includes (optional)
-#     Check against expect_includes() in deps.
+#     Check against expect_includes() in deps (cmc check-includes).
 #     Warning: Do not disable this unless there is a good, documented reason.
 #     Type: boolean
 #     Default: true
 #
 #   check_references (optional)
 #     Check component manifest references (e.g. "program.binary") against
-#     package manifest.
+#     package manifest (cmc validate-references).
 #     Type: boolean
 #     Default: true
+#
+#   If both check_includes and check_references are false, `gn gen` prints
+#   "Not validated: <label>". That is informational, not an error: the
+#   compiled .cm is still packaged; only the extra CMC checks are skipped.
 #
 #   restricted_features (optional)
 #     The set of restricted CML features to allow.
@@ -457,7 +461,7 @@ template("fuchsia_component") {
         rebase_path(depfile, root_build_dir),
       ]
 
-      # Both of these need CMC
+      # CMC is required for check_includes and check_references.
       if (check_includes || check_references) {
         if (defined(_tools_cmc.dep)) {
           deps += [ _tools_cmc.dep ]
@@ -468,6 +472,17 @@ template("fuchsia_component") {
           _tools_cmc.rebased,
         ]
       } else {
+        # Informational GN-time notice, not a build error. Printed during
+        # `gn gen` (the "generate GN graph" step of `make run` / `make
+        # build`) when this fuchsia_component() sets both check_includes
+        # and check_references to false, so CMC is not invoked:
+        #   check_includes:  cmc check-includes — CML must include the
+        #                    shards that library deps declare via
+        #                    expect_includes() (e.g. syslog/client.shard.cml)
+        #   check_references: cmc validate-references — files named in
+        #                    the CML (program.binary, etc.) must appear
+        #                    in this component's distribution manifest
+        # The compiled .cm is still copied into the package.
         print("Not validated: " +
               get_label_info(":${target_name}", "label_no_toolchain"))
       }

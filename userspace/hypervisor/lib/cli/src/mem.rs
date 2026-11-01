@@ -58,15 +58,15 @@ impl fmt::Display for GuestMemResult {
 
 async fn connect_to_mem_controller<P: PlatformServices>(
     services: &P,
-    guest_type: arguments::GuestType,
+    vmid: arguments::Vmid,
 ) -> Result<MemControllerProxy, Error> {
-    let manager = services.connect_to_manager(guest_type).await?;
+    let manager = services.connect_to_manager().await?;
 
-    let guest_info = manager.get_info().await?;
+    let guest_info = manager.get_info(vmid.get()).await?;
     if guest_info.guest_status.expect("guest status should be set") == GuestStatus::Running {
         let (guest_endpoint, guest_server_end) = fidl::endpoints::create_proxy::<GuestMarker>();
         manager
-            .connect(guest_server_end)
+            .connect(vmid.get(), guest_server_end)
             .await
             .map_err(|err| anyhow!("failed to get a connect response: {}", err))?
             .map_err(|err| anyhow!("connect failed with: {:?}", err))?;
@@ -91,12 +91,12 @@ pub async fn handle_mem<P: PlatformServices>(
     Ok(match args.mem_cmd {
         arguments::mem_args::MemCommands::RequestPluggedMem(args) => {
             GuestMemResult::RequestSize(do_request_size(
-                connect_to_mem_controller(services, args.guest_type).await?,
+                connect_to_mem_controller(services, args.vmid).await?,
                 args.size,
             )?)
         }
         arguments::mem_args::MemCommands::StatsMem(args) => GuestMemResult::MemStats(
-            do_stats(connect_to_mem_controller(services, args.guest_type).await?).await?,
+            do_stats(connect_to_mem_controller(services, args.vmid).await?).await?,
         ),
     })
 }

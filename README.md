@@ -19,10 +19,21 @@ make build
 make verify
 make run
 make qemu
+make kick
 ```
 
-`make run` starts an interactive QEMU serial console. Extra QEMU flags
-can be passed with `make run QEMU_ARGS='-d guest_errors'`.
+`make run` builds and starts an interactive QEMU serial console. Extra QEMU
+flags can be passed with `make run QEMU_ARGS='-d guest_errors'`.
+
+`make kick` boots the existing image through `zircon/scripts/run-zircon`
+without rebuilding. Extra run-zircon flags go in `KICK_ARGS`:
+
+```sh
+make kick
+make kick KICK_ARGS='-s 4 -m 2048'
+make kick KICK_ARGS='--dry-run'
+make kick KICK_ARGS='-s 2' QEMU_ARGS='-d guest_errors'
+```
 
 Build outputs are written under `out/secular-boot-arm64/`, including
 `secular.zbi`, the QEMU boot-shim, and `artifacts.env`.

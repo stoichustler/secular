@@ -1,57 +1,292 @@
 # Userspace hypervisor
 
-Secular uses a single `guest_manager` to launch Linux and RTOS guests. The
-manager exposes `fuchsia.virtualization.GuestManager` (no Debian/Zircon
-protocol split). The VMM provides virtio console, block, rng, balloon, vsock,
-and mem. GPU, audio, and net devices are not part of the console image.
+Secular's hypervisor is the smallest stack that can host an ARM64 Linux or RTOS
+guest over the QEMU serial console. It is **not** a full Fuchsia virtualization
+product: GPU, net, sound, input, Wayland, and per-OS guest-manager splits are
+omitted.
 
-From the serial console:
+## Framework in one page
+
+Hardware virtualization lives in the **Zircon kernel** (ARM EL2). Device
+emulation and kernel loading live in a **userspace VMM**. The serial shell
+talks to a **guest_manager** that names guests by **vmid**.
 
 ```text
-guest launch linux
-guest launch rtos
-guest list
-guest stop linux
+EL2  Zircon kernel hypervisor
+     zx_guest_create / zx_vcpu_enter
+     VMID, GPA, traps, vmexit
+       │
+EL0  host userspace (not a guest)
+     component_manager, console, zxsh
+     guest CLI → GuestManager → VMM
+       │  syscall
+       ▼
+EL1  Linux / RTOS guest
 ```
 
-A guest kernel still has to be provided in the guest package (`data/kernel`
-via `guest.cfg`). The default Secular image ships config only.
+Launch on the console image:
 
-# Monitor Guest exit statistics
+```text
+QEMU aarch64
+  → Zircon
+    → userboot → component_manager → bootstrap
+         ├─ guest-manager (eager)
+         │    ├─ vmm                  static child, GuestLifecycle
+         │    └─ secular_guest_pkg    /pkg: data/guest.cfg only
+         ├─ vmm_launcher              lazy; extra VMM collection (unused by manager)
+         └─ console-launcher → zxsh
+                └─ /boot/bin/guest → fuchsia.virtualization.GuestManager
+```
 
-`kstats -v`  can print the number of Guest exits per second and the reason. For
-example, the output on ARM64 appears as follows:
+1. `guest launch vmid=0` connects to `GuestManager`.
+2. `guest_manager` reads `/guest_pkg/data/guest.cfg`, merges CLI overrides,
+   calls `GuestLifecycle.Create`.
+3. The VMM creates a `zx_guest`, maps GPA, installs GIC/UART/PCI/virtio, loads
+   the Linux `Image` and `board.dtb`, starts VCPU 0.
+4. `guest attach vmid=0` binds virtio-console and serial to the host terminal.
+
+Guests are identified by **vmid**, not by guest type. `"linux"` / `"rtos"` in
+`guest.cfg` set `kernel_type`; both use the ARM64 Image+DTB protocol.
+
+`guest_manager` uses a **static** `vmm` child, so one running guest per manager
+is the supported path. `vmm_launcher` can spawn more VMMs; the manager does not
+connect to it yet.
+
+## Type 1 vs Type 2
+
+Secular is **not a strict Type 1 or Type 2 hypervisor**. It is the KVM split:
+in-kernel hardware virtualization plus a userspace VMM.
+
+| | Type 1 (bare metal) | Type 2 (hosted) | Secular |
+| --- | --- | --- | --- |
+| Lowest software | the hypervisor | a general-purpose OS | Zircon kernel **contains** the hypervisor |
+| Host OS | none, or a privileged VM (Dom0) | always present; hypervisor is an app | host userspace is ordinary EL0, **not** a guest |
+| Where vmexit runs | hypervisor kernel | host process / kernel module | Zircon EL2 (`el2.S`, `vmexit.cc`) |
+| Device model | often in the hypervisor | in the hypervisor process | userspace `bin/vmm` |
+
+- Not strict Type 1: a full host OS (console, drivers, `component_manager`)
+  runs beside the hypervisor. The host is not a guest.
+- Not strict Type 2: the hypervisor is not a process on top of the OS.
+  `zx_vcpu_enter` switches into EL2; traps are handled in the kernel.
+
+Call it **in-kernel hypervisor + userspace VMM**.
+
+## Linux guest status
+
+The **framework can boot an ARM64 Linux guest** once a kernel (and usually a
+root filesystem) is in the guest package. The **default Secular image cannot**:
+it ships the VMM and `guest` CLI, but only a placeholder `data/guest.cfg` with
+no kernel.
+
+| Layer | In the console image? | Role for Linux |
+| --- | --- | --- |
+| Zircon hypervisor (`zx_guest` / `zx_vcpu`, ARM VMID) | Yes | Guest CPU and GPA |
+| `HypervisorResource` + `VmexResource` | Yes, routed to VMM | `zx_guest_create` / executable mappings |
+| VMM: GIC, PL011 UART, PL031 RTC, PCI | Yes | ARM64 machine |
+| virtio-console / block / rng / balloon / vsock / mem | Yes | Console, disk, entropy |
+| ARM64 `Image` + DTB (`setup_linux`) | Yes | Kernel at `0x2080000`, DTB `/pkg/data/board.dtb` |
+| `guest` CLI + `GuestManager` (vmid) | Yes | `guest launch vmid=0` from zxsh |
+| Guest kernel (`data/kernel`) | **No** | Required. No `"linux"` key → VMM rejects config |
+| initrd / virtio-block rootfs | **No** | Kernel can start; userspace will not |
+| virtio-net / GPU / audio | No | Not needed for a serial Linux console |
+
+`guest launch vmid=0` on the current image fails at VMM init (`BAD_CONFIG` /
+`KERNEL_LOAD_FAILURE`), not at hypervisor bring-up.
+
+To start Linux, add an uncompressed ARM64 `Image` (magic `ARM\x64`) and a
+config such as:
+
+```json
+{
+    "linux": "data/kernel",
+    "ramdisk": "data/ramdisk",
+    "cmdline": "console=hvc0 earlycon=pl011,0x808300000",
+    "virtio-console": true,
+    "virtio-rng": true,
+    "virtio-vsock": true
+}
+```
+
+Use `console=ttyAMA0` if the guest uses PL011 instead of virtio-console. A
+gzipped `vmlinuz` will not load: the VMM does not decompress the kernel.
+
+`packages/linux_guest` still describes a Debian image, but it reads
+`//prebuilt/virtualization/...`, which this tree does not vendor.
+
+## Code reading path
+
+Read in this order. Paths are from the repository root. Skip `bin/vmm/arch/x64`
+and `bin/vmm/device/virtio_{gpu,net,sound,input}` until you need them.
+
+### 1. Product wiring — how it reaches the serial console
+
+How the ZBI gets a VMM and how zxsh finds `GuestManager`.
+
+| File | What to take away |
+| --- | --- |
+| `products/secular/BUILD.gn` | BOOTFS packages: `guest_manager`, `vmm_launcher`, `bin/guest` |
+| `userspace/hypervisor/meta/hypervisor.bootstrap_shard.cml` | Eager `guest-manager`, lazy `vmm_launcher`; offer `GuestManager` to `console-launcher` |
+| `userspace/hypervisor/bin/guest_manager/meta/guest_manager.cml` | Static children `vmm` and `guest_pkg`; use `GuestLifecycle` from `#vmm` |
+| `userspace/hypervisor/bin/vmm/meta/vmm.cml` | `GuestLifecycle` + virtio collections (console/block/rng/balloon/vsock/mem) |
+| `userspace/hypervisor/bin/guest_manager/meta/secular_guest_pkg.cml` | Serves `/pkg` (`data/guest.cfg` only today) |
+| `userspace/secular/bin/console-launcher/meta/console-launcher.cml` | Optional `fuchsia.virtualization.GuestManager` in the shell namespace |
+
+### 2. CLI → GuestManager
+
+User types `guest launch vmid=0`. Follow the FIDL, not guest_type.
+
+| File | What to take away |
+| --- | --- |
+| `sdk/fidl/fuchsia.virtualization/guest_manager.fidl` | `Launch(vmid, config, controller)`, `Connect`, `GetInfo`, `List` |
+| `sdk/fidl/fuchsia.virtualization/guest_config.fidl` | `kernel_type`, kernel/ramdisk files, virtio flags |
+| `sdk/fidl/fuchsia.virtualization/guest.fidl` | Guest control: serial, console, balloon, vsock |
+| `userspace/hypervisor/bin/guest/src/main.rs` | Subcommand dispatch |
+| `userspace/hypervisor/lib/cli/args/src/lib.rs` | `Vmid` parses `vmid=0` or `0` |
+| `userspace/hypervisor/lib/cli/src/launch.rs` | `manager.launch(vmid, config, …)` |
+| `userspace/hypervisor/lib/cli/src/platform/fuchsia.rs` | Connect `/svc/fuchsia.virtualization.GuestManager` |
+| `userspace/hypervisor/lib/cli/src/attach.rs` | Serial + virtio-console sockets |
+| `userspace/hypervisor/lib/cli/src/stop.rs` | Graceful console command vs `ForceShutdown` |
+
+### 3. guest_manager — config and lifecycle
+
+One process, a map of vmid → instance. Still one static VMM child.
+
+| File | What to take away |
+| --- | --- |
+| `userspace/hypervisor/bin/guest_manager/guest_manager_main.cc` | Serves `GuestManager` |
+| `userspace/hypervisor/bin/guest_manager/guest_manager.cc` | `Launch`: merge cfg, `lifecycle.Create` + `Bind`; `Connect`/`GetInfo`/`List` by vmid |
+| `userspace/hypervisor/bin/guest_manager/data/secular_guest.cfg` | Placeholder: virtio flags only, **no kernel path** |
+| `userspace/hypervisor/lib/guest_config/guest_config.cc` | JSON keys `"linux"` / `"rtos"` / `"ramdisk"` / `"cmdline"` / virtio |
+
+`GetDefaultGuestConfig()` reads `/guest_pkg/data/guest.cfg`. Without a
+`"linux": "data/kernel"` file handle, `Vmm::IsValidConfig` fails.
+
+### 4. VMM — machine, kernel load, VCPU thread
+
+This is the userspace half of the hypervisor.
+
+| File | What to take away |
+| --- | --- |
+| `userspace/hypervisor/bin/vmm/main.cc` | Async loop + `VmmController` |
+| `userspace/hypervisor/bin/vmm/vmm_controller.cc` | `GuestLifecycle`: `Create` → `Initialize`, `Run` → `StartPrimaryVcpu` |
+| `userspace/hypervisor/bin/vmm/vmm.cc` | `IsValidConfig`; GIC, UART, PCI, virtio; `setup_linux` / `setup_zircon` |
+| `userspace/hypervisor/bin/vmm/guest.cc` | `zx::guest::create`; GPA VMO; trap ranges vs device MMIO |
+| `userspace/hypervisor/bin/vmm/sysinfo.h` | `get_hypervisor_resource()` |
+| `userspace/hypervisor/bin/vmm/linux.cc` | ARM64 `Image` header `0x644d5241`; load at `0x2080000`; DTB `/pkg/data/board.dtb` |
+| `userspace/hypervisor/bin/vmm/arch/arm64/dts/board.dts` | Machina DTB: PSCI, GIC, PCI ECAM, PL011, PL031 |
+| `userspace/hypervisor/bin/vmm/arch/arm64/gic_distributor.cc` | Emulated GIC |
+| `userspace/hypervisor/bin/vmm/arch/arm64/pl011.cc` | Guest UART (serial) |
+| `userspace/hypervisor/bin/vmm/vcpu.cc` | Thread: `zx::vcpu::create` → `vcpu.enter` loop → `HandlePacket` |
+| `userspace/hypervisor/bin/vmm/io.cc` | MMIO/PIO traps dispatched to devices |
+
+VCPU loop in `vcpu.cc`: `vcpu_.enter(&packet)` is `zx_vcpu_enter`. A packet
+means a vmexit the kernel punted to userspace (MMIO, IO, bell). Handle it,
+then enter again.
+
+### 5. Virtio devices — PCI frontend, Rust backend
+
+The VMM maps a virtio PCI device, then starts a child component that owns the
+virtqueues.
+
+| File | What to take away |
+| --- | --- |
+| `userspace/hypervisor/bin/vmm/pci.cc` | PCI bus + BAR traps |
+| `userspace/hypervisor/bin/vmm/controller/virtio_console.cc` | Creates `#meta/virtio_console.cm` in `virtio_console_devices` |
+| `userspace/hypervisor/bin/vmm/device/virtio_console/src/` | Queue walk; host socket ↔ guest console |
+| `userspace/hypervisor/bin/vmm/controller/virtio_block.cc` | Same pattern for disks (needed for a rootfs) |
+| `userspace/hypervisor/bin/vmm/device/BUILD.gn` | Packaged: console/block/rng/balloon/vsock/mem. Extra: gpu/net/sound/input |
+
+### 6. Kernel hypervisor — EL2, VMID, vmexit
+
+Userspace never implements VM-entry. After `zx_vcpu_enter`, read the kernel.
+
+| File | What to take away |
+| --- | --- |
+| `zircon/vdso/guest.fidl` | `zx_guest_create`, `zx_guest_set_trap` |
+| `zircon/vdso/vcpu.fidl` | `zx_vcpu_create`, `zx_vcpu_enter` |
+| `zircon/kernel/object/guest.rs` | Guest kernel object |
+| `zircon/kernel/object/vcpu.rs` | VCPU object; `cpp_vcpu_enter` |
+| `zircon/kernel/arch/arm64/hypervisor/guest.cc` | Requires EL2 + VHE; `alloc_vmid()`; GPA aspace ASID = VMID |
+| `zircon/kernel/arch/arm64/hypervisor/el2_cpu_state.cc` | Per-CPU EL2 state, VMID allocator |
+| `zircon/kernel/arch/arm64/hypervisor/el2.S` | World switch into the guest |
+| `zircon/kernel/arch/arm64/hypervisor/vcpu.cc` | Enter guest, GIC LR, timer |
+| `zircon/kernel/arch/arm64/hypervisor/vmexit.cc` | ESR_EL2: WFI, sysregs, data abort → trap packet or resume |
+| `zircon/kernel/hypervisor/` | Shared GPA aspace, trap map (Rust + FFI) |
+
+Kernel path for `zx_vcpu_enter`: `vcpu.rs` → `arch/arm64/hypervisor/vcpu.cc`
+→ `el2.S` (guest EL1) → vmexit → `vmexit.cc` → either resume or
+`ZX_OK` + `zx_port_packet_t` back to `Vcpu::Loop`.
+
+### 7. Optional later
+
+| File | When |
+| --- | --- |
+| `userspace/hypervisor/bin/vmm_launcher/src/vmm_launcher.rs` | Multi-instance VMM collection (`vmm-N` children) |
+| `userspace/hypervisor/packages/guest_package.gni` | How a real kernel/ramdisk would be packaged |
+| `userspace/hypervisor/packages/linux_guest/BUILD.gn` | Upstream Debian recipe (not in this image) |
+| `userspace/hypervisor/bin/vmm/zircon.cc` | ZBI guest loader (not used by Secular) |
+
+Suggested first pass: **1 → 2 → 4 (`vmm.cc` + `linux.cc` + `vcpu.cc`) → 6
+(`guest.cc` + `vmexit.cc`)**. That is enough to see a launch die on missing
+`kernel_type`, and to see where a real `Image` would be mapped.
+
+## Components
+
+| Path | Role |
+| --- | --- |
+| `bin/guest` | Serial CLI (`launch` / `stop` / `attach` / `list` / balloon / vsock) |
+| `bin/guest_manager` | `GuestManager`; vmid table; reads guest.cfg |
+| `bin/vmm` | Machine + virtio; Linux/RTOS/Zircon loaders |
+| `bin/vmm_launcher` | `vmm-*` children per `GuestLifecycle` connection |
+| `lib/guest_config` | JSON `guest.cfg` parser |
+| `lib/cli` | Shared CLI for `guest` and `ffx guest` |
+| `packages/` | `guest_package()` template; Debian/Zircon recipes (not in the console ZBI) |
+| `meta/hypervisor.bootstrap_shard.cml` | Wires guest-manager + vmm_launcher into bootstrap |
+
+## Console commands
+
+```text
+guest launch vmid=0
+guest launch vmid=0 --memory 536870912 --cpus 2
+guest list
+guest list vmid=0
+guest attach vmid=0
+guest stop vmid=0
+guest stop vmid=0 -f
+```
+
+`vmid=0` and a bare `0` are both accepted.
+
+## Monitor guest exit statistics
+
+`kstats -v` prints guest exits per second and the reason. ARM64 example:
 
 ```none
 cpu   vm_entry vm_exit inst_abt data_abt wfx_inst sys_inst smc_inst ints
   0      43        43        0      6      27        1        0      9
   1     226       225        0    111       3       17        0     94
-  2     109       109        0     60       8        7        0     35
-  3      58        58        0     21      12        2        0     23
 ```
 
-The fields in the output are as follows:
-- `inst_abt`: The amount of instruction abort exit.
-- `data_abt`: The amount of data abort exit.
-- `wfx_inst`: The amount of instruction wfe/wfi exit.
-- `sys_inst`: The amount of systen register access exit.
-- `smc_inst`: The amount of instruction smc exit.
-- `ints`    : The amount of interrupt exit.
+- `inst_abt`: instruction abort exits
+- `data_abt`: data abort exits
+- `wfx_inst`: WFE/WFI exits
+- `sys_inst`: system-register access exits
+- `smc_inst`: SMC exits
+- `ints`: interrupt exits
 
-For `x64`, the output is as follows:
+x64 example (Secular's board is qemu-arm64; this table is leftover):
 
 ```none
  cpu    vm_entry vm_exit ints ints_win ept ctrl_reg msr(rd wr) inst(io hlt cpuid ple vmcall xsetbv)
   0       40       40     10      0     0      0        10 10        5  5    0    0    0      0
 ```
 
-With the following fields:
-- `ints`     : The amount of interrupt exit.
-- `ints_win` : The amount of interrupt window exit.
-- `ept`      : The amount of EPT violation exit.
-- `ctrl_reg` : The amount of control register(CRx) access exit.
-- `msr`      : The amount of MSR register access exit (`rd/wr` is read/write).
-- `inst`     : the amount of some kinds of instruction exit.
+- `ints`: interrupt exits
+- `ints_win`: interrupt-window exits
+- `ept`: EPT violation exits
+- `ctrl_reg`: CR access exits
+- `msr`: MSR read/write exits
+- `inst`: selected instruction exits
 
 [ref.virtualization_overview]:
     https://fuchsia.dev/fuchsia-src/development/virtualization/overview

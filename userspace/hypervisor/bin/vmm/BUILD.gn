@@ -192,6 +192,10 @@ resource("vmm-resources") {
 fuchsia_component("vmm_component") {
   component_name = "vmm"
   manifest = "meta/vmm.cml"
+
+  # Nested into guest_manager / vmm_launcher packages. Skip cmc
+  # check-includes / validate-references. `gn gen` prints
+  # "Not validated: <this label>"; the compiled .cm is still packaged.
   check_includes = false
   check_references = false
   deps = [

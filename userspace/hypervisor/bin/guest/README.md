@@ -9,13 +9,14 @@ The `launch` command creates an interactive session with a new Virtual Machine r
 specified package.
 
 #### Arguments
-`guest launch guest-type [--cmdline-add <arg>...] [--memory <memory-size>] [--cpus <num-cpus>] [--virtio-* <bool>]`
+`guest launch vmid=0 [--cmdline-add <arg>...] [--memory <memory-size>] [--cpus <num-cpus>] [--virtio-* <bool>]`
 
-**Example**: `guest launch linux --memory 536870912 --cpus 2`
+**Example**: `guest launch vmid=0 --memory 536870912 --cpus 2`
 
 **Positional Arguments**
-- `guest-type: String`: Guest OS to launch: `linux` or `rtos`. Both talk to
-   the unified `fuchsia.virtualization.GuestManager`.
+- `vmid`: Guest identifier, written as `vmid=<id>` or a bare integer. Each
+   vmid is a distinct guest instance served by the unified
+   `fuchsia.virtualization.GuestManager`.
 
 **Optional Arguments**
 - `cmdline-add: String`: Argument to add to the Guest kernel command line.
@@ -42,6 +43,17 @@ information to the Guest), enabling an interactive session to occur.
 
 ![launch_diagram](doc/launch.png)
 
+### Stop
+`guest stop vmid=0 [-f]`
+
+Stops the guest identified by vmid. `-f` force-stops without a graceful
+shutdown command.
+
+### Attach
+`guest attach vmid=0`
+
+Attaches console and serial to a running guest identified by vmid.
+
 ### List
 The `list` command allows for viewing of all currently running VMs.
 
@@ -49,15 +61,15 @@ The `list` command allows for viewing of all currently running VMs.
 `guest list`
 
 **Example output**:
-```guest list
-guest
+```
+VMID     Status   Uptime
+vmid=0   Running  00:02:03 HH:MM:SS
 ```
 
 #### Structure
-The `list` command connects to the Guest Manager via FIDL, and queries for a list of all currently
-running VMs on Fuchsia. These environments contain information about all VMs running within them,
-in the form of `guest: label` pairs, where the label is the type of the VM.
- The values outputted by this command are used as arguments for other commands of the tool.
+The `list` command connects to the Guest Manager via FIDL and queries guests by
+vmid. Use `guest list` for a summary, or `guest list vmid=0` for details of one
+guest. The vmid values are used as arguments for other commands.
 
 ![list_diagram](doc/list.png)
 
@@ -65,13 +77,12 @@ in the form of `guest: label` pairs, where the label is the type of the VM.
 The `balloon` command allows for modifying the size of a memory balloon. See `virtio-balloon.cc`
 for more on the Balloon device.
 #### Arguments
-`guest balloon guest-type num-pages`
+`guest balloon set vmid=0 num-pages`
 
-**Example**: `guest balloon linux 3`
+**Example**: `guest balloon set vmid=0 3`
 
 **Positional Arguments**
-- `guest-type: string`: String that identifies the VM you are trying to modify. See `list` for
-    how to find this value.
+- `vmid`: Guest identifier, for example `vmid=0`. See `list` for how to find this value.
 - `num-pages: u32`: Number of memory pages the balloon will have after this operation.
 
 #### Structure
@@ -87,13 +98,12 @@ talk to the VM balloon via FIDL to modify the page number of the memory balloon.
 ### Balloon Stats
 The `balloon-stats` command allows for viewing the current statistics of a memory balloon.
 #### Arguments
-`guest balloon-stats guest-type`
+`guest balloon stats vmid=0`
 
-**Example**: `guest balloon-stats debian`
+**Example**: `guest balloon stats vmid=0`
 
 **Positional Arguments**
-- `guest-type: string`: String that identifies the VM you are trying to modify. See `list` for
-    how to find this value.
+- `vmid`: Guest identifier, for example `vmid=0`. See `list` for how to find this value.
 
 #### Structure
 The `balloon-stats` command functions almost identically to the `balloon` command in terms of how
@@ -121,13 +131,12 @@ These tags are detailed here:
 The `serial` command allows for interacting with a Guest over a serial connection.
 
 #### Arguments
-`guest serial guest-type`
+`guest attach vmid=0`
 
-**Example**: `guest serial debian`
+**Example**: `guest attach vmid=0`
 
 **Positional Arguments**
-- `guest-type: string`: String that identifies the VM you are trying to interact with.
-    See `list` for how to find this value.
+- `vmid`: Guest identifier, for example `vmid=0`. See `list` for how to find this value.
 
 #### Structure
 The `serial` command provides a convenient way to interact with a VM through a serial connection.
@@ -180,17 +189,16 @@ for a few reasons, most notably internet connection issues).
 ![vsh_diagram](doc/vsh.png)
 
 ### Socat (**Soc**ket **cat**)
-The `socat` command. allow for creating a vsock connection on `guest_type`. Data received
+The `socat` command allows creating a vsock connection on a guest identified by vmid. Data received
 on the socket will be sent to `stdout` and data from `stdin` will be sent over the socket.
 
 #### Arguments
-`guest socat guest-type port`
+`guest socat connect vmid=0 port`
 
-**Example**: `guest socat debian 2222`
+**Example**: `guest socat connect vmid=0 2222`
 
 **Positional Arguments**
-- `guest-type: string`: String that identifies the VM is currently running. See `list` for how to
-    find this value.
+- `vmid`: Guest identifier, for example `vmid=0`. See `list` for how to find this value.
 - `port: u32`: Port on `guest` to connect to.
 
 #### Structure
@@ -203,19 +211,19 @@ socket, with data received being sent to `stdout` and input from `stdin` sent to
 ![socat_diagram](doc/socat.png)
 
 ### Socat Listen
-The `socat-listen` command allows for listening on a vsock `port` within `guest_type` VM.
+The `socat listen` command allows listening on a vsock `port` for a guest identified by vmid.
 
 #### Arguments
-`guest socat-listen guest-type host-port`
+`guest socat listen vmid=0 host-port`
 
-**Example**: `guest socat-listen debian 2222`
+**Example**: `guest socat listen vmid=0 2222`
 
 **Positional Arguments**
-- `guest-type: string`: String that identifies the VM for where a socat connection is running.
+- `vmid`: Guest identifier, for example `vmid=0`.
 - `port: u32`: Port to listen on.
 
 #### Structure
-The `socat-listen` command is used to listen on a vsock port on the host endpoint (`guest-type`),
+The `socat listen` command is used to listen on a vsock port on the host endpoint (`vmid`),
 acting as a server for a vsock connection. The end user provides `guest` with the environment
 and port they wish to have this server listen on.
 
@@ -234,7 +242,7 @@ The VM must not already be running when this command is issued.
 
 #### Arguments
 
-**Example**: `guest wipe termina`
+**Example**: `guest wipe vmid=0`
 
 **Positional Arguments**
-- `guest_type`: The guest to clear. Currently this must be `termina`.
+- `vmid`: The guest to clear.

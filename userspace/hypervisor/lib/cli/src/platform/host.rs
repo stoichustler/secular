@@ -10,7 +10,7 @@ use fidl_fuchsia_developer_remotecontrol::RemoteControlProxy;
 use fidl_fuchsia_io::OpenFlags;
 use fidl_fuchsia_sys2 as fsys;
 use fidl_fuchsia_virtualization::{GuestManagerMarker, GuestManagerProxy};
-use guest_cli_args::GuestType;
+use guest_cli_args::{GUEST_MANAGER_INTERFACE, GUEST_MANAGER_MONIKER};
 
 pub struct HostPlatformServices {
     remote_control: RemoteControlProxy,
@@ -24,15 +24,15 @@ impl HostPlatformServices {
 
 #[async_trait(?Send)]
 impl PlatformServices for HostPlatformServices {
-    async fn connect_to_manager(&self, guest_type: GuestType) -> Result<GuestManagerProxy> {
+    async fn connect_to_manager(&self) -> Result<GuestManagerProxy> {
         let (guest_manager, server_end) = create_proxy::<GuestManagerMarker>();
         // This may fail, but we report the error when we later try to use the GuestManagerProxy.
         let _ = self
             .remote_control
             .connect_capability(
-                guest_type.moniker(),
+                GUEST_MANAGER_MONIKER,
                 fsys::OpenDirType::ExposedDir,
-                guest_type.guest_manager_interface(),
+                GUEST_MANAGER_INTERFACE,
                 server_end.into_channel(),
             )
             .await?;
