@@ -35,6 +35,8 @@ make kick KICK_ARGS='--dry-run'
 make kick KICK_ARGS='-s 2' QEMU_ARGS='-d guest_errors'
 ```
 
+Refer to [reference](products/reference).
+
 Build outputs are written under `out/secular-boot-arm64/`, including
 `secular.zbi`, the QEMU boot-shim, and `artifacts.env`.
 

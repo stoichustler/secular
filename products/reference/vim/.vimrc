@@ -1,9 +1,9 @@
-" BEAU / Secular host Vimrc (not shipped in the target image).
+" BEAU / SMOS host Vimrc (not shipped in the target image).
 "
-" Source of truth: sdk/secular/vim/.vimrc
-" Install:         install -Dm644 sdk/secular/vim/.vimrc ~/.vimrc
+" Source of truth: sdk/smos/vim/.vimrc
+" Install:         install -Dm644 sdk/smos/vim/.vimrc ~/.vimrc
 " Reload:          :source $MYVIMRC
-" Related notes:   sdk/secular/vim/vim.md
+" Related notes:   sdk/smos/vim/vim.md
 "
 " This file is reload-safe: jobs, timers, and popups from a previous
 " :source are stopped before their script-local state is recreated.
@@ -14,6 +14,7 @@
 "   3. Colorscheme
 "   4. Indentation and C/C++ style commands
 "   5. File defaults (formatprg, last-position, autoread)
+"   5a. Large / AEE *_RAW dumps (no wrap/syntax/list/search-scan)
 "   6. Clipboard (X11/Wayland, OSC 52, W23)
 "   7. Display, search, swap/undo, completion
 "   8. Statusline and async git branch
@@ -145,10 +146,186 @@ augroup beau_file_defaults
         \     setlocal formatprg=rustfmt |
         \ endif
     autocmd BufReadPost *
-        \ if line("'\"") > 0 && line("'\"") <= line('$') && &buftype ==# '' |
+        \ if !get(b:, 'beau_large_file', 0)
+        \     && line("'\"") > 0 && line("'\"") <= line('$') && &buftype ==# '' |
         \     execute 'normal! g`"' |
         \ endif
     autocmd FocusGained,BufEnter * silent! checktime
+augroup END
+
+" --- Large / AEE dump files --------------------------------------------------
+" *_RAW (and mini-rdump / oversized files) are often one 4-6 MiB line with
+" no newlines. wrap + linebreak + list + syntax walk every byte and freeze.
+" Cheap options must be set in BufReadPre, before the buffer is filled.
+" clipboard/regexpengine/hlsearch are global: snapshot on enter, restore
+" on leave so / * yank do not scan the whole dump, then other buffers
+" keep unnamedplus.
+let s:large_file_ei_depth = 0
+let s:large_file_ei_saved = ''
+if exists('s:large_file_globals')
+    let &clipboard = s:large_file_globals.clipboard
+    let &regexpengine = s:large_file_globals.regexpengine
+    let &hlsearch = s:large_file_globals.hlsearch
+    let &incsearch = s:large_file_globals.incsearch
+    unlet s:large_file_globals
+endif
+
+function! s:IsDumpOrLargePath(path) abort
+    if empty(a:path)
+        return 0
+    endif
+    let l:name = fnamemodify(a:path, ':t')
+    if l:name =~# '_RAW$' || l:name =~# '_RAW\.'
+        return 1
+    endif
+    if l:name =~# 'MINI_RDUMP$' || l:name =~# '\.dfd$'
+        return 1
+    endif
+    " Name-based dumps are caught above. Size is a last-resort Pre gate for
+    " unnamed huge binaries; text logs with newlines are handled in Post.
+    let l:size = getfsize(a:path)
+    return l:size >= 8 * 1024 * 1024
+endfunction
+
+function! s:IsDumpTreePath(path) abort
+    return a:path =~# '\.dbg\.DEC[/\\]\|[/\\]aee_exp[/\\]'
+endfunction
+
+function! s:LargeFileIgnoreFileType() abort
+    if s:large_file_ei_depth == 0
+        let s:large_file_ei_saved = &eventignore
+    endif
+    let s:large_file_ei_depth += 1
+    if &eventignore !~# 'FileType'
+        set eventignore+=FileType
+    endif
+endfunction
+
+function! s:LargeFileRestoreFileType() abort
+    if s:large_file_ei_depth <= 0
+        return
+    endif
+    let s:large_file_ei_depth -= 1
+    if s:large_file_ei_depth == 0
+        let &eventignore = s:large_file_ei_saved
+    endif
+endfunction
+
+function! s:ApplyLargeFileOptions() abort
+    setlocal binary noeol nomodeline
+    setlocal noswapfile noundofile
+    setlocal undolevels=-1
+    setlocal nowrap nolinebreak nobreakindent
+    setlocal nolist nocursorline norelativenumber
+    setlocal nosmoothscroll
+    setlocal synmaxcol=256
+    setlocal matchpairs=
+    setlocal foldmethod=manual
+    setlocal nofoldenable
+    setlocal display+=uhex
+    let b:matchparen_disable = 1
+    let b:no_matchparen = 1
+endfunction
+
+" Many-line text dumps (SYS_KERNEL_LOG): keep syntax, drop wrap/linebreak.
+function! s:ApplyLongTextOptions() abort
+    setlocal nowrap nolinebreak nobreakindent
+    setlocal norelativenumber
+    setlocal nosmoothscroll
+    setlocal synmaxcol=256
+    let b:beau_long_text = 1
+endfunction
+
+function! s:LargeFileDisplayOnly() abort
+    setlocal nowrap nolinebreak nobreakindent
+    setlocal nolist nocursorline norelativenumber
+    setlocal nosmoothscroll
+endfunction
+
+" regexpengine/clipboard/hlsearch are global. Apply only while a dump is
+" the current buffer so a split with source code is not stuck on engine=1.
+function! s:SyncLargeFileSession() abort
+    let l:want = get(b:, 'beau_large_file', 0)
+    let l:active = exists('s:large_file_globals')
+    if l:want && !l:active
+        let s:large_file_globals = {
+            \ 'clipboard': &clipboard,
+            \ 'regexpengine': &regexpengine,
+            \ 'hlsearch': &hlsearch,
+            \ 'incsearch': &incsearch
+            \ }
+        set clipboard=
+        set regexpengine=1
+        set nohlsearch
+        set noincsearch
+        let v:hlsearch = 0
+    elseif !l:want && l:active
+        let &clipboard = s:large_file_globals.clipboard
+        let &regexpengine = s:large_file_globals.regexpengine
+        let &hlsearch = s:large_file_globals.hlsearch
+        let &incsearch = s:large_file_globals.incsearch
+        unlet s:large_file_globals
+    endif
+endfunction
+
+function! s:LargeFilePre() abort
+    let l:path = expand('<afile>:p')
+    if !s:IsDumpOrLargePath(l:path)
+        return
+    endif
+    let b:beau_large_file = 1
+    call s:LargeFileIgnoreFileType()
+    call s:ApplyLargeFileOptions()
+endfunction
+
+function! s:LargeFilePost() abort
+    if !get(b:, 'beau_large_file', 0)
+        let l:huge = 0
+        let l:last = min([20, line('$')])
+        let l:lnum = 1
+        while l:lnum <= l:last
+            if col([l:lnum, '$']) > 8192
+                let l:huge = 1
+                break
+            endif
+            let l:lnum += 1
+        endwhile
+        if !l:huge
+            if line('$') > 10000
+                call s:ApplyLongTextOptions()
+            endif
+            return
+        endif
+        let b:beau_large_file = 1
+        call s:ApplyLargeFileOptions()
+    else
+        call s:LargeFileRestoreFileType()
+        call s:ApplyLargeFileOptions()
+    endif
+    silent! syntax clear
+    setlocal filetype=
+    call s:SyncLargeFileSession()
+endfunction
+
+function! s:LargeFileWin() abort
+    if get(b:, 'beau_large_file', 0)
+        call s:LargeFileDisplayOnly()
+        call s:SyncLargeFileSession()
+    elseif get(b:, 'beau_long_text', 0)
+        setlocal nowrap nolinebreak nobreakindent
+        setlocal norelativenumber
+        setlocal nosmoothscroll
+        call s:SyncLargeFileSession()
+    else
+        call s:SyncLargeFileSession()
+    endif
+endfunction
+
+augroup beau_large_files
+    autocmd!
+    autocmd BufReadPre * call <SID>LargeFilePre()
+    autocmd BufReadPost * call <SID>LargeFilePost()
+    autocmd BufEnter,BufWinEnter * call <SID>LargeFileWin()
 augroup END
 
 " --- Clipboard ---------------------------------------------------------------
@@ -242,17 +419,20 @@ set backspace=indent,eol,start
 set tags=./tags;,tags
 
 " :grep and fzf file listing share the same hidden-but-not-.git rg flags.
+" Shared rg globs: skip git internals and AEE dump binaries (preview/open
+" of *_RAW in fzf would hitch even though Vim itself now handles them).
+let s:rg_exclude_globs = '--glob=!.git/* --glob=!*_RAW --glob=!*MINI_RDUMP --glob=!*.dfd'
 if executable('rg')
-    let &grepprg = "rg --vimgrep --smart-case --hidden --glob '!.git/*'"
+    let &grepprg = 'rg --vimgrep --smart-case --hidden ' . s:rg_exclude_globs
     set grepformat=%f:%l:%c:%m
     if empty($FZF_DEFAULT_COMMAND)
-        let $FZF_DEFAULT_COMMAND = 'rg --files --hidden --glob "!.git/*"'
+        let $FZF_DEFAULT_COMMAND = 'rg --files --hidden ' . s:rg_exclude_globs
     endif
 endif
 
 let g:hlyank_hlgroup = 'IncSearch'
 let g:hlyank_duration = 250
-let g:EditorConfig_exclude_patterns = ['fugitive://.*', 'scp://.*']
+let g:EditorConfig_exclude_patterns = ['fugitive://.*', 'scp://.*', '.*_RAW', '.*MINI_RDUMP', '.*\.dfd']
 
 " --- Statusline --------------------------------------------------------------
 " Layout: BEAU:<mode>  <path>  [branch]  flags  %S  |  <ft> <pos>
@@ -369,6 +549,7 @@ if exists('s:git_branch_jobs')
 endif
 let s:git_branch_jobs = {}
 let s:git_branch_by_root = {}
+let s:git_branch_poll = {}
 let s:git_branch_stamp = {}
 
 function! s:GitBranchOut(root, channel, msg) abort
@@ -410,9 +591,13 @@ function! s:RefreshGitBranchAsync(root) abort
 endfunction
 
 " Statusline callback: return cached branch text, and start a refresh if
-" HEAD/index changed. Must stay cheap; it runs on every statusline redraw.
+" HEAD/index changed. Must stay cheap; it runs on every statusline redraw
+" (showcmdloc=statusline). Stat HEAD/index at most once per second.
 function! BeauGitBranch() abort
     if &buftype !=# '' || empty(expand('%:p'))
+        return ''
+    endif
+    if get(b:, 'beau_large_file', 0)
         return ''
     endif
 
@@ -421,7 +606,15 @@ function! BeauGitBranch() abort
         return ''
     endif
 
-    let l:stamp = s:GitStateStamp(l:root)
+    let l:now = reltimefloat(reltime())
+    let l:prev = get(s:git_branch_poll, l:root, [0.0, ''])
+    if l:now - l:prev[0] >= 1.0
+        let l:stamp = s:GitStateStamp(l:root)
+        let s:git_branch_poll[l:root] = [l:now, l:stamp]
+    else
+        let l:stamp = l:prev[1]
+    endif
+
     if get(s:git_branch_stamp, l:root, '') !=# l:stamp
             \ || !has_key(s:git_branch_by_root, l:root)
         call s:RefreshGitBranchAsync(l:root)
@@ -728,7 +921,7 @@ function! s:LiveRg(query, fullscreen, regex) abort
 
     let l:root = g:beau_workspace_root
     let l:flags = '--column --line-number --no-heading --color=always '
-        \ . '--smart-case --hidden --glob ' . shellescape('!.git/*')
+        \ . '--smart-case --hidden ' . s:rg_exclude_globs
     if !a:regex
         let l:flags .= ' --fixed-strings'
     endif
@@ -993,8 +1186,17 @@ function! s:GitSignsRefresh(...) abort
     if getbufvar(l:buf, '&buftype') !=# ''
         return
     endif
+    if getbufvar(l:buf, 'beau_large_file', 0)
+            \ || getbufvar(l:buf, 'beau_long_text', 0)
+        call s:GitSignsUnplace(l:buf)
+        return
+    endif
     let l:path = fnamemodify(bufname(l:buf), ':p')
     if empty(l:path) || !filereadable(l:path)
+        call s:GitSignsUnplace(l:buf)
+        return
+    endif
+    if s:IsDumpTreePath(l:path) || getfsize(l:path) >= 1024 * 1024
         call s:GitSignsUnplace(l:buf)
         return
     endif

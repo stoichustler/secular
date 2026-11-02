@@ -1,22 +1,25 @@
-# Vim 开发环境
+# Vim development environment
 
-本文说明如何在 Linux 主机上安装 Vim，并将它用于 Secular 的 Zircon、C/C++、Rust、汇编、GN 和 Markdown 文件。Vim 运行在主机上；它不会被打包进 Secular，也不依赖目标 QEMU 镜像。
+This note covers installing Vim on a Linux host and using it with Secular's
+Zircon, C/C++, Rust, assembly, GN, and Markdown files. Vim runs on the host.
+It is not packaged into Secular and does not depend on the target QEMU image.
 
-## 版本与目录约定
+## Version and directory layout
 
-源码默认放在 `~/opt/vim-src`，安装前缀为 `~/opt`。使用固定 tag 可以让不同开发机上的编辑器行为更容易复现：
+Source lives under `~/opt/vim-src` by default; the install prefix is `~/opt`.
+A pinned tag makes editor behavior easier to reproduce across machines:
 
 ```sh
 mkdir -p ~/opt
 git clone https://github.com/vim/vim.git ~/opt/vim-src
 cd ~/opt/vim-src
 
-# 可选：将 <tag> 替换为团队约定的 Vim tag
+# Optional: replace <tag> with the team's agreed Vim tag
 git fetch --tags --depth=1
 git checkout <tag>
 ```
 
-检查主机工具链后再开始编译：
+Check the host toolchain before compiling:
 
 ```sh
 git --version
@@ -25,9 +28,11 @@ make --version
 python3 --version
 ```
 
-## 安装依赖
+## Install dependencies
 
-下面的依赖覆盖当前配置中的终端版 Vim、Python 3、Perl、Lua、X11 和 cscope 支持。只需要终端编辑器时，可以去掉 X11 相关包和 `--with-x` 配置项。
+The packages below match the current build: terminal Vim with Python 3, Perl,
+Lua, X11, and cscope. If you only need a terminal editor, drop the X11
+packages and the `--with-x` configure flag.
 
 ```sh
 sudo apt update
@@ -46,15 +51,17 @@ sudo apt install -y \
   universal-ctags
 ```
 
-`python3-config` 通常已经由 `python3-dev` 提供。确认 Python 配置目录可被 Vim 的 configure 脚本找到：
+`python3-config` usually comes with `python3-dev`. Confirm that Vim's
+configure script can find the Python config directory:
 
 ```sh
 python3-config --configdir
 ```
 
-## 编译和安装
+## Build and install
 
-在源码目录执行。`--prefix=$HOME/opt` 不会写入系统目录，因此不需要 `sudo make install`：
+Run these from the source directory. `--prefix=$HOME/opt` does not write into
+system paths, so `sudo make install` is not required:
 
 ```sh
 cd ~/opt/vim-src
@@ -75,13 +82,15 @@ make -j"$(nproc)"
 make install
 ```
 
-将安装目录加入当前 shell 的 `PATH`：
+Put the install directory on the current shell's `PATH`:
 
 ```sh
 export PATH="$HOME/opt/bin:$PATH"
 ```
 
-需要持久化时，将同一行加入 `~/.profile` 或所使用 shell 的启动文件，然后重新打开终端。确认实际调用的是新安装的 Vim：
+To keep that change, add the same line to `~/.profile` or your shell startup
+file, then open a new terminal. Confirm that the new Vim is the one that
+runs:
 
 ```sh
 command -v vim
@@ -89,34 +98,40 @@ vim --version | sed -n '1,8p'
 vim --clean --not-a-term -Nu NONE -n +'quit'
 ```
 
-最后一条命令用于检查 Vim 可以在无配置、无终端交互的情况下启动；如果只看到版本信息且退出码为 0，说明基础安装正常。
+The last command checks that Vim starts with no config and no interactive
+terminal. Version output and exit code 0 mean the base install is working.
 
-## 安装 Secular 配置
+## Install the Secular config
 
-从 Secular 仓库根目录执行。安装前先备份现有配置；`.vimrc` 会创建 `~/.vim/swap` 和 `~/.vim/undo`，不会把恢复文件写入源码树：
+Run these from the Secular repository root. Back up any existing config
+first. `.vimrc` creates `~/.vim/swap` and `~/.vim/undo`; it does not write
+recovery files into the source tree:
 
 ```sh
 [ -f "$HOME/.vimrc" ] && cp "$HOME/.vimrc" "$HOME/.vimrc.bak.$(date +%Y%m%d%H%M%S)"
 install -Dm644 products/reference/vim/.vimrc "$HOME/.vimrc"
 ```
 
-配置中的几个常用命令：
+Useful commands from that config:
 
-| 命令 | 用途 |
+| Command | Purpose |
 | --- | --- |
-| `:BEAUStyle` | Secular/Hypervisor 风格：8 列 tab |
-| `:GOOGLEStyle` | Google C++ 风格：2 个空格 |
-| `:LINUXStyle` | Linux 内核风格：8 列 tab |
-| `:NERDTreeToggle` | 打开或关闭文件树 |
-| `:Files` | 通过 fzf 查找文件 |
-| `:Rg <pattern>` | 通过 fzf/rg 搜索源码 |
-| `:Tags <symbol>` | 查找 ctags 符号 |
+| `:BEAUStyle` | Secular/Hypervisor style: 8-column tabs |
+| `:GOOGLEStyle` | Google C++ style: 2 spaces |
+| `:LINUXStyle` | Linux kernel style: 8-column tabs |
+| `:NERDTreeToggle` | Open or close the file tree |
+| `:Files` | Find files with fzf |
+| `:Rg <pattern>` | Search source with fzf/rg |
+| `:Tags <symbol>` | Look up a ctags symbol |
 
-C/C++ 风格命令只影响当前 buffer。打开文件后执行 `gg=G` 可以按当前风格重新缩进已有内容。
+The C/C++ style commands affect only the current buffer. After opening a
+file, `gg=G` reindents existing content to the current style.
 
-## 安装插件
+## Install plugins
 
-Vim 原生 package 目录会在启动时自动加载 `~/.vim/pack/*/start/*` 下的插件。先创建目录，再安装与 `.vimrc` 对应的插件：
+Vim's native package path autoloads plugins under `~/.vim/pack/*/start/*` at
+startup. Create the directories, then install the plugins that `.vimrc`
+expects:
 
 ```sh
 mkdir -p ~/.vim/pack/plugins/start ~/.vim/pack/themes/start
@@ -139,7 +154,10 @@ git clone https://github.com/junegunn/fzf.vim.git \
   ~/.vim/pack/plugins/start/fzf
 ```
 
-重复执行 `git clone` 会因目录已存在而失败；升级已有插件时使用 `git -C <plugin-dir> pull --ff-only`。离线环境可以将这些目录从已准备好的主机复制到相同的 package 路径。启动 Vim 后检查插件和配色是否生效：
+A second `git clone` fails if the directory already exists. Upgrade an
+installed plugin with `git -C <plugin-dir> pull --ff-only`. Offline hosts can
+copy the same directories onto the same package paths. After starting Vim,
+check that plugins and the colorscheme loaded:
 
 ```vim
 :scriptnames
@@ -148,10 +166,16 @@ git clone https://github.com/junegunn/fzf.vim.git \
 :colorscheme tokyonight
 ```
 
-如果 `colorscheme tokyonight` 报错，先确认 `~/.vim/pack/themes/start/tokyonight/colors/tokyonight.vim` 存在，或暂时注释 `.vimrc` 中的 `colorscheme tokyonight` 以便诊断其他配置。
+If `colorscheme tokyonight` errors, confirm that
+`~/.vim/pack/themes/start/tokyonight/colors/tokyonight.vim` exists, or
+temporarily comment out `colorscheme tokyonight` in `.vimrc` while diagnosing
+the rest of the config.
 
-Vim 配置或插件发生变化后，至少执行一次无配置启动检查、一次目标架构编译和一次相应验证。本文只描述主机编辑器环境，不承诺插件在无网络或不同 Vim 版本上的完全兼容性。
+After Vim config or plugins change, run at least one no-config startup check,
+one target-architecture build, and the matching verification. This note only
+describes the host editor. It does not claim that plugins work offline or
+across every Vim version.
 
 ---
 
-Hustle Embedded OS.
+Everyday's a Hustle.
