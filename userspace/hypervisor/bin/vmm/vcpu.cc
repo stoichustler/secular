@@ -7,6 +7,8 @@
 #include <lib/fit/defer.h>
 #include <lib/syslog/cpp/macros.h>
 #include <lib/zx/thread.h>
+#include <stdio.h>
+#include <string_view>
 #include <zircon/status.h>
 #include <zircon/syscalls.h>
 #include <zircon/syscalls/hypervisor.h>
@@ -108,10 +110,17 @@ zx_status_t Vcpu::Loop(std::promise<zx_status_t> barrier) {
       case ZX_ERR_CANCELED:
         FX_LOGS(INFO) << "Stopping VCPU " << id_;
         return ZX_OK;
-      default:
+      default: {
+        char msg[128];
+        const int n = snprintf(msg, sizeof(msg), "vmm: fatal vcpu-%lu enter: %s\n", id_,
+                               zx_status_get_string(status));
+        if (n > 0) {
+          zx_debug_write(msg, static_cast<size_t>(n < 127 ? n : 127));
+        }
         FX_LOGS(ERROR) << "Fatal error attempting to enter VCPU " << id_ << ": "
                        << zx_status_get_string(status) << ". Shutting down VM.";
         return status;
+      }
     }
 
     status = HandlePacket(packet);
@@ -122,10 +131,17 @@ zx_status_t Vcpu::Loop(std::promise<zx_status_t> barrier) {
         // Gracefully shut down the entire VM.
         FX_LOGS(INFO) << "Guest requested shutdown";
         return ZX_OK;
-      default:
+      default: {
+        char msg[128];
+        const int n = snprintf(msg, sizeof(msg), "vmm: fatal vcpu-%lu packet type %u: %s\n", id_,
+                               packet.type, zx_status_get_string(status));
+        if (n > 0) {
+          zx_debug_write(msg, static_cast<size_t>(n < 127 ? n : 127));
+        }
         FX_LOGS(ERROR) << "Fatal error handling packet of type " << packet.type << ": "
                        << zx_status_get_string(status) << ". Shutting down VM.";
         return status;
+      }
     }
   }
 }
@@ -136,11 +152,31 @@ zx_status_t Vcpu::HandleMem(const zx_packet_guest_mem_t& packet, uint64_t trap_k
   IoMapping* device_mapping = IoMapping::FromPortKey(trap_key);
   zx_status_t status = ArchHandleMem(packet, device_mapping);
   if (status != ZX_OK) {
-    FX_LOGS(ERROR) << std::hex << "Device '" << device_mapping->handler()->Name()
-                   << "' returned status " << zx_status_get_string(status)
-                   << " while attempting to handle MMIO access at paddr 0x" << packet.addr
-                   << " (mapping offset 0x" << (packet.addr - device_mapping->base()) << ").";
-    return status;
+    const std::string_view name = device_mapping->handler()->Name();
+    char msg[256];
+    const int n = snprintf(
+        msg, sizeof(msg),
+        "vmm: %.*s MMIO %s paddr 0x%lx off 0x%lx: %s (ignored)\n",
+        static_cast<int>(name.size()), name.data(), packet.read ? "read" : "write",
+        static_cast<unsigned long>(packet.addr),
+        static_cast<unsigned long>(packet.addr - device_mapping->base()),
+        zx_status_get_string(status));
+    if (n > 0) {
+      const size_t len = static_cast<size_t>(n < 255 ? n : 255);
+      zx_debug_write(msg, len);
+    }
+    FX_LOGS(ERROR) << msg;
+    // Zephyr probes more GIC/UART/PCI registers than Linux. Returning an
+    // error here tears down the VM with VCPU_RUNTIME_FAILURE. Treat the
+    // access as RAZ/WI so bring-up can continue.
+    if (packet.read && packet.xt < 31u) {
+      zx_vcpu_state_t vcpu_state;
+      if (vcpu_.read_state(ZX_VCPU_STATE, &vcpu_state, sizeof(vcpu_state)) == ZX_OK) {
+        vcpu_state.x[packet.xt] = 0;
+        vcpu_.write_state(ZX_VCPU_STATE, &vcpu_state, sizeof(vcpu_state));
+      }
+    }
+    return ZX_OK;
   }
 
   return ZX_OK;

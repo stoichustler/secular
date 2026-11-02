@@ -57,11 +57,14 @@ executable("bin") {
   ]
 }
 
-# Placeholder guest package: data/guest.cfg only. Launch still needs a
-# kernel image once one is provided in this package.
 resource("secular_guest_cfg") {
   sources = [ "data/secular_guest.cfg" ]
   outputs = [ "data/guest.cfg" ]
+}
+
+resource("secular_zephyr_bin") {
+  sources = [ "//products/prebuilt/rtos/zephyr.bin" ]
+  outputs = [ "data/zephyr.bin" ]
 }
 
 fuchsia_component("secular_guest_pkg") {
@@ -76,6 +79,7 @@ fuchsia_component("secular_guest_pkg") {
   check_references = false
   deps = [
     ":secular_guest_cfg",
+    ":secular_zephyr_bin",
     "//userspace/hypervisor/packages:guest_package_bin",
   ]
 }

@@ -63,6 +63,7 @@
                 source_name: "fuchsia.kernel.HypervisorResource",
                 capability: "protocol",
                 target_monikers: [
+                    "/bootstrap/guest-manager/vmm",
                     "/core/zircon-guest-manager/vmm",
                     "/core/debian-guest-manager/vmm",
                     "/core/termina-guest-manager/vmm",
@@ -230,6 +231,7 @@
                     "/core/test_manager/chromium-system-tests:**",
                     "/core/test_manager/chromium-tests:**",
                     "/core/testing/chromium-tests:**",
+                    "/bootstrap/guest-manager/vmm",
                     "/core/zircon-guest-manager/vmm",
                     "/core/debian-guest-manager/vmm",
                     "/core/termina-guest-manager/vmm",

@@ -90,6 +90,13 @@ enum class SystemRegister : uint16_t {
   // Interrupt Controller System Registers. See GIC v3/v4 Architecture Spec Section 8.2.
   ICC_SGI1R_EL1   = 0b11101000 << 8 /* op */ | 0b11001011 /* cr */,
 
+  // Physical timer registers, trapped by CNTHCTL_EL2.EL1PTEN = 0.
+  // Guests (Linux and Zephyr) use the virtual timer; EL1 init may still
+  // write CNTP_* to disable the physical timer.
+  CNTP_TVAL_EL0   = 0b11000011 << 8 /* op */ | 0b11100010 /* cr */,
+  CNTP_CTL_EL0    = 0b11001011 << 8 /* op */ | 0b11100010 /* cr */,
+  CNTP_CVAL_EL0   = 0b11010011 << 8 /* op */ | 0b11100010 /* cr */,
+
   // Data cache operations by set/way.
   DC_ISW          = 0b01010000 << 8 /* op */ | 0b01110110 /* cr */,
   DC_CISW         = 0b01010000 << 8 /* op */ | 0b01111110 /* cr */,

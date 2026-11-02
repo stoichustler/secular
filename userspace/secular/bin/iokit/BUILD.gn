@@ -79,6 +79,15 @@ rustc_binary("kdmips") {
   with_unit_tests = true
 }
 
+rustc_binary("runman") {
+  output_name = "runman"
+  edition = "2024"
+  source_root = "src/runman.rs"
+  sources = [ "src/runman.rs" ]
+  configs += [ "//products/build/config/rust:bootfs" ]
+  with_unit_tests = true
+}
+
 rustc_binary("tree") {
   output_name = "tree"
   edition = "2024"
@@ -97,6 +106,7 @@ group("iokit") {
     ":elfdump",
     ":hexdump",
     ":kdmips",
+    ":runman",
     ":tree",
   ]
 }

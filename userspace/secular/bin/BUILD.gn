@@ -15,9 +15,11 @@ group("tests") {
     "iokit:elfdump_test",
     "iokit:hexdump_test",
     "iokit:kdmips_test",
+    "iokit:runman_test",
     "iokit:tree_test",
     "kernel-args-forwarder:tests",
     "ptysvc:tests",
+    "swdt:tests",
     "userboot:tests",
   ]
 }

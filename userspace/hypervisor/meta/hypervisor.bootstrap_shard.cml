@@ -31,6 +31,16 @@
             ],
         },
         {
+            protocol: "fuchsia.sysinfo.SysInfo",
+            from: "parent",
+            to: [
+                "#vmm_launcher",
+                "#guest-manager",
+            ],
+            availability: "optional",
+            source_availability: "unknown",
+        },
+        {
             protocol: "fuchsia.scheduler.RoleManager",
             from: "#role_manager",
             to: [

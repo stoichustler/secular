@@ -50,6 +50,12 @@
             to: "#virtual_machine_managers",
         },
         {
+            protocol: "fuchsia.sysinfo.SysInfo",
+            from: "parent",
+            to: "#virtual_machine_managers",
+            availability: "optional",
+        },
+        {
             protocol: [ "fuchsia.scheduler.RoleManager" ],
             from: "parent",
             to: "#virtual_machine_managers",

@@ -161,6 +161,9 @@ void GuestManager::Launch(uint32_t vmid, GuestConfig user_config,
     merged_cfg.mutable_cmdline()->append(" " + cmdline);
   }
   merged_cfg.clear_cmdline_add();
+  if (!merged_cfg.has_cmdline()) {
+    merged_cfg.set_cmdline("");
+  }
 
   // If there are any initial vsock listeners, they must be bound to unique host ports.
   if (merged_cfg.has_vsock_listeners() && merged_cfg.vsock_listeners().size() > 1) {
@@ -191,10 +194,13 @@ void GuestManager::HandleCreateResult(uint32_t vmid, GuestLifecycle_Create_Resul
                                       bool balloon_enabled, LaunchCallback callback) {
   GuestInstance* instance = FindInstance(vmid);
   if (instance == nullptr) {
+    FX_LOGS(ERROR) << "Guest Create failed for vmid=" << vmid << ": instance disappeared";
     callback(fpromise::error(GuestManagerError::START_FAILURE));
     return;
   }
   if (result.is_err()) {
+    FX_LOGS(ERROR) << "Guest Create failed for vmid=" << vmid
+                   << " GuestError=" << static_cast<uint32_t>(result.err());
     HandleGuestStopped(vmid, fit::error(result.err()));
     callback(fpromise::error(GuestManagerError::START_FAILURE));
   } else {

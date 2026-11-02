@@ -42,6 +42,8 @@ void VmmController::Create(::fuchsia::virtualization::GuestConfig guest_config,
   fit::result<GuestError> result =
       vmm->Initialize(std::move(guest_config), context_.get(), dispatcher_);
   if (!result.is_ok()) {
+    FX_LOGS(ERROR) << "VMM Initialize failed with GuestError "
+                   << static_cast<uint32_t>(result.error_value());
     callback(fpromise::error(result.error_value()));
     return;
   }

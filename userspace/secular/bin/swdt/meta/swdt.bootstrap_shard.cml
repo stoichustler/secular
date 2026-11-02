@@ -1,0 +1,27 @@
+// Copyright 2026 The Fuchsia Authors. All rights reserved.
+// Use of this source code is governed by a BSD-style license that can be
+// found in the LICENSE file.
+
+// Eager background watchdog. It pets itself every 15s and pings
+// guest_manager. It does not take RootJob.
+{
+    children: [
+        {
+            name: "swdt",
+            url: "fuchsia-boot:///swdt#meta/swdt.cm",
+            startup: "eager",
+        },
+    ],
+    offer: [
+        {
+            protocol: "fuchsia.virtualization.GuestManager",
+            from: "#guest-manager",
+            to: "#swdt",
+        },
+        {
+            dictionary: "diagnostics",
+            from: "self",
+            to: "#swdt",
+        },
+    ],
+}

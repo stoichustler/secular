@@ -110,6 +110,7 @@ enum class GicrRegister : uint64_t {
     TYPE          = 0x008,
     STATUSR       = 0x010,
     WAKE          = 0x014,
+    PWRR          = 0x024,
     PID2_V3       = 0xffe8,
     // Offset from SGI_BASE
     IGROUP0       = 0x10080,
@@ -196,9 +197,13 @@ GicDistributor::GicDistributor(Guest* guest) : guest_(guest) {}
 zx_status_t GicDistributor::Init(uint8_t num_cpus) {
   fuchsia::sysinfo::InterruptControllerInfoPtr info;
   zx_status_t status = get_interrupt_controller_info(&info);
-  if (status != ZX_OK) {
-    FX_LOGS(ERROR) << "Failed to get GIC version " << zx_status_get_string(status);
-    return status;
+  // Secular qemu-arm64 boots with GICv3 and does not pack sysinfo. If SysInfo
+  // is missing, keep the same interrupt-controller model Machina exposes.
+  if (status != ZX_OK || !info) {
+    FX_LOGS(WARNING) << "Failed to get GIC version from SysInfo (" << zx_status_get_string(status)
+                     << "); defaulting to GICv3";
+    info = fuchsia::sysinfo::InterruptControllerInfo::New();
+    info->type = fuchsia::sysinfo::InterruptControllerType::GIC_V3;
   }
   if (info->type != fuchsia::sysinfo::InterruptControllerType::GIC_V2 &&
       info->type != fuchsia::sysinfo::InterruptControllerType::GIC_V3) {
@@ -403,8 +408,9 @@ zx_status_t GicDistributor::Read(uint64_t addr, IoValue* value) {
       return ZX_OK;
     }
     default:
-      FX_LOGS(ERROR) << "Unhandled GIC distributor address read 0x" << std::hex << addr;
-      return ZX_ERR_NOT_SUPPORTED;
+      FX_LOGS(WARNING) << "RAZ unhandled GIC distributor address read 0x" << std::hex << addr;
+      value->u64 = 0;
+      return ZX_OK;
   }
 }
 
@@ -537,8 +543,8 @@ zx_status_t GicDistributor::Write(uint64_t addr, const IoValue& value) {
     case GicdRegister::IGRPMOD0... GicdRegister::IGRPMOD31:
       return ZX_OK;
     default:
-      FX_LOGS(ERROR) << "Unhandled GIC distributor address write 0x" << std::hex << addr;
-      return ZX_ERR_NOT_SUPPORTED;
+      FX_LOGS(WARNING) << "WI unhandled GIC distributor address write 0x" << std::hex << addr;
+      return ZX_OK;
   }
 }
 
@@ -651,6 +657,7 @@ zx_status_t GicRedistributor::Read(uint64_t addr, IoValue* value) {
     case GicrRegister::IIDR:
     case GicrRegister::STATUSR:
     case GicrRegister::WAKE:
+    case GicrRegister::PWRR:
     case GicrRegister::IGROUP0:
     case GicrRegister::ISPEND0:
     case GicrRegister::ICPEND0:
@@ -672,8 +679,9 @@ zx_status_t GicRedistributor::Read(uint64_t addr, IoValue* value) {
       value->u32 = pidr2_arch_rev(kGicv3Revision);
       return ZX_OK;
     default:
-      FX_LOGS(ERROR) << "Unhandled GIC redistributor address read 0x" << std::hex << addr;
-      return ZX_ERR_NOT_SUPPORTED;
+      FX_LOGS(WARNING) << "RAZ unhandled GIC redistributor address read 0x" << std::hex << addr;
+      value->u64 = 0;
+      return ZX_OK;
   }
   return ZX_OK;
 }
@@ -701,6 +709,7 @@ zx_status_t GicRedistributor::Write(uint64_t addr, const IoValue& value) {
     case GicrRegister::CTL:
     case GicrRegister::STATUSR:
     case GicrRegister::WAKE:
+    case GicrRegister::PWRR:
     case GicrRegister::IGROUP0:
     case GicrRegister::ISPEND0:
     case GicrRegister::ICPEND0:
@@ -711,8 +720,8 @@ zx_status_t GicRedistributor::Write(uint64_t addr, const IoValue& value) {
     case GicrRegister::NSACR:
       return ZX_OK;
     default:
-      FX_LOGS(ERROR) << "Unhandled GIC redistributor address write 0x" << std::hex << addr;
-      return ZX_ERR_NOT_SUPPORTED;
+      FX_LOGS(WARNING) << "WI unhandled GIC redistributor address write 0x" << std::hex << addr;
+      return ZX_OK;
   }
 }
 

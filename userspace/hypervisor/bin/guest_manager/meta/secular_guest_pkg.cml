@@ -2,8 +2,8 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-// Placeholder guest package: serves /pkg (data/guest.cfg) without a
-// kernel image so guest_manager can start.
+// Guest package: data/guest.cfg plus the Zephyr ARM64 Image at
+// data/zephyr.bin (vmid 0 RTOS).
 {
     include: [
         "inspect/client.shard.cml",

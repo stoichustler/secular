@@ -56,6 +56,12 @@
             ],
         },
         {
+            // Optional: Secular does not pack sysinfo. GIC init falls back to
+            // GICv3 when this protocol is absent.
+            protocol: "fuchsia.sysinfo.SysInfo",
+            availability: "optional",
+        },
+        {
             protocol: [ "fuchsia.scheduler.RoleManager" ],
             availability: "optional",
         },

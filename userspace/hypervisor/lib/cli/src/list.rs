@@ -205,20 +205,38 @@ impl fmt::Display for GuestSummary {
     }
 }
 
-fn list_entry_to_overview(entry: GuestListEntry) -> GuestOverview {
+fn list_entry_to_overview(entry: GuestListEntry, stop_reason: Option<String>) -> GuestOverview {
+    let status = guest_status_to_string(
+        entry.guest_status.expect("guest status should always be set"),
+    )
+    .to_string();
+    let status = match stop_reason {
+        Some(reason) => format!("{} ({})", status, reason),
+        None => status,
+    };
     GuestOverview {
         name: format!("vmid={}", entry.vmid.unwrap_or(0)),
-        status: guest_status_to_string(
-            entry.guest_status.expect("guest status should always be set"),
-        )
-        .to_string(),
+        status,
         uptime_nanos: entry.uptime,
     }
 }
 
 async fn get_environment_summary(manager: GuestManagerProxy) -> Result<GuestSummary, Error> {
     let guests = manager.list().await.map_err(|err| anyhow!("Failed to list guests: {}", err))?;
-    Ok(GuestSummary { guests: guests.into_iter().map(list_entry_to_overview).collect() })
+    let mut overviews = Vec::new();
+    for entry in guests {
+        let vmid = entry.vmid.unwrap_or(0);
+        let stop_reason = if entry.guest_status == Some(GuestStatus::Stopped) {
+            match manager.get_info(vmid).await {
+                Ok(info) => info.stop_error.map(|err| format!("{:?}", err)),
+                Err(_) => None,
+            }
+        } else {
+            None
+        };
+        overviews.push(list_entry_to_overview(entry, stop_reason));
+    }
+    Ok(GuestSummary { guests: overviews })
 }
 
 #[derive(serde::Serialize, serde::Deserialize)]

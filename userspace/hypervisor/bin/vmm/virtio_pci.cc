@@ -6,6 +6,7 @@
 
 #include <lib/syslog/cpp/macros.h>
 #include <lib/trace/event.h>
+#include <iterator>
 #include <stdio.h>
 #include <zircon/status.h>
 
@@ -206,9 +207,13 @@ zx_status_t VirtioPci::CommonCfgRead(uint64_t addr, IoValue* value) const {
       {
         std::lock_guard<std::mutex> lock(device_config_->mutex);
         VirtioQueueConfig* cfg = &device_config_->queue_configs[idx];
-        value->u32 = cfg->words[word];
+        if (value->access_size == 8 && word + 1 < std::size(cfg->words)) {
+          value->u64 = cfg->words[word] | (static_cast<uint64_t>(cfg->words[word + 1]) << 32);
+        } else {
+          value->u32 = cfg->words[word];
+          value->access_size = 4;
+        }
       }
-      value->access_size = 4;
       return ZX_OK;
     }
     case VIRTIO_PCI_COMMON_CFG_QUEUE_NOTIFY_OFF: {
@@ -353,7 +358,12 @@ zx_status_t VirtioPci::CommonCfgWrite(uint64_t addr, const IoValue& value) {
       return ZX_OK;
     }
     case VIRTIO_PCI_COMMON_CFG_QUEUE_DESC_LOW ... VIRTIO_PCI_COMMON_CFG_QUEUE_USED_HIGH: {
-      if (value.access_size != 4) {
+      // Linux programs these as two 32-bit stores. Zephyr writes the 64-bit
+      // queue_desc / queue_driver / queue_device fields in one 8-byte access.
+      if (value.access_size != 4 && value.access_size != 8) {
+        return ZX_ERR_IO;
+      }
+      if (value.access_size == 8 && (addr % 8) != 0) {
         return ZX_ERR_IO;
       }
       const uint16_t idx = queue_sel();
@@ -365,7 +375,15 @@ zx_status_t VirtioPci::CommonCfgWrite(uint64_t addr, const IoValue& value) {
       // Update the configuration words for the queue.
       std::lock_guard<std::mutex> lock(device_config_->mutex);
       VirtioQueueConfig* cfg = &device_config_->queue_configs[idx];
-      cfg->words[word] = value.u32;
+      if (value.access_size == 8) {
+        if (word + 1 >= std::size(cfg->words)) {
+          return ZX_ERR_OUT_OF_RANGE;
+        }
+        cfg->words[word] = static_cast<uint32_t>(value.u64);
+        cfg->words[word + 1] = static_cast<uint32_t>(value.u64 >> 32);
+      } else {
+        cfg->words[word] = value.u32;
+      }
       return ZX_OK;
     }
     case VIRTIO_PCI_COMMON_CFG_QUEUE_ENABLE: {

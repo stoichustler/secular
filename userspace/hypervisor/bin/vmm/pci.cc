@@ -604,12 +604,26 @@ zx_status_t PciDevice::WriteConfig(uint64_t reg, const IoValue& value) {
 
   switch (reg) {
     case fidl::ToUnderlying(fpci::wire::Config::kCommand): {
-      if (value.access_size != 2) {
-        return ZX_ERR_NOT_SUPPORTED;
+      // PCI 3.0: COMMAND is 16-bit at 0x04. Linux uses 16-bit stores; Zephyr
+      // (and some PCI libraries) write 32 bits covering COMMAND+STATUS. STATUS
+      // is read-only, so only the low 16 bits are applied.
+      uint16_t command;
+      switch (value.access_size) {
+        case 1:
+          command = value.u8;
+          break;
+        case 2:
+          command = value.u16;
+          break;
+        case 4:
+          command = static_cast<uint16_t>(value.u32);
+          break;
+        default:
+          return ZX_ERR_NOT_SUPPORTED;
       }
       {
         std::lock_guard<std::mutex> lock(mutex_);
-        command_ = value.u16;
+        command_ = command;
       }
       // If this write enables interrupts, send any pending interrupts to the
       // bus.

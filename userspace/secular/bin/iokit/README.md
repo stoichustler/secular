@@ -12,4 +12,5 @@ Console file tools installed in `/boot/bin`. To add a command, follow
 | `elfdump` | Dump ELF headers of an executable or object |
 | `hexdump` | Write a file as canonical hex and ASCII |
 | `kdmips` | Dhrystone 2.1 integer throughput (KDMIPS) |
+| `runman` | Animate a solid-block progress bar |
 | `tree` | List directory contents in a tree |

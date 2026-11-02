@@ -3,7 +3,9 @@
 // found in the LICENSE file.
 use crate::attach::attach;
 use crate::platform::PlatformServices;
-use fidl_fuchsia_virtualization::{GuestConfig, GuestManagerError, GuestMarker, GuestProxy};
+use fidl_fuchsia_virtualization::{
+    GuestConfig, GuestError, GuestManagerError, GuestMarker, GuestProxy, GuestStatus,
+};
 use guest_cli_args as arguments;
 use std::fmt;
 
@@ -13,7 +15,7 @@ pub enum LaunchResult {
     AttachFailed(String),
     RoutingError,
     FidlError(String),
-    LaunchFailure(u32),
+    LaunchFailure { manager: u32, guest: Option<u32> },
 }
 
 impl fmt::Display for LaunchResult {
@@ -24,11 +26,21 @@ impl fmt::Display for LaunchResult {
                 write!(f, "Failed to attach to a running guest: {}", error)
             }
             LaunchResult::FidlError(error) => write!(f, "Failed FIDL call: {}", error),
-            LaunchResult::LaunchFailure(err) => write!(
-                f,
-                "Failed to launch guest: {:?}",
-                GuestManagerError::from_primitive(*err).expect("expected a valid error")
-            ),
+            LaunchResult::LaunchFailure { manager, guest } => {
+                write!(
+                    f,
+                    "Failed to launch guest: {:?}",
+                    GuestManagerError::from_primitive(*manager).expect("expected a valid error")
+                )?;
+                if let Some(guest_err) = guest {
+                    write!(
+                        f,
+                        " ({:?})",
+                        GuestError::from_primitive(*guest_err).expect("expected a valid guest error")
+                    )?;
+                }
+                Ok(())
+            }
             LaunchResult::RoutingError => {
                 writeln!(f, "")?;
                 writeln!(f, "Unable to connect to the guest manager.")?;
@@ -53,7 +65,22 @@ pub async fn handle_launch<P: PlatformServices>(
     }
 
     if !args.detach {
-        if let Err(err) = attach(guest.unwrap(), false).await {
+        let attach_err = attach(guest.unwrap(), false).await.err();
+        if let Ok(manager) = services.connect_to_manager().await {
+            if let Ok(info) = manager.get_info(args.vmid.get()).await {
+                if let Some(stop) = info.stop_error {
+                    return LaunchResult::LaunchFailure {
+                        manager: GuestManagerError::StartFailure.into_primitive(),
+                        guest: Some(stop.into_primitive()),
+                    };
+                }
+                if info.guest_status == Some(GuestStatus::Stopped) {
+                    println!("Guest stopped (clean shutdown). Use `guest list vmid={}` for details.",
+                             args.vmid);
+                }
+            }
+        }
+        if let Some(err) = attach_err {
             return LaunchResult::AttachFailed(format!("{}", err));
         }
     }
@@ -102,7 +129,20 @@ async fn launch<P: PlatformServices>(
         Err(err) => Err(LaunchResult::FidlError(format!("Send launch message - {}", err))),
         Ok(launch_result) => match launch_result {
             Ok(()) => Ok(guest),
-            Err(error) => Err(LaunchResult::LaunchFailure(error.into_primitive())),
+            Err(error) => {
+                let guest_err = if error == GuestManagerError::StartFailure {
+                    match manager.get_info(vmid.get()).await {
+                        Ok(info) => info.stop_error.map(|e| e.into_primitive()),
+                        Err(_) => None,
+                    }
+                } else {
+                    None
+                };
+                Err(LaunchResult::LaunchFailure {
+                    manager: error.into_primitive(),
+                    guest: guest_err,
+                })
+            }
         },
     }
 }

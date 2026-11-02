@@ -239,8 +239,13 @@ zx::result<> handle_system_instruction(uint32_t iss, uint64_t& hcr, GuestState* 
     case SystemRegister::OSLSR_EL1:
     case SystemRegister::OSDLR_EL1:
     case SystemRegister::DBGPRCR_EL1:
+    case SystemRegister::CNTP_TVAL_EL0:
+    case SystemRegister::CNTP_CTL_EL0:
+    case SystemRegister::CNTP_CVAL_EL0:
       next_pc(guest_state);
       // These registers are RAZ/WI. Their state is dictated by the host.
+      // CNTP_* is trapped so the host keeps the physical timer; guests time
+      // with CNTV_* (PPI 27).
       if (si.read && si.xt < GS_NUM_REGS) {
         guest_state->x[si.xt] = 0;
       }

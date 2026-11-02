@@ -24,14 +24,19 @@ __END_CDECLS
 // PL011 registers.
 enum class Pl011Register : uint64_t {
     DR      = 0x00,
+    RSR     = 0x04,  // receive status / error clear (ECR)
     FR      = 0x18,
+    ILPR    = 0x20,
     IBRD    = 0x24,
     FBRD    = 0x28,
     LCR     = 0x2c,
     CR      = 0x30,
     IFLS    = 0x34,
     IMSC    = 0x38,
+    RIS     = 0x3c,
+    MIS     = 0x40,
     ICR     = 0x44,
+    DMACR   = 0x48,
 };
 
 constexpr uint64_t kPl011PhysBase = 0x808300000;
@@ -56,11 +61,21 @@ zx_status_t Pl011::Read(uint64_t addr, IoValue* value) {
     }
     case Pl011Register::FR:
       // Incoming data is immediately processed, so might as well always report
-      // that the TX FIFO is empty.
-      value->u16 = kPl011FlagRegisterTxFifoEmpty;
+      // that the TX FIFO is empty. RX FIFO empty (bit 4) keeps poll_in idle.
+      value->u16 = kPl011FlagRegisterTxFifoEmpty | (1u << 4);
       return ZX_OK;
+    case Pl011Register::DR:
+    case Pl011Register::RSR:
+    case Pl011Register::ILPR:
+    case Pl011Register::IBRD:
+    case Pl011Register::FBRD:
+    case Pl011Register::IFLS:
     case Pl011Register::IMSC:
-      value->u16 = 0;
+    case Pl011Register::RIS:
+    case Pl011Register::MIS:
+    case Pl011Register::ICR:
+    case Pl011Register::DMACR:
+      value->u32 = 0;
       return ZX_OK;
     case Pl011Register::LCR: {
       std::lock_guard<std::mutex> lock(mutex_);
@@ -68,8 +83,11 @@ zx_status_t Pl011::Read(uint64_t addr, IoValue* value) {
       return ZX_OK;
     }
     default:
-      FX_LOGS(ERROR) << "Unhandled PL011 address read 0x" << std::hex << addr;
-      return ZX_ERR_IO;
+      // Real PL011 ID/reserved registers are RAZ. Returning an error here
+      // tears down the whole VM (VCPU_RUNTIME_FAILURE).
+      FX_LOGS(WARNING) << "RAZ unhandled PL011 address read 0x" << std::hex << addr;
+      value->u32 = 0;
+      return ZX_OK;
   }
 }
 
@@ -88,15 +106,20 @@ zx_status_t Pl011::Write(uint64_t addr, const IoValue& value) {
       lcr_ = value.u16;
       return ZX_OK;
     }
+    case Pl011Register::RSR:
+    case Pl011Register::ILPR:
     case Pl011Register::IBRD:
     case Pl011Register::FBRD:
     case Pl011Register::ICR:
     case Pl011Register::IFLS:
     case Pl011Register::IMSC:
+    case Pl011Register::RIS:
+    case Pl011Register::MIS:
+    case Pl011Register::DMACR:
       return ZX_OK;
     default:
-      FX_LOGS(ERROR) << "Unhandled PL011 address write 0x" << std::hex << addr;
-      return ZX_ERR_IO;
+      FX_LOGS(WARNING) << "WI unhandled PL011 address write 0x" << std::hex << addr;
+      return ZX_OK;
   }
 }
 

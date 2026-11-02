@@ -59,6 +59,12 @@
             to: "#vmm",
         },
         {
+            protocol: "fuchsia.sysinfo.SysInfo",
+            from: "parent",
+            to: "#vmm",
+            availability: "optional",
+        },
+        {
             protocol: [ "fuchsia.scheduler.RoleManager" ],
             from: "parent",
             to: "#vmm",

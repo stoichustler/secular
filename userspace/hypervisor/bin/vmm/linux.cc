@@ -54,9 +54,12 @@ struct SetupData {
 } __PACKED;
 
 static constexpr char kDtbPath[] = "/pkg/data/board.dtb";
-static constexpr uintptr_t kRamdiskOffset = 0x8000000;
+// Default ramdisk/DTB window. setup_linux() moves this to the top of guest
+// RAM so 72 MiB RTOS guests still have room after the Image at kKernelOffset.
+static uintptr_t ramdisk_offset = 0x4000000;
 
-static uintptr_t DtbOffset() { return kRamdiskOffset - (2 * zx_system_get_page_size()); }
+static uintptr_t RamdiskOffset() { return ramdisk_offset; }
+static uintptr_t DtbOffset() { return RamdiskOffset() - (2 * zx_system_get_page_size()); }
 static uintptr_t DtbOverlayOffset() { return DtbOffset() - (2 * zx_system_get_page_size()); }
 static intptr_t DtbBootParamsOffset() { return DtbOffset() + sizeof(SetupData); }
 
@@ -297,7 +300,7 @@ static zx_status_t write_boot_params(const PhysMem& phys_mem, const DevMem& dev_
 
   // Set the address and size of the initial RAM disk.
   if (ramdisk_size > 0) {
-    write_bp(phys_mem, RAMDISK_IMAGE, kRamdiskOffset);
+    write_bp(phys_mem, RAMDISK_IMAGE, RamdiskOffset());
     write_bp(phys_mem, RAMDISK_SIZE, static_cast<uint32_t>(ramdisk_size));
   }
 
@@ -322,7 +325,7 @@ static zx_status_t write_boot_params(const PhysMem& phys_mem, const DevMem& dev_
     void* dtb;
     size_t dtb_size;
     zx_status_t status = read_device_tree(dtb_overlay_fd.get(), phys_mem, DtbBootParamsOffset(),
-                                          kRamdiskOffset, &dtb, &dtb_size);
+                                          RamdiskOffset(), &dtb, &dtb_size);
     if (status != ZX_OK) {
       FX_LOGS(ERROR) << "Failed to read device tree";
       return status;
@@ -390,7 +393,7 @@ static zx_status_t load_device_tree(fbl::unique_fd dtb_fd,
   void* dtb;
   size_t dtb_size;
   zx_status_t status =
-      read_device_tree(dtb_fd.get(), phys_mem, dtb_offset, kRamdiskOffset, &dtb, &dtb_size);
+      read_device_tree(dtb_fd.get(), phys_mem, dtb_offset, RamdiskOffset(), &dtb, &dtb_size);
   if (status != ZX_OK) {
     FX_LOGS(ERROR) << "Failed to read device tree";
     return status;
@@ -427,12 +430,12 @@ static zx_status_t load_device_tree(fbl::unique_fd dtb_fd,
 
   if (ramdisk_size > 0) {
     // Add the memory range of the initial RAM disk.
-    ret = fdt_setprop_u64(dtb, off, "linux,initrd-start", kRamdiskOffset);
+    ret = fdt_setprop_u64(dtb, off, "linux,initrd-start", RamdiskOffset());
     if (ret != 0) {
       device_tree_error_msg("linux,initrd-start");
       return ZX_ERR_BAD_STATE;
     }
-    ret = fdt_setprop_u64(dtb, off, "linux,initrd-end", kRamdiskOffset + ramdisk_size);
+    ret = fdt_setprop_u64(dtb, off, "linux,initrd-end", RamdiskOffset() + ramdisk_size);
     if (ret != 0) {
       device_tree_error_msg("linux,initrd-end");
       return ZX_ERR_BAD_STATE;
@@ -519,6 +522,11 @@ zx_status_t setup_linux(fuchsia::virtualization::GuestConfig* cfg, const PhysMem
                         const DevMem& dev_mem, const std::vector<GuestMemoryRegion>& guest_mem,
                         const std::vector<PlatformDevice*>& devices, uintptr_t* guest_ip,
                         uintptr_t* boot_ptr) {
+  const size_t page_size = zx_system_get_page_size();
+  if (phys_mem.size() > 8 * page_size) {
+    ramdisk_offset = phys_mem.size() - (2 * page_size);
+  }
+
   fbl::unique_fd kernel_fd;
   zx_status_t status = fdio_fd_create(cfg->mutable_kernel()->TakeChannel().release(),
                                       kernel_fd.reset_and_get_address());
@@ -541,7 +549,7 @@ zx_status_t setup_linux(fuchsia::virtualization::GuestConfig* cfg, const PhysMem
       return ZX_ERR_IO;
     }
 
-    status = read_fd(ramdisk_fd.get(), phys_mem, kRamdiskOffset, &ramdisk_size);
+    status = read_fd(ramdisk_fd.get(), phys_mem, RamdiskOffset(), &ramdisk_size);
     if (status != ZX_OK) {
       FX_LOGS(ERROR) << "Failed to read initial RAM disk";
       return status;
@@ -558,13 +566,17 @@ zx_status_t setup_linux(fuchsia::virtualization::GuestConfig* cfg, const PhysMem
     }
   }
 
+  // Origin guest packages always set cmdline. RTOS configs may omit it;
+  // HLCPP GuestConfig::cmdline() asserts if the field is unset.
+  const std::string cmdline = cfg->has_cmdline() ? cfg->cmdline() : std::string();
+
   if (is_boot_params(phys_mem)) {
     status = read_boot_params(phys_mem, guest_ip);
     if (status != ZX_OK) {
       return status;
     }
-    status = write_boot_params(phys_mem, dev_mem, guest_mem, cfg->cmdline(),
-                               std::move(dtb_overlay_fd), ramdisk_size);
+    status = write_boot_params(phys_mem, dev_mem, guest_mem, cmdline, std::move(dtb_overlay_fd),
+                               ramdisk_size);
     if (status != ZX_OK) {
       return status;
     }
@@ -580,7 +592,7 @@ zx_status_t setup_linux(fuchsia::virtualization::GuestConfig* cfg, const PhysMem
       return ZX_ERR_IO;
     }
     status = load_device_tree(std::move(dtb_fd), *cfg, phys_mem, dev_mem, guest_mem, devices,
-                              cfg->cmdline(), std::move(dtb_overlay_fd), ramdisk_size);
+                              cmdline, std::move(dtb_overlay_fd), ramdisk_size);
     if (status != ZX_OK) {
       return status;
     }

@@ -54,6 +54,7 @@
                 capability: "protocol",
                 target_monikers: [
                     "/bootstrap",
+                    "/bootstrap/guest-manager/vmm",
                 ],
             },
             {
@@ -205,6 +206,7 @@
                 capability: "protocol",
                 target_monikers: [
                     "/bootstrap",
+                    "/bootstrap/guest-manager/vmm",
                     "/bootstrap/fshost/blobfs",
                     "/bootstrap/fshost/fvm2/blobfs-collection:**",
                     "/bootstrap/pkg-cache",
