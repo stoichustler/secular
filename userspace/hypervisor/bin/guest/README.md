@@ -1,6 +1,6 @@
-# Fuchsia Guest Tool
-Welcome to the Fuchsia Virtualization Guest tool. This document covers the basic structure of how
-our command-line interface (CLI) tool works, so that you can make full use of it and extend it to
+# VMM CLI
+Welcome to the Secular VMM command-line tool. This document covers the basic structure of how
+the CLI works, so that you can make full use of it and extend it to
 fit your needs!
 
 ## Commands and Usage
@@ -9,9 +9,9 @@ The `launch` command creates an interactive session with a new Virtual Machine r
 specified package.
 
 #### Arguments
-`guest launch vmid=0 [--cmdline-add <arg>...] [--memory <memory-size>] [--cpus <num-cpus>] [--virtio-* <bool>]`
+`vmm launch vmid=0 [--cmdline-add <arg>...] [--memory <memory-size>] [--cpus <num-cpus>] [--virtio-* <bool>]`
 
-**Example**: `guest launch vmid=0 --memory 536870912 --cpus 2`
+**Example**: `vmm launch vmid=0 --memory 536870912 --cpus 2`
 
 **Positional Arguments**
 - `vmid`: Guest identifier, written as `vmid=<id>` or a bare integer. Each
@@ -31,12 +31,12 @@ specified package.
 #### Structure
 The `launch` command serves as an intermediary between the end user and the Guest Manager.
 The end user provides the specified arguments (shown above) for how they wish the Guest to be
-configured, which are parsed by the `guest` tool. The parsed arguments and then sent to the
+configured, which are parsed by the `vmm` tool. The parsed arguments and then sent to the
 Guest Manager via FIDL, which spawns a vmm (Virtual Machine Monitor) component and supplies a FIDL
-connection to the `guest` tool for communicating with the spawned Guest.
+connection to the `vmm` tool for communicating with the spawned Guest.
 
 The Virtual Machine (VM) is communicated with to retrieve sockets connected to the Guest's serial
-port and terminal. These sockets are treated as data streams within `guest`, processing
+port and terminal. These sockets are treated as data streams within `vmm`, processing
 information read from these sockets and writing user input back to the VM (which then passes the
 information to the Guest), enabling an interactive session to occur.
 
@@ -44,13 +44,13 @@ information to the Guest), enabling an interactive session to occur.
 ![launch_diagram](doc/launch.png)
 
 ### Stop
-`guest stop vmid=0 [-f]`
+`vmm stop vmid=0 [-f]`
 
 Stops the guest identified by vmid. `-f` force-stops without a graceful
 shutdown command.
 
 ### Attach
-`guest attach vmid=0`
+`vmm attach vmid=0`
 
 Attaches console and serial to a running guest identified by vmid.
 
@@ -58,9 +58,9 @@ Attaches console and serial to a running guest identified by vmid.
 The `list` command shows guests that have been launched, or details for one vmid.
 
 #### Arguments
-`guest list`
+`vmm list`
 
-`guest list vmid=0`
+`vmm list vmid=0`
 
 **Example summary**:
 ```
@@ -68,7 +68,7 @@ VMID     Status   Uptime
 vmid=0   Running  00:02:03 HH:MM:SS
 ```
 
-**Example details** (`guest list vmid=0`):
+**Example details** (`vmm list vmid=0`):
 ```
 Guest vmid:         vmid=0
 Guest package:      fuchsia-boot:///guest_manager#meta/guest_pkg.cm
@@ -93,7 +93,7 @@ launch configuration.
 
 #### Structure
 The `list` command connects to the Guest Manager via FIDL and queries guests by
-vmid. Use `guest list` for a summary, or `guest list vmid=0` for details of one
+vmid. Use `vmm list` for a summary, or `vmm list vmid=0` for details of one
 guest. The vmid values are used as arguments for other commands.
 
 ![list_diagram](doc/list.png)
@@ -102,9 +102,9 @@ guest. The vmid values are used as arguments for other commands.
 The `serial` command allows for interacting with a Guest over a serial connection.
 
 #### Arguments
-`guest attach vmid=0`
+`vmm attach vmid=0`
 
-**Example**: `guest attach vmid=0`
+**Example**: `vmm attach vmid=0`
 
 **Positional Arguments**
 - `vmid`: Guest identifier, for example `vmid=0`. See `list` for how to find this value.
@@ -112,9 +112,9 @@ The `serial` command allows for interacting with a Guest over a serial connectio
 #### Structure
 The `serial` command provides a convenient way to interact with a VM through a serial connection.
 This is useful for when you wish to access the serial port for a running VM, for example.
-The `guest` tool takes an environment identifier and a context identifier that identifies a VM,
-which are provided to the Guest Manager. Upon successful location, the `guest` tool is provided
-with a FIDL connection to the VM, which is then queried for a serial socket. The `guest` tool
+The `vmm` tool takes an environment identifier and a context identifier that identifies a VM,
+which are provided to the Guest Manager. Upon successful location, the `vmm` tool is provided
+with a FIDL connection to the VM, which is then queried for a serial socket. The `vmm` tool
 takes this socket and begins an interactive session over serial only, similar to the process in `launch`.
 
 ![serial_diagram](doc/serial.png)
@@ -124,10 +124,10 @@ takes this socket and begins an interactive session over serial only, similar to
 The `vsh` command allows for creating a virtual shell to a termina guest.
 
 #### Arguments
-`guest vsh [--port <port>] [-c] [--] [<args...>]`
+`vmm vsh [--port <port>] [-c] [--] [<args...>]`
 
-**Example**: `guest vsh echo hello world`
-**Example**: `guest vsh -- uname -a`
+**Example**: `vmm vsh echo hello world`
+**Example**: `vmm vsh -- uname -a`
 
 **Optional Arguments**
 - `--port: u32`: Port that vshd is listening on.
@@ -143,7 +143,7 @@ _**It is important to note** that this command requires a `vshd` server is run i
 _to use, which as of writing is currently only true for `termina`._
 
 The `vsh` command is the primary way of interacting with termina guests via a remote shell.
-The end user provides `guest` with optional values for the port that identifies the vsock connection
+The end user provides `vmm` with optional values for the port that identifies the vsock connection
 for `vsh` to create a new virtual shell on (defaults to 9001 if no port given), and whether to
 connect to the outer VM (the default) or the inner container.
 
@@ -168,7 +168,7 @@ The VM must not already be running when this command is issued.
 
 #### Arguments
 
-**Example**: `guest wipe vmid=0`
+**Example**: `vmm wipe vmid=0`
 
 **Positional Arguments**
 - `vmid`: The guest to clear.

@@ -24,17 +24,17 @@ To boot on an ARM64 device, replace `x64` with `arm64`.
 Once booted:
 
 ```
-guest launch debian
+vmm launch debian
 ```
 
 ## Telnet shell
 
 The Debian system exposes a simple telnet interface over vsock port 23. You can
-use the `guest` CLI to connect to this socket to open a shell. First we need to
+use the `vmm` CLI to connect to this socket to open a shell. First we need to
 identify the environment ID and the guest context ID (CID) to use:
 
 ```
-$ guest list
+$ vmm list
 env:0             debian
  guest:3          debian
 ```
@@ -43,7 +43,7 @@ The above indicates the debian guest is CID 3 in environment 0. Open a shell
 with:
 
 ```
-$ guest socat 0 3 23
+$ vmm socat 0 3 23
 ```
 
 ## CIPD (Googlers only)

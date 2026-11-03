@@ -29,7 +29,7 @@ validating:
 
 The micro benchmark is initiated by the guest tool. First a user must start a guest:
 
-`$ guest launch debian`
+`$ vmm launch debian`
 
 In a second shell on the host, the user can then initiate the micro benchmark:
 

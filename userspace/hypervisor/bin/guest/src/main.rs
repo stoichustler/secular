@@ -4,7 +4,7 @@
 
 use guest_cli_args::*;
 
-#[fuchsia::main(logging_tags = ["guest"])]
+#[fuchsia::main(logging_tags = ["vmm"])]
 async fn main() -> Result<(), anyhow::Error> {
     let options: GuestOptions = argh::from_env();
     let services = guest_cli::platform::FuchsiaPlatformServices::new();

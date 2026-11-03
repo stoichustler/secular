@@ -19,6 +19,10 @@ use zx_types::{
     zx_vaddr_t, zx_vm_option_t,
 };
 
+/// Width of the text before ` @ ` in userboot mapping logs.
+/// Must match `"{:<12} ELF {:<6} {:#8x}"` (12 + `" ELF "` + 6 + `" "` + 8).
+pub const USERBOOT_MAP_LOG_WIDTH: usize = 32;
+
 pub struct MappedElf {
     pub vmar: HandleOwner,
     pub vaddr_start: zx_vaddr_t,
@@ -64,17 +68,19 @@ pub fn map_handoff_elf(
     // TODO(mcgrathr): emit symbolizer markup for these instead
     dprintf!(
         SPEW,
-        "userboot: {:<31} @ [{:#x},{:#x})\n",
+        "userboot: {:<width$} @ [{:#x},{:#x})\n",
         "inside VMAR",
         parent_vmar_info.base,
-        parent_vmar_info.base + parent_vmar_info.len
+        parent_vmar_info.base + parent_vmar_info.len,
+        width = USERBOOT_MAP_LOG_WIDTH
     );
     dprintf!(
         SPEW,
-        "userboot: {:<31} @ [{:#x},{:#x})\n",
+        "userboot: {:<width$} @ [{:#x},{:#x})\n",
         vmo_name,
         mapped_elf.vaddr_start,
-        mapped_elf.vaddr_start + vmar_info.len
+        mapped_elf.vaddr_start + vmar_info.len,
+        width = USERBOOT_MAP_LOG_WIDTH
     );
 
     // Mappings marked with ZERO_FILL need anonymous VMO pages rather than file
@@ -147,10 +153,10 @@ pub fn map_handoff_elf(
         debug_assert!(map_base == mapped_elf.vaddr_start + mapping.vaddr);
         dprintf!(
             SPEW,
-            "userboot: {:<12} ELF {:<6} {:#7x} @ [{:#x},{:#x})\n",
+            "userboot: {:<12} ELF {:<6} {:#8x} @ [{:#x},{:#x})\n",
             vmo_name,
             segment_name,
-            mapping.paddr,
+            vmo_offset,
             map_base,
             map_base + mapping.size
         );

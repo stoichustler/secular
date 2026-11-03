@@ -29,7 +29,7 @@ use core::cmp::min;
 use core::ffi::c_void;
 use core::mem;
 use debug::{dprintf, kernel_oops};
-use elf::{initial_stack_pointer, map_handoff_elf};
+use elf::{USERBOOT_MAP_LOG_WIDTH, initial_stack_pointer, map_handoff_elf};
 use fbl::{RefPtr, Vector};
 use page::SIZE as PAGE_SIZE;
 use resource::get_resource_handle;
@@ -139,7 +139,13 @@ impl Userboot {
     fn map(&mut self, root_vmar: &VmAddressRegionDispatcher) -> Result<HandleOwner, Status> {
         // Map in the userboot image along with the vDSO.
         let mapped = self.map_elf_and_vdso(root_vmar)?;
-        dprintf!(SPEW, "userboot: {:<31} @  {:#x}\n", "entry point", mapped.userboot_entry);
+        dprintf!(
+            SPEW,
+            "userboot: {:<width$} @  {:#x}\n",
+            "entry point",
+            mapped.userboot_entry,
+            width = USERBOOT_MAP_LOG_WIDTH
+        );
 
         // Set up the stack.
         let sp = Self::map_stack(root_vmar, mapped.stack_size)?;
@@ -208,14 +214,23 @@ impl Userboot {
         let sp = initial_stack_pointer(stack_base, stack_size);
         dprintf!(
             SPEW,
-            "userboot: {:<31} @ [{:#x}, {:#x})\n",
+            "userboot: {:<width$} @ [{:#x},{:#x})\n",
             "stack mapped",
             stack_base,
-            stack_base + stack_size
+            stack_base + stack_size,
+            width = USERBOOT_MAP_LOG_WIDTH
         );
         let hex_width = |x: usize| 2 + ((usize::BITS - x.leading_zeros()) as usize).div_ceil(4);
-        let width = hex_width(stack_base) + 3 + hex_width(sp);
-        dprintf!(SPEW, "userboot: {:<31} @ {:#width$x}\n", "sp", sp, width = width);
+        // Pad so `sp` right-aligns with the end address of `[base,end)`.
+        let width = hex_width(stack_base) + 2 + hex_width(sp);
+        dprintf!(
+            SPEW,
+            "userboot: {:<width$} @ {:#value_width$x}\n",
+            "sp",
+            sp,
+            width = USERBOOT_MAP_LOG_WIDTH,
+            value_width = width
+        );
 
         let (_vmo_handle, _vmo_rights) =
             VmObjectDispatcher::create(&stack_vmo, stack_size as u64, InitialMutability::Mutable)?;

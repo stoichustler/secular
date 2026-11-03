@@ -18,7 +18,8 @@ group("tests") {
 
 rustc_binary("bin") {
   edition = "2024"
-  output_name = "guest"
+  # Installed as /boot/bin/vmm. Not `vmm`: that is the VMM process binary.
+  output_name = "vmm_cli"
   configs += [ "//products/build/config/rust:bootfs" ]
   deps = [
     "//userspace/lib/fuchsia",
@@ -42,12 +43,12 @@ fuchsia_package("guest_package") {
   deps = [ ":bin" ]
 }
 
-renamed_binary("bootfs_guest") {
-  source = "$root_out_dir/guest"
+renamed_binary("bootfs_vmm") {
+  source = "$root_out_dir/vmm_cli"
   source_deps = [ ":bin" ]
-  dest = "bin/guest"
+  dest = "bin/vmm"
 }
 
 bootfs_files_for_assembly("bootfs") {
-  deps = [ ":bootfs_guest" ]
+  deps = [ ":bootfs_vmm" ]
 }

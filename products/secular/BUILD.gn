@@ -178,7 +178,7 @@ zbi_input("bootfs_files") {
     "//userspace/sys/component_manager:component_manager_bootfs_config",
     "//userspace/zircon/bin:bootfs_binaries",
     "//userspace/zircon/bin/zxsh:sh",
-    "//userspace/hypervisor/bin/guest:bootfs_guest",
+    "//userspace/hypervisor/bin/guest:bootfs_vmm",
   ]
 }
 

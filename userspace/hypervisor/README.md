@@ -18,7 +18,7 @@ EL2  Zircon kernel hypervisor
        │
 EL0  host userspace (not a guest)
      component_manager, console, zxsh
-     guest CLI → GuestManager → VMM
+     vmm CLI → GuestManager → VMM
        │  syscall
        ▼
 EL1  Linux / RTOS guest
@@ -35,15 +35,15 @@ QEMU aarch64
          │    └─ guest_pkg            /pkg: data/guest.cfg only
          ├─ vmm_launcher              lazy; extra VMM collection (unused by manager)
          └─ console-launcher → zxsh
-                └─ /boot/bin/guest → fuchsia.virtualization.GuestManager
+                └─ /boot/bin/vmm → fuchsia.virtualization.GuestManager
 ```
 
-1. `guest launch vmid=0` connects to `GuestManager`.
+1. `vmm launch vmid=0` connects to `GuestManager`.
 2. `guest_manager` reads `/guest_pkg/data/guest.cfg`, merges CLI overrides,
    calls `GuestLifecycle.Create`.
 3. The VMM creates a `zx_guest`, maps GPA, installs GIC/UART/PCI/virtio, loads
    the Linux `Image` and `board.dtb`, starts VCPU 0.
-4. `guest attach vmid=0` binds virtio-console and serial to the host terminal.
+4. `vmm attach vmid=0` binds virtio-console and serial to the host terminal.
 
 Guests are identified by **vmid**, not by guest type. `"linux"` / `"rtos"` in
 `guest.cfg` set `kernel_type`; both use the ARM64 Image+DTB protocol.
@@ -75,7 +75,7 @@ Call it **in-kernel hypervisor + userspace VMM**.
 
 The **framework can boot an ARM64 Linux guest** once a kernel (and usually a
 root filesystem) is in the guest package. The **default Secular image cannot**:
-it ships the VMM and `guest` CLI, but only a placeholder `data/guest.cfg` with
+it ships the VMM and `vmm` CLI, but only a placeholder `data/guest.cfg` with
 no kernel.
 
 | Layer | In the console image? | Role for Linux |
@@ -85,12 +85,12 @@ no kernel.
 | VMM: GIC, PL011 UART, PL031 RTC, PCI | Yes | ARM64 machine |
 | virtio-console / block / rng / balloon / vsock / mem | Yes | Console, disk, entropy |
 | ARM64 `Image` + DTB (`setup_linux`) | Yes | Kernel at `0x2080000`, DTB `/pkg/data/board.dtb` |
-| `guest` CLI + `GuestManager` (vmid) | Yes | `guest launch vmid=0` from zxsh |
+| `vmm` CLI + `GuestManager` (vmid) | Yes | `vmm launch vmid=0` from zxsh |
 | Guest kernel (`data/kernel`) | **No** | Required. No `"linux"` key → VMM rejects config |
 | initrd / virtio-block rootfs | **No** | Kernel can start; userspace will not |
 | virtio-net / GPU / audio | No | Not needed for a serial Linux console |
 
-`guest launch vmid=0` on the current image fails at VMM init (`BAD_CONFIG` /
+`vmm launch vmid=0` on the current image fails at VMM init (`BAD_CONFIG` /
 `KERNEL_LOAD_FAILURE`), not at hypervisor bring-up.
 
 To start Linux, add an uncompressed ARM64 `Image` (magic `ARM\x64`) and a
@@ -124,7 +124,7 @@ How the ZBI gets a VMM and how zxsh finds `GuestManager`.
 
 | File | What to take away |
 | --- | --- |
-| `products/secular/BUILD.gn` | BOOTFS packages: `guest_manager`, `vmm_launcher`, `bin/guest` |
+| `products/secular/BUILD.gn` | BOOTFS packages: `guest_manager`, `vmm_launcher`, `/boot/bin/vmm` |
 | `userspace/hypervisor/meta/hypervisor.bootstrap_shard.cml` | Eager `guest-manager`, lazy `vmm_launcher`; offer `GuestManager` to `console-launcher` |
 | `userspace/hypervisor/bin/guest_manager/meta/guest_manager.cml` | Static children `vmm` and `guest_pkg`; use `GuestLifecycle` from `#vmm` |
 | `userspace/hypervisor/bin/vmm/meta/vmm.cml` | `GuestLifecycle` + virtio collections (console/block/rng/balloon/vsock/mem) |
@@ -133,7 +133,7 @@ How the ZBI gets a VMM and how zxsh finds `GuestManager`.
 
 ### 2. CLI → GuestManager
 
-User types `guest launch vmid=0`. Follow the FIDL, not guest_type.
+User types `vmm launch vmid=0`. Follow the FIDL, not guest_type.
 
 | File | What to take away |
 | --- | --- |
@@ -234,25 +234,25 @@ Suggested first pass: **1 → 2 → 4 (`vmm.cc` + `linux.cc` + `vcpu.cc`) → 6
 
 | Path | Role |
 | --- | --- |
-| `bin/guest` | Serial CLI (`launch` / `stop` / `attach` / `list` / balloon / vsock) |
+| `bin/guest` (`/boot/bin/vmm`) | Serial CLI (`vmm launch` / `stop` / `attach` / `list`) |
 | `bin/guest_manager` | `GuestManager`; vmid table; reads guest.cfg |
 | `bin/vmm` | Machine + virtio; Linux/RTOS/Zircon loaders |
 | `bin/vmm_launcher` | `vmm-*` children per `GuestLifecycle` connection |
 | `lib/guest_config` | JSON `guest.cfg` parser |
-| `lib/cli` | Shared CLI for `guest` and `ffx guest` |
+| `lib/cli` | Shared CLI for `vmm` and `ffx guest` |
 | `packages/` | `guest_package()` template; Debian/Zircon recipes (not in the console ZBI) |
 | `meta/hypervisor.bootstrap_shard.cml` | Wires guest-manager + vmm_launcher into bootstrap |
 
 ## Console commands
 
 ```text
-guest launch vmid=0
-guest launch vmid=0 --memory 536870912 --cpus 2
-guest list
-guest list vmid=0
-guest attach vmid=0
-guest stop vmid=0
-guest stop vmid=0 -f
+vmm launch vmid=0
+vmm launch vmid=0 --memory 536870912 --cpus 2
+vmm list
+vmm list vmid=0
+vmm attach vmid=0
+vmm stop vmid=0
+vmm stop vmid=0 -f
 ```
 
 `vmid=0` and a bare `0` are both accepted.

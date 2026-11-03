@@ -25,7 +25,7 @@ impl FfxMain for GuestAttachTool {
         // TODO(https://fxbug.dev/42068091): Remove when overnet supports duplicated socket handles.
         return_user_error!(
             "The ffx guest plugin doesn't support attaching to a running guest. \
-    Use the guest tool instead: `fx shell guest attach {}`. \
+    Use the vmm tool instead: `fx shell vmm attach {}`. \
     See https://fxbug.dev/42068091 for updates.",
             self.cmd.vmid
         );

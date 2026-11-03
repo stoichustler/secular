@@ -76,7 +76,7 @@ pub async fn handle_launch<P: PlatformServices>(
                     };
                 }
                 if info.guest_status == Some(GuestStatus::Stopped) {
-                    println!("Guest stopped (clean shutdown). Use `guest list vmid={}` for details.",
+                    println!("Guest stopped (clean shutdown). Use `vmm list vmid={}` for details.",
                              args.vmid);
                 }
             }

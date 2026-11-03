@@ -9,5 +9,5 @@
 Launch on the Secular console:
 
 ```text
-guest launch vmid=0
+vmm launch vmid=0
 ```

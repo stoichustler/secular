@@ -61,7 +61,7 @@ pub enum SubCommands {
 pub mod list_args {
     use super::*;
     #[derive(ArgsInfo, FromArgs, PartialEq, Debug)]
-    /// List guests, or show details for one guest. Usage: guest list [vmid=0]
+    /// List guests, or show details for one guest. Usage: vmm list [vmid=0]
     #[argh(subcommand, name = "list")]
     #[cfg_attr(not(target_os = "fuchsia"), ffx_command())]
     pub struct ListArgs {
@@ -74,7 +74,7 @@ pub mod list_args {
 pub mod launch_args {
     use super::*;
     #[derive(ArgsInfo, FromArgs, PartialEq, Debug)]
-    /// Launch a guest image. Usage: guest launch vmid=0 [--cmdline-add <arg>...] [--memory <memory-size>] [--cpus <num-cpus>] [--virtio-* <bool>]
+    /// Launch a guest image. Usage: vmm launch vmid=0 [--cmdline-add <arg>...] [--memory <memory-size>] [--cpus <num-cpus>] [--virtio-* <bool>]
     #[argh(subcommand, name = "launch")]
     #[cfg_attr(not(target_os = "fuchsia"), ffx_command())]
     pub struct LaunchArgs {
@@ -123,7 +123,7 @@ pub mod launch_args {
 pub mod stop_args {
     use super::*;
     #[derive(ArgsInfo, FromArgs, PartialEq, Debug)]
-    /// Stop a running guest. Usage: guest stop vmid=0 [-f]
+    /// Stop a running guest. Usage: vmm stop vmid=0 [-f]
     #[argh(subcommand, name = "stop")]
     #[cfg_attr(not(target_os = "fuchsia"), ffx_command())]
     pub struct StopArgs {
@@ -139,7 +139,7 @@ pub mod stop_args {
 pub mod attach_args {
     use super::*;
     #[derive(ArgsInfo, FromArgs, PartialEq, Debug)]
-    /// Attach console and serial to a running guest. Usage: guest attach vmid=0
+    /// Attach console and serial to a running guest. Usage: vmm attach vmid=0
     #[argh(subcommand, name = "attach")]
     #[cfg_attr(not(target_os = "fuchsia"), ffx_command())]
     pub struct AttachArgs {
