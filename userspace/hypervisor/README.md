@@ -32,7 +32,7 @@ QEMU aarch64
     → userboot → component_manager → bootstrap
          ├─ guest-manager (eager)
          │    ├─ vmm                  static child, GuestLifecycle
-         │    └─ secular_guest_pkg    /pkg: data/guest.cfg only
+         │    └─ guest_pkg            /pkg: data/guest.cfg only
          ├─ vmm_launcher              lazy; extra VMM collection (unused by manager)
          └─ console-launcher → zxsh
                 └─ /boot/bin/guest → fuchsia.virtualization.GuestManager
@@ -128,7 +128,7 @@ How the ZBI gets a VMM and how zxsh finds `GuestManager`.
 | `userspace/hypervisor/meta/hypervisor.bootstrap_shard.cml` | Eager `guest-manager`, lazy `vmm_launcher`; offer `GuestManager` to `console-launcher` |
 | `userspace/hypervisor/bin/guest_manager/meta/guest_manager.cml` | Static children `vmm` and `guest_pkg`; use `GuestLifecycle` from `#vmm` |
 | `userspace/hypervisor/bin/vmm/meta/vmm.cml` | `GuestLifecycle` + virtio collections (console/block/rng/balloon/vsock/mem) |
-| `userspace/hypervisor/bin/guest_manager/meta/secular_guest_pkg.cml` | Serves `/pkg` (`data/guest.cfg` only today) |
+| `userspace/hypervisor/bin/guest_manager/meta/guest_pkg.cml` | Serves `/pkg` (`data/guest.cfg` only today) |
 | `userspace/secular/bin/console-launcher/meta/console-launcher.cml` | Optional `fuchsia.virtualization.GuestManager` in the shell namespace |
 
 ### 2. CLI → GuestManager

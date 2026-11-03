@@ -3,11 +3,7 @@
 // found in the LICENSE file.
 
 pub mod attach;
-pub mod balloon;
 pub mod launch;
 pub mod list;
-pub mod mem;
 pub mod platform;
-pub mod socat;
 pub mod stop;
-pub mod vsockperf;

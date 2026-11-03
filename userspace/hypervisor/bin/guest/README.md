@@ -55,16 +55,41 @@ shutdown command.
 Attaches console and serial to a running guest identified by vmid.
 
 ### List
-The `list` command allows for viewing of all currently running VMs.
+The `list` command shows guests that have been launched, or details for one vmid.
 
 #### Arguments
 `guest list`
 
-**Example output**:
+`guest list vmid=0`
+
+**Example summary**:
 ```
 VMID     Status   Uptime
 vmid=0   Running  00:02:03 HH:MM:SS
 ```
+
+**Example details** (`guest list vmid=0`):
+```
+Guest vmid:         vmid=0
+Guest package:      fuchsia-boot:///guest_manager#meta/guest_pkg.cm
+Guest status:       Running
+Guest uptime:       00:02:03 HH:MM:SS
+Kernel type:        Rtos
+CPU count:          2
+Guest memory:       72 MiB (75497472 bytes)
+Active devices:     console
+Inactive devices:   rng
+                    balloon
+                    vsock
+                    gpu
+                    sound
+                    mem
+Networks:           None
+```
+
+Details include kernel type, command line, CPU and memory, virtio devices, and
+network interfaces. Stopped guests also report the stop reason and the last
+launch configuration.
 
 #### Structure
 The `list` command connects to the Guest Manager via FIDL and queries guests by
@@ -72,60 +97,6 @@ vmid. Use `guest list` for a summary, or `guest list vmid=0` for details of one
 guest. The vmid values are used as arguments for other commands.
 
 ![list_diagram](doc/list.png)
-
-### Balloon
-The `balloon` command allows for modifying the size of a memory balloon. See `virtio-balloon.cc`
-for more on the Balloon device.
-#### Arguments
-`guest balloon set vmid=0 num-pages`
-
-**Example**: `guest balloon set vmid=0 3`
-
-**Positional Arguments**
-- `vmid`: Guest identifier, for example `vmid=0`. See `list` for how to find this value.
-- `num-pages: u32`: Number of memory pages the balloon will have after this operation.
-
-#### Structure
-The `balloon` command is used for modifying the size of a memory balloon. The `guest` tool takes
-the above arguments to locate the VM that is to be modified, and the new size for the associated
-memory balloon (which will shrink or grow depending on the value automatically). It provides the
-Guest Manager with the identifiers inputted via FIDL, and upon successful location, is provided the
-VM's `BalloonController` from the Guest Manager. This controller is used by `guest` to directly
-talk to the VM balloon via FIDL to modify the page number of the memory balloon.
-
-![balloon_diagram](doc/balloon.png)
-
-### Balloon Stats
-The `balloon-stats` command allows for viewing the current statistics of a memory balloon.
-#### Arguments
-`guest balloon stats vmid=0`
-
-**Example**: `guest balloon stats vmid=0`
-
-**Positional Arguments**
-- `vmid`: Guest identifier, for example `vmid=0`. See `list` for how to find this value.
-
-#### Structure
-The `balloon-stats` command functions almost identically to the `balloon` command in terms of how
-it locates the VM through the provided input arguments, however rather than requesting the number
-of memory pages be changed through the `BalloonController` over FIDL, instead a FIDL request is
-made to retrieve a vector of `MemStat`s, which detail the statistics for the fields of a memory
-balloon through `tag, value` pairs.
-These tags are detailed here:
-```
-"swap-in": Amount of memory swapped into balloon
-"swap-out": Amount of memory swapped out of balloon
-"major-faults": Amount of major faults so far
-"minor-faults": Amount of minor faults so far
-"free-memory": Amount of free memory in balloon
-"total-memory": Amount of memory total in balloon
-"available-memory": Amount of memory as in /proc
-"disk-caches": Amount of disk caches
-"hugetlb-allocations": Amount of hugetlb allocations
-"hugetlb-failures": Amount of hugetlb allocation failures
-```
-
-![balloon_stats_diagram](doc/balloon_stats.png)
 
 ### Serial
 The `serial` command allows for interacting with a Guest over a serial connection.
@@ -187,51 +158,6 @@ On failure to start termina the user is prompted if they would like to try again
 for a few reasons, most notably internet connection issues).
 
 ![vsh_diagram](doc/vsh.png)
-
-### Socat (**Soc**ket **cat**)
-The `socat` command allows creating a vsock connection on a guest identified by vmid. Data received
-on the socket will be sent to `stdout` and data from `stdin` will be sent over the socket.
-
-#### Arguments
-`guest socat connect vmid=0 port`
-
-**Example**: `guest socat connect vmid=0 2222`
-
-**Positional Arguments**
-- `vmid`: Guest identifier, for example `vmid=0`. See `list` for how to find this value.
-- `port: u32`: Port on `guest` to connect to.
-
-#### Structure
-The `socat` command is the used to create a vsock connection in a running VM. The end user provides
-`guest` with identifiers to find the VM hosting a listener server, and a port to connect to.
-The `guest` tool sends these identifiers to the Guest Manager via FIDL, being returned a FIDL
-connection to the environment specified. The tool then creates an interactive session through a
-socket, with data received being sent to `stdout` and input from `stdin` sent to the host.
-
-![socat_diagram](doc/socat.png)
-
-### Socat Listen
-The `socat listen` command allows listening on a vsock `port` for a guest identified by vmid.
-
-#### Arguments
-`guest socat listen vmid=0 host-port`
-
-**Example**: `guest socat listen vmid=0 2222`
-
-**Positional Arguments**
-- `vmid`: Guest identifier, for example `vmid=0`.
-- `port: u32`: Port to listen on.
-
-#### Structure
-The `socat listen` command is used to listen on a vsock port on the host endpoint (`vmid`),
-acting as a server for a vsock connection. The end user provides `guest` with the environment
-and port they wish to have this server listen on.
-
-Once `guest` is successfully able to listen on a port, it starts as a server. The server will
-run until it accepts one connection, at which point a session will begin between the client and
-server (see `socat`). Once this connection closes, the server is shut down and the process exits.
-
-![socat_listen_diagram](doc/socat-listen.png)
 
 ### Wipe
 

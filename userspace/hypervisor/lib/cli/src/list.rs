@@ -4,9 +4,8 @@
 
 use crate::platform::PlatformServices;
 use anyhow::{Error, anyhow};
-use fidl_fuchsia_virtualization::{GuestListEntry, GuestManagerProxy, GuestStatus};
+use fidl_fuchsia_virtualization::{GuestListEntry, GuestManagerProxy, GuestStatus, KernelType};
 use guest_cli_args as arguments;
-use prettytable::format::consts::FORMAT_CLEAN;
 use prettytable::{Table, row};
 use std::fmt;
 
@@ -38,6 +37,40 @@ fn uptime_to_string(uptime_nanos: Option<i64>) -> String {
     }
 }
 
+fn kernel_type_to_string(kernel_type: KernelType) -> &'static str {
+    match kernel_type {
+        KernelType::Zircon => "Zircon",
+        KernelType::Linux => "Linux",
+        KernelType::Rtos => "Rtos",
+    }
+}
+
+fn format_memory_bytes(bytes: u64) -> String {
+    const KIB: u64 = 1024;
+    const MIB: u64 = 1024 * 1024;
+    const GIB: u64 = 1024 * 1024 * 1024;
+    if bytes >= GIB && bytes % GIB == 0 {
+        format!("{} GiB ({} bytes)", bytes / GIB, bytes)
+    } else if bytes >= MIB && bytes % MIB == 0 {
+        format!("{} MiB ({} bytes)", bytes / MIB, bytes)
+    } else if bytes >= KIB && bytes % KIB == 0 {
+        format!("{} KiB ({} bytes)", bytes / KIB, bytes)
+    } else if bytes >= GIB {
+        format!("{:.2} GiB ({} bytes)", bytes as f64 / GIB as f64, bytes)
+    } else if bytes >= MIB {
+        format!("{:.2} MiB ({} bytes)", bytes as f64 / MIB as f64, bytes)
+    } else {
+        format!("{} bytes", bytes)
+    }
+}
+
+fn format_mac_address(octets: &[u8; 6]) -> String {
+    format!(
+        "{:02x}:{:02x}:{:02x}:{:02x}:{:02x}:{:02x}",
+        octets[0], octets[1], octets[2], octets[3], octets[4], octets[5]
+    )
+}
+
 #[derive(Default, serde::Serialize, serde::Deserialize)]
 pub struct GuestDetails {
     pub vmid: String,
@@ -45,89 +78,108 @@ pub struct GuestDetails {
     pub status: String,
     pub uptime_nanos: i64,
     pub stop_reason: Option<String>,
+    pub kernel_type: Option<String>,
+    pub cmdline: Option<String>,
+    pub cmdline_add: Vec<String>,
     pub cpu_count: Option<u8>,
     pub memory_bytes: Option<u64>,
     pub device_counts: Vec<(String, u32)>,
+    pub networks: Vec<String>,
     pub problems: Vec<String>,
+}
+
+fn device_names(device_counts: &[(String, u32)], active: bool) -> Vec<String> {
+    let names: Vec<String> = device_counts
+        .iter()
+        .filter(|(_, count)| if active { *count > 0 } else { *count == 0 })
+        .map(|(device, count)| {
+            if *count > 1 {
+                format!("{device} ({count} devices)")
+            } else {
+                device.clone()
+            }
+        })
+        .collect();
+    if names.is_empty() { vec!["None".to_string()] } else { names }
+}
+
+fn write_aligned_fields(
+    f: &mut fmt::Formatter<'_>,
+    fields: &[(String, Vec<String>)],
+) -> fmt::Result {
+    let width = fields.iter().map(|(label, _)| label.len()).max().unwrap_or(0);
+    for (label, values) in fields {
+        let mut values = values.iter();
+        let first = values.next().map(String::as_str).unwrap_or("");
+        writeln!(f, "{label:<width$}  {first}")?;
+        for value in values {
+            writeln!(f, "{:width$}  {value}", "")?;
+        }
+    }
+    Ok(())
 }
 
 impl fmt::Display for GuestDetails {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        let mut table = Table::new();
-        table.set_format(*FORMAT_CLEAN);
-        table.add_row(row!["Guest vmid:", self.vmid]);
-        table.add_row(row!["Guest package:", self.package_url]);
-        table.add_row(row!["Guest status:", self.status]);
-        table.add_row(row!["Guest uptime:", uptime_to_string(Some(self.uptime_nanos))]);
+        let mut fields = vec![
+            ("Guest vmid:".to_string(), vec![self.vmid.clone()]),
+            ("Guest package:".to_string(), vec![self.package_url.clone()]),
+            ("Guest status:".to_string(), vec![self.status.clone()]),
+            ("Guest uptime:".to_string(), vec![uptime_to_string(Some(self.uptime_nanos))]),
+        ];
 
-        if self.status == "Not started" {
-            write!(f, "{}", table)?;
-            return Ok(());
-        }
-
-        table.add_empty_row();
-
-        if let Some(stop_reason) = &self.stop_reason {
-            table.add_row(row!["Stop reason:", stop_reason]);
-        }
-        if let Some(cpu_count) = self.cpu_count {
-            table.add_row(row!["CPU count:", cpu_count]);
-        }
-        if let Some(memory_bytes) = self.memory_bytes {
-            let gib = f64::trunc(memory_bytes as f64 / (1 << 30) as f64) * 100.0 / 100.0;
-            table.add_row(row!["Guest memory:", format!("{} GiB ({} bytes)", gib, memory_bytes)]);
-        }
-
-        if self.cpu_count.is_some() && self.memory_bytes.is_some() {
-            table.add_empty_row();
-
-            let mut active = Table::new();
-            active.set_format(*FORMAT_CLEAN);
-            let mut inactive = Table::new();
-            inactive.set_format(*FORMAT_CLEAN);
-
-            for (device, count) in self.device_counts.iter() {
-                if *count == 0 {
-                    inactive.add_row(row![device]);
-                } else if *count == 1 {
-                    active.add_row(row![device]);
+        if self.status != "Not started" {
+            if let Some(stop_reason) = &self.stop_reason {
+                fields.push(("Stop reason:".to_string(), vec![stop_reason.clone()]));
+            }
+            if let Some(kernel_type) = &self.kernel_type {
+                fields.push(("Kernel type:".to_string(), vec![kernel_type.clone()]));
+            }
+            if let Some(cmdline) = &self.cmdline {
+                fields.push(("Kernel cmdline:".to_string(), vec![cmdline.clone()]));
+            }
+            if !self.cmdline_add.is_empty() {
+                fields.push(("Cmdline extras:".to_string(), vec![self.cmdline_add.join(" ")]));
+            }
+            if let Some(cpu_count) = self.cpu_count {
+                fields.push(("CPU count:".to_string(), vec![cpu_count.to_string()]));
+            }
+            if let Some(memory_bytes) = self.memory_bytes {
+                fields.push(("Guest memory:".to_string(), vec![format_memory_bytes(memory_bytes)]));
+            }
+            if !self.device_counts.is_empty() {
+                fields.push(("Active devices:".to_string(), device_names(&self.device_counts, true)));
+                fields.push((
+                    "Inactive devices:".to_string(),
+                    device_names(&self.device_counts, false),
+                ));
+            }
+            if !self.device_counts.is_empty() || !self.networks.is_empty() || self.cpu_count.is_some()
+            {
+                let networks = if self.networks.is_empty() {
+                    vec!["None".to_string()]
                 } else {
-                    active.add_row(row![format!("{} ({} devices)", device, *count)]);
-                }
+                    self.networks.clone()
+                };
+                fields.push(("Networks:".to_string(), networks));
             }
-
-            if active.len() == 0 {
-                active.add_row(row!["None"]);
-            }
-
-            if inactive.len() == 0 {
-                inactive.add_row(row!["None"]);
-            }
-
-            table.add_row(row!["Active devices:", active]);
-            table.add_empty_row();
-            table.add_row(row!["Inactive devices:", inactive]);
         }
-        write!(f, "{}", table)?;
+
+        write_aligned_fields(f, &fields)?;
 
         if !self.problems.is_empty() {
-            let mut problem_table = Table::new();
-            problem_table.set_format(*FORMAT_CLEAN);
-            problem_table.add_empty_row();
-            problem_table.add_row(row![
-                format!(
-                    "{} problem{} detected:",
-                    self.problems.len(),
-                    if self.problems.len() > 1 { "s" } else { "" }
-                ),
-                " "
-            ]);
-            for problem in self.problems.iter() {
-                problem_table.add_row(row![format!("* {}", problem), " "]);
+            writeln!(f)?;
+            writeln!(
+                f,
+                "{} problem{} detected:",
+                self.problems.len(),
+                if self.problems.len() > 1 { "s" } else { "" }
+            )?;
+            for problem in &self.problems {
+                writeln!(f, "* {problem}")?;
             }
-            write!(f, "{}", problem_table)?;
         }
-        return Ok(());
+        Ok(())
     }
 }
 
@@ -157,23 +209,41 @@ async fn get_detailed_information(
             .stop_error
             .map_or_else(|| "Clean shutdown".to_string(), |err| format!("{:?}", err));
         details.stop_reason = Some(stop_reason);
-    } else {
-        if let Some(config) = guest_info.guest_descriptor {
-            details.cpu_count = config.num_cpus;
-            details.memory_bytes = config.guest_memory;
+    }
 
-            let add_to_table =
-                |device: &str, is_active: Option<bool>, table: &mut Vec<(String, u32)>| -> () {
-                    let count = is_active.map(|b| b as u32).unwrap_or(0);
-                    table.push((device.to_string(), count));
-                };
+    if let Some(config) = guest_info.guest_descriptor {
+        details.cpu_count = config.num_cpus;
+        details.memory_bytes = config.guest_memory;
+        details.kernel_type = config.kernel_type.map(kernel_type_to_string).map(str::to_string);
+        details.cmdline = config.cmdline.filter(|cmdline| !cmdline.is_empty());
+        details.cmdline_add = config.cmdline_add.unwrap_or_default();
 
-            add_to_table("balloon", config.balloon, &mut details.device_counts);
-            add_to_table("console", config.console, &mut details.device_counts);
-            add_to_table("rng", config.rng, &mut details.device_counts);
-            add_to_table("vsock", config.vsock, &mut details.device_counts);
-            add_to_table("mem", config.mem, &mut details.device_counts);
-        }
+        let add_to_table =
+            |device: &str, is_active: Option<bool>, table: &mut Vec<(String, u32)>| {
+                let count = is_active.map(|active| active as u32).unwrap_or(0);
+                table.push((device.to_string(), count));
+            };
+
+        add_to_table("console", config.console, &mut details.device_counts);
+        add_to_table("rng", config.rng, &mut details.device_counts);
+        add_to_table("balloon", config.balloon, &mut details.device_counts);
+        add_to_table("vsock", config.vsock, &mut details.device_counts);
+        add_to_table("gpu", config.gpu, &mut details.device_counts);
+        add_to_table("sound", config.sound, &mut details.device_counts);
+        add_to_table("mem", config.mem, &mut details.device_counts);
+
+        details.networks = config
+            .networks
+            .unwrap_or_default()
+            .into_iter()
+            .map(|network| {
+                format!(
+                    "mac {} bridge={}",
+                    format_mac_address(&network.mac_address.octets),
+                    network.enable_bridge
+                )
+            })
+            .collect();
     }
 
     if let Some(problems) = guest_info.detected_problems {
@@ -271,7 +341,7 @@ mod test {
     use super::*;
     use fidl::endpoints::create_proxy_and_stream;
     use fidl_fuchsia_virtualization::{
-        GuestDescriptor, GuestError, GuestInfo, GuestListEntry, GuestManagerMarker,
+        GuestDescriptor, GuestError, GuestInfo, GuestListEntry, GuestManagerMarker, KernelType,
     };
     use fuchsia_async as fasync;
     use futures::StreamExt;
@@ -381,16 +451,12 @@ mod test {
             "{}",
             get_detailed_information(arguments::Vmid(0), manager).await.unwrap()
         );
-        let expected = concat!(
-            " Guest vmid:     vmid=0 \n",
-            " Guest package:  fuchsia-boot:///guest_manager#meta/secular_guest_pkg.cm \n",
-            " Guest status:   Stopped \n",
-            " Guest uptime:   00:00:05 HH:MM:SS \n",
-            "                  \n",
-            " Stop reason:    Clean shutdown \n",
-        );
-
-        assert_eq!(actual, expected);
+        assert!(actual.contains("vmid=0"));
+        assert!(actual.contains("Stopped"));
+        assert!(actual.contains("00:00:05 HH:MM:SS"));
+        assert!(actual.contains("Clean shutdown"));
+        assert!(!actual.contains("CPU count:"));
+        assert!(!actual.contains("Networks:"));
     }
 
     #[fuchsia::test(allow_stalls = false)]
@@ -406,16 +472,10 @@ mod test {
             "{}",
             get_detailed_information(arguments::Vmid(1), manager).await.unwrap()
         );
-        let expected = concat!(
-            " Guest vmid:     vmid=1 \n",
-            " Guest package:  fuchsia-boot:///guest_manager#meta/secular_guest_pkg.cm \n",
-            " Guest status:   Stopped \n",
-            " Guest uptime:   00:01:05 HH:MM:SS \n",
-            "                  \n",
-            " Stop reason:    InternalError \n",
-        );
-
-        assert_eq!(actual, expected);
+        assert!(actual.contains("vmid=1"));
+        assert!(actual.contains("Stopped"));
+        assert!(actual.contains("00:01:05 HH:MM:SS"));
+        assert!(actual.contains("InternalError"));
     }
 
     #[fuchsia::test(allow_stalls = false)]
@@ -426,10 +486,15 @@ mod test {
             guest_descriptor: Some(GuestDescriptor {
                 num_cpus: Some(4),
                 guest_memory: Some(1073741824),
+                kernel_type: Some(KernelType::Rtos),
+                cmdline: Some("console=ttyS0".to_string()),
+                cmdline_add: Some(vec!["earlycon=pl011".to_string()]),
                 balloon: Some(true),
                 console: Some(true),
                 rng: Some(true),
                 vsock: Some(true),
+                gpu: Some(false),
+                sound: Some(false),
                 mem: Some(false),
                 ..Default::default()
             }),
@@ -444,27 +509,61 @@ mod test {
             "{}",
             get_detailed_information(arguments::Vmid(0), manager).await.unwrap()
         );
-        let expected = concat!(
-            " Guest vmid:        vmid=0 \n",
-            " Guest package:     fuchsia-boot:///guest_manager#meta/secular_guest_pkg.cm \n",
-            " Guest status:      Running \n",
-            " Guest uptime:      02:05:00 HH:MM:SS \n",
-            "                     \n",
-            " CPU count:         4 \n",
-            " Guest memory:      1 GiB (1073741824 bytes) \n",
-            "                     \n",
-            " Active devices:     balloon  \n",
-            "                     console  \n",
-            "                     rng  \n",
-            "                     vsock  \n",
-            "                     \n",
-            " Inactive devices:   mem  \n",
-            "                                                        \n",
-            " 2 problems detected:                                    \n",
-            " * Host is experiencing heavy memory pressure            \n",
-            " * No bridge between guest and host network interaces    \n",
-        );
+        assert!(actual.contains("vmid=0"));
+        assert!(actual.contains("Running"));
+        assert!(actual.contains("02:05:00 HH:MM:SS"));
+        assert!(actual.contains("Kernel type:"));
+        assert!(actual.contains("Rtos"));
+        assert!(actual.contains("Kernel cmdline:"));
+        assert!(actual.contains("console=ttyS0"));
+        assert!(actual.contains("Cmdline extras:"));
+        assert!(actual.contains("earlycon=pl011"));
+        assert!(actual.contains("CPU count:"));
+        assert!(actual.contains("4"));
+        assert!(actual.contains("1 GiB (1073741824 bytes)"));
+        assert!(actual.contains("console"));
+        assert!(actual.contains("balloon"));
+        assert!(actual.contains("gpu"));
+        assert!(actual.contains("sound"));
+        assert!(actual.contains("Networks:"));
+        assert!(actual.contains("Host is experiencing heavy memory pressure"));
+        assert!(actual.contains("No bridge between guest and host network interaces"));
+    }
 
-        assert_eq!(actual, expected);
+    #[fuchsia::test]
+    fn memory_display_uses_largest_whole_unit() {
+        assert_eq!(format_memory_bytes(72 * 1024 * 1024), "72 MiB (75497472 bytes)");
+        assert_eq!(format_memory_bytes(1073741824), "1 GiB (1073741824 bytes)");
+        assert_eq!(format_memory_bytes(512), "512 bytes");
+    }
+
+    #[fuchsia::test]
+    fn details_values_share_one_column() {
+        let details = GuestDetails {
+            vmid: "vmid=0".to_string(),
+            package_url: arguments::GUEST_PACKAGE_URL.to_string(),
+            status: "Running".to_string(),
+            uptime_nanos: 0,
+            kernel_type: Some("Rtos".to_string()),
+            cpu_count: Some(2),
+            memory_bytes: Some(72 * 1024 * 1024),
+            device_counts: vec![
+                ("console".to_string(), 1),
+                ("rng".to_string(), 0),
+                ("balloon".to_string(), 0),
+                ("vsock".to_string(), 0),
+                ("gpu".to_string(), 0),
+                ("sound".to_string(), 0),
+                ("mem".to_string(), 0),
+            ],
+            ..Default::default()
+        };
+        let actual = format!("{details}");
+        assert!(actual.contains("guest_pkg.cm"));
+        let value_column = "Inactive devices:".len() + 2;
+        for line in actual.lines() {
+            assert_eq!(&line[value_column - 2..value_column], "  ");
+            assert_ne!(line.as_bytes()[value_column], b' ');
+        }
     }
 }

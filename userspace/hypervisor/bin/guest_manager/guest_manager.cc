@@ -479,6 +479,12 @@ void GuestManager::GetInfo(uint32_t vmid, GetInfoCallback callback) {
       if (instance->last_error.has_value()) {
         info.set_stop_error(instance->last_error.value());
       }
+      {
+        GuestDescriptor descriptor;
+        if (instance->guest_descriptor.Clone(&descriptor) == ZX_OK) {
+          info.set_guest_descriptor(std::move(descriptor));
+        }
+      }
       break;
     }
     case GuestStatus::VMM_UNEXPECTED_TERMINATION:
@@ -537,6 +543,12 @@ void GuestManager::SnapshotConfig(const fuchsia::virtualization::GuestConfig& co
   guest_descriptor->set_mem(config.has_virtio_mem() && config.virtio_mem());
   if (config.has_kernel_type()) {
     guest_descriptor->set_kernel_type(config.kernel_type());
+  }
+  if (config.has_cmdline()) {
+    guest_descriptor->set_cmdline(config.cmdline());
+  }
+  if (config.has_cmdline_add()) {
+    *guest_descriptor->mutable_cmdline_add() = config.cmdline_add();
   }
 }
 

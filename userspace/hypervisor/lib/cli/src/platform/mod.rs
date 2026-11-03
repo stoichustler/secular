@@ -7,9 +7,15 @@ use async_trait::async_trait;
 use blocking::Unblock;
 use fidl_fuchsia_virtualization::{GuestManagerProxy, GuestMarker, GuestProxy};
 use fuchsia_async as fasync;
+use futures::io::{AsyncReadExt, AsyncWriteExt};
 use guest_cli_args::Vmid;
 use std::io::{Read, Write};
 use std::os::fd::{AsFd, AsRawFd, BorrowedFd, FromRawFd, IntoRawFd, RawFd};
+
+/// ASCII ETX. Ignored while attached so Ctrl+C does not switch VM consoles.
+const CTRL_C: u8 = 0x03;
+/// ASCII EOT. Detaches the guest console and returns to secular.
+const CTRL_D: u8 = 0x04;
 
 #[cfg(target_os = "fuchsia")]
 mod fuchsia;
@@ -123,12 +129,78 @@ impl GuestConsole {
             .map_err(|e| e.factor_first().0.into())
     }
 
+    /// Like [`run`], but Ctrl+D detaches and Ctrl+C is ignored rather than forwarded.
+    pub async fn run_until_detach<
+        R: futures::io::AsyncRead + Unpin,
+        W: futures::io::AsyncWrite + Unpin,
+    >(
+        mut self,
+        host_tx: R,
+        mut host_rx: W,
+    ) -> Result<()> {
+        let mut input = self.input.take().expect("run can only be called once");
+        let output = self.output.take().expect("run can only be called once");
+
+        let guest_input = copy_host_input_until_vm_switch(host_tx, &mut input);
+        let guest_output = futures::io::copy(output, &mut host_rx);
+        futures::pin_mut!(guest_input, guest_output);
+
+        futures::future::try_select(guest_input, guest_output)
+            .await
+            .map(|_| ())
+            .map_err(|e| e.factor_first().0.into())
+    }
+
     pub async fn run_with_stdio(self) -> Result<()> {
         self.run(
             GuestConsole::get_unblocked_stdio(Stdio::Stdin),
             GuestConsole::get_unblocked_stdio(Stdio::Stdout),
         )
         .await
+    }
+
+    pub async fn run_with_stdio_until_detach(self) -> Result<()> {
+        self.run_until_detach(
+            GuestConsole::get_unblocked_stdio(Stdio::Stdin),
+            GuestConsole::get_unblocked_stdio(Stdio::Stdout),
+        )
+        .await
+    }
+}
+
+/// Returns bytes that should be forwarded to the guest, and whether Ctrl+D ended the chunk.
+fn filter_vm_switch_input(input: &[u8]) -> (Vec<u8>, bool) {
+    let mut forwarded = Vec::with_capacity(input.len());
+    for &byte in input {
+        match byte {
+            CTRL_C => {}
+            CTRL_D => return (forwarded, true),
+            _ => forwarded.push(byte),
+        }
+    }
+    (forwarded, false)
+}
+
+async fn copy_host_input_until_vm_switch<R, W>(mut reader: R, mut writer: W) -> std::io::Result<u64>
+where
+    R: futures::io::AsyncRead + Unpin,
+    W: futures::io::AsyncWrite + Unpin,
+{
+    let mut buf = [0u8; 1024];
+    let mut written = 0u64;
+    loop {
+        let n = reader.read(&mut buf).await?;
+        if n == 0 {
+            return Ok(written);
+        }
+        let (forwarded, detach) = filter_vm_switch_input(&buf[..n]);
+        if !forwarded.is_empty() {
+            writer.write_all(&forwarded).await?;
+            written = written.saturating_add(forwarded.len() as u64);
+        }
+        if detach {
+            return Ok(written);
+        }
     }
 }
 
@@ -182,5 +254,38 @@ mod test {
 
         assert_eq!(n, test_string.len());
         assert_eq!(String::from_utf8(buffer[..n].to_vec()).unwrap(), test_string);
+    }
+
+    #[::fuchsia::test]
+    fn vm_switch_input_drops_ctrl_c_and_stops_at_ctrl_d() {
+        assert_eq!(filter_vm_switch_input(b"ab\x03cd\x04ef"), (b"abcd".to_vec(), true));
+        assert_eq!(filter_vm_switch_input(b"hello"), (b"hello".to_vec(), false));
+        assert_eq!(filter_vm_switch_input(b"\x03\x03"), (Vec::new(), false));
+        assert_eq!(filter_vm_switch_input(b"\x04"), (Vec::new(), true));
+    }
+
+    #[::fuchsia::test]
+    async fn guest_console_ctrl_d_detaches_and_ignores_ctrl_c() {
+        let (guest_console_socket, guest_console_tx) = fidl::Socket::create_stream();
+        let guest_console_rx =
+            guest_console_tx.duplicate_handle(fidl::Rights::SAME_RIGHTS).unwrap();
+        let guest_console = GuestConsole::new(guest_console_rx, guest_console_tx)
+            .expect("failed to make guest console");
+
+        let (host_stdio, host_stdin_sock) = fidl::Socket::create_stream();
+        let host_stdout_sock = host_stdin_sock.duplicate_handle(fidl::Rights::SAME_RIGHTS).unwrap();
+        let host_stdout = fasync::Socket::from_socket(host_stdout_sock);
+        let host_stdin = fasync::Socket::from_socket(host_stdin_sock);
+
+        host_stdio.write(b"hi\x03!\x04ignored").unwrap();
+
+        guest_console
+            .run_until_detach(host_stdin, host_stdout)
+            .await
+            .expect("failed to complete!");
+
+        let mut buffer = [0; 1024];
+        let n = guest_console_socket.read(&mut buffer[..]).expect("failed to read guest input");
+        assert_eq!(&buffer[..n], b"hi!");
     }
 }

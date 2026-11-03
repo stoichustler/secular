@@ -67,9 +67,9 @@ resource("secular_zephyr_bin") {
   outputs = [ "data/zephyr.bin" ]
 }
 
-fuchsia_component("secular_guest_pkg") {
-  component_name = "secular_guest_pkg"
-  manifest = "meta/secular_guest_pkg.cml"
+fuchsia_component("guest_pkg") {
+  component_name = "guest_pkg"
+  manifest = "meta/guest_pkg.cml"
 
   # Nested into the guest_manager package. Skip cmc check-includes
   # (CML shards expected by library deps) and cmc validate-references
@@ -94,7 +94,7 @@ fuchsia_component("guest_manager_cmp") {
   check_references = false
   deps = [
     ":bin",
-    ":secular_guest_pkg",
+    ":guest_pkg",
     "//userspace/hypervisor/bin/vmm:vmm_component",
   ]
 }

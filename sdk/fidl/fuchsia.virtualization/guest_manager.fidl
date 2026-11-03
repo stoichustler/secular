@@ -78,6 +78,12 @@ type GuestDescriptor = table {
 
     /// Kernel type used to start the guest.
     13: kernel_type KernelType;
+
+    /// Kernel command-line used to start the guest.
+    14: cmdline string:MAX;
+
+    /// Additional kernel command-line fragments appended at launch.
+    15: cmdline_add vector<string:MAX>:MAX;
 };
 
 type GuestInfo = table {

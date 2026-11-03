@@ -4,7 +4,8 @@
 use crate::attach::attach;
 use crate::platform::PlatformServices;
 use fidl_fuchsia_virtualization::{
-    GuestConfig, GuestError, GuestManagerError, GuestMarker, GuestProxy, GuestStatus,
+    GuestConfig, GuestError, GuestManagerError, GuestManagerProxy, GuestMarker, GuestProxy,
+    GuestStatus, KernelType,
 };
 use guest_cli_args as arguments;
 use std::fmt;
@@ -65,7 +66,7 @@ pub async fn handle_launch<P: PlatformServices>(
     }
 
     if !args.detach {
-        let attach_err = attach(guest.unwrap(), false).await.err();
+        let attach_err = attach(guest.unwrap(), false, args.vmid.get()).await.err();
         if let Ok(manager) = services.connect_to_manager().await {
             if let Ok(info) = manager.get_info(args.vmid.get()).await {
                 if let Some(stop) = info.stop_error {
@@ -86,6 +87,25 @@ pub async fn handle_launch<P: PlatformServices>(
     }
 
     LaunchResult::LaunchCompleted
+}
+
+fn guest_system_label(kernel_type: Option<KernelType>) -> &'static str {
+    match kernel_type {
+        Some(KernelType::Rtos) => "Rtos",
+        Some(KernelType::Linux) => "Linux",
+        Some(KernelType::Zircon) => "Zircon",
+        None => "Rtos",
+    }
+}
+
+async fn guest_system_label_from_manager(manager: &GuestManagerProxy, vmid: u32) -> &'static str {
+    let kernel_type = manager
+        .get_info(vmid)
+        .await
+        .ok()
+        .and_then(|info| info.guest_descriptor)
+        .and_then(|descriptor| descriptor.kernel_type);
+    guest_system_label(kernel_type)
 }
 
 fn parse_vmm_args(arguments: &arguments::launch_args::LaunchArgs) -> GuestConfig {
@@ -118,7 +138,6 @@ async fn launch<P: PlatformServices>(
 ) -> Result<GuestProxy, LaunchResult> {
     let (guest, guest_server_end) = fidl::endpoints::create_proxy::<GuestMarker>();
 
-    println!("Starting {}", vmid);
     let manager = services
         .connect_to_manager()
         .await
@@ -128,7 +147,11 @@ async fn launch<P: PlatformServices>(
         Err(fidl::Error::ClientChannelClosed { .. }) => Err(LaunchResult::RoutingError),
         Err(err) => Err(LaunchResult::FidlError(format!("Send launch message - {}", err))),
         Ok(launch_result) => match launch_result {
-            Ok(()) => Ok(guest),
+            Ok(()) => {
+                let system = guest_system_label_from_manager(&manager, vmid.get()).await;
+                println!("Starting [{vmid}] {system}");
+                Ok(guest)
+            }
             Err(error) => {
                 let guest_err = if error == GuestManagerError::StartFailure {
                     match manager.get_info(vmid.get()).await {
@@ -144,5 +167,18 @@ async fn launch<P: PlatformServices>(
                 })
             }
         },
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[fuchsia::test]
+    fn guest_system_label_uses_rtos_linux_or_zircon() {
+        assert_eq!(guest_system_label(Some(KernelType::Rtos)), "Rtos");
+        assert_eq!(guest_system_label(Some(KernelType::Linux)), "Linux");
+        assert_eq!(guest_system_label(Some(KernelType::Zircon)), "Zircon");
+        assert_eq!(guest_system_label(None), "Rtos");
     }
 }

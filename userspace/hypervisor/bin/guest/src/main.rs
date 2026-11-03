@@ -25,29 +25,8 @@ async fn main() -> Result<(), anyhow::Error> {
             println!("{}", output);
             Ok(())
         }
-        SubCommands::Balloon(balloon_args) => {
-            let output = guest_cli::balloon::handle_balloon(&services, &balloon_args).await;
-            println!("{}", output);
-            Ok(())
-        }
         SubCommands::List(list_args) => {
             let output = guest_cli::list::handle_list(&services, &list_args).await?;
-            println!("{}", output);
-            Ok(())
-        }
-        SubCommands::VsockPerf(vsockperf_args) => {
-            let output = guest_cli::vsockperf::handle_vsockperf(&services, &vsockperf_args).await?;
-            println!("{}", output);
-            Ok(())
-        }
-        SubCommands::Socat(socat_args) => {
-            let output = guest_cli::socat::handle_socat(&services, &socat_args).await;
-            println!("{}", output);
-            Ok(())
-        }
-
-        SubCommands::Mem(mem_args) => {
-            let output = guest_cli::mem::handle_mem(&services, mem_args).await?;
             println!("{}", output);
             Ok(())
         }

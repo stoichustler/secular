@@ -40,7 +40,7 @@ impl fmt::Display for Vmid {
 /// Unified guest_manager is a bootstrap child on Secular.
 pub const GUEST_MANAGER_MONIKER: &str = "/bootstrap/guest-manager";
 pub const GUEST_MANAGER_INTERFACE: &str = "fuchsia.virtualization.GuestManager";
-pub const GUEST_PACKAGE_URL: &str = "fuchsia-boot:///guest_manager#meta/secular_guest_pkg.cm";
+pub const GUEST_PACKAGE_URL: &str = "fuchsia-boot:///guest_manager#meta/guest_pkg.cm";
 
 #[derive(ArgsInfo, FromArgs, PartialEq, Debug)]
 /// Top-level command.
@@ -55,157 +55,19 @@ pub enum SubCommands {
     Attach(crate::attach_args::AttachArgs),
     Launch(crate::launch_args::LaunchArgs),
     Stop(crate::stop_args::StopArgs),
-    Balloon(crate::balloon_args::BalloonArgs),
     List(crate::list_args::ListArgs),
-    Socat(crate::socat_args::SocatArgs),
-    VsockPerf(crate::vsockperf_args::VsockPerfArgs),
-    Mem(crate::mem_args::MemArgs),
-}
-
-pub mod mem_args {
-    use super::*;
-    /// Interact with the guest virtio-mem. Usage: guest mem sub-command [ request-plugged or stats]
-    #[derive(ArgsInfo, FromArgs, Debug, PartialEq)]
-    #[argh(subcommand, name = "mem")]
-    #[cfg_attr(not(target_os = "fuchsia"), ffx_command())]
-    pub struct MemArgs {
-        #[argh(subcommand)]
-        pub mem_cmd: MemCommands,
-    }
-    #[derive(ArgsInfo, FromArgs, PartialEq, Debug)]
-    #[argh(subcommand)]
-    pub enum MemCommands {
-        RequestPluggedMem(RequestPluggedMem),
-        StatsMem(StatsMem),
-    }
-
-    #[derive(ArgsInfo, FromArgs, PartialEq, Debug)]
-    /// Modify the requested amount of the dynamically plugged memory. Usage: guest mem request-plugged vmid=0 size
-    #[argh(subcommand, name = "request-plugged")]
-    pub struct RequestPluggedMem {
-        #[argh(positional)]
-        /// guest identifier, for example vmid=0
-        pub vmid: Vmid,
-        #[argh(positional)]
-        /// target amount of memory to be dynamically plugged
-        pub size: u64,
-    }
-    #[derive(ArgsInfo, FromArgs, PartialEq, Debug)]
-    /// See the stats of a guest's virtio-mem. Usage: guest mem stats vmid=0
-    #[argh(subcommand, name = "stats")]
-    pub struct StatsMem {
-        #[argh(positional)]
-        /// guest identifier, for example vmid=0
-        pub vmid: Vmid,
-    }
-}
-
-pub mod balloon_args {
-    use super::*;
-    #[derive(ArgsInfo, FromArgs, PartialEq, Debug)]
-    /// Interact with the guest memory balloon. Usage: guest balloon sub-command vmid=0 ...
-    #[argh(subcommand, name = "balloon")]
-    #[cfg_attr(not(target_os = "fuchsia"), ffx_command())]
-    pub struct BalloonArgs {
-        #[argh(subcommand)]
-        pub balloon_cmd: BalloonCommands,
-    }
-
-    #[derive(ArgsInfo, FromArgs, PartialEq, Debug)]
-    #[argh(subcommand)]
-    pub enum BalloonCommands {
-        Set(BalloonSet),
-        Stats(BalloonStats),
-    }
-
-    #[derive(ArgsInfo, FromArgs, PartialEq, Debug)]
-    /// Modify the size of a memory balloon. Usage: guest balloon set vmid=0 num-pages
-    #[argh(subcommand, name = "set")]
-    pub struct BalloonSet {
-        #[argh(positional)]
-        /// guest identifier, for example vmid=0
-        pub vmid: Vmid,
-        #[argh(positional)]
-        /// number of pages guest balloon will have after use.
-        pub num_pages: u32,
-    }
-
-    #[derive(ArgsInfo, FromArgs, PartialEq, Debug)]
-    /// See the stats of a guest's memory balloon. Usage: guest balloon stats vmid=0
-    #[argh(subcommand, name = "stats")]
-    pub struct BalloonStats {
-        #[argh(positional)]
-        /// guest identifier, for example vmid=0
-        pub vmid: Vmid,
-    }
 }
 
 pub mod list_args {
     use super::*;
     #[derive(ArgsInfo, FromArgs, PartialEq, Debug)]
-    /// List available guest environments.
+    /// List guests, or show details for one guest. Usage: guest list [vmid=0]
     #[argh(subcommand, name = "list")]
     #[cfg_attr(not(target_os = "fuchsia"), ffx_command())]
     pub struct ListArgs {
         #[argh(positional)]
         /// optional guest identifier to get detailed information about, for example vmid=0
         pub vmid: Option<Vmid>,
-    }
-}
-
-pub mod socat_args {
-    use super::*;
-    #[derive(ArgsInfo, FromArgs, PartialEq, Debug)]
-    /// Interact with the guest via socat. See the sub-command help for details.
-    #[argh(subcommand, name = "socat")]
-    #[cfg_attr(not(target_os = "fuchsia"), ffx_command())]
-    pub struct SocatArgs {
-        #[argh(subcommand)]
-        pub socat_cmd: SocatCommands,
-    }
-
-    #[derive(ArgsInfo, FromArgs, PartialEq, Debug)]
-    #[argh(subcommand)]
-    pub enum SocatCommands {
-        Listen(SocatListen),
-        Connect(SocatConnect),
-    }
-
-    #[derive(ArgsInfo, FromArgs, PartialEq, Debug)]
-    /// Create a socat connection on the specified port. Usage: guest socat connect vmid=0 port
-    #[argh(subcommand, name = "connect")]
-    pub struct SocatConnect {
-        #[argh(positional)]
-        /// guest identifier, for example vmid=0
-        pub vmid: Vmid,
-        #[argh(positional)]
-        /// guest port number to attempt to connect to
-        pub guest_port: u32,
-    }
-
-    #[derive(ArgsInfo, FromArgs, PartialEq, Debug)]
-    /// Listen through socat on the specified port. Usage: guest socat listen vmid=0 host-port
-    #[argh(subcommand, name = "listen")]
-    pub struct SocatListen {
-        #[argh(positional)]
-        /// guest identifier, for example vmid=0
-        pub vmid: Vmid,
-        #[argh(positional)]
-        /// host port number to accept incoming guest connections on
-        pub host_port: u32,
-    }
-}
-
-pub mod vsockperf_args {
-    use super::*;
-    #[derive(ArgsInfo, FromArgs, PartialEq, Debug)]
-    /// Perform a vsock micro benchmark on the target guest.
-    #[argh(subcommand, name = "vsock-perf")]
-    #[cfg_attr(not(target_os = "fuchsia"), ffx_command())]
-    pub struct VsockPerfArgs {
-        #[argh(positional)]
-        /// guest identifier, for example vmid=0
-        pub vmid: Vmid,
     }
 }
 

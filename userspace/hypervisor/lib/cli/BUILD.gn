@@ -28,7 +28,12 @@ rustc_library("guest_cli") {
   ]
 
   if (is_fuchsia) {
-    deps += [ "//userspace/lib/fuchsia-component" ]
+    deps += [
+      "//sdk/fidl/fuchsia.hardware.pty:fuchsia.hardware.pty_rust",
+      "//sdk/rust/zx",
+      "//userspace/lib/fdio/rust:fdio",
+      "//userspace/lib/fuchsia-component",
+    ]
   }
   if (is_host) {
     deps += [
@@ -48,17 +53,13 @@ rustc_library("guest_cli") {
 
   sources = [
     "src/attach.rs",
-    "src/balloon.rs",
     "src/launch.rs",
     "src/lib.rs",
     "src/list.rs",
-    "src/mem.rs",
     "src/platform/fuchsia.rs",
     "src/platform/host.rs",
     "src/platform/mod.rs",
-    "src/socat.rs",
     "src/stop.rs",
-    "src/vsockperf.rs",
   ]
 }
 

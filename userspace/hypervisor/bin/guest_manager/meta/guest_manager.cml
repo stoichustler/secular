@@ -22,7 +22,7 @@
         },
         {
             name: "guest_pkg",
-            url: "#meta/secular_guest_pkg.cm",
+            url: "#meta/guest_pkg.cm",
         },
     ],
     capabilities: [

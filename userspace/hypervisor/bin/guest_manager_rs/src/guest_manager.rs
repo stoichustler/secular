@@ -383,6 +383,7 @@ impl GuestManager {
             GuestStatus::Stopped => {
                 info.uptime = Some((self.stop_time - self.start_time).into_nanos());
                 info.stop_error = self.last_error;
+                info.guest_descriptor = Some(self.guest_descriptor.clone());
             }
             _ => (),
         };
@@ -506,6 +507,9 @@ impl GuestManager {
             sound: config.virtio_sound,
             networks: config.net_devices.clone(),
             mem: config.virtio_mem,
+            kernel_type: config.kernel_type,
+            cmdline: config.cmdline.clone(),
+            cmdline_add: config.cmdline_add.clone(),
             ..Default::default()
         }
     }
