@@ -12,7 +12,7 @@ use std::fmt;
 
 #[derive(Debug, PartialEq, serde::Serialize, serde::Deserialize)]
 pub enum LaunchResult {
-    LaunchCompleted,
+    LaunchCompleted { vmid: u32 },
     AttachFailed(String),
     RoutingError,
     FidlError(String),
@@ -22,7 +22,9 @@ pub enum LaunchResult {
 impl fmt::Display for LaunchResult {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         match self {
-            LaunchResult::LaunchCompleted => write!(f, "Successfully launched the guest"),
+            LaunchResult::LaunchCompleted { vmid } => {
+                write!(f, "Done launching the guest [vmid {vmid}].")
+            }
             LaunchResult::AttachFailed(error) => {
                 write!(f, "Failed to attach to a running guest: {}", error)
             }
@@ -86,7 +88,7 @@ pub async fn handle_launch<P: PlatformServices>(
         }
     }
 
-    LaunchResult::LaunchCompleted
+    LaunchResult::LaunchCompleted { vmid: args.vmid.get() }
 }
 
 fn guest_system_label(kernel_type: Option<KernelType>) -> &'static str {

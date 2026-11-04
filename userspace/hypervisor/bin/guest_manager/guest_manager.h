@@ -86,7 +86,7 @@ class GuestManager : public fuchsia::virtualization::GuestManager {
  protected:
   virtual fit::result<::fuchsia::virtualization::GuestManagerError,
                       ::fuchsia::virtualization::GuestConfig>
-  GetDefaultGuestConfig();
+  GetDefaultGuestConfig(uint32_t vmid = 0);
   virtual void OnGuestLaunched() {}
   virtual void OnGuestStopped() {}
 

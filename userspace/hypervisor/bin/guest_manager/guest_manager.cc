@@ -50,9 +50,16 @@ GuestManager::GuestManager(async_dispatcher_t* dispatcher, sys::ComponentContext
   context_->outgoing()->AddPublicService(manager_bindings_.GetHandler(this));
 }
 
-fit::result<GuestManagerError, GuestConfig> GuestManager::GetDefaultGuestConfig() {
-  // Reads guest config from the guest_pkg child (data/guest.cfg).
-  const std::string config_path = config_pkg_dir_path_ + config_path_;
+fit::result<GuestManagerError, GuestConfig> GuestManager::GetDefaultGuestConfig(uint32_t vmid) {
+  // vmid 0: data/guest.cfg (RTOS). vmid 1: data/linux.cfg when packaged.
+  std::string relative_path = config_path_;
+  if (vmid == 1) {
+    const std::string linux_relative = "data/linux.cfg";
+    if (files::IsFile(config_pkg_dir_path_ + linux_relative)) {
+      relative_path = linux_relative;
+    }
+  }
+  const std::string config_path = config_pkg_dir_path_ + relative_path;
   auto open_at = [&](const std::string& path, fidl::InterfaceRequest<fuchsia::io::File> file) {
     return fdio_open3((config_pkg_dir_path_ + path).c_str(),
                       static_cast<uint64_t>(fuchsia::io::PERM_READABLE),
@@ -114,26 +121,23 @@ void GuestManager::Launch(uint32_t vmid, GuestConfig user_config,
     return;
   }
 
-  if (!instance.lifecycle.is_bound()) {
-    // Opening the lifecycle channel will start the VMM component, and closing the channel will
-    // destroy the VMM component.
-    //
-    // This error handler is only invoked if the server side of the channel is closed, not if the
-    // guest manager closes the channel to destroy the VMM component. As the VMM component will
-    // never intentionally close the channel, this channel closing means that the component has
-    // terminated unexpectedly.
-    context_->svc()->Connect(instance.lifecycle.NewRequest());
-    instance.lifecycle.set_error_handler([this, vmid](zx_status_t) {
-      GuestInstance* crashed = FindInstance(vmid);
-      if (crashed == nullptr) {
-        return;
-      }
-      crashed->state = GuestStatus::VMM_UNEXPECTED_TERMINATION;
-      OnGuestStopped();
-    });
+  // Each vmid gets its own GuestLifecycle connection. vmm_launcher spawns a
+  // dedicated VMM child for every connect, so RTOS (vmid 0) and Linux (vmid 1)
+  // can run at the same time.
+  if (instance.lifecycle.is_bound()) {
+    instance.lifecycle.Unbind();
   }
+  context_->svc()->Connect(instance.lifecycle.NewRequest());
+  instance.lifecycle.set_error_handler([this, vmid](zx_status_t) {
+    GuestInstance* crashed = FindInstance(vmid);
+    if (crashed == nullptr || !crashed->is_started()) {
+      return;
+    }
+    crashed->state = GuestStatus::VMM_UNEXPECTED_TERMINATION;
+    OnGuestStopped();
+  });
 
-  auto default_config = GetDefaultGuestConfig();
+  auto default_config = GetDefaultGuestConfig(vmid);
   if (default_config.is_error()) {
     callback(fpromise::error(default_config.error_value()));
     return;
@@ -241,6 +245,9 @@ void GuestManager::HandleGuestStopped(uint32_t vmid, fit::result<GuestError> err
 
   instance->stop_time = zx::clock::get_monotonic();
   instance->state = GuestStatus::STOPPED;
+  if (instance->lifecycle.is_bound()) {
+    instance->lifecycle.Unbind();
+  }
 
   for (auto& pending_force_shutdown : instance->pending_force_shutdowns) {
     auto callback = std::move(pending_force_shutdown);

@@ -55,6 +55,7 @@
                 target_monikers: [
                     "/bootstrap",
                     "/bootstrap/guest-manager/vmm",
+                    "/bootstrap/vmm_launcher/virtual_machine_managers:**",
                 ],
             },
             {
@@ -207,6 +208,7 @@
                 target_monikers: [
                     "/bootstrap",
                     "/bootstrap/guest-manager/vmm",
+                    "/bootstrap/vmm_launcher/virtual_machine_managers:**",
                     "/bootstrap/fshost/blobfs",
                     "/bootstrap/fshost/fvm2/blobfs-collection:**",
                     "/bootstrap/pkg-cache",

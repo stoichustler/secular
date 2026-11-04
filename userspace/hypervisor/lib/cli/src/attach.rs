@@ -15,7 +15,7 @@ use std::io::{self, Write};
 
 #[derive(Debug, PartialEq, serde::Serialize, serde::Deserialize)]
 pub enum AttachResult {
-    Attached,
+    Attached { vmid: u32 },
     NotRunning,
     AttachFailure,
 }
@@ -23,8 +23,8 @@ pub enum AttachResult {
 impl fmt::Display for AttachResult {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         match self {
-            AttachResult::Attached => {
-                write!(f, "Disconnected from guest after a successful attach")
+            AttachResult::Attached { vmid } => {
+                write!(f, "Disconnected from guest [vmid {vmid}].")
             }
             AttachResult::NotRunning => write!(f, "Can't attach to a non-running guest"),
             AttachResult::AttachFailure => write!(f, "Failed to attach to guest"),
@@ -54,7 +54,7 @@ pub async fn handle_attach<P: PlatformServices>(
         .map_err(|err| anyhow!("connect failed with: {:?}", err))?;
 
     Ok(match attach(guest_endpoint, args.serial, args.vmid.get()).await {
-        Ok(()) => AttachResult::Attached,
+        Ok(()) => AttachResult::Attached { vmid: args.vmid.get() },
         Err(_) => AttachResult::AttachFailure,
     })
 }

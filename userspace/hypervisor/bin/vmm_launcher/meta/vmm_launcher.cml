@@ -61,6 +61,11 @@
             to: "#virtual_machine_managers",
             availability: "optional",
         },
+        {
+            dictionary: "diagnostics",
+            from: "parent",
+            to: "#virtual_machine_managers",
+        },
     ],
     expose: [
         {

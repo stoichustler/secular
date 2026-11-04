@@ -31,26 +31,25 @@ QEMU aarch64
   → Zircon
     → userboot → component_manager → bootstrap
          ├─ guest-manager (eager)
-         │    ├─ vmm                  static child, GuestLifecycle
-         │    └─ guest_pkg            /pkg: data/guest.cfg only
-         ├─ vmm_launcher              lazy; extra VMM collection (unused by manager)
+         │    └─ guest_pkg            /pkg: guest.cfg, linux.cfg, kernels
+         ├─ vmm_launcher              lazy; collection virtual_machine_managers
+         │    ├─ vmm-1                one VMM per GuestLifecycle connect
+         │    └─ vmm-N
          └─ console-launcher → zxsh
                 └─ /boot/bin/vmm → fuchsia.virtualization.GuestManager
 ```
 
 1. `vmm launch vmid=0` connects to `GuestManager`.
-2. `guest_manager` reads `/guest_pkg/data/guest.cfg`, merges CLI overrides,
-   calls `GuestLifecycle.Create`.
-3. The VMM creates a `zx_guest`, maps GPA, installs GIC/UART/PCI/virtio, loads
-   the Linux `Image` and `board.dtb`, starts VCPU 0.
+2. `guest_manager` reads `/guest_pkg/data/guest.cfg` (or `linux.cfg` for vmid 1),
+   merges CLI overrides, and connects a new `GuestLifecycle`.
+3. `vmm_launcher` starts a `vmm-N` child for that channel. The VMM creates a
+   `zx_guest`, maps GPA, installs GIC/UART/PCI/virtio, loads the Image and
+   `board.dtb`, starts VCPU 0.
 4. `vmm attach vmid=0` binds virtio-console and serial to the host terminal.
 
 Guests are identified by **vmid**, not by guest type. `"linux"` / `"rtos"` in
-`guest.cfg` set `kernel_type`; both use the ARM64 Image+DTB protocol.
-
-`guest_manager` uses a **static** `vmm` child, so one running guest per manager
-is the supported path. `vmm_launcher` can spawn more VMMs; the manager does not
-connect to it yet.
+the per-vmid config set `kernel_type`; both use the ARM64 Image+DTB protocol.
+Each vmid has its own VMM, so `vmm launch 0` and `vmm launch 1` can run together.
 
 ## Type 1 vs Type 2
 
@@ -86,32 +85,24 @@ no kernel.
 | virtio-console / block / rng / balloon / vsock / mem | Yes | Console, disk, entropy |
 | ARM64 `Image` + DTB (`setup_linux`) | Yes | Kernel at `0x2080000`, DTB `/pkg/data/board.dtb` |
 | `vmm` CLI + `GuestManager` (vmid) | Yes | `vmm launch vmid=0` from zxsh |
-| Guest kernel (`data/kernel`) | **No** | Required. No `"linux"` key → VMM rejects config |
-| initrd / virtio-block rootfs | **No** | Kernel can start; userspace will not |
+| Guest kernel (`data/Image`) | Yes | Linux 7.3.1 ARM64 Image, `vmm launch vmid=1` |
+| initrd (`data/minifs.cpio`) | Yes | Alpine busybox minifs; `rdinit=/init` |
 | virtio-net / GPU / audio | No | Not needed for a serial Linux console |
 
-`vmm launch vmid=0` on the current image fails at VMM init (`BAD_CONFIG` /
-`KERNEL_LOAD_FAILURE`), not at hypervisor bring-up.
-
-To start Linux, add an uncompressed ARM64 `Image` (magic `ARM\x64`) and a
-config such as:
+`vmm launch vmid=0` starts the Zephyr RTOS guest. `vmm launch vmid=1` starts
+Linux 7.3.1 with minifs (`products/prebuilt/linux/`). Config:
 
 ```json
 {
-    "linux": "data/kernel",
-    "ramdisk": "data/ramdisk",
-    "cmdline": "console=hvc0 earlycon=pl011,0x808300000",
-    "virtio-console": true,
-    "virtio-rng": true,
-    "virtio-vsock": true
+    "linux": "data/Image",
+    "ramdisk": "data/minifs.cpio",
+    "cmdline": "earlycon=pl011,0x808300000 console=hvc0 rdinit=/init",
+    "virtio-console": true
 }
 ```
 
 Use `console=ttyAMA0` if the guest uses PL011 instead of virtio-console. A
 gzipped `vmlinuz` will not load: the VMM does not decompress the kernel.
-
-`packages/linux_guest` still describes a Debian image, but it reads
-`//prebuilt/virtualization/...`, which this tree does not vendor.
 
 ## Code reading path
 
@@ -247,6 +238,7 @@ Suggested first pass: **1 → 2 → 4 (`vmm.cc` + `linux.cc` + `vcpu.cc`) → 6
 
 ```text
 vmm launch vmid=0
+vmm launch vmid=1
 vmm launch vmid=0 --memory 536870912 --cpus 2
 vmm list
 vmm list vmid=0

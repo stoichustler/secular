@@ -67,6 +67,21 @@ resource("secular_zephyr_bin") {
   outputs = [ "data/zephyr.bin" ]
 }
 
+resource("secular_linux_cfg") {
+  sources = [ "data/linux.cfg" ]
+  outputs = [ "data/linux.cfg" ]
+}
+
+resource("secular_linux_image") {
+  sources = [ "//products/prebuilt/linux/Image" ]
+  outputs = [ "data/Image" ]
+}
+
+resource("secular_linux_minifs") {
+  sources = [ "//products/prebuilt/linux/minifs.cpio" ]
+  outputs = [ "data/minifs.cpio" ]
+}
+
 fuchsia_component("guest_pkg") {
   component_name = "guest_pkg"
   manifest = "meta/guest_pkg.cml"
@@ -79,6 +94,9 @@ fuchsia_component("guest_pkg") {
   check_references = false
   deps = [
     ":secular_guest_cfg",
+    ":secular_linux_cfg",
+    ":secular_linux_image",
+    ":secular_linux_minifs",
     ":secular_zephyr_bin",
     "//userspace/hypervisor/packages:guest_package_bin",
   ]
@@ -95,7 +113,6 @@ fuchsia_component("guest_manager_cmp") {
   deps = [
     ":bin",
     ":guest_pkg",
-    "//userspace/hypervisor/bin/vmm:vmm_component",
   ]
 }
 

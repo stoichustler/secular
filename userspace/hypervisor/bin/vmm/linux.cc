@@ -54,8 +54,9 @@ struct SetupData {
 } __PACKED;
 
 static constexpr char kDtbPath[] = "/pkg/data/board.dtb";
-// Default ramdisk/DTB window. setup_linux() moves this to the top of guest
-// RAM so 72 MiB RTOS guests still have room after the Image at kKernelOffset.
+// Default ramdisk/DTB window. setup_linux() places this at the top of guest
+// RAM (minus the ramdisk, if any) so 72 MiB RTOS guests still have room after
+// the Image at kKernelOffset, while Linux initrds fit below the DTB.
 static uintptr_t ramdisk_offset = 0x4000000;
 
 static uintptr_t RamdiskOffset() { return ramdisk_offset; }
@@ -523,13 +524,41 @@ zx_status_t setup_linux(fuchsia::virtualization::GuestConfig* cfg, const PhysMem
                         const std::vector<PlatformDevice*>& devices, uintptr_t* guest_ip,
                         uintptr_t* boot_ptr) {
   const size_t page_size = zx_system_get_page_size();
+  // DTB sits just below the ramdisk. With no ramdisk, park the window at the
+  // top of guest RAM so a 72 MiB RTOS Image at kKernelOffset still fits.
   if (phys_mem.size() > 8 * page_size) {
     ramdisk_offset = phys_mem.size() - (2 * page_size);
   }
 
+  fbl::unique_fd ramdisk_fd;
+  size_t ramdisk_size = 0;
+  zx_status_t status;
+  if (cfg->has_ramdisk()) {
+    status = fdio_fd_create(cfg->mutable_ramdisk()->TakeChannel().release(),
+                            ramdisk_fd.reset_and_get_address());
+    if (status != ZX_OK) {
+      FX_LOGS(ERROR) << "Failed to open initial RAM disk";
+      return ZX_ERR_IO;
+    }
+    struct stat ramdisk_stat;
+    if (fstat(ramdisk_fd.get(), &ramdisk_stat) < 0) {
+      FX_LOGS(ERROR) << "Failed to stat initial RAM disk:" << strerror(errno);
+      return ZX_ERR_IO;
+    }
+    const size_t aligned_ramdisk = round_up(static_cast<size_t>(ramdisk_stat.st_size), page_size);
+    constexpr size_t kDtbWindow = 8;
+    if (aligned_ramdisk + kDtbWindow * page_size >= phys_mem.size()) {
+      FX_LOGS(ERROR) << "Initial RAM disk too large for guest memory. File size: "
+                     << ramdisk_stat.st_size << " byte(s), guest physical memory size: "
+                     << phys_mem.size() << " byte(s)";
+      return ZX_ERR_NO_RESOURCES;
+    }
+    ramdisk_offset = phys_mem.size() - aligned_ramdisk;
+  }
+
   fbl::unique_fd kernel_fd;
-  zx_status_t status = fdio_fd_create(cfg->mutable_kernel()->TakeChannel().release(),
-                                      kernel_fd.reset_and_get_address());
+  status = fdio_fd_create(cfg->mutable_kernel()->TakeChannel().release(),
+                          kernel_fd.reset_and_get_address());
   if (status != ZX_OK) {
     FX_LOGS(ERROR) << "Failed to open kernel image";
     return status;
@@ -539,16 +568,7 @@ zx_status_t setup_linux(fuchsia::virtualization::GuestConfig* cfg, const PhysMem
     return status;
   }
 
-  size_t ramdisk_size = 0;
-  if (cfg->has_ramdisk()) {
-    fbl::unique_fd ramdisk_fd;
-    status = fdio_fd_create(cfg->mutable_ramdisk()->TakeChannel().release(),
-                            ramdisk_fd.reset_and_get_address());
-    if (status != ZX_OK) {
-      FX_LOGS(ERROR) << "Failed to open initial RAM disk";
-      return ZX_ERR_IO;
-    }
-
+  if (ramdisk_fd) {
     status = read_fd(ramdisk_fd.get(), phys_mem, RamdiskOffset(), &ramdisk_size);
     if (status != ZX_OK) {
       FX_LOGS(ERROR) << "Failed to read initial RAM disk";

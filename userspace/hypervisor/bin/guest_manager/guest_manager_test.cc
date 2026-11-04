@@ -358,6 +358,38 @@ TEST_F(GuestManagerTest, LaunchAndApplyUserGuestConfig) {
   ASSERT_EQ(4u, config.cpus());
 }
 
+TEST_F(GuestManagerTest, LaunchTwoVmids) {
+  GuestManager manager(dispatcher(), provider_.context(), "/pkg/", "data/configs/valid_guest.cfg");
+  bool launch0 = false;
+  bool launch1 = false;
+  fuchsia::virtualization::GuestPtr guest0;
+  fuchsia::virtualization::GuestPtr guest1;
+  manager.Launch(0, {}, guest0.NewRequest(), [&launch0](auto res) {
+    ASSERT_FALSE(res.is_err());
+    launch0 = true;
+  });
+  manager.Launch(1, {}, guest1.NewRequest(), [&launch1](auto res) {
+    ASSERT_FALSE(res.is_err());
+    launch1 = true;
+  });
+  RunLoopUntilIdle();
+  ASSERT_TRUE(launch0);
+  ASSERT_TRUE(launch1);
+
+  bool info0 = false;
+  bool info1 = false;
+  manager.GetInfo(0, [&info0](auto info) {
+    ASSERT_EQ(info.guest_status(), fuchsia::virtualization::GuestStatus::RUNNING);
+    info0 = true;
+  });
+  manager.GetInfo(1, [&info1](auto info) {
+    ASSERT_EQ(info.guest_status(), fuchsia::virtualization::GuestStatus::RUNNING);
+    info1 = true;
+  });
+  ASSERT_TRUE(info0);
+  ASSERT_TRUE(info1);
+}
+
 TEST_F(GuestManagerTest, DoubleLaunchFail) {
   bool launch_callback_called = false;
   GuestManager manager(dispatcher(), provider_.context(), "/pkg/", "data/configs/valid_guest.cfg");

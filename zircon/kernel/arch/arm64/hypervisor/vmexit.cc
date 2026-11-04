@@ -55,6 +55,8 @@ constexpr size_t kPageTableLevelShift = 3;
 constexpr uint32_t kPsciMajorVersion = 0;
 constexpr uint32_t kPsciMinorVersion = 2;
 constexpr uint16_t kSmcPsci = 0;
+// PSCI_MIGRATE_INFO_TYPE: Trusted OS not present / MP TOS (DEN0022 5.1.8).
+constexpr uint64_t kPsciTosMpOrAbsent = 2;
 
 enum TimerControl : uint32_t {
   ENABLE = 1u << 0,
@@ -125,6 +127,10 @@ zx::result<> handle_smc_instruction(uint32_t iss, GuestState* guest_state,
     case PSCI64_PSCI_VERSION:
       // See ARM PSCI Platform Design Document, Section 5.1.1.
       guest_state->x[0] = (kPsciMajorVersion << 16) | kPsciMinorVersion;
+      return zx::ok();
+    case PSCI64_MIGRATE_INFO_TYPE:
+      // Linux probes this at boot. There is no Trusted OS in the guest.
+      guest_state->x[0] = kPsciTosMpOrAbsent;
       return zx::ok();
     case PSCI64_CPU_ON:
       memset(packet, 0, sizeof(*packet));

@@ -64,6 +64,7 @@
                 capability: "protocol",
                 target_monikers: [
                     "/bootstrap/guest-manager/vmm",
+                    "/bootstrap/vmm_launcher/virtual_machine_managers:**",
                     "/core/zircon-guest-manager/vmm",
                     "/core/debian-guest-manager/vmm",
                     "/core/termina-guest-manager/vmm",
@@ -232,6 +233,7 @@
                     "/core/test_manager/chromium-tests:**",
                     "/core/testing/chromium-tests:**",
                     "/bootstrap/guest-manager/vmm",
+                    "/bootstrap/vmm_launcher/virtual_machine_managers:**",
                     "/core/zircon-guest-manager/vmm",
                     "/core/debian-guest-manager/vmm",
                     "/core/termina-guest-manager/vmm",

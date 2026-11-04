@@ -2,8 +2,8 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-// Guest package: data/guest.cfg plus the Zephyr ARM64 Image at
-// data/zephyr.bin (vmid 0 RTOS).
+// Guest package: data/guest.cfg + data/zephyr.bin (vmid 0 RTOS),
+// data/linux.cfg + data/Image + data/minifs.cpio (vmid 1 Linux).
 {
     include: [
         "inspect/client.shard.cml",

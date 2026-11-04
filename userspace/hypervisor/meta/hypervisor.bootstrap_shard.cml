@@ -4,8 +4,8 @@
 
 // Compact hypervisor graph for the Secular console image. One guest_manager
 // serves Linux and RTOS guests. GPU, net, and audio routes stay omitted.
-// guest_manager starts eagerly so `guest` can resolve GuestManager;
-// vmm_launcher stays lazy.
+// guest_manager starts eagerly so `vmm` can resolve GuestManager.
+// vmm_launcher stays lazy; each GuestLifecycle connect spawns a VMM.
 {
     children: [
         {
@@ -55,6 +55,18 @@
                 "#vmm_launcher",
                 "#guest-manager",
             ],
+        },
+        {
+            // Use the default `#meta/vmm.cm` in vmm_launcher.cml.
+            config: "fuchsia.virtualization.VmmComponentUrl",
+            from: "void",
+            to: "#vmm_launcher",
+            availability: "optional",
+        },
+        {
+            protocol: "fuchsia.virtualization.GuestLifecycle",
+            from: "#vmm_launcher",
+            to: "#guest-manager",
         },
         {
             protocol: "fuchsia.virtualization.GuestManager",
