@@ -12,7 +12,7 @@
 #include "src/storage/lib/vfs/cpp/remote_dir.h"
 
 // Serve /pkg as /pkg in the outgoing directory to provide access to configuration data
-// i.e. /pkg/data/guest.cfg
+// i.e. /pkg/data/rtos.cfg, /pkg/data/linux.cfg
 int main(int argc, char** argv) {
   fuchsia_logging::LogSettingsBuilder builder;
   builder.WithTags({"guest_package"}).BuildAndInitialize();

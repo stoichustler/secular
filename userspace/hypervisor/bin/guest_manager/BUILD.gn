@@ -57,9 +57,9 @@ executable("bin") {
   ]
 }
 
-resource("secular_guest_cfg") {
-  sources = [ "data/secular_guest.cfg" ]
-  outputs = [ "data/guest.cfg" ]
+resource("rtos_cfg") {
+  sources = [ "data/rtos.cfg" ]
+  outputs = [ "data/rtos.cfg" ]
 }
 
 resource("secular_zephyr_bin") {
@@ -93,7 +93,7 @@ fuchsia_component("guest_pkg") {
   check_includes = false
   check_references = false
   deps = [
-    ":secular_guest_cfg",
+    ":rtos_cfg",
     ":secular_linux_cfg",
     ":secular_linux_image",
     ":secular_linux_minifs",

@@ -1,4 +1,4 @@
-# Secular Architecture
+# Memory
 
 Secular boots a Zircon kernel on `qemu-system-aarch64` (virt, arm64). The
 kernel runs at EL1 with a 4 KiB, 4-level, 48-bit VMSAv8-64 stage-1 MMU. This
@@ -12,7 +12,76 @@ The product stays:
 zircon kernel + linux-arm64-boot-shim + BOOTFS + serial console + zxsh
 ```
 
+ATF → shim → physboot → `lk_main` → userboot is `bootstrap.md`. The linker
+scripts that place the load images are in that note.
+
 ## Memory
+
+### Framework
+
+Physical RAM and MMIO on the left; two translation regimes and the
+registers that walk them on the right.
+
+```text
+┌────────────┐ ┌────────────┐ ┌────────────┐ ┌────────────────────┐
+│ flash      │ │ GICv3      │ │ PL011 UART │ │ DRAM               │
+│ 0x00000000 │ │ 0x08000000 │ │ 0x09000000 │ │ 0x40000000         │
+└────────────┘ └────────────┘ └────────────┘ └─────────┬──────────┘
+       device MMIO on demand                           │ PMM
+                                                       ▼
+                              physmap VA = KERNEL_ASPACE_BASE + PA
+                              0x40000000 → 0xffff000040000000
+
+┌───────────────────────────────┬──────────────────────────────────┐
+│ TTBR0_EL1  user  VA[55]=0     │ TTBR1_EL1  kernel  VA[55]=1      │
+│ USER_ASPACE  0x200000         │ KERNEL_ASPACE  0xffff000000000000│
+│ zx_vmar_map → VmMapping       │ physmap, kernel image, heap      │
+│ L0 → L1 → L2 → L3  (4 KiB)    │ shared L0, ASID 1, nG=0          │
+└───────────────────────────────┴──────────────────────────────────┘
+
+  MAIR_EL1     TCR_EL1      TTBR0_EL1     TTBR1_EL1     SCTLR_EL1
+  AttrIndx     T0SZ/T1SZ=16  user L0+ASID  kernel L0     M / C / I
+```
+
+### Flow
+
+Physboot turns the MMU on; the kernel reuses those tables, then the VM
+installs later maps.
+
+```text
+┌─────────────────┐
+│ boot-shim       │  MMU off, DTB in x0
+│ linux-arm64     │  RAM / UART / GIC → ZBI items
+└────────┬────────┘
+         ▼
+┌─────────────────┐
+│ physboot        │  MAIR + identity-map RAM/UART (TTBR0)
+│                 │  SCTLR.M/C/I on
+│                 │  kernel ELF at 0xffffffff00000000 (TTBR1)
+│                 │  physmap + hand-off + image
+└────────┬────────┘
+         ▼
+┌─────────────────┐
+│ kernel EL1      │  arm64_mmu_early_init reads TTBR0/TTBR1
+│                 │  reuse TTBR1 root, ASID 1
+│                 │  PMM owns RAM; tables → vm_page_state::MMU
+└────────┬────────┘
+         │
+    ┌────┴────┐
+    ▼         ▼
+ user       kernel
+ zx_vmar_map   heap / MMIO / stacks
+    │         │
+    └────┬────┘
+         ▼
+┌─────────────────┐
+│ ArmArchVmAspace │  Map / Query / ContextSwitch
+│ ::Map           │  L0–L3 walk, tlbi, dc cvau + ic ialluis if X
+└────────┬────────┘
+         ▼
+    hardware walk
+    TTBR0 or TTBR1 → PA
+```
 
 ### Physical map on QEMU virt
 
@@ -201,6 +270,8 @@ Context switch (`ArmArchVmAspace::ContextSwitch`) writes:
 
 ### Page table establishment
 
+<img src="../images/4KB-translation-granule.png" alt="translation granule" width="600">
+
 Granule is 4 KiB. Each table is one page: 512 × 8-byte PTEs
 (`MMU_*_PAGE_TABLE_ENTRIES = 1 << (12 - 3)`). Four levels, 9 index bits
 each, 48-bit IA:
@@ -219,6 +290,8 @@ Index shift for level `n` is `MMU_LX_X(12, n) = (4 - n) * 9 + 3`:
 | L1 | 30 | block (`0b01`) or table (`0b11`) | 1 GiB |
 | L2 | 21 | block or table | 2 MiB |
 | L3 | 12 | page (`0b11`) | 4 KiB |
+
+<img src="../images/address-translation-using-4KB-granule.png" alt="address translation" width="600">
 
 `MMU_PTE_DESCRIPTOR_BLOCK_MAX_SHIFT` is 30, so L0 never holds a block.
 

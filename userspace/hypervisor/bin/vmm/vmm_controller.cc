@@ -7,12 +7,49 @@
 #include <lib/async/cpp/task.h>
 #include <lib/syslog/cpp/log_settings.h>
 #include <lib/syslog/cpp/macros.h>
+#include <lib/zx/job.h>
+#include <lib/zx/process.h>
+#include <stdio.h>
+#include <string.h>
+#include <zircon/types.h>
 
 namespace vmm {
 
 using ::fuchsia::virtualization::GuestConfig;
 using ::fuchsia::virtualization::GuestError;
 using ::fuchsia::virtualization::GuestLifecycle;
+using ::fuchsia::virtualization::KernelType;
+
+namespace {
+
+const char* KernelTypeLabel(KernelType type) {
+  switch (type) {
+    case KernelType::RTOS:
+      return "rtos";
+    case KernelType::LINUX:
+      return "linux";
+    case KernelType::ZIRCON:
+      return "zircon";
+  }
+}
+
+// Rename this VMM process to `{kernel}-{vmid}` so `ps -T` can tell RTOS and Linux
+// guests apart. ELF runner would otherwise name every instance `vmm.cm`.
+void ApplyVmmTaskName(const GuestConfig& config) {
+  if (!config.has_kernel_type()) {
+    return;
+  }
+  const uint32_t vmid = config.has_vmid() ? config.vmid() : 0;
+  char name[ZX_MAX_NAME_LEN];
+  snprintf(name, sizeof(name), "%s-%u", KernelTypeLabel(config.kernel_type()), vmid);
+  const size_t len = strnlen(name, sizeof(name));
+  zx_status_t status = zx::process::self()->set_property(ZX_PROP_NAME, name, len);
+  if (status != ZX_OK) {
+    FX_PLOGS(WARNING, status) << "Failed to set VMM process name to " << name;
+  }
+}
+
+}  // namespace
 
 VmmController::VmmController(fit::function<void()> stop_component_callback,
                              std::unique_ptr<sys::ComponentContext> context,
@@ -37,6 +74,8 @@ void VmmController::Create(::fuchsia::virtualization::GuestConfig guest_config,
   if (vmm_) {
     vmm_.reset();
   }
+
+  ApplyVmmTaskName(guest_config);
 
   auto vmm = std::make_unique<vmm::Vmm>();
   fit::result<GuestError> result =

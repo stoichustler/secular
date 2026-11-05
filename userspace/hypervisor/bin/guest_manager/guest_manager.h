@@ -52,7 +52,7 @@ class GuestManager : public fuchsia::virtualization::GuestManager {
                std::string config_pkg_dir_path, std::string config_path);
 
   GuestManager(async_dispatcher_t* dispatcher, sys::ComponentContext* context)
-      : GuestManager(dispatcher, context, "/guest_pkg/", "data/guest.cfg") {}
+      : GuestManager(dispatcher, context, "/guest_pkg/", "data/rtos.cfg") {}
 
   // |fuchsia::virtualization::GuestManager|
   void Launch(uint32_t vmid, fuchsia::virtualization::GuestConfig user_config,

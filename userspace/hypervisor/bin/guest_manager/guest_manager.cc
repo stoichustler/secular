@@ -51,7 +51,7 @@ GuestManager::GuestManager(async_dispatcher_t* dispatcher, sys::ComponentContext
 }
 
 fit::result<GuestManagerError, GuestConfig> GuestManager::GetDefaultGuestConfig(uint32_t vmid) {
-  // vmid 0: data/guest.cfg (RTOS). vmid 1: data/linux.cfg when packaged.
+  // vmid 0: data/rtos.cfg. vmid 1: data/linux.cfg when packaged.
   std::string relative_path = config_path_;
   if (vmid == 1) {
     const std::string linux_relative = "data/linux.cfg";
@@ -152,6 +152,7 @@ void GuestManager::Launch(uint32_t vmid, GuestConfig user_config,
   if (!merged_cfg.has_cpus()) {
     merged_cfg.set_cpus(GetDefaultNumCpus());
   }
+  merged_cfg.set_vmid(vmid);
 
   // TODO(b/410037697): Re-enable networking.
   if (merged_cfg.has_default_net() && merged_cfg.default_net()) {

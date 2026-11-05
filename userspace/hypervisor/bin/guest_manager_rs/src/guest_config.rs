@@ -240,7 +240,8 @@ pub fn merge_configs(mut base: GuestConfig, overrides: GuestConfig) -> GuestConf
         virtio_mem,
         virtio_mem_block_size,
         virtio_mem_region_size,
-        virtio_mem_region_alignment
+        virtio_mem_region_alignment,
+        vmid
     );
     append_fields!(cmdline_add, block_devices, net_devices, vsock_listeners);
 

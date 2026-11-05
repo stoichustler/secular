@@ -227,7 +227,7 @@ impl GuestManager {
                     };
 
                     match request {
-                        GuestManagerRequest::Launch { vmid: _, guest_config, controller, responder } => {
+                        GuestManagerRequest::Launch { vmid, guest_config, controller, responder } => {
                             if self.is_guest_started() {
                                 send_checked!(responder, Err(GuestManagerError::AlreadyRunning));
                                 continue;
@@ -240,7 +240,8 @@ impl GuestManager {
                                 send_checked!(responder, Err(GuestManagerError::BadConfig));
                                 continue;
                             }
-                            let config = config.unwrap();
+                            let mut config = config.unwrap();
+                            config.vmid = Some(vmid);
                             self.handle_guest_started(&config);
 
                             // Create VMM.

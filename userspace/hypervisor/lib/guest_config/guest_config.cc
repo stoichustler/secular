@@ -425,6 +425,7 @@ fuchsia::virtualization::GuestConfig MergeConfigs(fuchsia::virtualization::Guest
   COPY_GUEST_CONFIG_FIELD(virtio_sound);
   COPY_GUEST_CONFIG_FIELD(virtio_sound_input);
   APPEND_GUEST_CONFIG_FIELD(vsock_listeners);
+  COPY_GUEST_CONFIG_FIELD(vmid);
 
 #undef COPY_GUEST_CONFIG_FIELD
 #undef APPEND_GUEST_CONFIG_FIELD

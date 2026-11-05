@@ -31,7 +31,7 @@ QEMU aarch64
   → Zircon
     → userboot → component_manager → bootstrap
          ├─ guest-manager (eager)
-         │    └─ guest_pkg            /pkg: guest.cfg, linux.cfg, kernels
+         │    └─ guest_pkg            /pkg: rtos.cfg, linux.cfg, kernels
          ├─ vmm_launcher              lazy; collection virtual_machine_managers
          │    ├─ vmm-1                one VMM per GuestLifecycle connect
          │    └─ vmm-N
@@ -40,7 +40,7 @@ QEMU aarch64
 ```
 
 1. `vmm launch vmid=0` connects to `GuestManager`.
-2. `guest_manager` reads `/guest_pkg/data/guest.cfg` (or `linux.cfg` for vmid 1),
+2. `guest_manager` reads `/guest_pkg/data/rtos.cfg` (or `linux.cfg` for vmid 1),
    merges CLI overrides, and connects a new `GuestLifecycle`.
 3. `vmm_launcher` starts a `vmm-N` child for that channel. The VMM creates a
    `zx_guest`, maps GPA, installs GIC/UART/PCI/virtio, loads the Image and
@@ -72,10 +72,8 @@ Call it **in-kernel hypervisor + userspace VMM**.
 
 ## Linux guest status
 
-The **framework can boot an ARM64 Linux guest** once a kernel (and usually a
-root filesystem) is in the guest package. The **default Secular image cannot**:
-it ships the VMM and `vmm` CLI, but only a placeholder `data/guest.cfg` with
-no kernel.
+The **framework can boot ARM64 Linux and RTOS guests** from the guest package
+(`data/linux.cfg` + `data/Image`, `data/rtos.cfg` + `data/zephyr.bin`).
 
 | Layer | In the console image? | Role for Linux |
 | --- | --- | --- |
@@ -119,7 +117,7 @@ How the ZBI gets a VMM and how zxsh finds `GuestManager`.
 | `userspace/hypervisor/meta/hypervisor.bootstrap_shard.cml` | Eager `guest-manager`, lazy `vmm_launcher`; offer `GuestManager` to `console-launcher` |
 | `userspace/hypervisor/bin/guest_manager/meta/guest_manager.cml` | Static children `vmm` and `guest_pkg`; use `GuestLifecycle` from `#vmm` |
 | `userspace/hypervisor/bin/vmm/meta/vmm.cml` | `GuestLifecycle` + virtio collections (console/block/rng/balloon/vsock/mem) |
-| `userspace/hypervisor/bin/guest_manager/meta/guest_pkg.cml` | Serves `/pkg` (`data/guest.cfg` only today) |
+| `userspace/hypervisor/bin/guest_manager/meta/guest_pkg.cml` | Serves `/pkg` (`data/rtos.cfg`, `data/linux.cfg`) |
 | `userspace/secular/bin/console-launcher/meta/console-launcher.cml` | Optional `fuchsia.virtualization.GuestManager` in the shell namespace |
 
 ### 2. CLI → GuestManager
@@ -146,11 +144,12 @@ One process, a map of vmid → instance. Still one static VMM child.
 | --- | --- |
 | `userspace/hypervisor/bin/guest_manager/guest_manager_main.cc` | Serves `GuestManager` |
 | `userspace/hypervisor/bin/guest_manager/guest_manager.cc` | `Launch`: merge cfg, `lifecycle.Create` + `Bind`; `Connect`/`GetInfo`/`List` by vmid |
-| `userspace/hypervisor/bin/guest_manager/data/secular_guest.cfg` | Placeholder: virtio flags only, **no kernel path** |
+| `userspace/hypervisor/bin/guest_manager/data/rtos.cfg` | vmid 0 RTOS: Zephyr `data/zephyr.bin` |
 | `userspace/hypervisor/lib/guest_config/guest_config.cc` | JSON keys `"linux"` / `"rtos"` / `"ramdisk"` / `"cmdline"` / virtio |
 
-`GetDefaultGuestConfig()` reads `/guest_pkg/data/guest.cfg`. Without a
-`"linux": "data/kernel"` file handle, `Vmm::IsValidConfig` fails.
+`GetDefaultGuestConfig()` reads `/guest_pkg/data/rtos.cfg` (vmid 0) or
+`data/linux.cfg` (vmid 1). Without a kernel file handle, `Vmm::IsValidConfig`
+fails.
 
 ### 4. VMM — machine, kernel load, VCPU thread
 
@@ -226,7 +225,7 @@ Suggested first pass: **1 → 2 → 4 (`vmm.cc` + `linux.cc` + `vcpu.cc`) → 6
 | Path | Role |
 | --- | --- |
 | `bin/guest` (`/boot/bin/vmm`) | Serial CLI (`vmm launch` / `stop` / `attach` / `list`) |
-| `bin/guest_manager` | `GuestManager`; vmid table; reads guest.cfg |
+| `bin/guest_manager` | `GuestManager`; vmid table; reads rtos.cfg / linux.cfg |
 | `bin/vmm` | Machine + virtio; Linux/RTOS/Zircon loaders |
 | `bin/vmm_launcher` | `vmm-*` children per `GuestLifecycle` connection |
 | `lib/guest_config` | JSON `guest.cfg` parser |

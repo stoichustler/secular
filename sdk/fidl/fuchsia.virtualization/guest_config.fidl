@@ -132,4 +132,7 @@ type GuestConfig = resource table {
     24: virtio_mem_region_size uint64;
     /// Required alignment of the dynamically pluggable memory region
     25: virtio_mem_region_alignment uint64;
+    /// Host VM identifier assigned by GuestManager. The VMM names its process
+    /// `{kernel}-{vmid}` (for example `rtos-0`, `linux-1`) for `ps -T`.
+    26: vmid uint32;
 };
