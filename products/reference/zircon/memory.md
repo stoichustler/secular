@@ -3,8 +3,9 @@
 Secular boots a Zircon kernel on `qemu-system-aarch64` (virt, arm64). The
 kernel runs at EL1 with a 4 KiB, 4-level, 48-bit VMSAv8-64 stage-1 MMU. This
 note is the map of that memory path: how physical RAM becomes a virtual
-address space, how page tables are built, how a VA is translated, and which
-registers control it.
+address space, how **user and kernel page tables** sit next to each other,
+how the same physical page is visible in both, how a VA is translated, and
+which registers control it.
 
 The product stays:
 
@@ -12,8 +13,10 @@ The product stays:
 zircon kernel + linux-arm64-boot-shim + BOOTFS + serial console + zxsh
 ```
 
-ATF → shim → physboot → `lk_main` → userboot is `bootstrap.md`. The linker
-scripts that place the load images are in that note.
+ATF → shim → physboot → `lk_main` → userboot is [`bootstrap.md`](bootstrap.md).
+The linker scripts that place the load images are in that note. Exceptions
+from a failed walk are [`interrupt.md`](interrupt.md). Context switch of
+`TTBR0` is [`cpu.md`](cpu.md).
 
 ## Memory
 
@@ -111,7 +114,7 @@ all-zero vs all-one for a 48-bit VA) selects the root:
 0x0000_0000_0000_0000   unused (2 MiB low guard)
 0x0000_0000_0020_0000   USER_ASPACE_BASE          TTBR0_EL1  (user)
         …  user VA, 48-bit half minus guards …
-0x0000_ffff_0000_0000   USER_ASPACE end (exclusive)
+0x0000_ffff_ff00_0000   USER_ASPACE end (exclusive; 16 MiB high guard)
 
 0xffff_0000_0000_0000   KERNEL_ASPACE_BASE        TTBR1_EL1  (kernel)
         physmap  [0, last RAM)  linearly mapped
@@ -121,7 +124,7 @@ all-zero vs all-one for a 48-bit VA) selects the root:
 0xffff_ffff_ffff_ffff   last kernel byte (base + 2^48 wraps in 64-bit)
 ```
 
-Constants live in `zircon/kernel/arch/arm64/include/arch/kernel_aspace.h`:
+Constants live in [`zircon/kernel/arch/arm64/include/arch/kernel_aspace.h`](../../../zircon/kernel/arch/arm64/include/arch/kernel_aspace.h):
 
 | Symbol | Value | Meaning |
 | --- | --- | --- |
@@ -134,10 +137,179 @@ Constants live in `zircon/kernel/arch/arm64/include/arch/kernel_aspace.h`:
 `is_user_accessible(va)` is “bit 55 is 0”. `is_kernel_address(va)` is “inside
 `[KERNEL_ASPACE_BASE, KERNEL_ASPACE_BASE + KERNEL_ASPACE_SIZE)`”. User PCs
 must be user-accessible and not in the kernel window
-(`zircon/kernel/arch/arm64/include/arch/vm.h`).
+([`zircon/kernel/arch/arm64/include/arch/vm.h`](../../../zircon/kernel/arch/arm64/include/arch/vm.h)).
 
 User VA also enables TBI0 (top-byte ignore): bits [63:56] are not part of
 the translation. `arch_detag_ptr` strips them.
+
+The two halves are **separate trees**, not one table with a kernel
+high-half. How they share RAM is **User and kernel page tables** and
+**Memory relationship**. How a load becomes a PA is **Translation
+flow**.
+
+### User and kernel page tables
+
+EL1&0 stage-1 always has two roots. `VA[55]` picks which one the
+hardware walks. There is no combined L0.
+
+```text
+                    PE  EL1 (and EL0 of the current user thread)
+                              VA[55]
+                     ┌──────────┴──────────┐
+                     │ 0                   │ 1
+                     ▼                     ▼
+              TTBR0_EL1               TTBR1_EL1
+              user L0                 kernel L0
+              ASID ≥ 2                ASID 1, nG=0 (global)
+              per process             one for the whole system
+              swapped on sched        never swapped
+              TCR.EPD0 = 0            always walked
+                when a user thread
+                is current
+```
+
+| | User (`TTBR0`) | Kernel (`TTBR1`) |
+| --- | --- | --- |
+| Object | one `VmAspace` per process | the kernel `VmAspace` |
+| L0 page | allocated in `ArmArchVmAspace::Init` | physboot's upper root, reused |
+| Who sees it | that process's threads (EL0 and EL1) | every PE, every thread |
+| Context switch | `TTBR0 = ASID\|tt_phys`, `TCR` user | left alone |
+| Idle / DPC / boot | `TCR.EPD0=1`: TTBR0 walks **off** | still on |
+| PTE `nG` | 1 (ASID-tagged TLB) | 0 (global TLB) |
+| Mapped by | `zx_vmar_map` → `VmMapping` | physmap, image, heap, MMIO, kstacks |
+
+They do **not** share table pages. A user L3 PTE and a kernel L3 PTE
+may point at the **same PA** (a VMO page that is also in the physmap).
+The kernel writes user PTEs through the physmap: `tt_virt_ =
+paddr_to_physmap(tt_phys_)`. EL0 may issue a kernel VA (`VA[55]=1`);
+the walk uses TTBR1, then AP/UXN on the kernel PTE deny it (permission
+fault, not a different root).
+
+While a **user** thread is current, both roots are live:
+
+```text
+EL0  load [user VA]     walk TTBR0
+EL0  load [kernel VA]   walk TTBR1, then AP/UXN deny
+EL1  load [kernel VA]   walk TTBR1 (physmap, heap, UART)
+EL1  copy_from_user     walk TTBR0 (same aspace, still this Thread)
+```
+
+`copy_from_user` does not switch tables. The syscall is the same
+`Thread*`, `TTBR0` still names that process (`cpu.md`). A kernel-only
+thread has `EPD0`, so a stray user VA in idle is a translation fault,
+not a walk of some leftover process.
+
+Restricted / shared aspaces (`ZX_PROCESS_SHARED`) split TTBR0 further.
+The console image does not: userboot, component_manager, and `zxsh`
+each have one user L0.
+
+### Memory relationship
+
+Physical DRAM is one pool. Virtual windows are many. PMM owns the
+pages; aspaces only install PTEs.
+
+```text
+ DRAM  0x40000000…          MMIO  GIC 0x08000000  UART 0x09000000
+        │ PMM                      │ mapped on demand, not in physmap
+        ▼
+  vm_page  (FREE / ALLOC / MMU / …)
+        │
+        ├──────────────────┬──────────────────┐
+        ▼                  ▼                  ▼
+ kernel physmap      kernel image/heap    user VMO
+ VA = BASE + PA      TTBR1, not linear    VmObject pages
+ TTBR1, nG=0         kstack, arena        │
+                                          ▼
+                                   zx_vmar_map  (per process)
+                                   TTBR0, nG=1, that ASID
+```
+
+Same physical page, two (or more) VAs:
+
+| View | VA | Table | Who |
+| --- | --- | --- | --- |
+| Physmap | `0xffff000000000000 + PA` | kernel L3 (or L1/L2 block) | kernel, all CPUs |
+| User mapping | whatever the VMAR chose | that process's L3 | EL0 of that process; EL1 `copy_*_user` |
+| Another process | a different user VA | a different TTBR0 | only that process |
+
+The kernel does **not** put user mappings into TTBR1. It looks at user
+memory either by walking TTBR0 (`copy_from_user`) or by the physmap
+alias of a page it already owns (fault handler, `Map` of a VMO page).
+Page-table pages themselves are PMM pages in state `MMU`; the CPU and
+the kernel both reach them as `paddr_to_physmap(table_pa)`.
+
+MMIO (GIC, UART) is a hole in the physmap span: those PAs are not RAM,
+so they are not in the linear window. Drivers map them `UNCACHED_DEVICE`
+in the kernel aspace only.
+
+Console boot, one picture:
+
+```text
+PA 0x40000000…     DRAM
+  kernel image     →  VA 0xffffffff00000000     TTBR1
+  physmap          →  VA 0xffff000040000000     TTBR1  (same PAs)
+  userboot ELF     →  some user VA              TTBR0 of "userboot"
+  zxsh text/stack  →  other user VAs            TTBR0 of zxsh
+  UART 0x09000000  →  a kernel device VA        TTBR1, AttrIndx 1
+```
+
+`zxsh` and userboot never see each other's TTBR0. Both see nothing of
+the kernel half. The kernel sees every process's user half only while
+that process's thread is current (or via an explicit aspace switch).
+
+### Translation flow
+
+A load, store, or fetch at `VA` on this PE:
+
+```text
+ CPU issues access at VA, current EL, read/write/execute
+        │
+        ▼
+ TLB lookup   (ASID from TTBR0, or global if nG=0)
+        │ hit: PA + attrs, apply AP/UXN/PXN vs EL → done
+        ▼ miss
+ VA[55]
+   │ 0                    │ 1
+   ▼                      ▼
+ TTBR0.BADDR             TTBR1.BADDR
+ (EPD0? → fault)         kernel L0
+ user L0
+        │
+        ▼
+ L0[(VA>>39)&0x1ff]  table?
+ L1[(VA>>30)&0x1ff]  table or 1 GiB block?
+ L2[(VA>>21)&0x1ff]  table or 2 MiB block?
+ L3[(VA>>12)&0x1ff]  4 KiB page?
+        │
+        ├─ Valid=0 / AF=0 / AP or UXN/PXN deny
+        │     → SYNC abort  (interrupt.md page fault)
+        ▼
+ PA = OA + VA[11:0]     (or + block offset)
+ AttrIndx → MAIR_EL1    cache / device
+        │
+        ▼
+ access the cache or the device at PA
+```
+
+Software does the same walk as `QueryLocked` (via physmap of each
+table). `AT S1E0R/W` / `AT S1E1R/W` asks the MMU and reads `PAR_EL1`.
+
+EL0 vs EL1 on the **same** PTE:
+
+| Access | EL0 | EL1 |
+| --- | --- | --- |
+| User page, AP=`01` (RW/RW) | allowed | allowed (`copy_*_user`) |
+| User text, UXN=0, PXN=1 | fetch ok | EL1 must not execute user |
+| Kernel page, AP=`00` (RW/none) | fault | allowed |
+| Kernel text, UXN=1 | EL0 cannot fetch | EL1 fetch ok |
+
+A process switch is only a `TTBR0` (and maybe `TCR`) write
+(`ArmArchVmAspace::ContextSwitch`). The walk above then starts from a
+different L0. `TTBR1` and the kernel TLB entries (global) stay.
+
+Failed walks are `ESR` instruction/data abort, `FAR` = VA. Recoverable
+translation / AF / permission faults go to `vmm_page_fault_handler`
+([`interrupt.md`](interrupt.md)).
 
 ### How mapping is completed
 
@@ -167,9 +339,9 @@ user process
 
 #### 1. Physboot identity map
 
-Entry (`zircon/kernel/arch/arm64/phys/start.S`) assumes caches and MMU are
+Entry ([`zircon/kernel/arch/arm64/phys/start.S`](../../../zircon/kernel/arch/arm64/phys/start.S)) assumes caches and MMU are
 off. After stacks exist, `ArchSetUpAddressSpace`
-(`zircon/kernel/arch/arm64/phys/address-space.cc`) does:
+([`zircon/kernel/arch/arm64/phys/address-space.cc`](../../../zircon/kernel/arch/arm64/phys/address-space.cc)) does:
 
 1. Program MAIR with the four attributes the kernel also uses (must stay in
    sync with `mmu.h`).
@@ -178,14 +350,14 @@ off. After stacks exist, `ArchSetUpAddressSpace`
    memory.
 4. Write MAIR, TCR, TTBR0, TTBR1; then set `SCTLR_ELx.M/C/I`.
 
-Paging config is `4k-48bit` (`zircon/kernel/lib/page/BUILD.gn`). Identity
+Paging config is `4k-48bit` ([`zircon/kernel/lib/page/BUILD.gn`](../../../zircon/kernel/lib/page/BUILD.gn)). Identity
 maps prefer 1 GiB, then 2 MiB, then 4 KiB blocks
 (`kAddressSpacePageSizeShifts` in `phys/include/phys/address-space.h`).
 
 #### 2. Kernel virtual map in physboot
 
 Before jumping into `vmzircon`, physboot constructs the kernel aspace
-(`zircon/kernel/phys/handoff-prep-vm.cc`):
+([`zircon/kernel/phys/handoff-prep-vm.cc`](../../../zircon/kernel/phys/handoff-prep-vm.cc)):
 
 ```text
 KERNEL_ASPACE_BASE + KERNEL_ASPACE_SIZE
@@ -201,7 +373,7 @@ KERNEL_ASPACE_BASE
 ```
 
 The physmap is a linear window: `va = gPhysmapBase + pa`,
-`pa = va - gPhysmapBase` (`zircon/kernel/vm/include/vm/physmap.h`).
+`pa = va - gPhysmapBase` ([`zircon/kernel/vm/include/vm/physmap.h`](../../../zircon/kernel/vm/include/vm/physmap.h)).
 Non-RAM holes inside that span (flash, GIC, reserved firmware) are not
 mapped even when they sit below `gPhysmapSize`. After this point the kernel
 dereferences physical pages through the physmap: page tables themselves are
@@ -209,7 +381,7 @@ written via `paddr_to_physmap(table_paddr)`.
 
 #### 3. Kernel takeover
 
-`arm64_mmu_early_init` (`zircon/kernel/arch/arm64/mmu.cc`) snapshots:
+`arm64_mmu_early_init` ([`zircon/kernel/arch/arm64/mmu.cc`](../../../zircon/kernel/arch/arm64/mmu.cc)) snapshots:
 
 ```text
 root_lower_page_table_phys  ← TTBR0_EL1.BADDR
@@ -221,7 +393,7 @@ root. It reuses `root_kernel_page_table_phys`, ASID 1 (`MMU_ARM64_GLOBAL_ASID`).
 PMM then marks physboot's table pages `vm_page_state::MMU` and stamps a
 software parity bit on every PTE (`HandoffPageTablesFromPhysboot`).
 
-Secondary CPUs (`zircon/kernel/arch/arm64/secondary.S`) program the same
+Secondary CPUs ([`zircon/kernel/arch/arm64/secondary.S`](../../../zircon/kernel/arch/arm64/secondary.S)) program the same
 MAIR/TCR/TTBRs, enable `SCTLR_EL1.M`, jump to the kernel virtual address,
 then switch TCR to `MMU_TCR_FLAGS_KERNEL` so TTBR0 walks are disabled until
 a user aspace is installed.
@@ -332,6 +504,9 @@ every load; mismatch panics.
 
 ### Page table translation
 
+End-to-end (TLB, `VA[55]`, EL0 vs EL1 permissions) is **Translation
+flow**. This subsection is the table walk itself.
+
 Hardware walk (EL1&0 stage 1), matching `QueryLocked`:
 
 ```text
@@ -371,7 +546,7 @@ A translation fault becomes a synchronous exception: `ESR_EL1` class
 
 ### PTE bits
 
-64-bit descriptor (`zircon/kernel/arch/arm64/include/arch/arm64/mmu.h`):
+64-bit descriptor ([`zircon/kernel/arch/arm64/include/arch/arm64/mmu.h`](../../../zircon/kernel/arch/arm64/include/arch/arm64/mmu.h)):
 
 | Bits | Field | Role |
 | --- | --- | --- |
@@ -521,19 +696,43 @@ TCR_EL1 ← EPD0             # drop identity TTBR0 once running at high VA
 
 | Path | Why |
 | --- | --- |
-| `zircon/kernel/arch/arm64/include/arch/kernel_aspace.h` | user/kernel VA windows |
-| `zircon/kernel/arch/arm64/include/arch/arm64/mmu.h` | TCR, MAIR, PTE, ASID |
-| `zircon/kernel/arch/arm64/include/arch/vm.h` | `is_user_accessible` / TBI |
-| `zircon/kernel/arch/arm64/include/arch/regs.h` | exception `iframe_t` |
-| `zircon/kernel/arch/arm64/phys/start.S` | MMU-off entry, stacks, `TPIDR_EL1` |
-| `zircon/kernel/arch/arm64/phys/address-space.cc` | MAIR/TCR/TTBR/SCTLR enable |
-| `zircon/kernel/phys/address-space.cc` | identity-map RAM + UART |
-| `zircon/kernel/phys/handoff-prep-vm.cc` | physmap + kernel image layout |
-| `zircon/kernel/arch/arm64/mmu.cc` | `Map`/`Query`/`ContextSwitch`/`AT` |
-| `zircon/kernel/arch/arm64/secondary.S` | AP MMU turn-on |
-| `zircon/kernel/vm/include/vm/physmap.h` | `paddr_to_physmap` |
-| `zircon/kernel/vm/vm_aspace.cc` | `VmAspace` / kernel aspace init |
-| `zircon/kernel/lib/page/BUILD.gn` | `4k-48bit` paging config |
+| [`zircon/kernel/arch/arm64/include/arch/kernel_aspace.h`](../../../zircon/kernel/arch/arm64/include/arch/kernel_aspace.h) | user/kernel VA windows |
+| [`zircon/kernel/arch/arm64/include/arch/arm64/mmu.h`](../../../zircon/kernel/arch/arm64/include/arch/arm64/mmu.h) | TCR, MAIR, PTE, ASID, `EPD0` |
+| [`zircon/kernel/arch/arm64/include/arch/vm.h`](../../../zircon/kernel/arch/arm64/include/arch/vm.h) | `is_user_accessible` / TBI |
+| [`zircon/kernel/arch/arm64/include/arch/regs.h`](../../../zircon/kernel/arch/arm64/include/arch/regs.h) | exception `iframe_t` |
+| [`zircon/kernel/arch/arm64/phys/start.S`](../../../zircon/kernel/arch/arm64/phys/start.S) | MMU-off entry, stacks, `TPIDR_EL1` |
+| [`zircon/kernel/arch/arm64/phys/address-space.cc`](../../../zircon/kernel/arch/arm64/phys/address-space.cc) | MAIR/TCR/TTBR/SCTLR enable |
+| [`zircon/kernel/phys/address-space.cc`](../../../zircon/kernel/phys/address-space.cc) | identity-map RAM + UART |
+| [`zircon/kernel/phys/handoff-prep-vm.cc`](../../../zircon/kernel/phys/handoff-prep-vm.cc) | physmap + kernel image layout |
+| [`zircon/kernel/arch/arm64/mmu.cc`](../../../zircon/kernel/arch/arm64/mmu.cc) | `Map`/`Query`/`ContextSwitch`/`AT` |
+| [`zircon/kernel/arch/arm64/secondary.S`](../../../zircon/kernel/arch/arm64/secondary.S) | AP MMU turn-on |
+| [`zircon/kernel/vm/include/vm/physmap.h`](../../../zircon/kernel/vm/include/vm/physmap.h) | `paddr_to_physmap` |
+| [`zircon/kernel/vm/vm_aspace.cc`](../../../zircon/kernel/vm/vm_aspace.cc) | `VmAspace` / kernel aspace init |
+| [`zircon/kernel/object/include/object/shareable_process_state.h`](../../../zircon/kernel/object/include/object/shareable_process_state.h) | process aspace + handle table |
+| [`zircon/kernel/lib/page/BUILD.gn`](../../../zircon/kernel/lib/page/BUILD.gn) | `4k-48bit` paging config |
+
+### Terminology
+
+| Term | Meaning in this note |
+| --- | --- |
+| VA | Virtual address. Bit 55 selects TTBR0 (0, user) vs TTBR1 (1, kernel). |
+| PA | Physical address. DRAM on QEMU virt starts at `0x40000000`. |
+| TTBR0_EL1 | User page-table base + ASID. One L0 per process. Swapped on thread switch. |
+| TTBR1_EL1 | Kernel page-table base + global ASID 1. One L0 for the system. Never swapped. |
+| L0…L3 | Four page-table levels, 512 × 8-byte PTEs each, 4 KiB granule. |
+| PTE | Page table entry. Block (L1/L2) or page (L3) or table pointer. |
+| Physmap | Linear kernel window: `VA = KERNEL_ASPACE_BASE + PA`. How the kernel touches RAM and table pages. |
+| PMM | Physical memory manager. Owns DRAM pages; aspaces only install PTEs. |
+| VMO | Virtual Memory Object. Content (anonymous, physical, pager). Mapped into a VMAR. |
+| VMAR | Virtual Memory Address Region. A VA range in an aspace; `zx_vmar_map` creates a `VmMapping` in it. |
+| ASID | Address Space ID in `TTBR0[63:48]`. Tags user TLB entries. Kernel PTEs are global (`nG=0`). |
+| `nG` | Not-global PTE bit. User pages 1; kernel pages 0. |
+| `EPD0` | TCR bit: disable TTBR0 walks. Set for kernel-only threads (idle, DPC). |
+| TBI0 | Top-byte ignore on user VAs. Bits [63:56] are not translated. |
+| AP / UXN / PXN | PTE permission: EL1 vs EL0 read/write; user-execute-never; privileged-execute-never. |
+| AttrIndx | PTE index into `MAIR_EL1` (device vs Normal Write-Back). |
+| Stage-1 | EL1&0 translation (this product). Stage-2 is guest IPA; not on the console path. |
+| `AT` / `PAR_EL1` | Address-translate instruction and its result register. Software probe of the same walk. |
 
 ---
 

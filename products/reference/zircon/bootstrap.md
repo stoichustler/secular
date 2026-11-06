@@ -12,8 +12,10 @@ The product stays:
 zircon kernel + linux-arm64-boot-shim + BOOTFS + serial console + zxsh
 ```
 
-Read `memory.md` for TTBR/physmap, `cpu.md` for secondary CPUs / idle,
-`interrupt.md` for GICv3. This note stops at the first `zxsh` prompt.
+Read [`memory.md`](memory.md) for TTBR/physmap, [`cpu.md`](cpu.md) for
+secondary CPUs / idle, [`interrupt.md`](interrupt.md) for GICv3. First
+user process and the bootstrap channel are also [`ipc.md`](ipc.md).
+This note stops at the first `zxsh` prompt.
 
 ## Bootstrap
 
@@ -53,6 +55,15 @@ Read `memory.md` for TTBR/physmap, `cpu.md` for secondary CPUs / idle,
                               ▼
    component_manager → console-launcher → zxsh
 ```
+
+Three things change along this path. Each **switch node** below is one
+of them (sometimes two at once).
+
+| Dimension | Starts as | Ends as |
+| --- | --- | --- |
+| Exception level | EL3 (ATF) | EL0 (`zxsh`) via EL2 then EL1 |
+| MMU | off | TTBR1 kernel + TTBR0 user ([`memory.md`](memory.md)) |
+| Address space | physical / identity | kernel high VA, then per-process user VA |
 
 ### Flow
 
@@ -101,11 +112,20 @@ changes here.
  zxsh on kernel serial
 ```
 
+| Node | EL | MMU | Who runs |
+| --- | --- | --- | --- |
+| (1) ATF | EL3 → EL2 | off | firmware |
+| (2)–(4) shim | EL1 or EL2 | off | PIC phys, identity later unused |
+| (5) physboot | EL1 (or EL2 VHE) | on: identity TTBR0, then TTBR1 | still phys-executable |
+| (6)–(7) `lk_main` | EL1 | TTBR1; TTBR0 `EPD0` | kernel, CPU0 then idle + `bootstrap2` |
+| (8) `userboot_init` | EL1 → first `eret` EL0 | TTBR0 = userboot | first process |
+| (9)–(10) | EL0 | that process's TTBR0 | `component_manager` → `zxsh` |
+
 ### Switch nodes
 
 #### (1) ATF → Linux Image
 
-`make run` (`tools/secular-boot/run-qemu.sh`) execs `run-zircon` with:
+`make run` ([`tools/secular-boot/run-qemu.sh`](../../../tools/secular-boot/run-qemu.sh)) execs `run-zircon` with:
 
 ```text
 -bios  $SECULAR_SDK/prebuilt/firmware/arm-trusted-firmware-qemu-bios/qemu_fw.bios
@@ -179,7 +199,7 @@ executable (same `_start`).
 - `HandoffPrep::DoHandoff` builds `PhysHandoff` and the first page tables
 
 MMU enable (`phys/address-space.cc`): identity-map RAM and UART on
-**TTBR0**, then kernel image / physmap on **TTBR1** (`memory.md`). Physboot
+**TTBR0**, then kernel image / physmap on **TTBR1** ([`memory.md`](memory.md)). Physboot
 itself still runs at a physical (or identity) address until the final jump.
 
 #### (6) Kernel handoff
@@ -202,7 +222,7 @@ KERNEL_ASPACE_BASE  (0xffff000000000000)
 
 Then jump to the kernel ELF entry at the **high VA**. `lk_main(PhysHandoff*)`
 (`top/main.cc`) is now EL1 (or EL2-VHE looking like EL1), TTBR1 live,
-identity TTBR0 later `EPD0`'d (`cpu.md` secondary.S does the same on APs).
+identity TTBR0 later `EPD0`'d ([`cpu.md`](cpu.md) secondary.S does the same on APs).
 
 #### (7) `lk_main` → idle + `bootstrap2`
 
@@ -222,7 +242,7 @@ Thread::Current::BecomeIdle()  ← CPU0 is now IdlePowerThread (cpu.md)
 
 `bootstrap2` finishes arch/platform, `mp_signal_curr_cpu_ready`,
 `EndHandoff`, `userboot_init`. Secondary CPUs are PSCI `CPU_ON`'d from
-platform init and enter as idle (`cpu.md` SMP).
+platform init and enter as idle ([`cpu.md`](cpu.md) SMP).
 
 #### (8) `userboot_init`: first EL0 process
 
@@ -235,14 +255,14 @@ platform init and enter as idle (`cpu.md` SMP).
   1. process capability: log, process, root VMAR, thread, loaded VMAR
   2. system capability: root job, MMIO/IRQ/SMC/SYSTEM resources, ZBI VMO,
      vDSO VMOs, extra hand-off VMOs
-- `userboot.start` → `eret` to EL0 (`cpu.md` uspace_entry)
+- `userboot.start` → `eret` to EL0 ([`cpu.md`](cpu.md) uspace_entry)
 
 Userboot is packed in `STORAGE_KERNEL`, **not** in BOOTFS (it is the thing
 that unpacks BOOTFS).
 
 #### (9)–(10) userboot → `component_manager` → `zxsh`
 
-`userspace/secular/bin/userboot/main.rs`:
+[`userspace/secular/bin/userboot/main.rs`](../../../userspace/secular/bin/userboot/main.rs):
 
 - read ZBI `CMDLINE`; default `userboot.next = bin/component_manager+--boot`
 - extract `STORAGE_BOOTFS`
@@ -252,6 +272,7 @@ that unpacks BOOTFS).
 `console-launcher` (kernel serial → `zxsh`), `guest-manager` (eager),
 `vmm_launcher` (lazy). Console I/O is kernel serial syscalls
 (`kernel.enable-serial-syscalls=true`), not a userspace UART driver.
+The two userboot channel messages are capability IPC ([`ipc.md`](ipc.md)).
 
 ### Linker scripts: physical load image
 
@@ -354,27 +375,44 @@ Read in this order.
 
 | File | Why |
 | --- | --- |
-| `tools/secular-boot/run-qemu.sh` | ATF BIOS, Image, ZBI, 1 GiB, 8 CPUs, GICv3 |
-| `zircon/kernel/arch/arm64/phys/linuxboot-header.S` | Linux Image header |
-| `zircon/kernel/phys/linuxboot-pic.ld` | `PHYS_LOAD_ADDRESS=0`, `LINUXBOOT_SIZE` |
-| `zircon/kernel/phys/phys.ld` | phys segment order, `_end`, reserve |
-| `zircon/kernel/phys/phys-end.ld` | `PHYS_LOAD_END` before `.bss` |
-| `zircon/kernel/phys/zbi-header.ld` | `zbi_kernel_t` entry + reserve |
-| `zircon/kernel/arch/arm64/phys/start.S` | `_start`, DAIF, `.bss`, `PhysMain` |
-| `zircon/kernel/arch/arm64/phys/boot-shim/linux-arm64-boot-shim.cc` | DTB → ZBI |
-| `zircon/kernel/arch/arm64/phys/arch-boot-zbi.cc` | MMU-off jump, `x0` = ZBI |
-| `zircon/kernel/phys/physboot.cc` | load `vmzircon` at handoff VA |
-| `zircon/kernel/phys/handoff-prep-vm.cc` | physmap / kernel / hand-off maps |
-| `zircon/kernel/kernel.ld` | vmzircon VA segments |
-| `zircon/kernel/top/main.cc` | `lk_main`, `bootstrap2`, `userboot_init` |
-| `zircon/kernel/lib/userabi/userabi.rs` | first process + two channel msgs |
-| `userspace/secular/lib/userboot/README.md` | userboot protocol |
-| `userspace/secular/bin/userboot/main.rs` | BOOTFS → `component_manager --boot` |
+| [`tools/secular-boot/run-qemu.sh`](../../../tools/secular-boot/run-qemu.sh) | ATF BIOS, Image, ZBI, 1 GiB, 8 CPUs, GICv3 |
+| [`zircon/kernel/arch/arm64/phys/linuxboot-header.S`](../../../zircon/kernel/arch/arm64/phys/linuxboot-header.S) | Linux Image header |
+| [`zircon/kernel/phys/linuxboot-pic.ld`](../../../zircon/kernel/phys/linuxboot-pic.ld) | `PHYS_LOAD_ADDRESS=0`, `LINUXBOOT_SIZE` |
+| [`zircon/kernel/phys/phys.ld`](../../../zircon/kernel/phys/phys.ld) | phys segment order, `_end`, reserve |
+| [`zircon/kernel/phys/phys-end.ld`](../../../zircon/kernel/phys/phys-end.ld) | `PHYS_LOAD_END` before `.bss` |
+| [`zircon/kernel/phys/zbi-header.ld`](../../../zircon/kernel/phys/zbi-header.ld) | `zbi_kernel_t` entry + reserve |
+| [`zircon/kernel/arch/arm64/phys/start.S`](../../../zircon/kernel/arch/arm64/phys/start.S) | `_start`, DAIF, `.bss`, `PhysMain` |
+| [`zircon/kernel/arch/arm64/phys/boot-shim/linux-arm64-boot-shim.cc`](../../../zircon/kernel/arch/arm64/phys/boot-shim/linux-arm64-boot-shim.cc) | DTB → ZBI |
+| [`zircon/kernel/arch/arm64/phys/arch-boot-zbi.cc`](../../../zircon/kernel/arch/arm64/phys/arch-boot-zbi.cc) | MMU-off jump, `x0` = ZBI |
+| [`zircon/kernel/phys/physboot.cc`](../../../zircon/kernel/phys/physboot.cc) | load `vmzircon` at handoff VA |
+| [`zircon/kernel/phys/handoff-prep-vm.cc`](../../../zircon/kernel/phys/handoff-prep-vm.cc) | physmap / kernel / hand-off maps |
+| [`zircon/kernel/kernel.ld`](../../../zircon/kernel/kernel.ld) | vmzircon VA segments |
+| [`zircon/kernel/top/main.cc`](../../../zircon/kernel/top/main.cc) | `lk_main`, `bootstrap2`, `userboot_init` |
+| [`zircon/kernel/lib/userabi/userabi.rs`](../../../zircon/kernel/lib/userabi/userabi.rs) | first process + two channel msgs |
+| [`userspace/secular/lib/userboot/README.md`](../../../userspace/secular/lib/userboot/README.md) | userboot protocol |
+| [`userspace/secular/bin/userboot/main.rs`](../../../userspace/secular/bin/userboot/main.rs) | BOOTFS → `component_manager --boot` |
 
 Suggested first pass: **`run-qemu.sh` → Linux header → `phys.ld` picture →
 `ZbiBoot` → `physboot.cc` Load → `lk_main` → `userboot` `next`**. That is
 enough to see serial print `"printing enabled"` then `"welcome to secular"`,
 then a `zxsh` prompt.
+
+### Terminology
+
+| Term | Meaning in this note |
+| --- | --- |
+| ATF | ARM Trusted Firmware. QEMU `-bios`; EL3, then drops to EL2 with the Linux boot protocol. |
+| Linux Image | `linux-arm64-boot-shim.bin`. File with an ARM64 Image header; QEMU `-kernel`. |
+| ZBI | Zircon Boot Image. `secular.zbi` is `-initrd`: kernel item + BOOTFS. |
+| Phys executable | PIC, one RWX segment, link address 0. Shim and physboot. MMU off or identity. |
+| physboot | ZBI kernel item. Turns the MMU on, loads ELF `vmzircon` at the handoff VA. |
+| `vmzircon` | The kernel ELF. Relocated to `0xffffffff00000000`. |
+| Handoff | `PhysHandoff` plus the first TTBR1 maps (physmap, image, hand-off VMOs). |
+| `lk_main` | Kernel C entry. CPU0 until `BecomeIdle`; `bootstrap2` finishes bring-up. |
+| userboot | First user process. Static PIE + vDSO. Unpacks BOOTFS. Not itself in BOOTFS. |
+| BOOTFS | `STORAGE_BOOTFS` in the ZBI. `component_manager`, `zxsh`, drivers, … |
+| `userboot.next` | CMDLINE: default `bin/component_manager+--boot`. |
+| Switch node | A step where EL, MMU, or aspace changes. Numbered (1)–(10) in **Flow**. |
 
 ---
 

@@ -2,7 +2,7 @@
 
 Secular boots a Zircon kernel on `qemu-system-aarch64` (virt, arm64). The
 kernel runs at EL1 on several PEs that share DRAM through the physmap
-(`memory.md`). Those PEs reorder loads and stores, and the compiler reorders
+([`memory.md`](memory.md)). Those PEs reorder loads and stores, and the compiler reorders
 C++. This note is the map of that ordering path: hardware barriers, C++
 atomics, the locks built on them, and the wait queues that block instead of
 spin.
@@ -13,9 +13,11 @@ The product stays:
 zircon kernel + linux-arm64-boot-shim + BOOTFS + serial console + zxsh
 ```
 
-Read `cpu.md` for `x20` / idle / `WFI`, `memory.md` for shareability and
-`tlbi`, `interrupt.md` for DAIF. This note assumes inner-shareable RAM
-(MAIR index 2) and that IRQs can preempt a thread that is not in a spinlock.
+Read [`cpu.md`](cpu.md) for `x20` / idle / `WFI`, [`memory.md`](memory.md) for shareability and
+`tlbi`, [`interrupt.md`](interrupt.md) for DAIF. User wait that is not a
+kernel lock is [`ipc.md`](ipc.md) (futex, channel signals). This note
+assumes inner-shareable RAM (MAIR index 2) and that IRQs can preempt a
+thread that is not in a spinlock.
 
 ## Synchronization
 
@@ -41,6 +43,15 @@ Read `cpu.md` for `x20` / idle / `WFI`, `memory.md` for shareability and
                                       Thread READY → BLOCKED → Reschedule
                                       futex (user) → zx_futex_* → WaitQueue
 ```
+
+Three questions, one primitive each:
+
+| Need | Primitive |
+| --- | --- |
+| Order of memory, no lock | barrier / C++ `memory_order` |
+| Mutual exclusion, cannot sleep | `SpinLock` (IRQs off) |
+| Mutual exclusion, may sleep | `Mutex` / `CriticalMutex` / `BrwLock` |
+| Sleep until a condition | `WaitQueue` / `Event` / futex |
 
 ### Flow
 
@@ -83,7 +94,7 @@ cache `Thread::Current` across a reschedule.
 
 #### 2. Hardware barriers (ARM64)
 
-From `zircon/kernel/lib/arch/arm64/include/lib/arch/intrin.h`. Immediate is
+From [`zircon/kernel/lib/arch/arm64/include/lib/arch/intrin.h`](../../../zircon/kernel/lib/arch/arm64/include/lib/arch/intrin.h). Immediate is
 the ACLE domain:
 
 | Immediate | Domain | Direction |
@@ -104,8 +115,8 @@ Rules of thumb on this kernel:
 
 - **Order between CPUs, RAM is cacheable** → `DMB` / C++ acquire-release.
 - **Must finish before the next thing** (context switch, `WFI`, `tlbi`,
-  turning the MMU on) → `DSB`. `cpu.md` idle is `DSB SY` then `WFI`.
-  `memory.md` PTE publish is `dsb ishst` then a store-release of the parent.
+  turning the MMU on) → `DSB`. [`cpu.md`](cpu.md) idle is `DSB SY` then `WFI`.
+  [`memory.md`](memory.md) PTE publish is `dsb ishst` then a store-release of the parent.
 - **After writing SCTLR/TCR/TTBR/VBAR** → `ISB` so the next instruction
   sees the new control state.
 - **User `zx_membarrier`** → `cpp_membarrier_data_barrier` is `DMB SY`;
@@ -138,8 +149,8 @@ and disables IRQs for the scope; use it on every `SpinLock`.
 
 #### SpinLock
 
-`zircon/kernel/include/kernel/spinlock.h`, ARM loop in
-`zircon/kernel/arch/arm64/src/spinlock.rs`.
+[`zircon/kernel/include/kernel/spinlock.h`](../../../zircon/kernel/include/kernel/spinlock.h), ARM loop in
+[`zircon/kernel/arch/arm64/src/spinlock.rs`](../../../zircon/kernel/arch/arm64/src/spinlock.rs).
 
 - Word is `cpu_num + 1`, or `0` if free. Held-by-this-CPU is a relaxed load.
 - Take: `sevl; wfe; ldaxr; cbnz → wfe; stxr` until success. IRQs **must**
@@ -155,7 +166,7 @@ same lock → deadlock. `num_spinlocks` on `arm64_percpu` exists so
 
 #### Mutex
 
-`zircon/kernel/include/kernel/mutex.h`.
+[`zircon/kernel/include/kernel/mutex.h`](../../../zircon/kernel/include/kernel/mutex.h).
 
 - Fast path: atomic CAS of `val_` from `0` to `Thread*`.
 - Slow path: spin up to `SPIN_MAX_DURATION` (150 µs) while the holder is
@@ -172,7 +183,7 @@ contenders still block after the spin, and IRQs stay enabled.
 
 #### ChainLock
 
-`zircon/kernel/lib/kconcurrent/`. A `ChainLock` is a spinlock you take in a
+[`zircon/kernel/lib/kconcurrent/`](../../../zircon/kernel/lib/kconcurrent/). A `ChainLock` is a spinlock you take in a
 **transaction** (`ChainLockTransaction` / `CLT_TAG("…")`) so several objects
 (thread + wait queue + scheduler) can be locked without a fixed global
 order. Conflict → drop all, bump `chain_lock_conflict_id`, retry.
@@ -184,7 +195,7 @@ without reading `lib/kconcurrent`. For ordinary driver/kernel data, use
 
 #### BrwLock
 
-`zircon/kernel/include/kernel/brwlock.h`. Blocking reader-writer lock.
+[`zircon/kernel/include/kernel/brwlock.h`](../../../zircon/kernel/include/kernel/brwlock.h). Blocking reader-writer lock.
 Many readers or one writer. Optional PI via `OwnedWaitQueue`. Writer-biased
 enough that a writer does not starve behind an endless reader stream. Use
 when the read side is the common path and may block.
@@ -202,11 +213,11 @@ Locks decide **mutual exclusion**. These decide **sleep**.
 | `Semaphore` | counting; `Post` release-synchronizes with `Wait` | no |
 
 `Event::Wait` from IRQ context is illegal. `Event::Signal` from IRQ is
-legal **only** with preemption already disabled (`interrupt.md`
+legal **only** with preemption already disabled ([`interrupt.md`](interrupt.md)
 `int_handler_start` does that).
 
 Blocking a thread is: set `THREAD_BLOCKED`, enqueue on the wait queue,
-`Scheduler::Reschedule` (`cpu.md` STR). Wake is the reverse plus maybe an
+`Scheduler::Reschedule` ([`cpu.md`](cpu.md) STR). Wake is the reverse plus maybe an
 IPI `RESCHEDULE` if the target CPU is in `WFI`.
 
 ### IRQ and preemption as exclusion
@@ -230,9 +241,9 @@ holding a `SpinLock`.
 The console image's `zxsh` / `component_manager` do not spin in the kernel
 sense. They use:
 
-- `zx_futex_wait` / `wake` / `requeue` (`zircon/kernel/lib/syscalls/futex.rs`)
+- `zx_futex_wait` / `wake` / `requeue` ([`zircon/kernel/lib/syscalls/futex.rs`](../../../zircon/kernel/lib/syscalls/futex.rs))
   — kernel wait queue keyed by a user word.
-- `sync_mutex_t` (`zircon/system/ulib/sync`) — futex-backed, non-recursive,
+- `sync_mutex_t` ([`zircon/system/ulib/sync`](../../../zircon/system/ulib/sync)) — futex-backed, non-recursive,
   `zx_instant_mono_t` timeouts. Prefer this over libc `mutex_t`.
 - `sync_completion` / `sync_condition` — same library.
 
@@ -270,27 +281,47 @@ Read in this order.
 
 | File | Why |
 | --- | --- |
-| `zircon/kernel/lib/arch/arm64/include/lib/arch/intrin.h` | `DMB`/`DSB`/`ISB`, `ThreadMemoryBarrier` |
-| `zircon/kernel/arch/arm64/src/spinlock.rs` | `ldaxr` / `wfe` / `Release` store |
-| `zircon/kernel/include/arch/spinlock.h` | `arch_spin_lock_t` word |
-| `zircon/kernel/include/kernel/spinlock.h` | `SpinLock`, IRQ-off contract |
-| `zircon/kernel/include/kernel/lockdep.h` | `Guard<…, IrqSave>` |
-| `zircon/kernel/include/kernel/mutex.h` | `Mutex`, `CriticalMutex`, 150 µs spin |
-| `zircon/kernel/include/kernel/brwlock.h` | reader-writer |
-| `zircon/kernel/lib/kconcurrent/include/lib/kconcurrent/chainlock.h` | `CLT_TAG` |
-| `zircon/kernel/include/kernel/wait.h` | `WaitQueue` / block reasons |
-| `zircon/kernel/include/kernel/event.h` | signal from IRQ rules |
-| `zircon/kernel/include/kernel/semaphore.h` | `Post` release / `Wait` acquire |
-| `zircon/kernel/include/kernel/auto_preempt_disabler.h` | preempt off RAII |
-| `zircon/kernel/include/kernel/interrupt.h` | `int_handler_start` |
-| `zircon/kernel/lib/syscalls/membarrier_ffi.cc` | user membarrier → `DMB`/`ISB` |
-| `zircon/kernel/lib/syscalls/futex.rs` | user wait |
-| `zircon/system/ulib/sync/include/lib/sync/mutex.h` | `sync_mutex_t` |
+| [`zircon/kernel/lib/arch/arm64/include/lib/arch/intrin.h`](../../../zircon/kernel/lib/arch/arm64/include/lib/arch/intrin.h) | `DMB`/`DSB`/`ISB`, `ThreadMemoryBarrier` |
+| [`zircon/kernel/arch/arm64/src/spinlock.rs`](../../../zircon/kernel/arch/arm64/src/spinlock.rs) | `ldaxr` / `wfe` / `Release` store |
+| [`zircon/kernel/include/arch/spinlock.h`](../../../zircon/kernel/include/arch/spinlock.h) | `arch_spin_lock_t` word |
+| [`zircon/kernel/include/kernel/spinlock.h`](../../../zircon/kernel/include/kernel/spinlock.h) | `SpinLock`, IRQ-off contract |
+| [`zircon/kernel/include/kernel/lockdep.h`](../../../zircon/kernel/include/kernel/lockdep.h) | `Guard<…, IrqSave>` |
+| [`zircon/kernel/include/kernel/mutex.h`](../../../zircon/kernel/include/kernel/mutex.h) | `Mutex`, `CriticalMutex`, 150 µs spin |
+| [`zircon/kernel/include/kernel/brwlock.h`](../../../zircon/kernel/include/kernel/brwlock.h) | reader-writer |
+| [`zircon/kernel/lib/kconcurrent/include/lib/kconcurrent/chainlock.h`](../../../zircon/kernel/lib/kconcurrent/include/lib/kconcurrent/chainlock.h) | `CLT_TAG` |
+| [`zircon/kernel/include/kernel/wait.h`](../../../zircon/kernel/include/kernel/wait.h) | `WaitQueue` / block reasons |
+| [`zircon/kernel/include/kernel/event.h`](../../../zircon/kernel/include/kernel/event.h) | signal from IRQ rules |
+| [`zircon/kernel/include/kernel/semaphore.h`](../../../zircon/kernel/include/kernel/semaphore.h) | `Post` release / `Wait` acquire |
+| [`zircon/kernel/include/kernel/auto_preempt_disabler.h`](../../../zircon/kernel/include/kernel/auto_preempt_disabler.h) | preempt off RAII |
+| [`zircon/kernel/include/kernel/interrupt.h`](../../../zircon/kernel/include/kernel/interrupt.h) | `int_handler_start` |
+| [`zircon/kernel/lib/syscalls/membarrier_ffi.cc`](../../../zircon/kernel/lib/syscalls/membarrier_ffi.cc) | user membarrier → `DMB`/`ISB` |
+| [`zircon/kernel/lib/syscalls/futex.rs`](../../../zircon/kernel/lib/syscalls/futex.rs) | user wait |
+| [`zircon/system/ulib/sync/include/lib/sync/mutex.h`](../../../zircon/system/ulib/sync/include/lib/sync/mutex.h) | `sync_mutex_t` |
 
 Suggested first pass: **`intrin.h` barriers → `spinlock.rs` acquire →
 `Guard<SpinLock, IrqSave>` → `Mutex` fast CAS vs wait-queue slow path**.
 That is enough to see why UART IRQ code uses a spinlock, and why
 `component_manager` blocking on a channel uses `CriticalMutex`.
+
+### Terminology
+
+| Term | Meaning in this note |
+| --- | --- |
+| `DMB` | Data Memory Barrier. Orders accesses; they need not have reached RAM. |
+| `DSB` | Data Synchronization Barrier. Waits until prior accesses / TLBI / cache ops complete. |
+| `ISB` | Instruction Synchronization Barrier. Refetch after `msr` of control regs. |
+| Inner shareable | Other PEs on this QEMU virt. Secular RAM is this (`DMB ISH`). |
+| `memory_order_acquire` / `release` | C++: `ldar` / `stlr`. Lock take sees the critical section; drop publishes it. |
+| `SpinLock` | IRQ-off mutex on a word. `ldaxr`/`stxr` + `WFE`. Never blocks. |
+| `IrqSave` | `Guard` option: save DAIF, mask IRQs for the scope. Required with `SpinLock`. |
+| `Mutex` | Blocking lock. Fast CAS of `Thread*`; slow path spins 150 µs then `WaitQueue`. |
+| `CriticalMutex` | `Mutex` plus a timeslice extension so the holder is not preempted for that 150 µs. Dispatcher locks. |
+| `ChainLock` | Spinlock taken in a retryable transaction. Scheduler + wait queues. |
+| `BrwLock` | Blocking readers-writer. |
+| `WaitQueue` | Set of `BLOCKED` threads. Wake → `READY` + maybe IPI `RESCHEDULE`. |
+| PI | Priority inheritance. `OwnedWaitQueue` / contested `Mutex`. |
+| Futex | User word + kernel wait queue. `zx_futex_*`. Not a kernel `Mutex`. |
+| `arch_blocking_disallowed` | True in IRQ and while a spinlock is held. `Wait` / `Mutex` slow path will assert. |
 
 ---
 
