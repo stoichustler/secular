@@ -500,7 +500,7 @@ if `*addr == expected`. `zx_futex_wake` readies waiters.
 
 ```text
  A  zx_futex_wait(&word, expected, deadline)
-        │  *word != expected  →  return OK (already changed)
+        │  *word != expected  →  ZX_ERR_BAD_STATE (do not sleep)
         │  *word == expected  →  BLOCKED on that key
         ▼
  B  stores a new value, then zx_futex_wake(&word, n)

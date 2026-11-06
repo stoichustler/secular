@@ -239,16 +239,130 @@ holding a `SpinLock`.
 ### Userspace
 
 The console image's `zxsh` / `component_manager` do not spin in the kernel
-sense. They use:
+sense. They use futexes (next section) via
+`sync_mutex_t` / `sync_completion` / `sync_condition`
+([`zircon/system/ulib/sync`](../../../zircon/system/ulib/sync)). Prefer
+`sync_mutex_t` over libc `mutex_t`. Kernel `Mutex` is **not** a futex;
+do not call `sync_mutex_lock` in kernel code.
 
-- `zx_futex_wait` / `wake` / `requeue` ([`zircon/kernel/lib/syscalls/futex.rs`](../../../zircon/kernel/lib/syscalls/futex.rs))
-  — kernel wait queue keyed by a user word.
-- `sync_mutex_t` ([`zircon/system/ulib/sync`](../../../zircon/system/ulib/sync)) — futex-backed, non-recursive,
-  `zx_instant_mono_t` timeouts. Prefer this over libc `mutex_t`.
-- `sync_completion` / `sync_condition` — same library.
+### Futex
 
-Kernel `Mutex` is **not** a futex; it is a `Thread*` + `WaitQueue`. Do not
-call `sync_mutex_lock` in kernel code.
+**Principle:** the lock word lives in **user** memory. The kernel only
+sleeps and wakes. Uncontended take/drop is a user atomic (`ldaxr`/`stlr`);
+a syscall happens only when a thread must block or must wake a blocker.
+
+There is no `FutexDispatcher` and no handle. The key is the user VA
+(`FutexId` = detagged pointer `>> 2`, so the word must be 4-byte
+aligned). The wait queue sits in the process's `FutexContext`
+([`futex_context.rs`](../../../zircon/kernel/object/futex_context.rs),
+on `ShareableProcessState` — shared processes share the table).
+
+Wait and wake must be atomic with respect to each other: `futex_wait`
+re-reads `*value_ptr` under the futex spinlock and compares it to
+`current_value`. If they differ, it returns `ZX_ERR_BAD_STATE` and does
+**not** sleep. That closes the lost-wakeup race a user mutex would
+otherwise have (unlock + wake racing with “see it is locked, then wait”).
+
+#### Why (advantage)
+
+| vs | Futex wins because |
+| --- | --- |
+| Kernel `Mutex` | No kernel object per lock. A process can have thousands of `sync_mutex_t` on the stack or in structs; the kernel allocates a `FutexState` only while someone is **waiting**. |
+| Always-syscall Event / Channel | Uncontended path never enters EL1. `component_manager` locks that do not collide cost one atomic, not a `svc`. |
+| Spin forever | Contended path blocks (`THREAD_BLOCKED`) and lets the CPU run someone else / `WFI` (`cpu.md`). |
+| One Event per condition | One word is the protocol. Userspace invents mutex, condvar, barrier, seqcount; the kernel stays generic. |
+| Channel between processes | A futex in a **shared VMO** is IPC with no handle transfer and no 64 KiB messages (`ipc.md`). |
+
+Cost: the protocol is yours. Forget the `*ptr == expected` check, or
+wake without storing a new value, and you deadlock or miss a wakeup.
+Owner / PI is optional and only within the same futex context (same
+process, or shared aspace).
+
+#### Framework
+
+```text
+ userspace (EL0)                         kernel (EL1)
+ ┌─────────────────────────┐             ┌─────────────────────────────┐
+ │ zx_futex_t word         │             │ FutexContext                │
+ │  (stack / heap / VMO)   │◄── VA key ──│  hash(FutexId)              │
+ │ protocol is user-defined│             │  FutexState pool            │
+ │                         │             │    2 per thread (requeue)   │
+ │  uncontended: atomic    │             │  active: OwnedWaitQueue     │
+ │  contended: svc         │             │    optional owner Thread*   │
+ └─────────────────────────┘             └──────────────┬──────────────┘
+        sync_mutex_t.futex                              │
+        = 0 free, else holder                           ▼
+                                               WaitQueue  BLOCKED → READY
+```
+
+| Syscall | Role |
+| --- | --- |
+| `zx_futex_wait(ptr, expected, owner, deadline)` | if `*ptr == expected`, sleep; else `BAD_STATE` |
+| `zx_futex_wake(ptr, n)` | ready up to `n` waiters |
+| `zx_futex_wake_single_owner(ptr)` | wake one and make it the owner (PI) |
+| `zx_futex_requeue(wake, n, expected, other, m, owner)` | wake `n` on `wake`; move `m` waiters to `other` |
+| `zx_futex_get_owner(ptr, &koid)` | who the kernel thinks owns it |
+
+`requeue` is the condvar move: waiters leave the cond futex and attach
+to the mutex futex without bouncing through EL0. The pool keeps **two**
+`FutexState`s per thread so two keys can be locked at once.
+
+#### Flow
+
+Uncontended mutex (no syscall):
+
+```text
+ lock:   ldaxr  word==0 ? stxr thread_id : contended
+ unlock: stlr   0
+```
+
+Contended:
+
+```text
+ A  sees word != 0
+        │  (optional: mark “has waiters” in the user word)
+        ▼
+    zx_futex_wait(&word, expected, owner=B, deadline)
+        │  under FutexState spinlock, IRQs off:
+        │    copy *word from user
+        │    *word != expected  →  ZX_ERR_BAD_STATE  (do not sleep)
+        │    *word == expected  →  set owner, Block on OwnedWaitQueue
+        ▼
+    A  BLOCKED   CPU may idle (cpu.md)
+
+ B  unlock
+        stlr new_value          (0, or next owner)
+        zx_futex_wake(&word, 1)
+        │  or wake_single_owner: wake one, AssignWoken
+        ▼
+    A  READY  (maybe IPI RESCHEDULE)
+        retries the user atomic
+```
+
+Condvar (`requeue`):
+
+```text
+ waiters on futex C  (condition)
+        │
+ signal: zx_futex_requeue(C, wake=1, expected, M, rest, owner)
+        │  1 sleeper → READY (will take mutex M)
+        │  the rest  → now wait on mutex futex M
+        ▼
+ no thundering herd of “wake all, then all sleep on M”
+```
+
+Lost-wakeup window the kernel closes:
+
+```text
+ B unlock + wake          A “still locked, I'll wait”
+        │                        │
+        │     if A waits *after* B's wake, and does not
+        │     re-read the word, A sleeps forever
+        ▼
+ wait's compare of *ptr == expected is inside the same
+ lock that wake takes. Either A sees the new value and
+ returns BAD_STATE, or B's wake finds A on the queue.
+```
 
 ### How to choose
 
@@ -261,6 +375,8 @@ IRQ context or must not reschedule?
        otherwise                    → Mutex
 Need to wait for a flag, not a critical section?
   → Event / Semaphore / WaitQueue
+Need a userspace mutex / condvar?
+  → futex (`sync_mutex_t`), never kernel `Mutex`
 Need several objects at once (sched + thread)?
   → existing ChainLock transaction, do not roll your own
 ```
@@ -295,13 +411,16 @@ Read in this order.
 | [`zircon/kernel/include/kernel/auto_preempt_disabler.h`](../../../zircon/kernel/include/kernel/auto_preempt_disabler.h) | preempt off RAII |
 | [`zircon/kernel/include/kernel/interrupt.h`](../../../zircon/kernel/include/kernel/interrupt.h) | `int_handler_start` |
 | [`zircon/kernel/lib/syscalls/membarrier_ffi.cc`](../../../zircon/kernel/lib/syscalls/membarrier_ffi.cc) | user membarrier → `DMB`/`ISB` |
-| [`zircon/kernel/lib/syscalls/futex.rs`](../../../zircon/kernel/lib/syscalls/futex.rs) | user wait |
+| [`zircon/kernel/lib/syscalls/futex.rs`](../../../zircon/kernel/lib/syscalls/futex.rs) | `sys_futex_{wait,wake,requeue}` |
+| [`zircon/kernel/object/futex_context.rs`](../../../zircon/kernel/object/futex_context.rs) | `FutexId`, wait/wake atomicity, owner |
 | [`zircon/system/ulib/sync/include/lib/sync/mutex.h`](../../../zircon/system/ulib/sync/include/lib/sync/mutex.h) | `sync_mutex_t` |
 
 Suggested first pass: **`intrin.h` barriers → `spinlock.rs` acquire →
-`Guard<SpinLock, IrqSave>` → `Mutex` fast CAS vs wait-queue slow path**.
-That is enough to see why UART IRQ code uses a spinlock, and why
-`component_manager` blocking on a channel uses `CriticalMutex`.
+`Guard<SpinLock, IrqSave>` → `Mutex` fast CAS vs wait-queue slow path →
+`futex_wait` compare-and-block**. That is enough to see why UART IRQ
+code uses a spinlock, why `component_manager` blocking on a channel
+uses `CriticalMutex`, and why `zxsh` libc mutexes never syscall until
+they collide.
 
 ### Terminology
 
@@ -320,7 +439,10 @@ That is enough to see why UART IRQ code uses a spinlock, and why
 | `BrwLock` | Blocking readers-writer. |
 | `WaitQueue` | Set of `BLOCKED` threads. Wake → `READY` + maybe IPI `RESCHEDULE`. |
 | PI | Priority inheritance. `OwnedWaitQueue` / contested `Mutex`. |
-| Futex | User word + kernel wait queue. `zx_futex_*`. Not a kernel `Mutex`. |
+| Futex | User `zx_futex_t` + kernel `WaitQueue` keyed by VA. No handle. Uncontended = user atomic. |
+| `FutexId` | Detagged user pointer `>> 2`. Word must be 4-byte aligned. |
+| `ZX_ERR_BAD_STATE` (wait) | `*ptr != expected`: do not sleep (avoids lost wakeup). |
+| Owner / PI | Optional `Thread*` on a futex. `wake_single_owner` hands the lock to the woken waiter. |
 | `arch_blocking_disallowed` | True in IRQ and while a spinlock is held. `Wait` / `Mutex` slow path will assert. |
 
 ---
