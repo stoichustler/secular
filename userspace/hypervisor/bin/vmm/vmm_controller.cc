@@ -8,7 +8,6 @@
 #include <lib/syslog/cpp/log_settings.h>
 #include <lib/syslog/cpp/macros.h>
 #include <lib/zx/job.h>
-#include <lib/zx/process.h>
 #include <stdio.h>
 #include <string.h>
 #include <zircon/types.h>
@@ -33,9 +32,9 @@ const char* KernelTypeLabel(KernelType type) {
   }
 }
 
-// Rename this VMM process to `{kernel}-{vmid}` so `ps -T` can tell RTOS and Linux
-// guests apart. ELF runner would otherwise name every instance `vmm.cm`.
-void ApplyVmmTaskName(const GuestConfig& config) {
+// Rename this VMM job to `{kernel}-{vmid}` so `ps` can tell RTOS and Linux
+// guests apart. ELF runner would otherwise name every instance's job generically.
+void ApplyVmmJobName(const GuestConfig& config) {
   if (!config.has_kernel_type()) {
     return;
   }
@@ -43,9 +42,9 @@ void ApplyVmmTaskName(const GuestConfig& config) {
   char name[ZX_MAX_NAME_LEN];
   snprintf(name, sizeof(name), "%s-%u", KernelTypeLabel(config.kernel_type()), vmid);
   const size_t len = strnlen(name, sizeof(name));
-  zx_status_t status = zx::process::self()->set_property(ZX_PROP_NAME, name, len);
+  zx_status_t status = zx::job::default_job()->set_property(ZX_PROP_NAME, name, len);
   if (status != ZX_OK) {
-    FX_PLOGS(WARNING, status) << "Failed to set VMM process name to " << name;
+    FX_PLOGS(WARNING, status) << "Failed to set VMM job name to " << name;
   }
 }
 
@@ -75,7 +74,7 @@ void VmmController::Create(::fuchsia::virtualization::GuestConfig guest_config,
     vmm_.reset();
   }
 
-  ApplyVmmTaskName(guest_config);
+  ApplyVmmJobName(guest_config);
 
   auto vmm = std::make_unique<vmm::Vmm>();
   fit::result<GuestError> result =
