@@ -16,6 +16,9 @@ how the three aspaces are built, how stage-2 is walked, how lua
 stage-2, which registers tag the walk, how TLBs are invalidated, and
 how permissions are enforced.
 
+Start with **Diagrams** (eight posters), then the sections they
+index.
+
 ## Framework
 
 Three aspaces. CPU does two walks (guest S1 then host S2). DMA does
@@ -74,6 +77,172 @@ the same S2 on the SMMU, optionally with a guest S1 in front.
 
 Host never walks `VTTBR`. Guest stage-1 is the guest kernel's problem.
 Crook only owns stage-2.
+
+## Diagrams
+
+Eight posters. CPU walk, DMA walk, how lua becomes a PTE, and the
+three legs of a passthrough device.
+
+### 1. Two walks to the same PA
+
+CPU: guest S1 then Crook S2. DMA: SMMU, same S2 TTB as `VTTBR`.
+
+```text
+  guest VA                    device IOVA
+      │                            │
+      ▼  guest TTBR0/1             ▼  guest CD  (only if nested)
+     IPA                          IPA
+      │                            │
+      │         ┌──────────────────┘
+      ▼         ▼
+   VTTBR_EL2   SMMU STE  S2TTB = same root, S2VMID = VMID
+      │         │
+      └────┬────┘
+           ▼
+          PA  ──►  SMPU  ──►  DRAM / device
+
+  Host EL1 never walks VTTBR (cleared on guest exit).
+  EL2 only while the VCPU is in guest: HCR.VM, VTCR, TLBI ipas2*.
+```
+
+### 2. Three aspaces
+
+```text
+  TTBR1_EL1     kernel + physmap          always on
+  TTBR0_EL1     user process + ASID       context switch
+  VTTBR_EL2     guest IPA 0 … 2^36        VMID[63:48] | BADDR
+  TTBR0_EL2     EL2 vectors / stack       once per CPU
+  SMMU STRTAB   STE → S2 TTB              DMA
+
+  ┌─ TYPE_KERNEL ──────────────────────────────┐
+  │  TTBR1   KERNEL_BASE / physmap             │
+  └──────────────────┬─────────────────────────┘
+                     │ zx_guest_create_new
+                     ▼
+  ┌─ TYPE_GUEST_PHYS  (guest VMAR handle) ─────┐
+  │  S2 PTEs   IPA → PA                        │
+  │  VMM zx_vmar_map SPECIFIC  ==  stage-2 fill│
+  └────────────────────────────────────────────┘
+```
+
+### 3. Handle → VMO → PTE
+
+A mapping is always **VA/IPA range → offset in a VMO**. Same VMO
+can sit in user TTBR0, kernel, and guest S2 at once.
+
+```text
+  EL0   zx::vmo / zx::vmar / zx::guest / zx::bti
+           │  handle + rights
+           ▼
+  EL1   Dispatcher
+           │  RefPtr
+           ▼
+  VM    VmAspace ── root VMAR ── VmMapping ──► VmObject
+                                              Paged / Physical
+           │                                       │
+           ▼                                       ▼
+  HW    ArmArchVmAspace  TTBR0/1 or VTTBR     vm_page_t / HPA
+```
+
+### 4. `setVmem` → identity S2
+
+Lua does not write page tables. GPA = HPA in the lua path.
+
+```text
+  sos.lua  setVmem("IO", 0, 1GiB, kCached, 0)
+  allocator append "ram"  is_physmem=1
+                 │
+                 ▼
+  Guest::Init
+     kMpu     skip
+     kDemand  anonymous VMO          (HPA is PMM, not identity)
+     kCached  physical VMO + WB
+     kDevice  physical VMO + nGnRE
+                 │
+                 ▼
+     zx_vmar_map(guest_vmar, SPECIFIC|CONTIGUOUS|RWX, gpa)
+                 │
+                 ▼
+     S2 PTE   IPA = gpa_base  →  PA = hpa_base
+
+  first is_physmem  →  PhysMem (VMM host VA over guest RAM)
+  IO window keeps is_physmem=0 so PhysMem is DRAM, not MMIO
+```
+
+### 5. Map vs trap hole
+
+The 1 GiB SOS IO window is the default identity. Traps punch holes.
+
+```text
+  IPA  0                         0x8000000              1 GiB
+       [======== kCached IO window (identity) ================]
+                 UART ── S2 PTE ──► real device
+                 GICD ── hole ──► EL2 abort ──► VMM emulate
+
+  guest ldr / str
+       │
+       ├─ S2 valid     →  PA  (passthrough)
+       ├─ S2 invalid + trap MEM   →  ZX_PKT_GUEST_MEM  IoHandler
+       ├─ S2 invalid + trap BELL  →  ZX_PKT_GUEST_BELL  (async)
+       └─ S2 invalid, no trap     →  inject_data_abort to guest
+```
+
+### 6. Passthrough: three legs
+
+Missing any one is a half-assign.
+
+```text
+                    guest driver
+              MMIO / DMA / wait-IRQ
+           ┌─────────┼─────────┐
+           ▼         ▼         ▼
+        CPU S2     SPI        SMMU STE
+        identity   passthrough  SID → this VM's S2
+        kDevice    HW=1 LR      S2_TRANS or S12
+           │         │         │
+           ▼         ▼         ▼
+        regs      ICH_LR      DRAM
+                     │
+                     └─ bind_vcpu + pin pCPU  (latency)
+```
+
+### 7. SMMU: S2 only vs nested S12
+
+```text
+  identity DMA                         IOVA DMA
+  guest programs IPA=HPA               guest programs vSMMU CD
+       │                                    │
+       ▼                                    ▼
+  STE CFG = S2_TRANS                   STE CFG = S12_TRANS
+       │                                    │
+       │                               guest CD  IOVA → IPA
+       │                                    │
+       └────────────┬───────────────────────┘
+                    ▼
+              host S2TTB + S2VMID     (same as VTTBR)
+                    │
+                    ▼
+                   PA
+
+  Guest never writes host S2TTB / S2VMID.
+  QEMU virt: no SMMU; DMA leg is a nop.
+```
+
+### 8. `VTTBR` on/off and SMPU
+
+```text
+  Vcpu::Resume
+     msr vttbr_el2, VMID<<48 | s2_root
+     eret guest
+     … intercept …
+     msr vttbr_el2, xzr          host always VTTBR=0
+
+  kMpu VmemSpec  ── skip in Init ── DTB reserved-memory reg
+                                      UnmapPhysicalMemory
+                                      S2 hole + PhysMem hole
+  CPU load  →  abort to EL2
+  DMA to that PA  →  interconnect SMPU deny (even if STE allowed)
+```
 
 ## Objects
 
@@ -358,38 +527,217 @@ Block maps (1 GiB / 2 MiB) are used when the VMO is contiguous.
 
 ## Device memory
 
-### Lua
+### `sos_config:setVmem`
 
-SOS (`sos.lua`):
+Lua does not write page tables. `setVmem` only **appends a
+`VmemSpec`**. `Guest::Init` later turns that list into physical VMOs
+and `zx_vmar_map` into the guest VMAR, which **is** the stage-2 fill.
+AHYP identity: the lua `base_addr` is both GPA and HPA.
+
+#### Signature
+
+LuaBridge binds `GuestConfig` as the global `sos_config`
+(`ParseConfigFromLua`). Colon-call passes `self`.
+
+```text
+sos_config:setVmem(name, base_addr, size, policy, is_physmem)
+```
+
+| Arg | C++ | What it becomes |
+| --- | --- | --- |
+| `name` | `spec.name` | label. Mapping ignores it. DTB export needs `is_reservedmem` |
+| `base_addr` | `hpa_base` **and** `gpa_base` | identity. Lua cannot say GPA ≠ HPA |
+| `size` | `spec.size` | byte length; kernel `ROUNDUP_PAGE_SIZE` on the VMO |
+| `policy` | `MemoryPolicy` | VMO type + S2 MemAttr (see table below) |
+| `is_physmem` | `spec.is_physmem` | first `1` becomes VMM `PhysMem` (host VA over guest RAM) |
+
+`setVmem` also sets `is_reservedmem = false`. No page-alignment
+check here (JSON / CLI parsers do reject unaligned base/size).
+
+```text
+spec.name       = name
+spec.hpa_base   = base_addr
+spec.gpa_base   = spec.hpa_base      // forced identity
+spec.size       = size
+spec.policy     = (MemoryPolicy)policy
+spec.is_physmem = is_physmem
+vmem_spec_.push_back(spec)
+```
+
+| `MemoryPolicy` | VMO | Cache | Typical |
+| --- | --- | --- | --- |
+| `kDemand` (0) | anonymous `zx_vmo_create` | cached | unused on QEMU SOS; HPA is PMM, **not** identity |
+| `kCached` (1) | `zx_vmo_create_physical` | `ZX_CACHE_POLICY_CACHED` | RAM, SOS IO window |
+| `kDevice` (2) | physical | `UNCACHED_DEVICE` | true device MMIO on SoC |
+| `kMpu` (3) | skipped in `Init` | — | TEE / SMPU; punched out later from DTB `reg` |
+
+#### Call flow
+
+```text
+ Vmm::Initialize
+    read_product_cfg("/system/data/product.lua")
+       LuaBridge  product_config:setVmem / setDeviceTree / setProductSpec
+    get_product_path  →  /system/data/<default_cfg>     // sos.lua
+    read_guest_cfg
+       GuestConfigParser::ParseConfigFromLua
+          luaL_newstate + luaL_openlibs
+          beginClass<GuestConfig>("sos_config")
+             addFunction("setVmem", &GuestConfig::setVmem)
+             addFunction("setVmemAuto", …)
+          setGlobal(L, cfg, "sos_config")
+          luaL_dofile(sos.lua)
+             sos_config:setVmem("IO", 0, 0x40000000, 1, 0)
+                GuestConfig::setVmem
+                   VmemSpec  GPA=HPA=0  size=1GiB  kCached  is_physmem=0
+                   vmem_spec_.push_back
+    open guest_memory_allocator
+       ioctl_get_system_memory / _with_path / by compatible
+       append_vmem  name="ram"  GPA=HPA=resp.addr  kCached  is_physmem=1
+    for vmem_auto:
+       ioctl_get_reserved_memory(search_string = name)
+       append_vmem  GPA=HPA=resp.addr  (lua base/size ignored)
+    guest_.Init(cfg_.vmem())
+       zx_guest_create_new  →  guest handle + guest VMAR  (TYPE_GUEST_PHYS)
+       for each VmemSpec:
+          kMpu        continue
+          kDemand     zx_vmo_create(size)
+          kCached /
+          kDevice     zx_vmo_create_physical(root, hpa, size)
+                      vmo.set_cache_policy(CACHED | UNCACHED_DEVICE)
+          zx_vmar_map(guest_vmar,
+                      SPECIFIC|CONTIGUOUS|RWX,
+                      gpa_base, vmo, 0, size)
+             VmAddressRegionDispatcher::Map
+             ArmArchVmAspace::Map   ARCH_ASPACE_FLAG_GUEST
+             S2 PTE  IPA=gpa_base → PA=hpa_base
+          first is_physmem: PhysMem::Init(vmo, hpa)
+             zx_vmar_map  VMM process TTBR0  (host poke of guest RAM)
+       FXL_CHECK(phys_mem_.vmo())     // at least one is_physmem required
+```
+
+```text
+ lua sos.lua                    EL0 VMM
+    setVmem  ─────────────────►  GuestConfig.vmem_spec_[]
+ allocator ram / vmem_auto  ──►  same vector, appended
+ Guest::Init
+    zx_guest_create_new  ─────►  empty S2 root (VTTBR.BADDR)
+    physical VMO         ─────►  VmObjectPhysical [hpa, hpa+size)
+    vmar_map SPECIFIC    ─────►  VmMapping at IPA = gpa
+                                      │
+                                      ▼
+                               ArmArchVmAspace  S2 PTE
+                                      │
+                                      ▼
+                               Vcpu::Resume  msr vttbr_el2
+                               guest ldr/str  IPA  →  that PA
+```
+
+#### Principle
+
+Crook AHYP is **identity stage-2**. The guest is given real host
+physical ranges, not a shadow GPA. `setVmem` is how the VMM names
+those ranges.
+
+1. **Lua is a list, not a walk.** Each call is one window. Overlap
+   fails later at `zx_vmar_map` (VMAR children do not overlap).
+2. **GPA = HPA in the lua path.** `setVmem` copies `base_addr` into
+   both fields. JSON `ParseVmemsConfig` and CLI `parse_vmem` *can*
+   split GPA/HPA; lua cannot. Product.lua's commented 6-arg form
+   (`name, gpa, hpa, size, policy, is_physmem`) does **not** match
+   the C++ binding.
+3. **Physical VMO names HPA that already exists.**
+   `zx_vmo_create_physical` → `VmObjectPhysical::Create`. No PMM
+   alloc. On AHYP the kernel **skips** `pmm_arena_intersects`, so
+   leftover DRAM may be a physical VMO even though it sits in a PMM
+   arena. Non-AHYP would `ZX_ERR_ACCESS_DENIED` for that.
+4. **`ZX_VM_FLAG_SPECIFIC` is the IPA.** The guest VMAR base is 0,
+   size 64 GiB. Mapping at `gpa_base` writes the S2 PTE at that IPA.
+   `MAP_CONTIGUOUS` lets the arch code use 1 GiB / 2 MiB blocks
+   (physical VMO is contiguous HPA).
+5. **`is_physmem` is the VMM's window into guest RAM**, not a
+   hardware bit. First spec with the flag is mapped into the VMM
+   process (`PhysMem`). Kernel/DTB/bootloader poke
+   `phys_mem_.as<T>(gpa - phys_base)` without a hypercall. Device
+   windows must keep the flag 0 so `PhysMem` is DRAM, not MMIO.
+6. **`kDemand` breaks identity.** Anonymous pages get whatever HPA
+   PMM hands out; the guest still sees `gpa_base`. SOS RAM is
+   therefore `kCached` physical, not demand-paged.
+7. **Traps and `kMpu` punch the window after the map.** The 1 GiB
+   SOS IO spec is the default; GICD/GICR/virtio `SetTrap` unmaps
+   page-aligned holes. `kMpu` specs are skipped in `Init`, then
+   `unmap_mpu_mem_region` looks up DTB reserved-memory `reg` and
+   `UnmapPhysicalMemory` (host `PhysMem` + guest S2).
+
+S2 attributes from policy (`mmu_flags_to_s2_pte_attr`):
+
+| Policy | S2 MemAttr | S2AP | Typical XN |
+| --- | --- | --- | --- |
+| `kCached` / `kDemand` | `0xf` Normal WB, inner SH | RW (`PERM_WRITE`) | off (VMM maps RX) |
+| `kDevice` | `0x1` Device-nGnRE | RW | on |
+
+QEMU maps the **whole** 0–1 GiB IO window as `kCached`. That is a
+blanket identity of virt MMIO (GIC, UART, …), not "this is RAM".
+Real SoC device MMIO should be `kDevice` so CPU and DMA see
+Device-nGnRE. GICD/GICR are trapped either way.
+
+#### Parse (QEMU SOS)
 
 ```text
 sos_config:setVmem("IO", 0x00000000, 0x40000000, 1, 0)
 ```
 
-`policy = 1` is `kCached`, `is_physmem = 0`. GPA = HPA = 0, size 1
-GiB: identity map of the QEMU virt MMIO window (GIC, UART, …). RAM
-comes from the leftover DRAM allocator, also identity.
+| Field | Value | Parse |
+| --- | --- | --- |
+| `name` | `"IO"` | label only. `AddVmemDeviceTreeNodes` skips it (`is_reservedmem == 0`) |
+| `base_addr` | `0` | GPA = HPA = 0. QEMU virt peripherals start here (GICD `0x8000000`) |
+| `size` | `0x40000000` | 1 GiB. Covers GIC, UART, virtio MMIO, … |
+| `policy` | `1` | `kCached` → physical VMO, Normal WB S2 |
+| `is_physmem` | `0` | not `PhysMem`. RAM is the allocator `"ram"` spec appended next |
 
-tbox uses `setVmemAuto("grt,tbox-reserved", …)`: the allocator
-returns a reserved-memory node; GPA = HPA, cached.
-
-| `MemoryPolicy` | VMO | Cache | Typical |
-| --- | --- | --- | --- |
-| `kDemand` (0) | anonymous | cached | unused on QEMU SOS |
-| `kCached` (1) | `zx_vmo_create_physical` | `ZX_CACHE_POLICY_CACHED` | RAM, SOS IO window |
-| `kDevice` (2) | physical | `UNCACHED_DEVICE` | true device MMIO on SoC |
-| `kMpu` (3) | skipped | — | TEE / MPU-protected |
-
-`Guest::Init` maps each spec:
+After lua, `Vmm::Initialize` still appends:
 
 ```text
-zx_vmo_create_physical(hpa, size)
-vmo.set_cache_policy(cached | device)
-zx_vmar_map(guest_vmar, SPECIFIC|CONTIGUOUS|RWX, gpa_base, vmo)
+ "ram"   GPA=HPA=leftover DRAM    kCached    is_physmem=1
 ```
 
-That mapping walks `ArmArchVmAspace` with `ARCH_ASPACE_FLAG_GUEST` →
-S2 PTEs.
+`Guest::Init` therefore maps **two** windows on QEMU SOS: IO at 0
+(1 GiB), then DRAM at whatever ATF / `guest_memory_allocator`
+returned. `phys_base()` / `phys_size()` walk `vmem_spec_` for the
+first `is_physmem` (the ram spec). Bootloader DTB lives in that
+window (`dtb.base - phys_base` as a `PhysMem` offset).
+
+tbox (`tbox.lua`) does not call `setVmem`. It calls
+`setVmemAuto("vmlog_sink_tbox", "", 0, 0, 1, 0)`: queued on
+`vmem_auto_spec_`, resolved by `ioctl_get_reserved_memory` using
+`name` as the search string. Lua `base_addr`/`size` are placeholders;
+the ioctl fills GPA/HPA/size. Policy 1 = cached, `is_physmem` 0
+(tbox RAM still comes from the allocator `"ram"`).
+
+#### Other front doors
+
+Same `VmemSpec`, different parsers:
+
+| Front door | GPA vs HPA | Align check | Notes |
+| --- | --- | --- | --- |
+| lua `setVmem` | forced equal | no | SOS / product.lua |
+| lua `setVmemAuto` | ioctl result | no | reserved-memory lookup by `name` |
+| JSON `ParseVmemsConfig` | `"name,gpa,hpa,size,policy,is_physmem"` | yes | 6 fields; GPA may differ |
+| CLI `--vmem` `parse_vmem` | `"gpa,hpa,size,policy,is_physmem"` | yes | no name |
+| UOS `vmems_build_from` | proto fields | — | `main_uos.cc`; can set `is_reservedmem` |
+
+`Init` is the same. Lua is the SOS path.
+
+#### After the map
+
+```text
+ Guest::Init  S2 identity PTEs
+    │
+    ├─ CreateMapping(GICD/GICR/virtio/vSMMU)
+    │     zx_guest_set_trap  UnmapRange     hole in the 1 GiB IO window
+    ├─ unmap_mpu_mem_region
+    │     kMpu name → DTB reserved-memory  UnmapPhysicalMemory
+    └─ Vcpu::Resume  VTTBR  guest load/store
+```
 
 ### Traps vs maps
 
@@ -434,6 +782,7 @@ page-fault fill; it does not look at traps.
 ## Device passthrough
 
 A guest that **owns** a real device needs three things to match.
+Poster: **Diagrams** 6.
 Missing any one of them is a half-assign: MMIO works but DMA writes
 the host, or DMA works but IRQs never arrive.
 
@@ -762,6 +1111,8 @@ the VMM picks one.
 
 ## Flows
 
+Timing versions of **Diagrams** 4–8. Same events, more timestamps.
+
 ### Host boot (MMU)
 
 ```text
@@ -789,6 +1140,24 @@ the VMM picks one.
    HCR.VM|PTW
    msr vttbr_el2
    eret guest EL1h
+```
+
+### `setVmem` → S2 PTE
+
+```text
+ sos.lua  sos_config:setVmem("IO", 0, 1GiB, kCached, 0)
+    LuaBridge  GuestConfig::setVmem
+    VmemSpec  GPA=HPA=0  is_physmem=0
+ allocator  append "ram"  is_physmem=1
+ Guest::Init
+    zx_vmo_create_physical(0, 1GiB)     IO window
+    zx_vmar_map SPECIFIC gpa=0          S2 [0, 1GiB)
+    zx_vmo_create_physical(dram, size)  leftover DRAM
+    zx_vmar_map SPECIFIC gpa=dram       S2 identity RAM
+    PhysMem  host map of the ram VMO
+ trap GICD  UnmapRange                  hole at 0x8000000
+ guest ldr UART (in IO, no trap)        S2 cached PTE → PA
+ guest str GICD                         S2 invalid → EL2 → VMM
 ```
 
 ### Device MMIO (trapped)
@@ -846,6 +1215,8 @@ sit in the 1 GiB window.
 | VMID | 8 bits in `VTTBR[63:48]`. Tags S2 TLB. Stored in `asid_` of the guest aspace. |
 | ASID | Host user TTBR0. Not used for guests. |
 | `VmemSpec` | Lua mapping: name, GPA/HPA, size, `MemoryPolicy`. |
+| `setVmem` | LuaBridge → `GuestConfig::setVmem`. Forces GPA = HPA. |
+| `is_physmem` | First spec with this bit becomes VMM `PhysMem`. |
 | Trap hole | Page-aligned IPA with no S2 PTE; abort delivered as MEM/BELL. |
 | `GuestPtr` | Temporary host mapping of a guest-RAM slice. |
 | S2AP | Stage-2 access perm: RO or RW. No separate user/priv bit. |
@@ -876,8 +1247,12 @@ sit in the 1 GiB window.
 | `zx_guest_create_new` / trap | `zircon/kernel/syscalls/hypervisor.cpp` |
 | `SetTrap` unmap | `zircon/kernel/arch/arm64/hypervisor/guest.cpp` |
 | Data abort | `zircon/kernel/arch/arm64/hypervisor/vmexit.cpp` `handle_data_abort` |
-| Lua `setVmem` | `garnet/bin/guest/guest_config.h` |
+| Lua `setVmem` / `setVmemAuto` | `garnet/bin/guest/guest_config.h` |
+| LuaBridge `sos_config` | `garnet/bin/guest/guest_config.cc` `ParseConfigFromLua` |
+| JSON / CLI vmem parse | same, `ParseVmemsConfig` / `parse_vmem` |
+| Allocator ram + auto | `garnet/bin/guest/vmm.cc` `Vmm::Initialize` |
 | Map VmemSpec | `garnet/lib/machina/guest.cc` `Guest::Init` |
+| Physical VMO | `zircon/kernel/syscalls/ddk.cpp` `sys_vmo_create_physical` |
 | Trap install | `garnet/lib/machina/io.cc` |
 | SOS IO window | `garnet/bin/guest/sos/qemu/sos.lua` |
 | Host SMMU / STE | `zircon/kernel/dev/iommu/arm_smmuv3/smmuv3.cpp` |

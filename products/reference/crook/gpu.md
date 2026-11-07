@@ -18,9 +18,16 @@ Read [`vmm.md`](vmm.md) for SOS / UOS lifecycle,
 [`interrupt.md`](interrupt.md) for `PhysicalInterrupt` vs virtual
 inject, [`scheduler.md`](scheduler.md) for VCPU pin.
 
-This note is the map of SWA: objects, message protocol, state
-machine, grant / stop / recovery flows, IRQ dispatch, MMIO map, and
-the QEMU virtio-gpu path.
+Arm's model (Access Manager, access window, arbiter, yield) is
+`Arm Mali GPU 5th Generation and Later Virtualization Guide`
+112001_0100_01_en. Crook implements the **software** time-slice
+of that model: the hypervisor **is** the Arbiter, and stage-2
+map/unmap stands in for a hardware access window.
+
+This note is the map of SWA: Arm core concepts, how Crook maps
+them, objects, message protocol, state machine, grant / stop /
+recovery flows, IRQ dispatch, MMIO map, and the QEMU virtio-gpu
+path.
 
 ## Framework
 
@@ -73,19 +80,243 @@ Kernel VMID vs FIDL user vmid is the same table as [`vmm.md`](vmm.md):
 SOS 1, ALPS 2, tbox 3. Debug dumps print `vmid=1` Yocto, `vmid=2`
 Android.
 
-## Arm GPU virt methods
+## Core concepts (Arm)
 
-SWA is the one Crook implements. The other two are Mali hardware
-features the SoC would need; they are not in this tree.
+From 112001_0100_01_en ch. 2–4. The basic product is a **shared
+single-partition GPU**: one execution domain, several guests,
+time-sliced. AE parts add **partitions** (hardware-isolated
+domains). Crook is the first family.
+
+```text
+ Arm HWA (Access Manager in the GPU)
+ ┌──────── Host / privileged ────────┐   ┌──── Guest VM ────┐
+ │  Driver instance     Arbiter      │   │  Driver instance │
+ │  (may also be a guest)            │   │                  │
+ └───────┬──────────────┬────────────┘   └────────┬─────────┘
+         │              │  Resource Group         │
+         ▼              ▼  (arbiter messages)     ▼
+      Access Window 0              Access Window 1
+         │  open ──► GPU subinstance ◄── closed   │
+         └──────────── Partition ─────────────────┘
+                              GPU
+```
+
+Crook has **no** Access Manager, no access-window aperture, no
+Resource Group. The hypervisor both isolates and arbitrates:
+
+```text
+ Crook SWA
+ ┌──────── SOS ────────┐   ┌──────── UOS ────────┐
+ │ mali_kbase+mali_arb │   │ mali_kbase+mali_arb │
+ └──────────┬──────────┘   └──────────┬──────────┘
+            │ SMC REQUEST/IDLE/STOPPED│
+            ▼                         ▼
+      Crook EL1  GpuScheduler  (Arbiter + isolation)
+            │ GRANT/STOP/RCVR  virtual IRQ
+            │ MapGpu / UnmapGpu  stage-2
+            ▼
+      one Mali  (GPU subinstance)
+```
+
+### VM, guest, driver instance
+
+The software domain that gets the GPU is a **VM / guest**. Each
+guest that uses the GPU has its **own driver instance**
+(`mali_kbase` + `mali_arb` in Crook). That instance:
+
+- programs the GPU control interface the guest can see
+- loads firmware into the GPU subinstance (when the SoC has it)
+- handles IRQs and faults on its assigned interface
+- yields / restarts when the arbiter asks
+- submits userspace work
+
+Control and data paths of two driver instances stay isolated.
+They never share a kbase context.
+
+### GPU subinstance
+
+The **execution hardware** a guest drives while it is the owner.
+From the guest it *is* the GPU. The platform moves that ownership
+between software domains; only one guest connects to a given
+subinstance at a time (unless partitions exist).
+
+### Access window
+
+Arm: the **guest-visible control path** for one driver instance —
+MMIO/control aperture plus a stable mapping that can stay in the
+guest aspace while the Access Manager opens or closes the window.
+
+- **open** — guest talks to the GPU subinstance
+- **closed** — guest keeps a little window-control visibility, not
+  the rest of the GPU. Using the closed part is invalid access.
+
+The window is an ownership boundary, not just an address range.
+HWA keeps the guest map stable across switches; the Access
+Manager flips which window is connected.
+
+Crook SWA has no such hardware. **Open** = `EnableGpu` (stage-2
+PTE present, Mali IRQs routed). **Closed** = `DisableGpu`
+(unmap, dummy IRQ). Each GRANT remaps.
+
+### Time slicing
+
+Several guests share one subinstance **over time**, not by
+splitting shader cores.
+
+```text
+ time →
+ SOS AW   ████ grant ████ yield ░░░░░░░░░░░░░░░░░ ████
+ UOS AW   ░░░░░░░░░░░░░░░░░░░░░ ████ grant ████ yield
+ GPU      ──── SOS ──────────── ──── UOS ────────────
+```
+
+1. Each guest has (or, in SWA, *is given*) a control path.
+2. Only one path is connected to the subinstance.
+3. Software decides when ownership moves.
+4. The current owner must **stop** before the next owner starts.
+
+Arm HWA then: request yield → **reset GPU** → open next window →
+resume. Reset is architectural: it drops transient state so the
+next guest cannot see the last one's GPU guts.
+
+Trade-off: better utilization of one GPU; switching cost and
+sensitivity to a badly behaved guest or a bad policy. Arbitration
+**reduces** interference; it does **not** give hard isolation.
+Hard isolation needs partitions.
+
+### Yield and handover
+
+A **yield** is the current owner giving up the subinstance.
+
+Arm preferred path (firmware, Access Manager):
+
+```text
+ arbiter  YIELD_NOW or YIELD_IDLE
+ firmware  quiesce, save, YIELD_DONE     (async; not CPU-bound)
+ Access Manager  close window, reset subinstance
+ arbiter  OPEN_WINDOW
+ Access Manager  open, RAM clear
+ next driver  power up, boot or warm-resume firmware
+```
+
+`YIELD_NOW` = stop as soon as possible. `YIELD_IDLE` = drain
+current queues first. Yields are **cooperative**. If they fail,
+the platform forces recovery → lost work / device-lost.
+
+Arm also keeps a **legacy software stop**: `ARB_VM_GPU_STOP` →
+guest `VM_ARB_GPU_STOPPED` → arbiter closes the window. Crook's
+STOP IRQ + SMC `STOPPED` is this family, not the CSF
+`YIELD_DONE` path.
+
+### Firmware
+
+Part of the **current** execution environment, not a shared
+service. It schedules, quiesces, yields; it is booted or
+warm-resumed when a window opens. Different guests may use
+different images. Crook's guest kbase still talks to Mali
+firmware **while granted**; the hypervisor does not run it.
+
+### Arbiter
+
+Software that picks **which** control path may use the
+subinstance and **when** to switch.
+
+Responsibilities:
+
+- request yield from the current owner
+- select the next window / VM
+- timeout and recovery if handover does not finish
+
+Placement (Arm): host kernel module, a dedicated VM, the
+hypervisor, or a safety island. Reference is
+`panthor_arbitration.ko` in the host / a VM, round-robin,
+`request_timeout` / `yield_timeout`. Policy is replaceable
+(priority, VSync, safety). Crook puts the arbiter **in the
+hypervisor** (`GpuScheduler`) because there is no Access
+Manager messaging page to map into a host VM.
+
+Fairness vs policy: the arbiter implements **platform policy**.
+Tune for latency, throughput, or predictability. Still
+time-sharing the same shaders.
+
+### Hypervisor vs Access Manager
+
+| Who | Owns |
+| --- | --- |
+| Access Manager (GPU HW) | which window is open; reset; guest vs control IRQs |
+| Arbiter | scheduling policy, yield request, next owner |
+| Hypervisor | stage-2 of guest-visible regs, SMMU for GPU DMA, IRQ routing, security |
+
+Arm: arbiter **can** sit outside the hypervisor; isolation stays
+with EL2 / SMMU. Crook: one object does both, because SWA has
+nothing else to open a window with except `MapDevice`.
+
+AXI-subordinate = CPU MMIO into GPU regs (stage-2). AXI-manager
+= GPU DMA out (SMMU StreamID). Arm encodes StreamID as access-
+window index + protected bit. Crook uses the SID table in
+[`memory.md`](memory.md); grant does not retune STE, so **both**
+VMs' SIDs must already be attached to **their** stage-2, and
+only the granted VM has CPU MMIO.
+
+### Partition vs time slice
+
+Independent knobs:
+
+| | Time slice | Partition (AE) |
+| --- | --- | --- |
+| What | share one subinstance over time | concurrent isolated domains |
+| Isolation | policy + reset | hardware |
+| Crook | yes (SWA) | no |
+
+Hybrid (Arm, not Crook): one partition for a safety guest, IVI
+guests time-slice another.
+
+## Virt methods
 
 | Method | Hardware | Who owns the GPU | Crook |
 | --- | --- | --- | --- |
-| **SWA** | none | one VM at a time; hypervisor maps MMIO + IRQs | yes |
-| **HWA** | Access Window per VM (addr / message buffer / IRQ) + Resource Group | Arbiter still picks the window | no |
-| **Hardware separation** | Partition = independent GPU | no time-share | no |
+| **SWA** | none | one VM at a time; hypervisor maps MMIO + IRQs | **yes** |
+| **HWA** | Access Window + Resource Group + Access Manager | Arbiter picks the window; map stays | no |
+| **Hardware separation** | Partition = independent GPU | concurrent, no time-share required | no |
 
-SWA cost is **context switch**: unmap previous guest, map next, inject
-GRANT. Mali itself is not partitioned.
+SWA cost is **context switch**: unmap previous guest, map next,
+inject GRANT. Mali itself is not partitioned. That is the remap
+HWA's access window is designed to avoid.
+
+### Arm protocol vs Crook SMC
+
+Arm arbiter↔VM (v3) sits on the access-window message path.
+Crook has no that path; SMC + virtual IRQ is the whole channel.
+
+| Arm | Crook |
+| --- | --- |
+| `VM_ARB_GPU_REQUEST` | SMC `REQUEST` |
+| window open / `WINDOW_OPENED` | `EnableGpu` + GRANT IRQ |
+| `YIELD_NOW` / `YIELD_IDLE` | STOP IRQ (always "now"); guest IDLE is voluntary yield |
+| `YIELD_DONE` (firmware) | — (not used) |
+| `ARB_VM_GPU_STOP` / `VM_ARB_GPU_STOPPED` | STOP IRQ / SMC `STOPPED` |
+| `WINDOW_CLOSED` | `DisableGpu` UnmapGpu |
+| GPU_LOST | exception `0xABCE1235` or RCVR on SOS |
+| `request_timeout` | SCHEDULE timer |
+| `yield_timeout` | STOPPING timer |
+| `ARB_VM_INIT` / `VM_ARB_INIT` | `zx_gpu_scheduler_add_vcpu` + DTS `/arbiter` |
+
+Guest-side Arm AW states INIT / READY / GPU_REQUEST /
+GPU_GRANTED / GPU_STOP / GPU_STOPPED line up with Crook
+Undefined / Idle / Pending / Granted / Stopping / Idle.
+
+### Principle: one owner
+
+```text
+                  at most one current_vmidx_
+                  at most one current_req_vmidx_
+         Idle ──REQUEST──► Granted ──STOP──► Stopping ──STOPPED──► Idle
+                    ▲                              │
+                    └──── Grant Pending ◄──────────┘
+```
+
+No guest programs Mali unless Granted. Pending never has MMIO.
+That is Arm "only one access window open" in software.
 
 ## Objects
 
@@ -260,12 +491,12 @@ this when `sched_mode = ARB_SCHED_MODE_SIMPLE`.
 
 ### Timers
 
-| type | default (lua / spec) | Fired |
-| --- | --- | --- |
-| SCHEDULE | SOS/UOS 16 ms | owner has had the GPU long enough; STOP |
-| STOPPING | UOS 5 s (SOS from config) | guest ignored STOP; SOS → recovery, else Lost |
-| RECOVERY | config | recovery hung; Lost |
-| PREPARING | config | guest got GRANT but no ACTIVE; log only |
+| type | default (lua / spec) | Arm analogue | Fired |
+| --- | --- | --- | --- |
+| SCHEDULE | SOS/UOS 16 ms | `request_timeout` | owner has had the GPU long enough; STOP |
+| STOPPING | UOS 5 s (SOS from config) | `yield_timeout` | guest ignored STOP; SOS → recovery, else Lost |
+| RECOVERY | config | GPU_LOST handling | recovery hung; Lost |
+| PREPARING | config | — | guest got GRANT but no ACTIVE; log only |
 
 Cap is `kGpuSchedMaxTimerPeriod` = 60 s. Policy:
 
@@ -283,6 +514,42 @@ runs after a successful STOP.
 Deadline comes from `REQUEST` `arg1` when timeset is set.
 
 ## Flows
+
+Arm time-slice examples (guide 4.3.7) in Crook terms.
+
+```text
+ no other requester (Arm "No Yield")
+   UOS REQUEST → GRANT → ACTIVE
+   SCHED never starts (no Pending)
+   UOS IDLE → Yield; GPU idle until next REQUEST
+
+ other VM waiting (Arm "Normal / Early Yield")
+   SOS Granted+ACTIVE, UOS REQUEST → UOS Pending
+   SCHED timeout (request_timeout) or SOS IDLE
+     STOP IRQ  (Arm ARB_VM_GPU_STOP / YIELD_NOW)
+     STOPPING timer  (yield_timeout)
+   SOS STOPPED → UnmapGpu → Grant UOS
+
+ yield fails (Arm "Failure to Yield" / GPU_LOST)
+   STOPPING timeout
+     SOS → RCVR IRQ + Recovery timer
+     not SOS → Lost exception, then grant Pending
+```
+
+```text
+ SOS mali_arb          Crook GpuScheduler           UOS mali_arb
+      │                      │                           │
+      │ Granted, ACTIVE      │                           │
+      │                      │◄──── SMC REQUEST ─────────┤
+      │                      │  UOS Pending              │
+      │                      │  start SCHED              │
+      │◄── STOP IRQ ─────────┤  SCHED fire               │
+      │  drain GPU           │                           │
+      ├──── SMC STOPPED ────►│  DisableGpu               │
+      │  Idle                │  EnableGpu UOS            │
+      │                      ├──────── GRANT IRQ ───────►│
+      │                      │                           │ map MMIO, ACTIVE
+```
 
 ### 1. Create (SOS first)
 
@@ -495,6 +762,41 @@ display** path. That does not time-share Mali. `virtgpu_dbg` in the
 hypervisor is a debug hook on `FC_ID_INJECT_HW_IRQ`, not the
 arbiter.
 
+## Terminology
+
+Arm names from 112001_0100_01_en. Crook column is what this tree
+actually has.
+
+| Term | Arm meaning | Crook |
+| --- | --- | --- |
+| VM / guest | software domain that gets the GPU | SOS (VMID 1), UOS/ALPS (2), tbox (3) |
+| Driver instance | per-guest GPU kernel driver | `mali_kbase` + `mali_arb` |
+| GPU subinstance | execution HW the current owner drives | the one Mali |
+| Access window | guest-visible MMIO + IRQ; open/closed | **emulated**: stage-2 map = open |
+| Access Manager | GPU HW that opens/closes windows, reset | **none**; `GpuSchedBackend` |
+| Resource Group | arbiter↔guest message / partition config pages | **none**; SMC + notify IRQs |
+| Partition | hardware-isolated execution domain (AE) | **none** |
+| Time slicing | share one subinstance over time | SWA; exclusive GRANT |
+| Arbiter | who runs next, when to yield | `GpuScheduler` in Crook EL1 |
+| Hypervisor | S2, SMMU, IRQ routing, security | Crook; same object as arbiter |
+| Yield | owner stops so another guest can run | STOP IRQ; guest `STOPPED` / `IDLE` |
+| `YIELD_NOW` / `YIELD_IDLE` | firmware stop now / after drain | STOP is now; IDLE is guest-voluntary |
+| `YIELD_DONE` | firmware finished yield (async) | not used |
+| Handover | yield → close → reset → open next | `StopCurrent` → `DisableGpu` → `GrantVm` |
+| Reset | drop previous guest's GPU state | implicit in unmap + next kbase init; no AM reset |
+| `request_timeout` | how long owner runs before switch | SCHEDULE timer (slice) |
+| `yield_timeout` | how long stop may take | STOPPING timer |
+| GPU_LOST | forced close, lost work | exception `0xABCE1235` / RCVR |
+| StreamID | GPU DMA ID: AW index + protected bit | SMMU SID; not retuned on GRANT |
+| AXI-subordinate | CPU MMIO into GPU | stage-2 `MapDevice` |
+| AXI-manager | GPU DMA to memory | SMMU STE S2 |
+| SWA | software virtualization, remap each grant | **this product** |
+| HWA | Access Window hardware | not in this SoC path |
+| CSF | command stream frontend (5th gen) | guest firmware while granted |
+| panthor | Arm reference Linux driver/arbiter | analogue: kbase + Crook `GpuScheduler` |
+| GRANT / STOP / LOST / RCVR | Crook notify IRQs | virtual inject to owner VM |
+| `PhysMem` / cmdbuf | — | IPA `0x88000b000`, not an AW message page |
+
 ## Tests
 
 `zircon/kernel/arch/arm64/hypervisor/gpu_sched/tests` — host-side
@@ -520,6 +822,7 @@ cases must PASS.
 | Config | `garnet/bin/guest/guest_config.h` `ArbiterGpuSpec` |
 | VCPU pick | `garnet/lib/machina/gpu_scheduler_vcpu_selection.h` |
 | QEMU 2D GPU | `garnet/lib/machina/virtio_gpu.cc` |
+| Arm model | `Arm Mali GPU 5th Generation and Later Virtualization Guide` 112001_0100_01_en |
 
 ---
 

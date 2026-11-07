@@ -14,6 +14,9 @@ This note is the map of that path: how a SPI/PPI/SGI/MSI is configured,
 how it reaches a VCPU bitmap, how `ICH_LR<n>_EL2` is filled, and which
 policy (passthrough vs virtual, exclusive vs broadcast, HW bit) applies.
 
+Start with **Diagrams** (eight posters), then the sections they
+index.
+
 ## Framework
 
 Three planes share one GICv3.
@@ -76,6 +79,151 @@ INTID
 QEMU SOS (`sos.lua`) identity-maps host GIC MMIO and forwards SPIs
 `36–251` and `253–512`, plus PPI 15. tbox uses the same GICD/GICR
 base but does **not** take the SOS SPI range.
+
+## Diagrams
+
+Eight posters. Two inject types, one common tail (`ICH_LR`), and
+the HW-bit rule that causes storms.
+
+### 1. Three planes, one GICv3
+
+```text
+  Device / PCI MSI / guest IPI
+              │
+              ▼
+  ┌─ Host GICv3 ──────────────────────────────────────────────────┐
+  │  GICD / GICR pending     CPU iface → EL2 if VCPU running      │
+  │                          (HCR.IMO / FMO)                      │
+  └────────────────────────────┬──────────────────────────────────┘
+                               ▼
+  ┌─ Crook EL1 / EL2 ─────────────────────────────────────────────┐
+  │  VcpuIrqHandler  →  bitmap PHYSICAL | VIRTUAL                 │
+  │  gich_maybe_interrupt  →  ICH_LR  →  eret guest               │
+  └────────────────────────────┬──────────────────────────────────┘
+                               ▼
+  ┌─ VMM EL0 ─────────────────────────────────────────────────────┐
+  │  trap GICD/GICR/ITS     virtio / VHM  zx_vcpu_interrupt       │
+  └────────────────────────────┬──────────────────────────────────┘
+                               ▼
+                         guest VGIC  handle_irq  EOI
+```
+
+### 2. PHYSICAL vs VIRTUAL (the HW bit)
+
+Wrong bit = lost IRQ or storm. See **Pitfalls**.
+
+```text
+  PHYSICAL  (passthrough SPI/PPI)
+     host GIC pending
+     LR = … | HARDWARE | PHYSICAL_ID
+     guest EOI  ──►  GIC deactivates the **physical** INTID
+     host handler returned IRQ_EOI_PRIORITY_DROP  (must NOT DIR)
+
+  VIRTUAL   (virtio / VHM / SGI / LPI)
+     no host GIC pending
+     LR = … | VIRTUAL_ID     (no HARDWARE)
+     guest EOI  ──►  only clears the LR
+```
+
+### 3. INTID map
+
+```text
+   0──────15  SGI     guest ICC_SGI1R trapped; never a host SGI
+  16──────31  PPI     per-CPU (vtimer …); exclusive VCPU
+  32────1019  SPI     lua setVgicIrq; exclusive or broadcast
+4096───5119  eSPI    same passthrough as SPI
+    ≥8192    LPI     emulated ITS; no physical GIC pending
+```
+
+### 4. Passthrough SPI (HW=1)
+
+```text
+  device SPI
+      │  GICD pending
+      ▼
+  VCPU in guest? ──yes── HCR.IMO  EL2 exit
+      │ no
+      ▼
+  host EL1  arm_gicv3
+      │
+      ▼
+  VcpuIrqHandler  pick vcpus_[cpu % n]
+      │
+      ▼
+  PhysicalInterrupt  bitmap PHYSICAL  +  IPI pinned pCPU
+      │
+      ▼
+  Resume  gich_maybe_interrupt
+      LR = PENDING|GROUP1|VID|HW|PID     prio 0 if <32 else 0x10
+      eret guest
+      │
+      ▼
+  guest handle_irq  EOI/DIR  ── HW=1 ──► physical INTID retired
+```
+
+### 5. Virtual inject (HW=0)
+
+Same tail, no host GIC.
+
+```text
+  virtio / VHM / zx_vcpu_interrupt / handle_sgi
+      │
+      ▼
+  Vcpu::Interrupt  bitmap VIRTUAL  +  Signal + IPI
+      │
+      ▼
+  gich_maybe_interrupt
+      LR = PENDING|GROUP1|VID          no HARDWARE
+      eret  guest EOI  clears LR only
+
+  guest SGI:  write ICC_SGI1R  →  EL2 handle_sgi
+              CROSS_VM_SCHED:  in-kernel Interrupt
+              else:            packet to VMM
+```
+
+### 6. Common tail: `ICH_LR` and UIE
+
+Max 16 LRs. Burst leftover waits for maintenance.
+
+```text
+  Resume  virq_lock
+     elrs = empty LR slots
+     elrs==0 ?
+        vtimer pending → steal a PENDING LR   (else resume livelock)
+        else ICH_HCR.UIE  (exit when LRs drain)
+     while elrs && Pop(vector):
+        already ACTIVE in an LR → PENDING_AND_ACTIVE
+        else fill empty LR
+     ICH_HCR.En [| UIE]
+     eret guest
+
+  16 LRs ████████████████  leftover bitmap ──UIE── next enter
+```
+
+### 7. Exclusive vs broadcast
+
+```text
+  exclusive SPI / all PPI
+     interrupt_bind_cpu(vector, vcpu.bind_cpu_num)
+     vcpus_[]  =  that one VCPU
+     handler runs on the VCPU's pCPU  →  no extra IPI hop
+     latency recipe: pin + exclusive SPI + occupancy not SHARE
+                     ([`scheduler.md`](scheduler.md))
+
+  broadcast  IROUTER.IRM
+     vcpus_[]  =  every VCPU of the guest
+     pick  arch_curr_cpu_num() % n
+```
+
+### 8. HW-bit pitfalls
+
+```text
+  storm (level)     EOI GIC, line still asserted  →  re-pend forever
+  storm (HW=0 on    guest EOI does not DIR physical → stuck Active
+   a passthrough)   or level storms
+  lost IRQ          HW=0 on physical SPI, or CheckSkipWakeup dropped it
+  LR full           16 valid + vtimer pending → steal PENDING or livelock
+```
 
 ## Configuration
 
@@ -147,7 +295,7 @@ hits the **host** GIC driver first.
 
 ## Physical interrupt (passthrough)
 
-Device SPI/PPI that the guest owns. HW bit set.
+Device SPI/PPI that the guest owns. HW bit set. Poster: **Diagrams** 4.
 
 ```text
  Device asserts SPI/PPI
@@ -198,6 +346,7 @@ devices use this. Broadcast (`GICD_IROUTER.IRM`) keeps all VCPUs in
 ## Virtual interrupt
 
 No host GIC pending. Used for virtio, VHM doorbells, guest IPI, LPI.
+Poster: **Diagrams** 5.
 
 ```text
  VMM or kernel  Vcpu::Interrupt(vector)          // default VIRTUAL
@@ -314,7 +463,8 @@ rules).
 
 ## Inject into a VCPU (common tail)
 
-Every strategy ends here. `Vcpu::Resume` holds `virq_lock_`:
+Every strategy ends here. `Vcpu::Resume` holds `virq_lock_`.
+Poster: **Diagrams** 6.
 
 ```text
 timer_maybe_interrupt
