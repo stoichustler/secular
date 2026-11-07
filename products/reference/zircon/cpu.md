@@ -6,7 +6,8 @@ as an independent PE: it has its own GPRs, EL1 system registers, caches, and
 GIC redistributor. This note is the map of that CPU path: how a PE finds the
 current thread, what is saved on exception and on context switch, how a
 user thread enters and leaves the kernel (syscalls included), how caches
-are maintained, how the scheduler picks the next thread, and how the
+are maintained, how the scheduler picks the next thread, how a **guest
+VCPU** is still that same thread (with a few extra tricks), and how the
 job / process / thread objects that userspace sees sit on top of that.
 
 The product stays:
@@ -41,6 +42,7 @@ One PE, two software identities, three register pictures, one local scheduler.
 │  fpstate / tpidr_el0       │              │  idle_power_thread           │
 │  current_percpu_ptr        │              │  DpcRunner / cpu_stats       │
 │  user_thread_              │              │                              │
+│  THREAD_FLAG_VCPU (opt.)   │              │                              │
 └────────────┬───────────────┘              └──────────────────────────────┘
              │
              ▼
@@ -72,6 +74,13 @@ is the third path.
                                          (eret to EL0 if it was in user)
 
 CPU0 ─ PSCI CPU_ON ─► secondary.S ── MMU on ─► idle thread ─► scheduler
+
+ EL0  zx_vcpu_enter                    guest WFI / host IRQ / Kick
+        │                                         │
+        ▼                                         ▼
+ Vcpu::Enter  (same Thread*, FLAG_VCPU)   Wait on AutounsignalEvent
+        arm64_el2_enter  EL2 world switch         or ZX_ERR_NEXT (stay in loop)
+        guest EL1  ← not a scheduler switch       IPI to last_cpu_ if RUNNING
 ```
 
 ### Physical CPUs on QEMU virt
@@ -739,6 +748,248 @@ Implementation is split: selection and queues in
 [`scheduler.h`](../../../zircon/kernel/include/kernel/scheduler.h). Follow the Rust `Reschedule` path, then the C++
 `arch_context_switch`.
 
+A guest VCPU is **not** a third discipline. It is a Fair (or Deadline,
+if userspace applied a profile) thread with `THREAD_FLAG_VCPU`. See
+**VCPU scheduling**.
+
+### VCPU scheduling
+
+Secular's hypervisor does **not** add a second run queue. Guest tasks
+never appear in `Scheduler`. A VCPU is a **host `Thread*`** that spends
+most of its RUNNING time inside `arm64_el2_enter` (guest EL1), and
+**blocks** like any other thread when the guest executes `WFI`.
+
+That is the whole bet. The optimizations below are about *not*
+returning to the VMM, *not* spinning in idle, and *hitting the right
+pCPU* with an IPI. They are not Crook's `VcpuGroup` (priority/slice
+policy per VM). This tree has no `VcpuGroup`, no RUN/PAUSE/SHARE
+bits, and does not pin a VCPU to a pCPU by default.
+
+Userspace: `bin/vmm` starts one std::thread per VCPU, then
+`zx_vcpu_create` + `zx_vcpu_enter` loop
+([`userspace/hypervisor/bin/vmm/vcpu.cc`](../../../userspace/hypervisor/bin/vmm/vcpu.cc),
+[`userspace/hypervisor/README.md`](../../../userspace/hypervisor/README.md)).
+Guest IRQs and MMIO traps: [`interrupt.md`](interrupt.md).
+
+#### Framework
+
+```text
+ pCPU  Scheduler  Fair / Deadline   (unchanged)
+        │
+        ▼
+ Thread*  THREAD_FLAG_VCPU   (at most one Vcpu per thread)
+        │  last_cpu_ via SetMigrateFn
+        │
+        ├── RUNNING  ── arm64_el2_enter ── guest EL1  (world switch, same Thread*)
+        │                 host IRQ  →  ZX_ERR_NEXT  →  re-enter  (no VMM)
+        │                 MMIO/SMC  →  packet  →  EL0 VMM
+        │
+        └── BLOCKED  guest WFI  →  InterruptTracker AutounsignalEvent
+                         inject IRQ / Kick / timer  →  READY
+```
+
+| Switch | What changes | Scheduler? |
+| --- | --- | --- |
+| `arch_context_switch` | different `Thread*` | yes |
+| `arm64_el2_enter` / vmexit | same `Thread*`, EL1 ↔ guest EL1 via EL2 | **no** |
+| guest `WFI` | this `Thread*` READY → BLOCKED | yes (yields the pCPU) |
+| `Vcpu::Interrupt` while RUNNING | IPI to `last_cpu_` → physical vmexit | maybe, after `AutoGich` drops |
+
+#### Diagrams
+
+Four posters: identity, enter loop, idle yield, IRQ injection.
+
+##### 1. One host thread is the VCPU
+
+`zx_vcpu_create` binds to **current** thread. A second create on the
+same thread is `ZX_ERR_BAD_STATE`. Destroy clears the flag and the
+migrate function.
+
+```text
+ VMM process
+   std::thread "vcpu-0"
+        zx_vcpu_create(guest, entry)     Thread::Current
+              │
+              ▼
+        thread->set_vcpu(true)           THREAD_FLAG_VCPU
+        thread->SetMigrateFn(Vcpu::Migrate)
+              │
+              ▼
+        zx_vcpu_enter  ──►  Vcpu::Enter must be that same Thread*
+                            else ZX_ERR_BAD_STATE
+```
+
+`THREAD_FLAG_VCPU` is a **tag**, not a scheduling class. The dump
+shows `Vc`. `scheduler.rs` never branches on it. Fair/Deadline and
+affinity still apply (`zx_object_set_profile` from userspace).
+
+##### 2. Enter loop: keep the guest hot
+
+Physical IRQs and extra virtual IRQs that did not fit in GIC list
+registers must not bounce through EL0.
+
+```text
+ Vcpu::Enter
+   CheckKillOrSuspendSignal
+   timer_maybe_interrupt     CNTV expired?  Track timer PPI
+   gich_maybe_interrupt      pending bitmap → ICH LRs
+                             SGI/PPI prio 0, SPI prio 0x10
+   AutoGich                  IRQs off, blocking disallowed
+     kicked_? → ZX_ERR_CANCELED
+     arm64_el2_enter(VTTBR, el2_state, HCR)
+   restore GICH, IRQs on     ← preempt / Reschedule possible here
+
+   ZX_ERR_NEXT  physical IRQ or LR underflow maintenance
+        │  ktrace, count, status = ZX_OK
+        │  do **not** return a packet
+        ▼
+   loop  (guest stays on this Thread*)
+
+   ZX_OK + packet   MMIO / SMC / unhandled  →  return to VMM
+   Kick             kicked_ + Cancel wait + IPI
+```
+
+`AutoGich` sets GICH `HCR.En`, and `HCR.Uie` (underflow) when there
+are still pending vectors and more than one LR. When the guest
+drains the LRs, a **maintenance interrupt** VM-exits so the host can
+inject the rest — lower latency than waiting for the next guest
+`WFI` or a timer.
+
+Between loop iterations IRQs are on. A host timer that unblocked a
+higher-priority thread can `Reschedule` before the next
+`arm64_el2_enter`. The guest is not non-preemptible forever; only
+inside `AutoGich`.
+
+##### 3. Guest idle yields the pCPU
+
+`HCR_EL2.TWI` (and `TWE`) trap wait instructions. `WFE` is skipped
+(`zx::ok()`, resume). `WFI` with no active LR **blocks the host
+thread**.
+
+```text
+ guest  WFI
+        │  trap EL2
+        ▼
+ handle_wfi_wfe_instruction
+        LR in use?  →  resume guest (an IRQ is already active)
+        CNTV enabled and already due?  →  resume
+        else deadline = guest CNTV  (or infinite)
+        ▼
+ InterruptTracker::Wait(deadline)
+        event_.Wait     Thread BLOCKED
+        │
+        ▼
+ Scheduler::Reschedule
+        other Ready thread, else idle  (this pCPU is free)
+
+ inject / Kick / timeout
+        event_.Signal   (Kick uses ZX_ERR_INTERNAL_INTR_RETRY)
+        Thread READY    →  Vcpu::Enter loop again
+```
+
+That is the scheduling optimization that matters on a loaded host:
+an idle Linux guest is a blocked Zircon thread, not a spinning PE.
+`ktrace_vcpu(VCPU_BLOCK/UNBLOCK, VCPU_INTERRUPT)` marks the wait.
+
+##### 4. Inject without waiting for the next enter
+
+A virtual IRQ (vgic, virtio, Kick) must reach a **running** guest
+now, not at the next `zx_vcpu_enter` from the VMM.
+
+```text
+ other CPU / VMM
+   zx_vcpu_interrupt(vector)  or  Vcpu::Kick
+        │
+        ▼
+ GichState::Interrupt(vector)     pending bitmap + event_.Signal
+ Kick: kicked_=true, Cancel()     wakes a WFI waiter
+        │
+        ▼
+ InterruptCpu
+   Thread list lock + thread lock
+   state == RUNNING && last_cpu_ valid?
+        yes →  mp_interrupt(MASK, last_cpu_)   GIC SGI
+        no  →  nothing; Wait/enter will see pending / kicked_
+        │
+        ▼
+ running guest: physical IRQ → EL2 → ZX_ERR_NEXT
+        gich_maybe_interrupt fills LRs
+        re-enter guest  (still no VMM)
+```
+
+`last_cpu_` is **not** hard affinity. The thread may migrate.
+`SetMigrateFn` updates it:
+
+| Stage | `last_cpu_` |
+| --- | --- |
+| Save | `INVALID_CPU` (do not IPI mid-migrate) |
+| Restore | `thread->LastCpuLocked()` |
+| Exiting | `thread_ = nullptr` |
+
+Wrong `last_cpu_` would IPI a PE that is no longer running this
+VCPU. Save/Restore close that window.
+
+#### Flow
+
+End-to-end, one guest timer tick while another VM's VCPU is idle
+on the same pCPU.
+
+```text
+ VCPU-A  RUNNING, in guest
+ VCPU-B  BLOCKED  (guest WFI on this pCPU? no — B is on its last_cpu)
+
+ host timer IRQ on A's PE
+        EL2 vmexit  ZX_ERR_NEXT
+        AutoGich drops, IRQs on
+        IRQ handler may Unblock some thread
+        Reschedule if that thread is higher than A
+        else A loops, timer_maybe_interrupt, re-enter
+
+ VCPU-B's CNTV due
+        Wait timeout  →  ZX_OK  →  Enter
+        Track timer vector, fill LR, el2_enter
+        guest takes the PPI
+```
+
+Create/enter/kick from the VMM:
+
+```text
+ vcpu-N thread
+   zx_vcpu_create  →  FLAG_VCPU, MigrateFn, vpid, ICH/HCR
+   zx_vcpu_write_state  (x0 = DTB / boot_ptr)
+   loop:
+     zx_vcpu_enter(&packet)
+        ZX_ERR_CANCELED  Kick / kill / suspend
+        ZX_OK            packet: MMIO trap, etc.  →  HandlePacket
+        then enter again
+   ~Vcpu  kick + join
+```
+
+#### What this is not
+
+| Crook (`crook/scheduler.md`) | Secular Zircon |
+| --- | --- |
+| `VcpuGroup` per pCPU, RUN/PAUSE/SHARE | no |
+| priority/slice rewritten at every Resume | Fair/Deadline unchanged unless userspace sets a profile |
+| VCPU pinned to one pCPU | migratable; `last_cpu_` is a cache for IPI |
+| guest FIFO / `preempt_count` sampled from guest RAM | host never looks at guest tasks |
+| lua / ioctl scheduling policy | VMM thread + ordinary `zx` profile |
+
+Do not port Crook policy into `scheduler.rs`. If a guest needs
+latency, give its **host** VCPU thread a Deadline profile from
+userspace.
+
+#### Where (VCPU)
+
+| File | Why |
+| --- | --- |
+| [`zircon/kernel/arch/arm64/hypervisor/vcpu.cc`](../../../zircon/kernel/arch/arm64/hypervisor/vcpu.cc) | Create, Enter loop, Kick, InterruptCpu, AutoGich |
+| [`zircon/kernel/arch/arm64/hypervisor/vmexit.cc`](../../../zircon/kernel/arch/arm64/hypervisor/vmexit.cc) | WFI wait, timer_maybe_interrupt |
+| [`zircon/kernel/hypervisor/include/hypervisor/interrupt_tracker.h`](../../../zircon/kernel/hypervisor/include/hypervisor/interrupt_tracker.h) | pending bitmap + `AutounsignalEvent` |
+| [`zircon/kernel/include/kernel/thread.h`](../../../zircon/kernel/include/kernel/thread.h) | `THREAD_FLAG_VCPU` |
+| [`zircon/kernel/object/vcpu.rs`](../../../zircon/kernel/object/vcpu.rs) | `zx_vcpu_*` object; `cpp_vcpu_enter` |
+| [`userspace/hypervisor/bin/vmm/vcpu.cc`](../../../userspace/hypervisor/bin/vmm/vcpu.cc) | one host thread per VCPU, enter loop |
+
 ### CPU STR
 
 STR here is **state transition**: two machines, not one. Threads move through
@@ -1036,8 +1287,9 @@ Read in this order.
 | [`zircon/kernel/arch/arm64/src/fpu.rs`](../../../zircon/kernel/arch/arm64/src/fpu.rs) | FPU save/restore |
 | [`zircon/kernel/arch/arm64/cache-ops.S`](../../../zircon/kernel/arch/arm64/cache-ops.S) | `dc` / `ic` |
 | [`zircon/kernel/include/kernel/scheduler_state.h`](../../../zircon/kernel/include/kernel/scheduler_state.h) | Fair / Deadline; `thread_state` STR |
-| [`zircon/kernel/kernel/scheduler.rs`](../../../zircon/kernel/kernel/scheduler.rs) | pick next thread; idle as last resort |
+| [`zircon/kernel/kernel/scheduler.rs`](../../../zircon/kernel/kernel/scheduler.rs) | pick next thread; idle as last resort; **no** VCPU branch |
 | [`zircon/kernel/kernel/scheduler.cc`](../../../zircon/kernel/kernel/scheduler.cc) | C++ FFI into the scheduler |
+| [`zircon/kernel/arch/arm64/hypervisor/vcpu.cc`](../../../zircon/kernel/arch/arm64/hypervisor/vcpu.cc) | VCPU enter loop, Kick IPI, `THREAD_FLAG_VCPU` |
 | [`zircon/kernel/include/kernel/idle_power_thread.h`](../../../zircon/kernel/include/kernel/idle_power_thread.h) | Active / Wakeup / Suspend / Offline |
 | [`zircon/kernel/kernel/idle_power_thread.cc`](../../../zircon/kernel/kernel/idle_power_thread.cc) | `Run` loop; when to `WFI` |
 | [`zircon/kernel/include/arch/ops.h`](../../../zircon/kernel/include/arch/ops.h) | `EnterIdleState` IRQ/preempt rules |
@@ -1066,7 +1318,8 @@ Suggested first pass: **iframe + `arch_thread` → EL0 `svc` in
 `IdlePowerThread::Run` / `WFI` → `StartRoutine` / `arm64_uspace_entry` →
 job/process/thread create in [`userabi.rs`](../../../zircon/kernel/lib/userabi/userabi.rs)**. That is enough to see a
 timer IRQ preempt `zxsh`, a syscall block leave its CPU in `WFI`, a
-second QEMU vCPU come online as idle, and userboot's first `eret`.
+second QEMU vCPU come online as idle, userboot's first `eret`, and a
+guest `WFI` block the host VCPU thread (same scheduler).
 
 IRQ delivery itself is [`interrupt.md`](interrupt.md). Locks and barriers are
 [`synchronization.md`](synchronization.md). The first process is [`bootstrap.md`](bootstrap.md). User TTBR0
@@ -1097,6 +1350,11 @@ is [`memory.md`](memory.md).
 | `wrapper_<name>` | Generated veneer. Validates / marshals arguments, calls `sys_<name>`. |
 | `sys_<name>` | The real syscall body ([`zircon/kernel/lib/syscalls/`](../../../zircon/kernel/lib/syscalls/)). |
 | Blocking syscall | A `sys_*` that may wait (channel, futex, `zx_object_wait_*`, …). Sets `ThreadDispatcher::Blocked` and can `Reschedule`. |
+| `THREAD_FLAG_VCPU` | This `Thread*` owns a `Vcpu`. At most one. Not a scheduling class. |
+| World switch | `arm64_el2_enter`: same host thread, guest EL1 via EL2. Not `arch_context_switch`. |
+| `ZX_ERR_NEXT` | Physical IRQ (or LR underflow) vmexit; `Vcpu::Enter` re-enters, no VMM packet. |
+| Guest `WFI` | Trapped (`HCR.TWI`); host thread `BLOCKED` on `InterruptTracker` until IRQ/Kick/timer. |
+| `last_cpu_` | Cached pCPU for IPI on inject/Kick. Updated by `SetMigrateFn`. Not hard pin. |
 | Thread signal | Pending work on a `Thread` (`KILL`, `SUSPEND`, policy exception, …). Sampled with IRQs off on the way back to EL0. |
 | `Thread` | Kernel scheduler object. Has a kstack, `arch_thread`, `thread_state`. What `TPIDR_EL1` names. |
 | `ThreadDispatcher` | Userspace-visible thread (`ZX_OBJ_TYPE_THREAD`). Owns a `Thread` from create until `ExitingCurrent`. |

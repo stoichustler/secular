@@ -241,6 +241,8 @@ There is no `ioctl` multiplexer on a file descriptor.
 
 ## Linux vs Secular
 
+<img src="images/kernel-services.png" alt="Linux vs. Zircon" width="600">
+
 Linux is a **monolithic POSIX kernel**. Secular is a **Zircon
 microkernel + userspace bringup**. Same hardware (QEMU virt, GICv3,
 EL1), different privilege split.

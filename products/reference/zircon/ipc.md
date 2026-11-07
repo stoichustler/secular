@@ -4,6 +4,7 @@ Secular boots a Zircon kernel on `qemu-system-aarch64` (virt, arm64).
 Processes do not share a POSIX fd table or a global namespace. They talk
 through **kernel objects** named by **handles**. This note is the map of
 that path: what each IPC object is for, how a message or a signal moves,
+how **FIDL** sits on a channel (wire format, encode/decode, txid),
 and which of them the console image actually uses.
 
 The product stays:
@@ -15,6 +16,8 @@ zircon kernel + linux-arm64-boot-shim + BOOTFS + serial console + zxsh
 Read [`cpu.md`](cpu.md) for syscalls / `Thread` block, [`memory.md`](memory.md)
 for VMOs, [`synchronization.md`](synchronization.md) for `WaitQueue` /
 `CriticalMutex`. Userboot's two channel messages are [`bootstrap.md`](bootstrap.md).
+FIDL as a capability protocol (not a kernel object) is also
+[`microkernel.md`](../microkernel.md) Security.
 
 ## IPC
 
@@ -203,7 +206,8 @@ waiting returns `ZX_ERR_CANCELED` (`ZX_SIGNAL_HANDLE_CLOSED`).
 
 **Principle:** a two-ended queue of messages. Each message is atomic
 (all bytes and handles, or none). This is how Zircon moves
-**capabilities** (handles) between processes. FIDL sits on top.
+**capabilities** (handles) between processes. FIDL (next section)
+is userspace on top of this packet.
 
 #### Framework
 
@@ -278,6 +282,381 @@ Console: `userboot_init` sends two **handle-only** messages on the
 bootstrap channel (process caps, then system caps). No FIDL bytes.
 `component_manager` then speaks FIDL over channels to
 console-launcher and everyone else.
+
+### FIDL
+
+**Principle:** FIDL is not a kernel object. It is a **language**
+(`.fidl`), a **wire format** (bytes + handles), and **bindings** that
+encode/decode that format. The kernel still sees a channel
+`MessagePacket`. It does not know ordinals, protocols, or UTF-8.
+
+The transport on this image is a Zircon **channel**. A FIDL method
+call is one channel message (request) and, for two-way methods,
+another (response) whose `txid` matches. Handles in the FIDL payload
+are the same capability transfer as `zx_channel_write`.
+
+#### Framework
+
+```text
+ .fidl  library fuchsia.foo;
+        protocol Device { GetHardwareId() -> (struct { id uint32; }); }
+              │
+              ▼  fidlc  (IR JSON)
+              ▼  fidlgen_rust_next / fidlgen_cpp
+ generated bindings
+              │
+              ▼
+ ┌─────────────────────────────────────────────────────────────────┐
+ │ userspace  fidl_next  /  libfidl  (encode · decode · dispatch)  │
+ │   header 16 B   payload (inline + out-of-line)   handle list    │
+ └────────────────────────────┬────────────────────────────────────┘
+                              │ zx_channel_write / call / read
+                              ▼
+ ┌─────────────────────────────────────────────────────────────────┐
+ │ kernel  ChannelDispatcher                                       │
+ │   MessagePacket  bytes ≤ 64 KiB, handles ≤ 64                   │
+ │   no ordinal, no UTF-8, no "protocol"                           │
+ └─────────────────────────────────────────────────────────────────┘
+```
+
+Four layers. Only the bottom one is Zircon.
+
+| Layer | What it is | This tree |
+| --- | --- | --- |
+| Language | `.fidl` types, protocols, methods | `fidl_library()` in GN |
+| Compiler | `fidlc` → IR; `fidlgen_*` → bindings | [`products/build/fidl/`](../../build/fidl/) |
+| Bindings | encode / decode / client / server | `fidl_next` (Rust), wire/natural C++ |
+| Transport | channel bytes + handles | `ChannelDispatcher` above |
+
+Wire vs natural: **wire** is an overlay on the message buffer (no
+copy; `fidl_next` / C++ wire). **Natural** is owned language values
+(`String`, `Vec`, `zx::Channel`) after a copy out of the buffer.
+
+#### Diagrams
+
+Six posters. Stack, on-wire layout, handle encoding, in-place
+coding, two-way txid, client/server loop.
+
+##### 1. From `.fidl` to a channel packet
+
+Compiler at build time. Encoder at call time. Kernel never parses
+FIDL.
+
+```text
+  Device.GetHardwareId()                 // language
+        │  fidlc + fidlgen_rust_next
+        ▼
+  Device.GetHardwareId  ORDINAL = 0x…    // generated const
+        │  fidl_next encode
+        ▼
+  bytes:  [ hdr 16 | struct body | out-of-line … ]
+  handles: [ ] or [ hVmo, hChannel, … ]
+        │  zx_channel_write / zx_channel_call
+        ▼
+  MessagePacket on the peer
+        │  zx_channel_read
+        ▼
+  fidl_next decode  →  ordinal dispatch  →  server handler
+```
+
+##### 2. Transactional message on the wire (v2)
+
+Every protocol message starts with the same 16-byte header
+([`zircon/system/public/zircon/fidl.h`](../../../zircon/system/public/zircon/fidl.h)
+`fidl_message_header_t`). Payload is 8-byte aligned. Out-of-line
+objects follow in traversal order.
+
+```text
+ byte
+  0        4        6        7        8               16
+  ┌────────┬────────┬────────┬────────┬────────────────┐
+  │ txid   │ at_rest│ dyn    │ magic  │ ordinal        │  header
+  │ u32    │ flags 2│ flags  │ = 1    │ u64            │  16 bytes
+  └────────┴────────┴────────┴────────┴────────────────┘
+  ┌────────────────────────────────────────────────────┐
+  │ inline body   (structs, envelopes, presence words) │
+  │ padded to 8                                        │
+  └────────────────────────────────────────────────────┘
+  ┌────────────────────────────────────────────────────┐
+  │ out-of-line  (string bytes, vector elements, …)    │
+  │ each object 8-aligned; depth ≤ 32                  │
+  └────────────────────────────────────────────────────┘
+
+  handle array (not in the bytes)
+  ┌────┬────┬────┐
+  │ h0 │ h1 │ …  │   ≤ 64; kernel moves these, not the bytes
+  └────┴────┴────┘
+```
+
+| Field | Size | Meaning |
+| --- | --- | --- |
+| `txid` | 4 | 0 = one-way / event. Nonzero = two-way; reply copies it. |
+| `at_rest_flags[0]` | 1 | bit 1 = wire format **v2** (`USE_VERSION_V2`) |
+| `dynamic_flags` | 1 | bit 7 = flexible method; bit 6 = byte-overflow (large message) |
+| `magic_number` | 1 | must be `1`; else `ZX_ERR_PROTOCOL_NOT_SUPPORTED` |
+| `ordinal` | 8 | which method; epitaph is `0xffff_ffff_ffff_ffff` |
+
+`fidl_init_txn_header` always sets v2 + magic 1
+([`txn_header.h`](../../../sdk/lib/fidl_base/include/lib/fidl/txn_header.h)).
+`fidl_next` `MessageHeader` is the same layout
+([`message_header.rs`](../../../userspace/lib/fidl/rust_next/fidl_next_protocol/src/wire/message_header.rs)).
+
+##### 3. Handles are not in the byte stream as values
+
+On the wire a handle slot is a **presence word**. The real handle
+travels in the channel's handle vector. Decode walks the words and
+fills them from that vector, in order.
+
+```text
+ encode                                      decode
+ zx::Vmo (handle 3 in A's table)
+        │
+        ▼
+ bytes:   …  FIDL_HANDLE_PRESENT (0xffffffff) …
+ handles: …  [ KernelHandle+rights of that VMO ] …
+        │
+        │  zx_channel_write  (A loses handle 3)
+        ▼
+ B's MessagePacket
+        │  zx_channel_read
+        ▼
+ bytes:   …  FIDL_HANDLE_PRESENT …
+ handles: …  [ new local h=7, same VMO, rights ⊆ ] …
+        │  decoder replaces PRESENT with 7
+        ▼
+ zx::Vmo in B  (handle 7)
+```
+
+| Encoded word | Meaning |
+| --- | --- |
+| `FIDL_HANDLE_PRESENT` (`UINT32_MAX`) | next handle in the packet |
+| `FIDL_HANDLE_ABSENT` (`ZX_HANDLE_INVALID`) | nullable handle is null |
+
+Same idea for out-of-line pointers: `FIDL_ALLOC_PRESENT`
+(`UINTPTR_MAX`) vs `FIDL_ALLOC_ABSENT` (`0`). Decode patches the
+word to a pointer **into this buffer**. That is why the buffer must
+stay alive while a wire value is used.
+
+##### 4. In-place encode / decode
+
+Wire types are laid out like the C struct with pointers replaced by
+presence. Encoding is a pre-order walk: write the inline object,
+then append each out-of-line child, 8-byte aligned.
+
+```text
+ natural (owned)                         wire (in the buffer)
+
+ struct { string name; handle<vmo> v; }
+        │ encode
+        ▼
+ ┌─────────────────────────────┐  inline
+ │ hdr 16                      │
+ │ name: { size=5, PRESENT }   │──────┐
+ │ v:    PRESENT               │──┐   │
+ └─────────────────────────────┘  │   │
+ ┌─────────────────────────────┐  │   ▼ out-of-line
+ │ 'h' 'e' 'l' 'l' 'o' pad×3   │  │
+ └─────────────────────────────┘  │
+ handles: [ VMO ]  ◄──────────────┘
+
+ decode is the reverse, in place:
+   PRESENT → pointer to the next object in this buffer
+   handle PRESENT → pop from the handle vector
+```
+
+Strings: UTF-8 bytes, **not** NUL-terminated; may contain NULs.
+Vectors: `(count, presence)` + element array out-of-line. Bounds
+(`string:40`, `vector<T>:N`) are not on the wire; the decoder
+checks them. Envelope (v2, tables/unions): 8 bytes; values ≤ 4
+bytes are **inlined** (`FIDL_ENVELOPE_INLINING_SIZE_THRESHOLD`).
+
+`fidl_next` encodes into `Chunk`s of 8 bytes (`CHUNK_SIZE`) so the
+buffer is already aligned for in-place decode.
+
+##### 5. Two-way call and `txid`
+
+The kernel matches replies for `zx_channel_call`. Userspace FIDL
+may use that (sync) or allocate its own `txid` and demux on read
+(async).
+
+```text
+ ── sync: zx_channel_call ──
+
+ client  encode request, txid field unused
+        zx_channel_call(h, req, deadline)
+              │  kernel allocate_txid  (≥ 0x8000_0000, bit 31)
+              │  stamp txid into the header
+              │  park MessageWaiter on this end
+              ▼
+        write request onto the peer
+ server zx_channel_read  →  decode  →  handler
+        encode response, copy request.txid
+        zx_channel_write onto the client end
+              │  waiter matches txid  →  not queued
+              ▼
+        call returns the reply packet
+        client decode
+
+ ── async: write + port ──
+
+ client  pick a userspace txid  (bit 31 clear)
+        zx_channel_write(request)
+        map txid → pending future
+ server  same as above
+ client  zx_channel_read / port packet
+        lookup txid  →  complete the future
+```
+
+`FIDL_TXID_NO_RESPONSE` is 0: one-way methods and events. A
+two-way request must not use 0. Kernel-generated ids have bit 31
+set so they cannot collide with userspace ids
+(`MIN_KERNEL_GENERATED_TXID` in
+[`channel_dispatcher.rs`](../../../zircon/kernel/object/channel_dispatcher.rs)).
+
+##### 6. Client / server on a channel
+
+One channel, two roles. The server reads, switches on `ordinal`,
+runs a handler, optionally writes a reply. Unknown ordinal: strict
+method → close; flexible method → `FIDL_FRAMEWORK_ERR_UNKNOWN_METHOD`
+(RFC-0138) if two-way.
+
+```text
+ client process                         server process
+ ┌──────────────────────┐               ┌──────────────────────┐
+ │ ClientEnd            │               │ ServerEnd            │
+ │  pending txids       │               │  handler table       │
+ │  fuchsia_async port  │               │  fuchsia_async port  │
+ └──────────┬───────────┘               └──────────▲───────────┘
+            │ channel A                            │ channel B
+            └──────────── kernel packet ───────────┘
+
+ close: server may write an epitaph first
+   hdr.ordinal = 0xffff_ffff_ffff_ffff
+   body: zx_status_t   then zx_handle_close
+```
+
+`component_manager` is this picture: it holds one end of each
+routed protocol channel, the child holds the other
+([`microkernel.md`](../microkernel.md) capability routing).
+
+#### Language and compiler
+
+A `.fidl` file declares a **library**, **types**, and **protocols**.
+A protocol is a set of methods. Each method is one-way (`Foo(…);`)
+or two-way (`Foo(…) -> (…);`). `compose` inherits another protocol.
+`resource` types may contain handles; without it, the type is
+persistable (no handles).
+
+```fidl
+library fuchsia.examples.gizmo;
+
+@discoverable
+closed protocol Device {
+    strict GetHardwareId() -> (struct { id uint32; });
+    flexible GetEvent() -> (resource struct { event zx.Handle:EVENT; });
+};
+```
+
+Build:
+
+```text
+ fidl_library("fuchsia.examples.gizmo") { sources = [ "gizmo.fidl" ] }
+        │
+        ▼
+ fidlc     →  IR JSON  (validated against schema)
+ fidlgen_rust_next  →  fidl_next_fuchsia_examples_gizmo
+ fidlgen_cpp        →  wire / natural C++ (if a C++ target depends)
+```
+
+The 64-bit **ordinal** is hashed from library + protocol + method
+at compile time and baked into the bindings (`Method::ORDINAL` in
+`fidl_next_bind`). Two ends must be generated from the same IR or
+they will not agree.
+
+#### Bindings in this tree
+
+| Binding | Language | Role on Secular |
+| --- | --- | --- |
+| **`fidl_next`** | Rust | console path: `component_manager`, userboot FIDL, `fuchsia_async` |
+| C++ **wire** | C++ | overlay on the buffer; drivers / leftover C++ |
+| C++ **natural** | C++ | owned values; copy out of the buffer |
+| **HLCPP** | C++ | older; do not add new uses |
+
+`fidl_next` is three crates
+([`userspace/lib/fidl/rust_next/`](../../../userspace/lib/fidl/rust_next/)):
+
+```text
+ fidl_next_codec      Wire, Encode, Decode, Chunk, handles/strings
+        │
+ fidl_next_protocol   Transport, MessageHeader, Client/Server untyped
+        │               fuchsia::channel uses zx_channel_read/write
+ fidl_next_bind       typed Client<P>, Server<P>, Method::ORDINAL
+```
+
+The channel transport
+([`fidl_next_protocol/src/fuchsia/channel.rs`](../../../userspace/lib/fidl/rust_next/fidl_next_protocol/src/fuchsia/channel.rs))
+holds a `zx::Channel` in a `fuchsia_async::RWHandle`, encodes into
+`Buffer { chunks, handles }`, and calls `zx_channel_write`. It is
+executor-agnostic at the protocol layer; on Fuchsia the executor is
+`fuchsia_async` (port wait, [`rust.md`](../rust.md) Async).
+
+C++ wire encode/decode lives in
+[`sdk/lib/fidl/cpp/wire/`](../../../sdk/lib/fidl/cpp/wire/).
+`fidl_message_header_t` and presence constants are the C ABI in
+[`zircon/fidl.h`](../../../zircon/system/public/zircon/fidl.h).
+
+#### Flow
+
+Two-way method, async, handles in the response:
+
+```text
+ client  Device.GetEvent()
+        encode MessageHeader { txid=T, ordinal=GetEvent, v2, magic=1 }
+        zx_channel_write(bytes, handles=[])
+        wait on port (channel READABLE)
+
+ kernel  packet on server end, raise READABLE
+        maybe wake zx_port_wait
+
+ server  zx_channel_read
+        validate magic / v2
+        switch ordinal
+          GetEvent → handler → zx_event_create
+        encode reply: same txid T, event = PRESENT
+        zx_channel_write(bytes, handles=[event])
+
+ kernel  move event handle into client's table
+        raise client READABLE
+
+ client  read, match txid T, decode
+        event slot ← new local handle
+        future completes with zx::Event
+```
+
+Epitaph then close:
+
+```text
+ server  encode epitaph (ordinal all-ones, error: zx_status_t)
+        zx_channel_write
+        zx_handle_close(server end)
+ kernel  client sees PEER_CLOSED after the epitaph packet
+```
+
+#### What the kernel does not do
+
+| FIDL concept | Kernel |
+| --- | --- |
+| ordinal / protocol name | opaque bytes |
+| UTF-8 string | opaque bytes |
+| handle presence words | opaque bytes; **real** handles are the packet's handle vector |
+| txid (async) | opaque, except `zx_channel_call` matches it |
+| epitaph | last message, then `PEER_CLOSED` |
+| flexible unknown method | userspace policy |
+
+If you can see it with `zx_channel_read` as bytes+handles, it is
+not a kernel FIDL object. Debug a bad FIDL call as: wrong ordinal
+(bindings mismatch), truncated message, handle count off, or peer
+closed — then look at the channel, not at a FIDL syscall.
 
 ### Socket
 
@@ -569,15 +948,18 @@ userboot_init                         kernel
 
 `zxsh` on this image talks to the kernel console, not to a userspace
 TTY channel. The IPC you will see on serial boot is: bootstrap
-channel, then component_manager's FIDL channels to launchers. UART
-IRQ → wait wakeup is [`interrupt.md`](interrupt.md) +
-[`synchronization.md`](synchronization.md), not a Zircon socket.
+channel (handle-only, **not** FIDL), then `component_manager`'s
+**FIDL** channels to launchers. UART IRQ → wait wakeup is
+[`interrupt.md`](interrupt.md) + [`synchronization.md`](synchronization.md),
+not a Zircon socket.
 
 ### How to choose
 
 ```text
+Need a typed RPC / protocol on a channel?
+  → FIDL (userspace). Kernel still a Channel.
 Need to send a handle / capability?
-  → Channel
+  → Channel (FIDL if the protocol says so)
 Need an event loop over many objects?
   → Port + wait_async
 Need to sleep on one object?
@@ -609,11 +991,18 @@ Need a userspace mutex?
 | [`zircon/kernel/lib/syscalls/futex.rs`](../../../zircon/kernel/lib/syscalls/futex.rs) | user-word wait |
 | [`zircon/kernel/lib/userabi/userabi.rs`](../../../zircon/kernel/lib/userabi/userabi.rs) | bootstrap channel |
 | [`zircon/system/public/zircon/types.h`](../../../zircon/system/public/zircon/types.h) | signal bits, channel/fifo limits |
+| [`zircon/system/public/zircon/fidl.h`](../../../zircon/system/public/zircon/fidl.h) | `fidl_message_header_t`, presence, envelope |
+| [`sdk/lib/fidl_base/include/lib/fidl/txn_header.h`](../../../sdk/lib/fidl_base/include/lib/fidl/txn_header.h) | `fidl_init_txn_header` |
+| [`userspace/lib/fidl/rust_next/`](../../../userspace/lib/fidl/rust_next/) | `fidl_next` codec / protocol / bind |
+| [`sdk/lib/fidl/cpp/wire/`](../../../sdk/lib/fidl/cpp/wire/) | C++ wire encode/decode |
+| [`products/build/fidl/`](../../build/fidl/) | `fidl_library`, fidlc, fidlgen |
+| [`sdk/lib/async/rust/fidl/`](../../../sdk/lib/async/rust/fidl/) | `fuchsia_async` + `fidl_next` channel |
 
 Suggested first pass: **handle table → `zx_channel_write` → peer
 `READABLE` → `wait_one` → `zx_channel_read` (handles appear in the
-receiver)**. Then **port wait_async**. That is enough to see userboot's
-two messages, and a FIDL call from `component_manager`.
+receiver)**. Then **port wait_async**. Then **FIDL header + ordinal +
+txid** on those same bytes. That is enough to see userboot's two
+messages (not FIDL), and a FIDL call from `component_manager`.
 
 ### Terminology
 
@@ -628,10 +1017,16 @@ two messages, and a FIDL call from `component_manager`.
 | Capability | A handle. Moving it through a channel is how authority is delegated. |
 | `ZX_ERR_SHOULD_WAIT` | Queue empty (or full) and peer still alive; caller should wait. |
 | `ZX_ERR_PEER_CLOSED` | Other end is gone. |
-| `txid` | Channel-call transaction id. Kernel-generated ids have bit 31 set. |
+| `txid` | Channel-call / FIDL two-way id. 0 = one-way. Kernel ids have bit 31 set. |
 | Port packet | `{key, signals}` queued when an async wait matches. |
 | Futex | Kernel wait keyed by a user address, not by a handle. |
-| FIDL | IDL and wire format on channels. Not a kernel object. |
+| FIDL | Userspace IDL + wire format on a channel. Not a kernel object. |
+| ordinal | 64-bit method id in the FIDL header. Epitaph is all ones. |
+| Wire / natural | Overlay on the buffer vs owned language values. |
+| `FIDL_HANDLE_PRESENT` | `0xffffffff` in the bytes; the real handle is in the packet. |
+| Envelope (v2) | 8-byte wrapper for table/union fields; ≤4 bytes inlined. |
+| Epitaph | Last FIDL message before close; body is a `zx_status_t`. |
+| `fidl_next` | Rust bindings: codec + protocol + typed bind. |
 
 ---
 

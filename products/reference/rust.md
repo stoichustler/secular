@@ -39,6 +39,7 @@ How this note maps onto the Book:
 | Ch. 17 OOP features | encapsulation, trait objects |
 | Ch. 18 Patterns | pattern syntax |
 | Ch. 19 Advanced Features | `unsafe`, FFI, macros |
+| FFI / bindgen (not a Book chapter) | `extern "C"`, layout, `rustc_bindgen` |
 | Cargo / crates.io chapters | skipped: this tree compiles with GN |
 
 Start with **Framework** and **Flow**, then the language sections they
@@ -969,11 +970,164 @@ should look like the code it produces; generated items must accept
 
 ## FFI
 
-Two directions, one ABI (AAPCS64, `extern "C"`).
+Two languages, one ABI. Rust cannot see a C++ `class JobDispatcher` as
+a Rust `struct`. It can call a function with C calling convention,
+passing integers, pointers, and C-layout structs. Everything else —
+`RefPtr`, `String`, exceptions, vtables as C++ understands them — stays
+on its own side of a trampoline.
 
-### Userspace → kernel (syscalls)
+The Book's "unsafe" chapter is the hatch. This section is how this
+tree uses it: **principle** (what an ABI is, what bindgen actually
+does), then **implementation** (GN `rustc_bindgen`, kernel
+`cpp_*`/`rust_*` shims, userspace `zx` syscalls). Pair with
+[`cpp.md`](cpp.md) FFI. Porting rules live in
+[`zircon/skills/cpp-to-rust-rubric`](../../zircon/skills/cpp-to-rust-rubric/SKILL.md)
+and
+[`zircon/skills/cpp-to-rust-dispatcher`](../../zircon/skills/cpp-to-rust-dispatcher/SKILL.md).
 
-The vDSO is assembly (`svc`). The `zx` crate wraps it:
+### Framework
+
+```text
+ userspace Rust                         kernel Rust
+   zx::Job::create_child_job              sys_job_create  #[syscall]
+        │                                         │
+        │ unsafe { sys::zx_job_create }           ├─ JobDispatcher::create
+        ▼                                         └─ cpp_thread_*  ──► leftover C++
+   vDSO  svc  (assembly, AAPCS64)
+        │                                         ▲
+        ▼                                         │ rust_*  (no_mangle extern "C")
+   wrapper_job_create  (generated C++) ───────────┘
+        │
+ bindgen  (build time, not at runtime)
+   Clang parses .h  →  libclang AST  →  .rs  (#[repr(C)] structs, extern "C" fn)
+```
+
+Three crossings, one calling convention:
+
+| Crossing | Who calls | Token | How the types appear |
+| --- | --- | --- | --- |
+| EL0 → EL1 | `zx` crate / libzx | handle integer | vDSO stub; kernel does not see Rust types |
+| Kernel Rust → leftover C++ | `cpp_*` | raw pointer / POD | hand-written `unsafe extern "C"` or bindgen |
+| Kernel C++ → ported Rust | `rust_*` | raw pointer / POD | `#[unsafe(no_mangle)] pub unsafe extern "C"` |
+| Header → Rust module | GN action | none (compile time) | `rustc_bindgen` / `kernel_bindgen_crate` |
+
+### Principle: ABI, not API
+
+A **calling convention** (here AAPCS64) says where arguments live
+(`x0`–`x7`, stack) and who cleans up. `extern "C"` on both sides
+selects that convention and disables C++ name mangling / Rust
+mangling. The symbol in the ELF is the identifier you wrote
+(`cpp_dispatcher_get_koid`), so the linker can see it from the other
+language.
+
+An **API** is names, methods, overloads, templates, destructors. An
+**ABI** is bits: size, alignment, field order, register assignment.
+FFI is an ABI boundary. Templates, `std::string`, `fbl::RefPtr<T>` by
+value, and C++ exceptions have no ABI the other language understands.
+
+What may cross:
+
+| Safe to pass | Not safe to pass |
+| --- | --- |
+| integers, `bool`, C enums with a fixed `repr` | `String`, `Vec`, `Box` (wrong allocator, wrong drop) |
+| `*const T` / `*mut T` / `NonNull<T>` to a type both sides agree on | `RefPtr<T>` / `unique_ptr<T>` **by value** (the other side will not run the destructor) |
+| `#[repr(C)]` structs of the above | `#[repr(Rust)]` structs (field order is not stable) |
+| `extern "C" fn` pointers | C++ member function pointers, capturing closures |
+| `Result<(), Status>` (same bits as `zx_status_t`) | Rust `enum` without `#[repr(u32)]` / `#[repr(C)]` |
+
+`Result<(), Status>` is a documented Zircon trick: `Status` is a
+transparent `i32`, `Ok(())` is `ZX_OK` (0), `Err(e)` is the negative
+code. C++ can declare the same function as returning `zx_status_t`.
+
+Layout is a contract. `#[repr(C)]` matches the C (and Clang C++)
+layout algorithm: declaration order, alignment padding, no niche
+optimization. `#[repr(u32)]` on an enum matches a C++ `enum` / C
+`uint32_t` discriminant (`Lifecycle` in
+[`thread_state.rs`](../../zircon/kernel/object/thread_state.rs)).
+`#[repr(transparent)]` is a newtype that is ABI-identical to its one
+field (`zx::Job` over a handle). Changing a discriminant or inserting
+a field without updating the other side is an ABI break, not a
+compile error — unless you **assert** size and alignment.
+
+```rust
+zr::static_assert_size_and_align!(
+    ChannelDispatcherState,
+    kChannelDispatcherStateSize,
+    kChannelDispatcherStateAlign,
+);
+```
+
+Those `k*` constants are C++ `constexpr` in
+[`object-constants.h`](../../zircon/kernel/lib/object-constants/include/lib/object-constants.h),
+**bindgen'd** into Rust. One source of truth; both languages
+`static_assert` against it.
+
+Ownership still exists; the compiler just cannot see across the
+boundary. A `Dispatcher*` in an `extern "C"` argument is either:
+
+- **borrowed** — caller keeps the refcount; callee must not `recycle`
+- **transferred** — callee owns the ref; documented on both sides
+
+Write that in the `# Safety` section of the `unsafe fn` and in the
+C++ comment on the trampoline. Never pass `RefPtr` by value through
+FFI.
+
+### Principle: what bindgen is
+
+[bindgen](https://rust-lang.github.io/rust-bindgen/) is a **build-time
+translator**, not a runtime. It drives Clang (libclang) on a C or C++
+header, walks the AST, and emits a `.rs` file:
+
+```text
+  header.h
+      │  Clang  (−x c++ −std=c++23, same -I/-D as the C++ target)
+      ▼
+  libclang AST     types, enums, #defines, function declarations
+      │  bindgen allowlist / blocklist / opaque
+      ▼
+  generated.rs
+      #[repr(C)] struct Foo { … }
+      pub const BAR: u32 = 1;
+      unsafe extern "C" { pub fn cpp_foo(…); }
+      const _: () = { size_of::<Foo>() - 24; align_of::<Foo>() - 8; };
+      │  rustfmt
+      ▼
+  rustc_library  compiles it as an ordinary crate
+```
+
+It does **not** emit method bodies, templates as generics, or C++
+constructors. A C++ `class ProcessDispatcher { … lots of members … }`
+becomes either:
+
+1. a **full** `#[repr(C)]` struct, if every field is FFI-safe and you
+   allowlisted the type, or
+2. an **opaque** blob (`[u8; N]` / bindgen's opaque struct) whose
+   size/align match, if you listed it in `opaque_types`, or
+3. nothing, if it is blocklisted — then you alias it by hand
+   (`pub type VmAspace = core::ffi::c_void;`).
+
+Layout tests (`layout_tests = true`) compile to
+
+```rust
+const _: () = {
+    ["Size of async_state_t"][::core::mem::size_of::<async_state_t>() - 16usize];
+    ["Alignment of async_state_t"][::core::mem::align_of::<async_state_t>() - 8usize];
+};
+```
+
+If the header changes size, **Rust fails to compile**. That is the
+point. Do not hand-write a second `#[repr(C)]` that duplicates a
+bindgen output: the next header edit will only update one of them.
+
+Allowlists are regexes. Without them bindgen will try to translate
+the world (libc++, `fbl::RefPtr` guts). This tree always allowlists
+and usually passes `--no-recursive-allowlist` so a mentioned-but-not-
+allowlisted type does not get pulled in.
+
+### Flow: userspace → kernel (syscalls)
+
+The vDSO is assembly (`svc`). The `zx` crate wraps the generated
+syscall list (`zx_sys`, re-exported as `zx::sys`):
 
 ```rust
 // sdk/rust/zx/src/job.rs
@@ -981,32 +1135,273 @@ let status = unsafe { sys::zx_job_create(parent_job_raw, options, &mut out) };
 ok(status)?;
 ```
 
-You almost never write that `unsafe` yourself; call `Job::create_child_job`.
+You almost never write that `unsafe` yourself; call
+`Job::create_child_job`. The kernel does not receive a Rust `Job`. It
+receives three integers in `x0`–`x2`. The safe wrapper's job is to
+own the resulting handle so `Drop` closes it.
 
-### Kernel C++ ↔ kernel Rust
+That path is **not** bindgen of kernel headers. It is the vDSO ABI
+([`cpu.md`](zircon/cpu.md) System calls). Bindgen shows up in
+userspace for C libraries (`libasync` → `libasync_sys`, driver
+runtime → `fdf_sys`).
+
+### Flow: kernel C++ ↔ kernel Rust
 
 ```text
  exceptions.S  svc
       │
       ▼
- wrapper_job_create   (generated C++)
+ wrapper_job_create        generated C++
       │
       ▼
- sys_job_create       (Rust, #[syscall])
+ sys_job_create            Rust, #[syscall]
       │
-      ├─ JobDispatcher::create     Rust
-      └─ cpp_thread_*              unsafe extern "C" into leftover C++
+      ├─ JobDispatcher::create          already Rust
+      └─ cpp_thread_dispatcher_alloc    leftover C++
+                ▲
+                │
+      rust_log_dispatcher_create        C++ userboot still constructs
 ```
 
-C++ still owns some types; Rust sees them as `unsafe extern "C" { fn
-cpp_thread_dispatcher_alloc(...); }` and `OpaqueStorage`. Bindgen
-(`products/build/rust/rustc_bindgen.gni`) turns headers into Rust. Do
-not hand-write duplicate layouts.
+Two naming directions, 1:1 shims, **zero business logic** in the
+trampoline:
 
-`#[repr(C)]` / `#[repr(u32)]` make the layout match C++. `Lifecycle`
-discriminants are an explicit contract with
-`thread_dispatcher_ffi.cc`. Changing them without the C++ side is an
-ABI break.
+| Direction | Symbol | Lives in |
+| --- | --- | --- |
+| C++ → called from Rust | `cpp_$namespace_$type_$method` | `*_ffi.cc` + prototype in a `.h` `extern "C"` |
+| Rust → called from C++ | `rust_$mod_$type_$method` | `*_ffi.rs`, `#[unsafe(no_mangle)]` |
+
+```cpp
+// process_dispatcher_ffi.h
+__BEGIN_CDECLS
+VmAspace* cpp_process_dispatcher_normal_aspace(ProcessDispatcher* process);
+__END_CDECLS
+```
+
+```rust
+// dispatcher_ffi.rs
+unsafe extern "C" {
+    pub(crate) fn cpp_dispatcher_get_koid(dispatcher: *const Dispatcher) -> zx_types::zx_koid_t;
+}
+
+#[unsafe(no_mangle)]
+pub unsafe extern "C" fn rust_log_dispatcher_create(
+    flags: u32,
+    handle_out: *mut MaybeUninit<KernelHandle<LogDispatcher>>,
+    rights_out: *mut zx_rights_t,
+) -> Result<(), Status> { /* write outs; Ok(()) */ }
+```
+
+Rules that keep the boundary small:
+
+- One C++ method per `cpp_*`. No `if`, no `disp->sub()->Method()`.
+  If you need the sub-object, give **it** a facade and a shim.
+- Facade methods match real C++ methods. Do not invent a convenience
+  method that does not exist on the class.
+- Prefer `&T` / `&mut T` in a `rust_*` signature when the pointer is
+  never null and already initialized (same ABI as `T*`).
+- Uninitialized out-storage on the C++ side is `ffi::Uninitialized<T>*`,
+  not a raw `T*` you construct into.
+- Short `cpp_*` accessors may be `FFI_ALWAYS_INLINE` until
+  cross-language LTO exists.
+- `extern "C"` blocks in edition 2024 are `unsafe extern "C"` — the
+  **block** is unsafe to declare; each call still needs `unsafe { }`.
+
+C++ still owns some types. Rust sees them as an opaque pointer plus
+shims, or as a bindgen struct. `OpaqueStorage` / `zr::Opaque<T>` /
+`zr::OpaqueBytes<N>` is the padding that keeps a C++ object's size
+when only some fields have moved to Rust (`ChannelDispatcherState`
+sits at a bindgen'd offset inside the C++ allocation).
+
+### How bindgen is implemented in this tree
+
+Not `bindgen` on the command line, not a `build.rs`. GN runs it.
+
+```text
+ BUILD.gn
+   rustc_bindgen("foo.bindgen")   or   kernel_bindgen_crate("foo")
+        │
+        ▼
+ products/build/rust/new-bindgen.py
+   writes wrapper.h if several headers
+   invokes $SECULAR_SDK/…/bindgen
+     --use-core
+     allowlists / opaque / raw-lines
+     --  Clang flags from the C++ target (−I, −D, −x c++, −std=c++23)
+   rustfmt  (//rustfmt.toml)
+        │
+        ▼
+ $target_gen_dir/foo.rs
+        │
+        ▼
+ rustc_library / kernel_rust_crate   source_root = that file
+```
+
+| Piece | Path | Role |
+| --- | --- | --- |
+| GN template | [`products/build/rust/rustc_bindgen.gni`](../build/rust/rustc_bindgen.gni) | action + flags |
+| Driver script | [`products/build/rust/new-bindgen.py`](../build/rust/new-bindgen.py) | wrapper header, rustfmt, notice |
+| Bindgen binary | `$SECULAR_SDK` / `secular_prebuilt_root` `third_party/rust_bindgen/…/bindgen` | the translator |
+| Kernel wrapper | [`zircon/kernel/kernel_bindgen_crate.gni`](../../zircon/kernel/kernel_bindgen_crate.gni) | bindgen + `kernel_rust_crate` |
+| Golden (userspace) | `rustc_bindgen_golden` | generate + diff against a checked-in `bindings.rs` |
+
+`use_core` defaults **true**: generated code uses `core::` so kernel
+`no_std` crates can depend on it. `cpp = true` adds `-x c++
+-std=c++${fuchsia_cxx_version}` (C++23 here). Clang flags after `--`
+are the same `{{cflags}}` / `{{include_dirs}}` the C++ target compiled
+with, so `#ifdef` and layout match the kernel you will link.
+
+#### Kernel: `kernel_bindgen_crate`
+
+Constants — one header, allowlist `k.*`, no functions:
+
+```gn
+# zircon/kernel/lib/object-constants/BUILD.gn
+kernel_bindgen_crate("object-constants-rs") {
+  headers = [ "include/lib/object-constants.h" ]
+  cpp = true
+  var_allowlist = [ "k.*" ]
+  raw_lines = [ "#![no_std]" ]
+}
+```
+
+That is how `kChannelDispatcherStateSize` reaches
+`zr::static_assert_size_and_align!`. Do not copy the integer into
+Rust.
+
+Opaque leftover class + a few C shims:
+
+```gn
+# zircon/kernel/object/BUILD.gn  process-dispatcher-bindings
+kernel_bindgen_crate("process-dispatcher-bindings") {
+  headers = [ "include/object/process_dispatcher_ffi.h" ]
+  cpp = true
+  function_allowlist = [
+    "cpp_process_dispatcher_normal_aspace",
+    "cpp_process_dispatcher_restricted_aspace",
+  ]
+  type_allowlist = [ "ProcessDispatcher" ]
+  opaque_types = [ "ProcessDispatcher" ]
+  type_blocklist = [ "VmAspace" ]
+  additional_bindgen_flags = [ "--no-recursive-allowlist" ]
+  raw_lines = [
+    "#![no_std]",
+    "pub type VmAspace = core::ffi::c_void;",
+  ]
+}
+```
+
+`opaque_types` keeps `ProcessDispatcher` as an opaque type you only
+hold through `*mut ProcessDispatcher` (no generated fields). A
+complete class becomes a sized blob; a forward declaration stays
+incomplete. `VmAspace` is not translated at all; the `raw_lines`
+alias is the Rust spelling of "pointer to something C++ owns".
+
+`event-bindings` is the same pattern for `Event` /
+`cpp_event_*`, re-exporting `zx_status_t` from `zx_types` instead of
+letting bindgen invent a second one.
+
+#### Userspace: `rustc_bindgen_golden`
+
+Checked-in generated files, so a header change that alters layout
+fails CQ even if you forget to regenerate:
+
+```gn
+# sdk/lib/async/rust/sys/BUILD.gn
+rustc_bindgen_golden("async_sys_bindgen_golden") {
+  checked_in_source = "src/bindings.rs"
+  headers = [ "//sdk/lib/async/include/lib/async/dispatcher.h", /* … */ ]
+  function_allowlist = [ "async_.*" ]
+  type_allowlist = [ "async_.*", "ASYNC_.*" ]
+  type_blocklist = [ "zx_.*" ]
+  layout_tests = true
+  raw_lines = [ "use zx_types::*;" ]
+}
+```
+
+[`sdk/lib/async/rust/sys/src/bindings.rs`](../../sdk/lib/async/rust/sys/src/bindings.rs)
+is that output: `#[repr(C)] async_state_t`, `unsafe extern "C" fn`
+fields, size/align const assertions. The safe crate (`fuchsia_async`)
+wraps it; application code does not call `bindings::` directly.
+
+`fbl-bindings` under `zircon/system/ulib/fbl/rust/` is a **test-only**
+bindgen of `bindgen.h`, used to prove the Rust `fbl` containers match
+the C++ node layouts. Production kernel code does not depend on it.
+
+#### Bindgen-backed type vs zero-sized facade
+
+A C++ `fbl::RefCounted` type that bindgen **did** emit as
+`bindings::T` must **not** use `fbl::impl_opaque_ref_counted_facade!`.
+That macro makes the Rust type **zero-sized**, which is the wrong
+size and the wrong pointer (`*mut Self` vs `*mut bindings::T`). Wrap
+`zr::Opaque<bindings::T>` and implement `HasRefCount` / `Recyclable`
+by calling `cpp_<type>_get_ref_counted` / `cpp_<type>_free`.
+
+Use the zero-sized facade only when there is **no** bindgen struct
+and the `extern "C"` functions take `*mut Self` (typical for a
+dispatcher that is still allocated in C++ and only *named* in Rust).
+
+### How to add a bindgen crate
+
+1. Put the C/C++ declarations you actually need in a **small** header
+   (`*_ffi.h` with `extern "C"` / `__BEGIN_CDECLS`). Do not point
+   bindgen at a 2000-line class header if you only need two functions
+   and an opaque type.
+2. Add `kernel_bindgen_crate("foo-bindings")` (kernel) or
+   `rustc_bindgen` + `rustc_library` / `rustc_bindgen_golden`
+   (userspace). `edition = "2024"`. `raw_lines = ["#![no_std]"]` in
+   the kernel.
+3. Allowlist functions/types/vars with regexes. Blocklist everything
+   that would drag in `zx_status_t`, `fbl::RefPtr`, or libc++.
+   Opaque the leftover classes. `--no-recursive-allowlist`.
+4. Depend on `zx_types` / `zx_status` rather than letting bindgen
+   redefine them (`raw_lines = ["pub use zx_types::*;"]` plus
+   `type_blocklist = ["zx_.*"]`).
+5. `zr::static_assert!` size/align against `object-constants` (or the
+   generated layout tests) on every struct you will dereference.
+6. Call the generated `extern "C"` only from a **safe** wrapper or
+   from an `unsafe` block with `// SAFETY:`. Never from a random
+   syscall body if a facade already exists.
+7. Do not append `-rs` to bindgen target names beyond what
+   `kernel_bindgen_crate` already does. Do not check in a hand-copied
+   subset of the generated file next to a live `rustc_bindgen` action
+   (goldens are the exception, and they are **the** generated file).
+
+### Safety at the boundary
+
+The language's checker stops at `unsafe`. FFI is why most kernel
+`unsafe` exists.
+
+```text
+ safe Rust          ownership, borrows, no data races
+        │
+        ▼
+ unsafe { sys::… / cpp_* / ptr::read }    you promised the ABI
+        │
+        ▼
+ C++ dtor / refcount / hardware
+```
+
+- Every `unsafe` block: `// SAFETY:` saying **why** it is sound (the
+  obligation and the fact that discharges it), not what the line
+  does. Format is exactly `// SAFETY:`.
+- An `unsafe fn` is **not** an unsafe context in this project: inner
+  operations still need `unsafe { }`.
+- Shared mutable memory that C++ or another CPU can write is
+  `UnsafeCell` or an atomic, never a plain `&T`.
+- Do not hold `&mut T` across a `cpp_*` that can re-enter the same
+  object.
+- Integer addresses back to pointers:
+  `core::ptr::with_exposed_provenance`, not `addr as *const T`.
+- Mutable raw pointers come from `&mut`, `UnsafeCell::get()`, or an
+  existing `*mut`, never from `&T as *const T as *mut T`.
+
+```rust
+// SAFETY: `process_raw` is a valid pointer carrying an acquired refcount.
+let handle = unsafe {
+    KernelHandle::create(|out| cpp_thread_dispatcher_alloc(process_raw, flags, out))
+}?;
+```
 
 ## How to work in this tree
 
@@ -1056,6 +1451,11 @@ Do not use `lazy_static!`; use `std::sync::LazyLock`.
    `FutexId` newtype, wait/wake, `unsafe` user copy.
 6. userboot `main.rs` — `struct Options`, `match`, `anyhow`, `async fn`,
    `zx::Vmo`.
+7. [`zircon/kernel/lib/object-constants/BUILD.gn`](../../zircon/kernel/lib/object-constants/BUILD.gn)
+   then [`process-dispatcher-bindings`](../../zircon/kernel/object/BUILD.gn) —
+   bindgen of `k*` constants vs an opaque C++ class + `cpp_*`.
+8. [`sdk/lib/async/rust/sys/src/bindings.rs`](../../sdk/lib/async/rust/sys/src/bindings.rs) —
+   userspace golden bindgen (`#[repr(C)]`, layout tests).
 
 ## Where in the tree
 
@@ -1068,8 +1468,13 @@ Do not use `lazy_static!`; use `std::sync::LazyLock`.
 | [`zircon/kernel/kernel/scheduler.rs`](../../zircon/kernel/kernel/scheduler.rs) | scheduler in Rust |
 | [`sdk/rust/zx/`](../../sdk/rust/zx/) | userspace syscall bindings |
 | [`userspace/secular/bin/userboot/`](../../userspace/secular/bin/userboot/) | first user process |
-| [`products/build/rust/`](../build/rust/) | `rustc_library.gni`, bindgen, clippy |
+| [`products/build/rust/rustc_bindgen.gni`](../build/rust/rustc_bindgen.gni) | GN bindgen action, `new-bindgen.py` |
+| [`zircon/kernel/kernel_bindgen_crate.gni`](../../zircon/kernel/kernel_bindgen_crate.gni) | kernel bindgen → `kernel_rust_crate` |
+| [`zircon/kernel/lib/object-constants/`](../../zircon/kernel/lib/object-constants/) | `k*` layout constants, bindgen'd |
+| [`zircon/kernel/object/dispatcher_ffi.rs`](../../zircon/kernel/object/dispatcher_ffi.rs) | hand-written `cpp_*` imports |
+| [`sdk/lib/async/rust/sys/`](../../sdk/lib/async/rust/sys/) | userspace `rustc_bindgen_golden` |
 | [`tools/ai-coding/skills/rust_best_practices/`](../../tools/ai-coding/skills/rust_best_practices/) | rubric used in this tree |
+| [`zircon/skills/cpp-to-rust-rubric/`](../../zircon/skills/cpp-to-rust-rubric/) | FFI / layout / bindgen-vs-facade rules |
 
 ## Terminology
 
@@ -1101,8 +1506,16 @@ Do not use `lazy_static!`; use `std::sync::LazyLock`.
 | `Pin` | Value must not move. Kernel objects and async futures. |
 | `no_std` | No Rust standard library. Kernel crates. `core` remains. |
 | `unsafe` | Opt out of the checker. Needs `// SAFETY:`. |
-| FFI | Calling C/C++ (`extern "C"`) or being called from it. |
+| FFI | Calling C/C++ (`extern "C"`) or being called from it. ABI, not API. |
+| ABI | Size, alignment, field order, calling convention. Independent of names. |
+| `extern "C"` | C calling convention (AAPCS64 here); no name mangling. Edition 2024: `unsafe extern "C"`. |
 | `#[repr(C)]` / `#[repr(u32)]` | Layout contract with C++. |
+| bindgen | Build-time Clang AST → `#[repr(C)]` Rust. Not a runtime. |
+| `rustc_bindgen` | GN template that runs bindgen + rustfmt (`new-bindgen.py`). |
+| `kernel_bindgen_crate` | Kernel wrapper: bindgen output is a `no_std` crate. |
+| `rustc_bindgen_golden` | Userspace: generated `.rs` is checked in and diffs on header change. |
+| allowlist / opaque_types | Bindgen: emit these functions/types; treat these classes as sized blobs. |
+| `cpp_*` / `rust_*` | Kernel FFI trampolines, C++-owned vs Rust-owned. 1:1, no logic. |
 | `#[syscall]` | Marks `sys_*`; generates the kernel entry from user `svc`. |
 | `Send` / `Sync` | Cross-thread move / shared reference. |
 | `Future` / `.await` | Userspace async state machine. Kernel syscalls do not use it. |
