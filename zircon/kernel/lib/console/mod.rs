@@ -1128,27 +1128,42 @@ pub fn read_debug_line(buffer: &mut [u8; LINE_LEN]) -> Option<usize> {
 fn read_line_panic(buffer: &mut [u8]) -> &mut [u8] {
     let len = buffer.len();
     let mut pos = 0;
+    let mut escape_level = 0;
     loop {
         let Some(character) = panic_getc() else {
             continue;
         };
 
-        match character {
-            b'\r' | b'\n' => {
-                crate::platform_rs::debug::platform_pputc(b'\n');
-                break;
-            }
-            BACKSPACE_DEL | BACKSPACE_BS => {
-                if pos > 0 {
-                    pos -= 1;
-                    panic_puts("\x08 \x08");
+        if escape_level == 0 {
+            match character {
+                b'\r' | b'\n' => {
+                    crate::platform_rs::debug::platform_pputc(b'\n');
+                    break;
+                }
+                BACKSPACE_DEL | BACKSPACE_BS => {
+                    if pos > 0 {
+                        pos -= 1;
+                        panic_puts("\x08 \x08");
+                    }
+                }
+                b'\t' => {}
+                ESCAPE => {
+                    escape_level = 1;
+                }
+                _ => {
+                    buffer[pos] = character;
+                    pos += 1;
+                    crate::platform_rs::debug::platform_pputc(character);
                 }
             }
-            _ => {
-                buffer[pos] = character;
-                pos += 1;
-                crate::platform_rs::debug::platform_pputc(character);
-            }
+        } else if escape_level == 1 {
+            // CSI (`ESC [`) or SS3 (`ESC O`); used by arrow keys.
+            escape_level = if character == b'[' || character == b'O' { 2 } else { 0 };
+        } else if (0x40..=0x7e).contains(&character) {
+            // Sequence complete (up/down are `A`/`B`). Drop it.
+            escape_level = 0;
+        } else if !(0x20..=0x3f).contains(&character) {
+            escape_level = 0;
         }
 
         // Buffer holds up to len - 1 characters plus null terminator.
@@ -1220,7 +1235,7 @@ pub fn panic_shell_start() {
     let mut args = [CmdArgs::default(); MAX_NUM_ARGS];
 
     loop {
-        panic_puts("! ");
+        panic_puts("zircon $ ");
         let current_slice = read_line_panic(&mut input_buffer);
 
         let mut argc = 0;

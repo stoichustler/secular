@@ -173,7 +173,7 @@ impl RootResourceFilter {
             self.mmio_deny.walk_available_regions(|region| {
                 dprintf!(
                     SPEW,
-                    "Region [{:#x}, {:#x})\n",
+                    "Region [{:#016x}, {:#016x})\n",
                     region.base(),
                     region.base() + region.size()
                 );

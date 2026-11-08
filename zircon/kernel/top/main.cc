@@ -127,8 +127,10 @@ void lk_main(PhysHandoff* handoff) {
   // we can safely printf now since we have the debuglog, the current thread set
   // which holds (a per-line buffer), and global ctors finished (some of the
   // printf machinery depends on ctors right now).
-  // NOTE: botanist depends on this string being printed to serial. If this changes,
-  // that code must be changed as well. See https://fxbug.dev/42138089#c20.
+  // NOTE: botanist depends on the substring "printing enabled" being printed to
+  // serial. The debuglog header prefixes the line with "[cpu N] ". If the
+  // payload string changes, that code must be changed as well. See
+  // https://fxbug.dev/42138089#c20.
   dprintf(ALWAYS, "printing enabled\n");
 
   stdout->Write(kBootConstants.kernel_version_ident.get());

@@ -230,7 +230,7 @@ Single-threaded on CPU0 until:
 
 ```text
 thread_init_early
-dlog / constructors / "printing enabled"
+dlog / constructors / "printing enabled"  (serial: `[cpu N] printing enabled`)
 arch_early_init, platform_early_init, DriverHandoffEarly   (UART, GIC early)
 vm_init_preheap, heap_init, vm_init
 DriverHandoffPostVm                                        (map GICD/GICR)
@@ -394,7 +394,7 @@ Read in this order.
 
 Suggested first pass: **`run-qemu.sh` → Linux header → `phys.ld` picture →
 `ZbiBoot` → `physboot.cc` Load → `lk_main` → `userboot` `next`**. That is
-enough to see serial print `"printing enabled"` then `"welcome to secular"`,
+enough to see serial print `"printing enabled"` (prefixed `[cpu N]`) then `"welcome to secular"`,
 then a `zxsh` prompt.
 
 ### Terminology

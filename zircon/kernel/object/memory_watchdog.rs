@@ -181,10 +181,10 @@ fn handle_on_oom_reboot() {
     //
     // How long should we wait?  Shutting down the debuglog includes flushing any buffered
     // messages to the serial port (if present).  Writing to a serial port can be slow.  Assuming
-    // we have a full debuglog buffer of 128KB, at 115200 bps, with 8-N-1, it will take roughly
-    // 11.4 seconds to drain the buffer.  The timeout should be long enough to allow a full DLOG
+    // we have a full debuglog buffer of 256KB, at 115200 bps, with 8-N-1, it will take roughly
+    // 22.8 seconds to drain the buffer.  The timeout should be long enough to allow a full DLOG
     // buffer to be drained.
-    let deadline = current_mono_time() + DurationMono::from_seconds(20);
+    let deadline = current_mono_time() + DurationMono::from_seconds(40);
     let status = dlog_shutdown(deadline);
     if let Err(status) = status {
         // If `dlog_shutdown` failed, there's not much we can do besides print an error (which

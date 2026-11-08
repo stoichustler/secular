@@ -19,6 +19,7 @@
 #include <zircon/errors.h>
 #include <zircon/types.h>
 
+#include <arch/ops.h>
 #include <kernel/lockdep.h>
 #include <kernel/mutex.h>
 #include <kernel/spinlock.h>
@@ -193,6 +194,8 @@ zx_status_t DLog::Write(uint32_t severity, uint32_t flags, ktl::string_view str)
   hdr.severity = static_cast<uint8_t>(severity);
   hdr.flags = static_cast<uint8_t>(flags);
   hdr.timestamp = current_boot_time();
+  hdr.cpu = arch_curr_cpu_num();
+  hdr.reserved = 0;
   Thread* t = Thread::Current::Get();
   if (t) {
     hdr.pid = t->pid();

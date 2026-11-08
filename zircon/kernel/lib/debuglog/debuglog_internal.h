@@ -20,7 +20,7 @@
 #include <ktl/span.h>
 #include <ktl/string_view.h>
 
-#define DLOG_SIZE (128u * 1024u)
+#define DLOG_SIZE (256u * 1024u)
 #define DLOG_MASK (DLOG_SIZE - 1u)
 
 // Make sure that when |dlog_header_t| is in the fifo, it's 4 byte aligned and that the first 4
@@ -126,9 +126,11 @@ class DLog {
       return 0;
     }
 
-    int res = snprintf(target.data(), target.size(), "[%05d.%03d] %05" PRIu64 ":%05" PRIu64 "> ",
+    int res = snprintf(target.data(), target.size(),
+                       "[%05d.%03d] %05" PRIu64 ":%05" PRIu64 "> [cpu %u] ",
                        static_cast<int>(hdr.timestamp / ZX_SEC(1)),
-                       static_cast<int>((hdr.timestamp / ZX_MSEC(1)) % 1000ULL), hdr.pid, hdr.tid);
+                       static_cast<int>((hdr.timestamp / ZX_MSEC(1)) % 1000ULL), hdr.pid, hdr.tid,
+                       hdr.cpu);
     size_t ret = (res < 0) ? 0 : static_cast<size_t>(res);
 
     return (target.data() == nullptr) ? ret : ktl::min(target.size(), ret);

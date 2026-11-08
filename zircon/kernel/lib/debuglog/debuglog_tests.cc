@@ -10,6 +10,8 @@
 #include <lib/zircon-internal/macros.h>
 #include <zircon/types.h>
 
+#include <arch/ops.h>
+
 #include <ktl/string_view.h>
 #include <ktl/unique_ptr.h>
 
@@ -59,6 +61,7 @@ struct DebuglogTests {
     EXPECT_EQ(0, header.flags);
     EXPECT_EQ(ZX_KOID_INVALID, header.pid);
     EXPECT_NE(ZX_KOID_INVALID, header.tid);
+    EXPECT_EQ(arch_curr_cpu_num(), header.cpu);
     ASSERT_EQ(12, header.datalen);
 
     uint8_t* msg_bytes = log->data_ + sizeof(dlog_header);
@@ -148,6 +151,7 @@ struct DebuglogTests {
     EXPECT_GE(rec.hdr.timestamp, now);
     EXPECT_EQ(0ull, rec.hdr.pid);
     EXPECT_EQ(Thread::Current::Get()->tid(), rec.hdr.tid);
+    EXPECT_EQ(arch_curr_cpu_num(), rec.hdr.cpu);
 
     reader.Disconnect();
 
@@ -276,6 +280,8 @@ struct DebuglogTests {
       ASSERT_GT(log->last_output_log.length(), 0lu);
       // Check that the log ends with a newline.
       EXPECT_EQ('\n', log->last_output_log[log->last_output_log.length() - 1]);
+      // Check that the rendered header includes the writer CPU.
+      EXPECT_NE(ktl::string_view::npos, log->last_output_log.find("[cpu "));
       // Check that the log contains the message (if not empty) after the header.
       if (len) {
         ASSERT_EQ(1u, CountOccurences(log->last_output_log, msg));

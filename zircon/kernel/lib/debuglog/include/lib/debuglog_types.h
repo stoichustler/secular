@@ -9,11 +9,9 @@
 #include <zircon/syscalls/log.h>
 #include <zircon/types.h>
 
-// This structure is designed to be copied into a zx_log_record_t from
-// zircon/syscalls/log.h.
-//
-// The size, type, and offset of these fields must match those of
-// zx_log_record_t.
+// Fields up through |sequence| are converted field-by-field into a
+// zx_log_record_t (zircon/syscalls/log.h). |cpu| and |reserved| are
+// kernel-serial-only and are not part of the userspace ABI.
 typedef struct dlog_header {
   // When inside a debuglog, the |preamble| contains both the record's true size
   // (|DLOG_HDR_READLEN|) and the record's size when padded out to live in the
@@ -32,6 +30,10 @@ typedef struct dlog_header {
   // record that preceeded it. The purpose of |sequence| is to enable debuglog
   // readers to detect dropped message.
   uint64_t sequence;
+  // Logical CPU that wrote the record. Sampled at write time so serial dump
+  // (which runs on the dumper thread) can render "[cpu N]".
+  uint32_t cpu;
+  uint32_t reserved;
 } dlog_header_t;
 
 constexpr size_t DLOG_MAX_RECORD = 256;
