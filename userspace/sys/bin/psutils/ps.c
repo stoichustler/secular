@@ -20,6 +20,7 @@
 
 static void print_help(FILE* f) {
   fprintf(f, "Usage: ps [options]\n");
+  fprintf(f, "CPU is a thread's last-scheduled logical CPU.\n");
   fprintf(f, "Options:\n");
   fprintf(f, " -J             Only show jobs in the output\n");
   // -T for compatibility with linux ps

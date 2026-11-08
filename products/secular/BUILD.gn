@@ -196,6 +196,9 @@ zbi("secular") {
   testonly = true
   output_name = "secular"
   output_dir = root_out_dir
+  # Page-align the initrd file so Allocation::Adopt owns the last 4 KiB
+  # page and does not try to extend into DTB / memreserve / bookkeeping.
+  pad_to_page = true
   deps = [
     ":bootfs_files",
     ":bootfs_packages_zbi",

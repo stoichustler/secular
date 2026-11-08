@@ -20,15 +20,24 @@
 
 #define JOB_STACK_SIZE 128
 
+static void format_cpu(char* buf, size_t buf_len, uint32_t cpu) {
+  if (cpu == ZX_INFO_INVALID_CPU) {
+    snprintf(buf, buf_len, "-");
+  } else {
+    snprintf(buf, buf_len, "%" PRIu32, cpu);
+  }
+}
+
 void print_header(int id_w, const ps_options_t* options, FILE* out) {
   if (options->also_show_threads) {
-    fprintf(out, "%*s %7s %7s %7s %7s %s\n", -id_w, "TASK", "PSS", "PRIVATE", "SHARED", "STATE",
-            "NAME");
+    fprintf(out, "%*s %7s %7s %7s %7s %*s %s\n", -id_w, "TASK", "PSS", "PRIVATE", "SHARED", "STATE",
+            CPU_COL_W, "CPU", "NAME");
   } else if (options->only_show_jobs) {
-    fprintf(out, "%*s %7s %7s %7s %s\n", -id_w, "TASK", "PSS", "PRIVATE", "STATE", "NAME");
+    fprintf(out, "%*s %7s %7s %7s %*s %s\n", -id_w, "TASK", "PSS", "PRIVATE", "STATE", CPU_COL_W,
+            "CPU", "NAME");
   } else {
-    fprintf(out, "%*s %7s %7s %7s %7s %s\n", -id_w, "TASK", "PSS", "PRIVATE", "SHARED", "STATE",
-            "NAME");
+    fprintf(out, "%*s %7s %7s %7s %7s %*s %s\n", -id_w, "TASK", "PSS", "PRIVATE", "SHARED", "STATE",
+            CPU_COL_W, "CPU", "NAME");
   }
 }
 
@@ -70,16 +79,20 @@ void print_table(task_table_t* table, const ps_options_t* options, FILE* out) {
       format_size_fixed(shared_bytes_str, sizeof(shared_bytes_str), e->shared_bytes,
                         options->format_unit);
     }
+    char cpu_str[16] = {};
+    if (e->type == 't') {
+      format_cpu(cpu_str, sizeof(cpu_str), e->cpu);
+    }
 
     if (options->also_show_threads) {
-      fprintf(out, "%*s %7s %7s %7s %7s %s\n", -id_w, idbuf, pss_bytes_str, private_bytes_str,
-              shared_bytes_str, e->state_str, e->name);
+      fprintf(out, "%*s %7s %7s %7s %7s %*s %s\n", -id_w, idbuf, pss_bytes_str, private_bytes_str,
+              shared_bytes_str, e->state_str, CPU_COL_W, cpu_str, e->name);
     } else if (options->only_show_jobs) {
-      fprintf(out, "%*s %7s %7s %7s %s\n", -id_w, idbuf, pss_bytes_str, private_bytes_str,
-              e->state_str, e->name);
+      fprintf(out, "%*s %7s %7s %7s %*s %s\n", -id_w, idbuf, pss_bytes_str, private_bytes_str,
+              e->state_str, CPU_COL_W, cpu_str, e->name);
     } else {
-      fprintf(out, "%*s %7s %7s %7s %7s %s\n", -id_w, idbuf, pss_bytes_str, private_bytes_str,
-              shared_bytes_str, e->state_str, e->name);
+      fprintf(out, "%*s %7s %7s %7s %7s %*s %s\n", -id_w, idbuf, pss_bytes_str, private_bytes_str,
+              shared_bytes_str, e->state_str, CPU_COL_W, cpu_str, e->name);
     }
   }
   free(idbuf);
@@ -220,12 +233,7 @@ static zx_status_t thread_callback(void* ctx, int depth, zx_handle_t thread, zx_
                                    zx_koid_t parent_koid) {
   context_t* context = ctx;
 
-  if (!context->options->also_show_threads) {
-    // TODO(cpu): Should update ancestor process with number of threads.
-    return ZX_OK;
-  }
-
-  task_entry_t e = {.type = 't', .depth = depth};
+  task_entry_t e = {.type = 't', .depth = depth, .cpu = ZX_INFO_INVALID_CPU};
   zx_status_t status = zx_object_get_property(thread, ZX_PROP_NAME, e.name, sizeof(e.name));
   if (status != ZX_OK) {
     return status;
@@ -233,6 +241,13 @@ static zx_status_t thread_callback(void* ctx, int depth, zx_handle_t thread, zx_
   zx_info_thread_t info;
   status = zx_object_get_info(thread, ZX_INFO_THREAD, &info, sizeof(info), NULL, NULL);
   if (status != ZX_OK) {
+    return status;
+  }
+  zx_info_thread_stats_t stats;
+  status = zx_object_get_info(thread, ZX_INFO_THREAD_STATS, &stats, sizeof(stats), NULL, NULL);
+  if (status == ZX_OK) {
+    e.cpu = stats.last_scheduled_cpu;
+  } else if (status != ZX_ERR_BAD_STATE) {
     return status;
   }
   // TODO: Print thread stack size in one of the memory usage fields?
@@ -245,9 +260,9 @@ static zx_status_t thread_callback(void* ctx, int depth, zx_handle_t thread, zx_
 
 zx_status_t show_all_jobs(const ps_options_t* options) {
   context_t context = {.options = options};
+  task_callback_t* thread_cb = options->also_show_threads ? thread_callback : NULL;
 
-  zx_status_t status =
-      walk_root_job_tree(job_callback, process_callback, thread_callback, &context);
+  zx_status_t status = walk_root_job_tree(job_callback, process_callback, thread_cb, &context);
   if (status != ZX_OK) {
     return status;
   }
@@ -258,9 +273,9 @@ zx_status_t show_all_jobs(const ps_options_t* options) {
 
 zx_status_t show_job_tree(zx_handle_t target_job, const ps_options_t* options) {
   context_t context = {.options = options};
+  task_callback_t* thread_cb = options->also_show_threads ? thread_callback : NULL;
 
-  zx_status_t status =
-      walk_job_tree(target_job, job_callback, process_callback, thread_callback, &context);
+  zx_status_t status = walk_job_tree(target_job, job_callback, process_callback, thread_cb, &context);
   if (status != ZX_OK) {
     return status;
   }

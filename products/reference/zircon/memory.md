@@ -86,24 +86,105 @@ installs later maps.
     TTBR0 or TTBR1 → PA
 ```
 
-### Physical map on QEMU virt
+### Overall layout on QEMU virt
 
-QEMU `virt` presents a 64-bit physical address space. Typical ranges:
+Two pictures. First is the **physical** map QEMU and the Linux boot
+protocol actually load. Second is the same DRAM after physboot turns
+the MMU on. Sequence is [`bootstrap.md`](bootstrap.md); this section is
+the addresses.
 
-| Physical range | Role |
-| --- | --- |
-| `0x00000000` | flash / boot ROM |
-| `0x08000000` | GICv3 |
-| `0x09000000` | PL011 UART |
-| `0x40000000` | DRAM (default base) |
+```text
+ PA  (qemu-system-aarch64  virt,  -m 1024,  -s 8,  --gic=3)
+ 0x00000000 ┬ flash / ATF     qemu_fw.bios          EL3 → EL2
+ 0x08000000 ├ GICv3 GICD
+ 0x080A0000 ├ GICv3 GICR      × NCPU
+ 0x09000000 ├ PL011 UART
+            │
+ 0x40000000 ▼ DRAM  1 GiB
+            │
+            │  ┌──────────────────────────────────────────────────────────┐
+            │  │ DTB           x0 at LinuxbootEntry                       │
+            │  │               typically DRAM base (below the Image)      │
+            │  ├──────────────────────────────────────────────────────────┤
+            │  │ Image         linux-arm64-boot-shim.bin                  │
+            │  │               2 MiB-aligned; typical DRAM+0x80000        │
+            │  ├──────────────────────────────────────────────────────────┤
+            │  │ initrd        secular.zbi     QEMU -initrd               │
+            │  │               start page-aligned                         │
+            │  │               length padded to 4 KiB                     │
+            │  │               last page = kDataZbi only                  │
+            │  ├──────────────────────────────────────────────────────────┤
+            │  │ free RAM      memalloc kFreeRam → PMM after handoff      │
+            │  └──────────────────────────────────────────────────────────┘
+ 0x80000000   DRAM end (default 1 GiB)
+```
 
-The kernel does not identity-map the whole SoC after boot. Device MMIO is
-mapped only where a driver or UART path needs it. RAM is tracked by the
-physical memory manager (PMM) from ZBI / DTB memory items, then published
-through the kernel **physmap**.
+Typical `-kernel` / `-initrd` placement on virt (QEMU, 1 GiB):
 
-On QEMU virt, `paddr_to_physmap(0x40000000)` is
-`0xffff000040000000`: physmap virtual base plus the physical address.
+| Occupant | Typical PA | Size rule |
+| --- | --- | --- |
+| DTB | `0x40000000` | FDT blob; `x0` |
+| Image (shim) | `0x40080000` | Linux header: load anywhere 2 MiB-aligned; `LINUXBOOT_SIZE` includes `.bss` |
+| initrd (ZBI) | `DRAM + min(ram/2, 128 MiB)` → `0x48000000` | file size, **4 KiB padded** |
+| free RAM | after initrd | rest of `[0x40000000, 0x80000000)` |
+
+Device MMIO is **not** DRAM. The kernel maps GIC / UART only where a
+driver or the UART path needs them. RAM is tracked by phys `memalloc`
+from DTB memory nodes plus special ranges (shim, DTB, initrd), then
+handed to PMM.
+
+#### Last page of the initrd
+
+`BootZbi::Init` calls `Allocation::Adopt` on the ramdisk. The start
+address must be page-aligned. The length used to be the raw ZBI file
+size (`secular.zbi` was 6083 pages + 1128 bytes). Adopt then tries to
+**extend** the allocation to the end of that last page so later
+in-place `Load()` / `Append()` cannot share the page with a neighbour.
+
+That extend asks `memalloc` for the leftover bytes as `kFreeRam`. It
+fails — and prints `Adopted allocation cannot be extended to page
+boundary` — when those bytes are already something else:
+
+```text
+                    one 4 KiB page
+         ├────────────── kDataZbi ──────────┬── neighbour ───┤
+         │  … ZBI bytes (1128 in last page) │ DTB /          │
+         │                                  │ memreserve /   │
+         │                                  │ bookkeeping    │
+         └──────────────────────────────────┴────────────────┘
+                                            ▲
+                                            Adopt::Extend fails here
+```
+
+The product pads `secular.zbi` to 4 KiB (`pad_to_page` on
+`//products/secular:secular`). QEMU's `linux,initrd-end` is then a
+page boundary. Adopt sees `size % 4096 == 0` and does not extend.
+The container header is unchanged; the extra zeros are only file tail,
+and they become spare storage in the ramdisk span.
+
+```text
+         ├────────────── kDataZbi (whole pages) ─────────────┤
+         │  ZBI container          │ zero pad to 4 KiB       │
+         └─────────────────────────┴─────────────────────────┘
+         ▲ page                    ▲ page                    ▲ page
+```
+
+#### Same DRAM after the MMU is on
+
+Physboot identity-maps RAM, then publishes it as the kernel **physmap**.
+On QEMU virt, `paddr_to_physmap(0x40000000)` is `0xffff000040000000`.
+
+```text
+ PA 0x40000000  DRAM
+      │
+      │  physmap   VA = KERNEL_ASPACE_BASE + PA     TTBR1
+      │            0x40000000  →  0xffff000040000000
+      │
+      ├─ kernel ELF image      VA 0xffffffff00000000   TTBR1
+      ├─ hand-off / heap       TTBR1, not linear
+      ├─ userboot / zxsh       some user VA            TTBR0 of that process
+      └─ UART 0x09000000       a kernel device VA      TTBR1, AttrIndx 1
+```
 
 ### Virtual address space
 

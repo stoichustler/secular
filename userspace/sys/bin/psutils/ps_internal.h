@@ -12,6 +12,7 @@
 
 #define MAX_STATE_LEN (7 + 1)                        // +1 for trailing NUL
 #define MAX_KOID_LEN sizeof("18446744073709551616")  // 1<<64 + NUL
+#define CPU_COL_W 3
 
 // A single task (job or process).
 typedef struct {
@@ -24,6 +25,8 @@ typedef struct {
   size_t pss_bytes;
   size_t private_bytes;
   size_t shared_bytes;
+  // Thread last_scheduled_cpu, or ZX_INFO_INVALID_CPU. Unused for jobs/processes.
+  uint32_t cpu;
 } task_entry_t;
 
 // An array of tasks.

@@ -195,6 +195,11 @@ pub fn builtin_k(
     };
 
     if let Err(zx_status) = zx::Status::ok(status) {
+        // Kernel cmds often print usage then return INVALID_ARGS (`k irq`).
+        // Suppress that so the shell does not print `error: INVALID_ARGS`.
+        if zx_status == zx::Status::INVALID_ARGS {
+            return EXIT_SUCCESS;
+        }
         let hint = if zx_status == zx::Status::NOT_SUPPORTED {
             ", is kernel debugging disabled?"
         } else {

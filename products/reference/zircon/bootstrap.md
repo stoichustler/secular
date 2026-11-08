@@ -291,11 +291,14 @@ PA
 0x09000000  PL011 UART
 0x40000000  DRAM  (default 1 GiB, -m 1024)
               │
-              ├─ Image (shim)   2 MiB-aligned somewhere in DRAM
-              ├─ initrd ZBI     secular.zbi
+              ├─ DTB            x0; typically DRAM base
+              ├─ Image (shim)   2 MiB-aligned (typical DRAM+0x80000)
+              ├─ initrd ZBI     secular.zbi, padded to 4 KiB
               └─ rest free RAM  → PMM after handoff
 ```
 
+The initrd is padded so its last page is only ZBI (`kDataZbi`); see
+[`memory.md`](memory.md) **Overall layout**.
 `paddr_to_physmap(0x40000000) = 0xffff000040000000` once TTBR1 is on.
 
 #### Phys executables — `phys.ld` + friends

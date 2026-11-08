@@ -46,6 +46,15 @@ import("zbi_input.gni")
 #     Type: string
 #     Default: target_name
 #
+#   pad_to_page
+#     Optional: After assembly, zero-pad the ZBI file to a 4 KiB boundary.
+#     The container header is unchanged; the extra bytes are only file
+#     tail. QEMU `-initrd` then reports a page-aligned ramdisk, so
+#     `Allocation::Adopt` owns the last page and does not try to extend
+#     into a neighbour (DTB, memreserve, bookkeeping).
+#     Type: bool
+#     Default: false
+#
 #   deps, data_deps, testonly, assert_no_deps, metadata, visibility
 #     See `gn help`.
 template("zbi") {
@@ -165,6 +174,14 @@ template("zbi") {
       args += [ "--uncompressed" ]
     } else {
       args += [ "--compressed=$compress" ]
+    }
+
+    # Parsed by run_zbi.py, not by the zbi host tool.
+    if (defined(invoker.pad_to_page) && invoker.pad_to_page) {
+      args += [
+        "--pad-to",
+        "4096",
+      ]
     }
 
     metadata = {
