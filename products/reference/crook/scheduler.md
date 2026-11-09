@@ -6,6 +6,12 @@ queues; they group capabilities. Cross-VM policy (`VcpuGroup`) then
 moves those VCPU threads' priority, slice, and RUN/PAUSE/SHARE/OFFLINE
 bits when a guest is busy, in IRQ, or starving.
 
+Occupancy bits live in shared DRAM. The host never suspends a
+VCPU thread. Guest **`nebula_sched`** parks the Linux CPU when
+the doorbell fires. Policy1 also needs that module: it shows
+Crook where guest `preempt_count` / `policy` live, so a FIFO
+or IRQ can raise the **host** VCPU.
+
 **VCPU scheduling is the product path.** Two VMs share cores. The
 host never sees guest tasks — only a VCPU thread whose priority and
 slice change at every `Resume`. Burst IRQ, guest FIFO, spinlock, and
@@ -20,11 +26,12 @@ This note is the map of that path: Job / Process / Thread objects,
 how ordinary threads are picked, **thread vs VCPU context switch**,
 **priority inheritance** on kernel mutexes, how a VCPU is scheduled
 against them, how RT and interrupt hints raise host priority, how
-lua / ioctl configure it, how VCPUs are bound to pCPUs, and how
-**strategy switches** under burst IRQ and load.
+lua / ioctl configure it, how VCPUs are bound to pCPUs, how
+**strategy switches** under burst IRQ and load, and how the guest
+**`nebula_sched`** module parks CPUs and feeds Policy1.
 
-Start with **Diagrams** (eight posters), then the sections they
-index.
+Start with **Diagrams** (eight posters + nebula_sched), then the
+sections they index.
 
 ## Framework
 
@@ -49,26 +56,35 @@ index.
     period / budget
     AddSchedHint  (IRQ / RT / overload)
     ApplyVcpuPolicy  RUN / PAUSE / SHARE / OFFLINE
+         │  shm + doorbell (sched_irq)
+         ▼
+ guest nebula_sched           SOS=1 / UOS=2 / tbox=3
+    park / unpark this VM's CPUs
+    show Crook where guest current lives
+    publish "FIFO on this pCPU"
 ```
 
-Two clocks on one core:
+Three planes on one core:
 
 | Layer | Who | What it decides |
 | --- | --- | --- |
 | LK `sched.c` | every `thread_t` | which thread runs **now** on this pCPU |
 | `VcpuGroup` | VCPU threads on that pCPU | priority + slice this period; which VM may occupy the core |
+| guest `nebula_sched` | this VM's Linux CPUs | park / unpark; keep the other VM's FIFO off this core |
 
 A guest FIFO thread does not appear in `run_queue`. Crook sees it
 only as guest `preempt_count` / `policy` sampled from guest RAM
-(`SchedParams`), then bumps the **host** VCPU thread.
+(`SchedParams`), then bumps the **host** VCPU thread. Occupancy
+is slower (≥ 8 ms) and needs the guest module to park the CPU.
 
 Figures below are the visual map. Detail follows in **VCPU
-scheduling** and **Strategy switch**.
+scheduling**, **Strategy switch**, and **nebula_sched**.
 
 ## Diagrams
 
-Eight posters. Read them top to bottom the first time; later use
-them as the index for the sections that follow.
+Eight posters for the host path, then **nebula_sched** posters for
+the guest actuator. Read them top to bottom the first time; later
+use them as the index for the sections that follow.
 
 ### 1. Two layers on one pCPU
 
@@ -255,10 +271,12 @@ Same-VM storm: RUNNING + IRQ stays; fill up to 16 `ICH_LR`, leftover
                     │                                          │
                     ▼                                          ▼
            thread_t on run_queue[prio]              guest parks vCPU
-                    │
+                    │                                (nebula_sched)
                     ▼
            sched_get_top_thread  →  eret that VCPU
 ```
+
+Guest actuator posters live in **nebula_sched**.
 
 ## Objects
 
@@ -758,7 +776,8 @@ gets a whole core.
 
 Urgent IRQ still wins on a shared core via `AddSchedHint` even
 when occupancy is SHARE. PAUSE/OFFLINE is a guest-side "do not
-run"; it is not a host-priority lockout.
+run"; it is not a host-priority lockout. The guest module that
+actually parks the CPU is **nebula_sched**.
 
 ## Strategy switch
 
@@ -915,6 +934,277 @@ PREEMPT / RT / NORMAL from the new status.
 Occupancy (`NONE` / `3_5_0` / `8_8_DYNAMIC` / …) is independent.
 Both apply.
 
+## nebula_sched
+
+Guest Linux module. Crook never parks a VCPU thread. It writes
+who *may* sit on a core into shared DRAM and rings a doorbell
+(`sched_irq`). **`nebula_sched` is the actuator**: it pauses
+that guest CPU. The same page also carries util, a recipe so
+Policy1 can peek guest `current`, and a per-pCPU RT bit so two
+FIFO tasks do not land on one SHARE core.
+
+SOS = VM 1, UOS = VM 2, tbox = VM 3. One layout, three readers.
+
+### Principle
+
+Three contracts, one shared page. None of them replaces guest
+CFS.
+
+```text
+  1. Occupancy     slow, ≥ 8 ms
+     host writes RUN / PAUSE / SHARE / OFFLINE per (VM, vCPU)
+     doorbell on that VM's VCPU 0
+     guest pauses the Linux CPU
+     host VCPU thread stays READY — it just has nothing to run
+
+  2. Hint feed     every VM-exit (Policy1)
+     guest once shows Crook where current->policy and
+     preempt_count live in guest RAM
+     Crook peeks, then raises the **host** VCPU thread
+     (IRQ 20 / RT 18 / spinlock 18 / …)
+
+  3. Cross-VM RT   guest-local, on context switch
+     this VM publishes "FIFO is running on this pCPU"
+     the other VM's RT wakeup skips that CPU
+```
+
+PAUSE is cooperative. If the guest ignores the doorbell and
+still enters, Crook will run it.
+
+Two clocks, easy to mix:
+
+| | Occupancy | Hint |
+| --- | --- | --- |
+| Question | *may* this VM sit on the core? | *which* VCPU wins **now**? |
+| Rate | ≥ 8 ms + doorbell | every VM-exit |
+| Writes | guest CPU parked / running | host thread prio / slice |
+| SHARE | both unpaused | IRQ 20 steals the core |
+| PAUSE | guest stops scheduling here | hint still applies if it `eret`s |
+
+Two RT stories, also easy to mix:
+
+| | Host hint | Guest RT mask |
+| --- | --- | --- |
+| Sees | guest FIFO/RR on this VCPU | same, published to shm |
+| Does | this VCPU thread → prio 18 / 200 µs | other VM will not *place* FIFO here |
+| SHARE | steals the core for 200 µs | tries not to collide in the first place |
+
+### Diagrams
+
+#### N1. Three planes
+
+Host decides occupancy and hint. Guest parks CPUs and publishes
+RT. Shared DRAM is the only wire.
+
+```text
+        SOS  VM 1              UOS  VM 2              tbox  VM 3
+     ┌──────────────┐       ┌──────────────┐       ┌──────────────┐
+     │ nebula_sched │       │ nebula_sched │       │ nebula_sched │
+     │ park CPU     │       │ park / unplug│       │ RUN only     │
+     │ publish RT   │       │ publish RT   │       │ publish RT   │
+     └──────┬───────┘       └──────┬───────┘       └──────┬───────┘
+            │                      │                      │
+            │   doorbell (sched_irq into VCPU 0)          │
+            └──────────┬───────────┴──────────┬───────────┘
+                       ▼                      ▼
+              ┌─────────────────────────────────────┐
+              │  shared DRAM                        │
+              │  who may run  ·  util  ·  RT bit    │
+              └──────────────────▲──────────────────┘
+                                 │
+              ┌──────────────────┴──────────────────┐
+              │  Crook                              │
+              │  occupancy table  (≥ 8 ms)          │
+              │  hint prio / slice  (every exit)    │
+              └─────────────────────────────────────┘
+```
+
+#### N2. Shared page
+
+```text
+ ┌──────────────────────────────────────────────────────────┐
+ │  util per pCPU          host writes, 8_8_DYNAMIC reads   │
+ │  util per vCPU          SOS row / UOS row                │
+ │                                                          │
+ │  occupancy[VM][vCPU]    RUN  PAUSE  SHARE  OFFLINE       │
+ │                         host writes, guest applies       │
+ │                                                          │
+ │  layout enum            NONE / 3_5_0 / 8_8_DYNAMIC / …   │
+ │  suspend[VM]            1 → host freezes occupancy       │
+ │                                                          │
+ │  bind  vCPU → pCPU      pin table                        │
+ │  RT bit[VM][pCPU]       1 = that VM is FIFO here         │
+ └──────────────────────────────────────────────────────────┘
+
+  host →  util, occupancy, bind
+  guest → layout enum, RT bit, suspend
+  doorbell → guest re-reads occupancy[this VM]
+```
+
+#### N3. Occupancy apply
+
+Host picks the table. Guest parks. Doorbell is the only
+notification.
+
+```text
+  someone writes the layout enum
+        │
+        ▼
+  next Resume, if ≥ 8 ms
+        │
+        ├── a VM is suspending ──────────────► skip
+        ├── table unchanged (static layout) ─► skip
+        │
+        ▼
+  fill occupancy[SOS / UOS / tbox][0..7]
+        │
+        ▼  row changed?
+  write shm, ring that VM's doorbell
+        │
+        ▼
+  guest  for each of its CPUs
+        RUN / SHARE  →  unpause, schedule here
+        PAUSE        →  pause, CFS/RT skip this CPU
+        OFFLINE      →  SOS: unpause
+                        UOS: unplug
+                        tbox: PAUSE is a nop
+        │
+        ▼
+  host VCPU thread still READY
+  guest just has no work on that CPU
+```
+
+Park keeps at least two CPUs of a VM. Occupancy tables are
+built so a VM is never emptied. tbox is not the idle side of
+`8_8_DYNAMIC`.
+
+#### N4. Policy1 peek
+
+Without this, Crook cannot see guest FIFO or a held spinlock.
+Guest tells the map once; Crook peeks on every later exit.
+
+```text
+  boot (once)
+    guest ── "here is current, policy, preempt_count" ──► Crook
+    Crook maps guest DRAM read-only, latches ready
+
+  every VM-exit after that
+    guest current
+         │
+         ├── policy FIFO/RR ──────────► RT
+         ├── preempt_count in IRQ ────► IRQ
+         ├── preempt_count in lock ───► spinlock
+         └── none of the above ───────► NORMAL
+         │
+         ▼
+    raise / drop this VCPU's host prio + slice
+    (hysteresis: READY only raises, RUNNING only drops)
+```
+
+Wrong map → Crook reads `-1` → Policy1 behaves like Policy2
+(budget only, no guest FIFO / lock).
+
+#### N5. Cross-VM RT mask
+
+Guest-side placement. Host hint (prio 18) is a different path.
+
+```text
+  SOS context switch
+        current is FIFO?  ──yes──► RT bit[SOS][this pCPU] = 1
+                              no──► 0
+
+  UOS RT wakeup
+        start from online CPUs
+        for each pCPU where SOS RT bit is 1:  drop it
+        place UOS FIFO on what remains
+
+  SHARE pCPU 0, SOS FIFO running
+        UOS RT wakeup  ──►  CPU 0 gone  ──►  UOS FIFO elsewhere
+
+  exclusive occupancy already avoids this
+  the mask is for SHARE
+```
+
+Bind must exist before the bit is written. Unbound → the bit
+lands on pCPU 0, a false SHARE collision.
+
+#### N6. Two timescales on one SHARE core
+
+Occupancy says both may sit. Hint says who sits *now*.
+
+```text
+  pCPU 0  SHARE     period 5 ms      occupancy ≥ 8 ms
+
+  occupancy     R  R  R  R  R  R  R  R     both RUN, no park
+  hint          16 16 16 20 20 16 16 16    IRQ steal, then drop
+
+  time →
+  SOS   [ NORMAL 16 ████ ][ IRQ 20 ██ 100µs ][ 16 ████ ]
+  UOS   [ READY          ][  wait           ][ 16 ████ ]
+                         ▲ doorbell not involved
+                         ▲ hint stole the core
+```
+
+`8_8_DYNAMIC` is the slow path that *does* ring the doorbell:
+
+```text
+  time →                    ≥ 8 ms
+  util  SOS 80%  UOS 30%
+           │
+           ▼
+  occupancy  UOS CPU 5  RUN ──► PAUSE
+             SOS CPU 5  SHARE/PAUSE ──► RUN
+           │
+           ▼  doorbell UOS VCPU 0
+  UOS parks CPU 5
+  SOS has pCPU 5 to itself
+
+  UOS SPI for vCPU 5 still injects
+  guest must unpause to handle it
+  occupancy is not a lost-IRQ path
+```
+
+#### N7. Suspend
+
+One VM going to sleep freezes occupancy for **everyone**.
+
+```text
+  suspend this VM
+    mark suspend[this] = 1     host occupancy loop bails
+    mask the doorbell
+    RUN every CPU              do not sleep parked
+
+  resume
+    re-read occupancy, park/unpark
+    suspend[this] = 0
+    unmask the doorbell
+```
+
+#### N8. Who configures what
+
+Two knobs, two owners. Both apply.
+
+```text
+  boot (VMM / lua)
+    period, budget, hint prio/slice
+    hint algorithm  0 / 1 / 2
+    doorbell SPI, VCPU → pCPU pin
+
+  runtime (guest)
+    occupancy layout enum     NONE / 3_5_0 / 8_8_DYNAMIC / …
+    (the shm byte, not lua)
+```
+
+### Contracts that break silently
+
+- No module, no doorbell → host writes occupancy and nobody
+  parks. SHARE cores still time-slice on hint prio.
+- One VM suspending → occupancy frozen for all VMs.
+- tbox PAUSE is a nop. Do not PAUSE tbox and expect silence.
+- Park will not leave a VM with fewer than two CPUs.
+- SOS OFFLINE unpauses; UOS OFFLINE unplugs. Not the same.
+- Bind first, then RT bits. Unbound bits hit pCPU 0.
+
 ## Sequence diagrams
 
 Timing versions of **Diagrams** 4–7. Same events, more timestamps.
@@ -1023,7 +1313,8 @@ LR full + vtimer:
    kVcpuPolicy[UOS][5] = PAUSE
    kVcpuPolicy[SOS][5] = RUN
    update_vm_policy → shm
-   Interrupt(SOS vcpu0, sched_irq)     guest parks UOS vCPU 5
+   Interrupt(UOS vcpu0, sched_irq)     nebula_sched parks CPU 5
+   Interrupt(SOS vcpu0, sched_irq)     SOS applies RUN on CPU 5
  SOS VCPU on pCPU 5 gets the core to itself
  next burst IRQ for UOS vCPU 5: still injected; guest must unpause
 ```
@@ -1134,6 +1425,9 @@ bind + that pCPU not SHARE. Same advice as interrupt.md.
 | `VcpuGroup` | Per-pCPU list of VCPUs sharing that core. |
 | Budget | CPU time a VCPU may consume per group period. |
 | Occupancy policy | RUN / PAUSE / SHARE / OFFLINE per `(VM, vcpu_id)`. |
+| `nebula_sched` | Guest module: parks CPUs, feeds Policy1, publishes RT. |
+| occupancy shm | Shared DRAM: util, RUN/PAUSE/SHARE/OFFLINE, RT bits. |
+| `sched_irq` | Doorbell into VCPU 0: guest, re-read occupancy. |
 | Hint policy | Policy0/1/2: how Resume maps guest status → host prio. |
 | Mode hysteresis | RUNNING: only drop; READY: only raise. Burst-IRQ contract. |
 | `need_sched_` | Previous VM-exit asked Policy1/2 to recompute hints. |

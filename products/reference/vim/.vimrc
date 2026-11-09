@@ -1,4 +1,4 @@
-" BEAU / SMOS host Vimrc (not shipped in the target image).
+" MICRO / SMOS host Vimrc (not shipped in the target image).
 "
 " Source of truth: sdk/smos/vim/.vimrc
 " Install:         install -Dm644 sdk/smos/vim/.vimrc ~/.vimrc
@@ -7,6 +7,7 @@
 "
 " This file is reload-safe: jobs, timers, and popups from a previous
 " :source are stopped before their script-local state is recreated.
+" Public identifiers use the micro_ / Micro prefix.
 "
 " Contents
 "   1. Startup, leader, runtime packs
@@ -16,7 +17,7 @@
 "   5. File defaults (formatprg, last-position, autoread)
 "   5a. Large / AEE *_RAW dumps (no wrap/syntax/list/search-scan)
 "   6. Clipboard (X11/Wayland, OSC 52, W23)
-"   7. Display, search, swap/undo, completion
+"   7. Display, search, undo, completion
 "   8. Statusline and async git branch
 "   9. Command-line UI
 "  10. Floating terminal
@@ -29,6 +30,55 @@
 set nocompatible
 set encoding=utf-8
 scriptencoding utf-8
+
+" Drop leftover state from a previous :source of the older beau-prefix
+" vimrc. New augroups would otherwise stack with the old ones, and already
+" open dump buffers would keep b:beau_* flags that the new code ignores.
+function! s:RetireLegacyPrefix() abort
+    for l:group in [
+        \ 'beau_file_defaults', 'beau_large_files',
+        \ 'beau_statusline_colors', 'beau_git_branch_status',
+        \ 'beau_cmdline_ui', 'beau_floating_terminal',
+        \ 'beau_fzf_terminal_keys', 'beau_git_signs',
+        \ 'beau_nerdtree_paths']
+        if exists('#' . l:group)
+            execute 'autocmd!' l:group
+            execute 'augroup!' l:group
+        endif
+    endfor
+
+    if exists('g:beau_workspace_root')
+        if !exists('g:micro_workspace_root')
+            let g:micro_workspace_root = g:beau_workspace_root
+        endif
+        unlet g:beau_workspace_root
+    endif
+
+    for l:info in getbufinfo()
+        let l:buf = l:info.bufnr
+        for [l:old, l:new] in [
+            \ ['beau_c_style', 'micro_c_style'],
+            \ ['beau_large_file', 'micro_large_file'],
+            \ ['beau_long_text', 'micro_long_text']]
+            let l:val = getbufvar(l:buf, l:old)
+            if type(l:val) != v:t_string || l:val !=# ''
+                if empty(getbufvar(l:buf, l:new))
+                    call setbufvar(l:buf, l:new, l:val)
+                endif
+            endif
+        endfor
+    endfor
+
+    if has('signs')
+        silent! call sign_unplace('beau_git')
+        for l:sign in ['BeauGitAdd', 'BeauGitChange', 'BeauGitDelete']
+            if !empty(sign_getdefined(l:sign))
+                call sign_undefine(l:sign)
+            endif
+        endfor
+    endif
+endfunction
+call s:RetireLegacyPrefix()
 
 " Space is the leader for project-style commands.
 " Map Space to <Nop> so a lone Space does not move the cursor while waiting
@@ -59,8 +109,12 @@ endif
 set scrolloff=10
 set splitbelow
 set splitright
-set smoothscroll
-set splitkeep=screen
+if exists('+smoothscroll')
+    set smoothscroll
+endif
+if exists('+splitkeep')
+    set splitkeep=screen
+endif
 set confirm
 set belloff=all
 set history=1000
@@ -82,14 +136,21 @@ let g:tokyonight_style = 'storm' " available: night, storm
 let g:tokyonight_enable_italic = 0
 let g:tokyonight_transparent_background = 1
 filetype plugin indent on
-syntax on
-set termguicolors
+if !exists('g:syntax_on')
+    syntax enable
+endif
+if exists('+termguicolors')
+    set termguicolors
+endif
 set background=dark
-try
-    colorscheme tokyonight
-catch
-    silent! colorscheme default
-endtry
+" Re-applying the colorscheme on :source flashes and resets overlay groups.
+if get(g:, 'colors_name', '') !=# 'tokyonight'
+    try
+        colorscheme tokyonight
+    catch
+        silent! colorscheme default
+    endtry
+endif
 
 " --- Indentation -------------------------------------------------------------
 " Filetype-aware indentation with a four-space global fallback.
@@ -101,7 +162,7 @@ set expandtab
 set shiftround
 
 " --- C/C++ indent profiles ---------------------------------------------------
-" Buffer-local only. :BEAUStyle / :GOOGLEStyle / :LINUXStyle.
+" Buffer-local only. :MICROStyle / :GOOGLEStyle / :LINUXStyle.
 " Run gg=G after selecting a profile to reindent existing code.
 function! s:ApplyCStyle(style) abort
     setlocal autoindent cindent nosmartindent
@@ -110,7 +171,7 @@ function! s:ApplyCStyle(style) abort
     if a:style ==# 'hypervisor'
         setlocal tabstop=8 shiftwidth=8 softtabstop=8 noexpandtab
         setlocal cinoptions=:0,l1,g4,h4,N0,t0,+8,(8,W8
-        let l:name = 'Hypervisor/BEAU (tabs 8)'
+        let l:name = 'Hypervisor/MICRO (tabs 8)'
     elseif a:style ==# 'google'
         setlocal tabstop=2 shiftwidth=2 softtabstop=2 expandtab
         setlocal cinoptions=:s,l1,g1,h1,N-s,t0,+4,(4,W4
@@ -124,18 +185,21 @@ function! s:ApplyCStyle(style) abort
         return
     endif
 
-    let b:beau_c_style = a:style
+    let b:micro_c_style = a:style
     echo 'C/C++ style: ' . l:name
 endfunction
 
-command! BEAUStyle call <SID>ApplyCStyle('hypervisor')
+if exists(':BEAUStyle') == 2
+    delcommand BEAUStyle
+endif
+command! MICROStyle call <SID>ApplyCStyle('hypervisor')
 command! GOOGLEStyle call <SID>ApplyCStyle('google')
 command! LINUXStyle call <SID>ApplyCStyle('linux')
 
 " --- File defaults -----------------------------------------------------------
 " formatprg feeds :Format / Space-=. Last-position restore skips special
 " buffers. checktime implements autoread when focus returns.
-augroup beau_file_defaults
+augroup micro_file_defaults
     autocmd!
     autocmd FileType c,cpp,objc,objcpp
         \ if executable('clang-format') |
@@ -146,7 +210,7 @@ augroup beau_file_defaults
         \     setlocal formatprg=rustfmt |
         \ endif
     autocmd BufReadPost *
-        \ if !get(b:, 'beau_large_file', 0)
+        \ if !get(b:, 'micro_large_file', 0)
         \     && line("'\"") > 0 && line("'\"") <= line('$') && &buftype ==# '' |
         \     execute 'normal! g`"' |
         \ endif
@@ -160,6 +224,11 @@ augroup END
 " clipboard/regexpengine/hlsearch are global: snapshot on enter, restore
 " on leave so / * yank do not scan the whole dump, then other buffers
 " keep unnamedplus.
+" Restore eventignore if :source interrupted a dump BufReadPre/Post pair.
+if exists('s:large_file_ei_depth') && s:large_file_ei_depth > 0
+        \ && exists('s:large_file_ei_saved')
+    let &eventignore = s:large_file_ei_saved
+endif
 let s:large_file_ei_depth = 0
 let s:large_file_ei_saved = ''
 if exists('s:large_file_globals')
@@ -217,7 +286,9 @@ function! s:ApplyLargeFileOptions() abort
     setlocal undolevels=-1
     setlocal nowrap nolinebreak nobreakindent
     setlocal nolist nocursorline norelativenumber
-    setlocal nosmoothscroll
+    if exists('+smoothscroll')
+        setlocal nosmoothscroll
+    endif
     setlocal synmaxcol=256
     setlocal matchpairs=
     setlocal foldmethod=manual
@@ -231,21 +302,25 @@ endfunction
 function! s:ApplyLongTextOptions() abort
     setlocal nowrap nolinebreak nobreakindent
     setlocal norelativenumber
-    setlocal nosmoothscroll
+    if exists('+smoothscroll')
+        setlocal nosmoothscroll
+    endif
     setlocal synmaxcol=256
-    let b:beau_long_text = 1
+    let b:micro_long_text = 1
 endfunction
 
 function! s:LargeFileDisplayOnly() abort
     setlocal nowrap nolinebreak nobreakindent
     setlocal nolist nocursorline norelativenumber
-    setlocal nosmoothscroll
+    if exists('+smoothscroll')
+        setlocal nosmoothscroll
+    endif
 endfunction
 
 " regexpengine/clipboard/hlsearch are global. Apply only while a dump is
 " the current buffer so a split with source code is not stuck on engine=1.
 function! s:SyncLargeFileSession() abort
-    let l:want = get(b:, 'beau_large_file', 0)
+    let l:want = get(b:, 'micro_large_file', 0)
     let l:active = exists('s:large_file_globals')
     if l:want && !l:active
         let s:large_file_globals = {
@@ -273,13 +348,13 @@ function! s:LargeFilePre() abort
     if !s:IsDumpOrLargePath(l:path)
         return
     endif
-    let b:beau_large_file = 1
+    let b:micro_large_file = 1
     call s:LargeFileIgnoreFileType()
     call s:ApplyLargeFileOptions()
 endfunction
 
 function! s:LargeFilePost() abort
-    if !get(b:, 'beau_large_file', 0)
+    if !get(b:, 'micro_large_file', 0)
         let l:huge = 0
         let l:last = min([20, line('$')])
         let l:lnum = 1
@@ -296,7 +371,7 @@ function! s:LargeFilePost() abort
             endif
             return
         endif
-        let b:beau_large_file = 1
+        let b:micro_large_file = 1
         call s:ApplyLargeFileOptions()
     else
         call s:LargeFileRestoreFileType()
@@ -308,20 +383,22 @@ function! s:LargeFilePost() abort
 endfunction
 
 function! s:LargeFileWin() abort
-    if get(b:, 'beau_large_file', 0)
+    if get(b:, 'micro_large_file', 0)
         call s:LargeFileDisplayOnly()
         call s:SyncLargeFileSession()
-    elseif get(b:, 'beau_long_text', 0)
+    elseif get(b:, 'micro_long_text', 0)
         setlocal nowrap nolinebreak nobreakindent
         setlocal norelativenumber
-        setlocal nosmoothscroll
+        if exists('+smoothscroll')
+            setlocal nosmoothscroll
+        endif
         call s:SyncLargeFileSession()
     else
         call s:SyncLargeFileSession()
     endif
 endfunction
 
-augroup beau_large_files
+augroup micro_large_files
     autocmd!
     autocmd BufReadPre * call <SID>LargeFilePre()
     autocmd BufReadPost * call <SID>LargeFilePost()
@@ -374,7 +451,9 @@ set laststatus=2
 set cmdheight=1
 set noshowmode
 set showcmd
-set showcmdloc=statusline
+if exists('+showcmdloc')
+    set showcmdloc=statusline
+endif
 set noruler
 set hlsearch
 set incsearch
@@ -386,14 +465,13 @@ set nobackup
 set shortmess+=c
 set formatoptions+=j
 set synmaxcol=1000
-" Swap/undo live under ~/.vim so :e in a source tree does not drop .swp files.
-let s:swap_dir = expand('~/.vim/swap')
+" No swap files. Crash recovery is via undofile under ~/.vim/undo instead.
+" updatecount=0 also blocks a later :set swapfile from creating .swp files.
+set noswapfile
+set updatecount=0
 let s:undo_dir = expand('~/.vim/undo')
-call mkdir(s:swap_dir, 'p', 0700)
 call mkdir(s:undo_dir, 'p', 0700)
-let &directory = s:swap_dir . '//'
 let &undodir = s:undo_dir . '//'
-set swapfile
 set undofile
 set guioptions-=T
 set guioptions-=m
@@ -402,15 +480,21 @@ set cursorline
 " Popup completion for Ex commands and file paths (for example, :write)
 set wildmenu
 set wildmode=longest:full,full
-set wildoptions=pum,fuzzy
+set wildoptions=pum
+silent! set wildoptions+=fuzzy
 set wildignorecase
 set wildignore+=*/.git/*,*/.hg/*,*/.svn/*
 set wildignore+=*/out/*,*/build/*,*/target/*,*/node_modules/*
 set wildignore+=*.o,*.obj,*.a,*.so,*.pyc,*.class,*.swp,*.bin
 set wildignore+=tags,TAGS,GTAGS,GRTAGS,GPATH,cscope.out
-set completeopt=menuone,popup,fuzzy
-set completepopup=height:12,width:70,border:round,highlight:Pmenu
-set previewpopup=height:20,width:80
+set completeopt=menuone,popup
+silent! set completeopt+=fuzzy
+if exists('+completepopup')
+    set completepopup=height:12,width:70,border:round,highlight:Pmenu
+endif
+if exists('+previewpopup')
+    set previewpopup=height:20,width:80
+endif
 " Hide the default split separator for a cleaner layout
 let &fillchars = 'vert: ,eob: '
 set diffopt=internal,filler,closeoff,hiddenoff,algorithm:histogram,indent-heuristic,linematch:60
@@ -435,9 +519,9 @@ let g:hlyank_duration = 250
 let g:EditorConfig_exclude_patterns = ['fugitive://.*', 'scp://.*', '.*_RAW', '.*MINI_RDUMP', '.*\.dfd']
 
 " --- Statusline --------------------------------------------------------------
-" Layout: BEAU:<mode>  <path>  [branch]  flags  %S  |  <ft> <pos>
-" BeauStatusMode/BeauGitBranch are global so %{...} in 'statusline' can call them.
-function! BeauStatusMode() abort
+" Layout: MICRO:<mode>  <path>  [branch]  flags  %S  |  <ft> <pos>
+" MicroStatusMode/MicroGitBranch are global so %{...} in 'statusline' can call them.
+function! MicroStatusMode() abort
     let l:mode = mode(1)
     if l:mode =~# '^n'
         return 'NORMAL'
@@ -532,10 +616,13 @@ endfunction
 function! s:GitRelativePath(root, path) abort
     let l:root = substitute(fnamemodify(a:root, ':p'), '[/\\]$', '', '')
     let l:path = fnamemodify(a:path, ':p')
-    if strpart(l:path, 0, strlen(l:root)) !=# l:root
+    if l:path ==# l:root
+        return '.'
+    endif
+    if strpart(l:path, 0, strlen(l:root) + 1) !=# l:root . '/'
         return ''
     endif
-    return substitute(strpart(l:path, strlen(l:root)), '^[/\\]', '', '')
+    return strpart(l:path, strlen(l:root) + 1)
 endfunction
 
 " Reload-safe: kill in-flight git symbolic-ref jobs from a previous :source.
@@ -548,9 +635,15 @@ if exists('s:git_branch_jobs')
     endfor
 endif
 let s:git_branch_jobs = {}
-let s:git_branch_by_root = {}
-let s:git_branch_poll = {}
-let s:git_branch_stamp = {}
+if !exists('s:git_branch_by_root')
+    let s:git_branch_by_root = {}
+endif
+if !exists('s:git_branch_poll')
+    let s:git_branch_poll = {}
+endif
+if !exists('s:git_branch_stamp')
+    let s:git_branch_stamp = {}
+endif
 
 function! s:GitBranchOut(root, channel, msg) abort
     let s:git_branch_by_root[a:root] = trim(a:msg)
@@ -593,11 +686,11 @@ endfunction
 " Statusline callback: return cached branch text, and start a refresh if
 " HEAD/index changed. Must stay cheap; it runs on every statusline redraw
 " (showcmdloc=statusline). Stat HEAD/index at most once per second.
-function! BeauGitBranch() abort
+function! MicroGitBranch() abort
     if &buftype !=# '' || empty(expand('%:p'))
         return ''
     endif
-    if get(b:, 'beau_large_file', 0)
+    if get(b:, 'micro_large_file', 0)
         return ''
     endif
 
@@ -625,36 +718,36 @@ function! BeauGitBranch() abort
 endfunction
 
 function! s:ApplyStatuslineColors() abort
-    highlight BeauStatusMode cterm=bold ctermfg=0 ctermbg=12
+    highlight MicroStatusMode cterm=bold ctermfg=0 ctermbg=12
         \ gui=bold guifg=#1a1b26 guibg=#7aa2f7
-    highlight BeauStatusFile cterm=NONE ctermfg=15 ctermbg=8
+    highlight MicroStatusFile cterm=NONE ctermfg=15 ctermbg=8
         \ gui=NONE guifg=#c0caf5 guibg=#32344a
-    highlight BeauStatusGit cterm=bold ctermfg=10 ctermbg=8
+    highlight MicroStatusGit cterm=bold ctermfg=10 ctermbg=8
         \ gui=bold guifg=#9ece6a guibg=#32344a
-    highlight BeauStatusMeta cterm=bold ctermfg=0 ctermbg=12
+    highlight MicroStatusMeta cterm=bold ctermfg=0 ctermbg=12
         \ gui=bold guifg=#1a1b26 guibg=#7aa2f7
 endfunction
 
 call s:ApplyStatuslineColors()
 
-augroup beau_statusline_colors
+augroup micro_statusline_colors
     autocmd!
     autocmd ColorScheme * call <SID>ApplyStatuslineColors()
 augroup END
 
-augroup beau_git_branch_status
+augroup micro_git_branch_status
     autocmd!
     autocmd DirChanged,FocusGained * redrawstatus
 augroup END
 
 " %S is the pending showcmd (operators/counts) because showcmdloc=statusline.
 set statusline=
-let &statusline .= '%#BeauStatusMode# BEAU:%{BeauStatusMode()} '
-set statusline+=%#BeauStatusFile#\ %<%F
-let &statusline .= '%#BeauStatusGit#%{BeauGitBranch()}'
+let &statusline .= '%#MicroStatusMode# MICRO:%{MicroStatusMode()} '
+set statusline+=%#MicroStatusFile#\ %<%F
+let &statusline .= '%#MicroStatusGit#%{MicroGitBranch()}'
 set statusline+=\ %h%m%r%w\ %S
 set statusline+=%=
-let &statusline .= '🅡  %#BeauStatusMeta# %y %l:%c %p%% '
+let &statusline .= '🅡  %#MicroStatusMeta# %y %l:%c %p%% '
 
 " --- Command-line UI ---------------------------------------------------------
 " Style the native ':' command line as a thin bottom command panel.
@@ -663,6 +756,9 @@ let s:cmdline_msgarea = []
 let s:cmdline_showcmd = &showcmd
 
 function! s:CmdlineUiEnter() abort
+    if !exists('*hlget') || !exists('*hlset')
+        return
+    endif
     let s:cmdline_msgarea = hlget('MsgArea')
     let s:cmdline_showcmd = &showcmd
     set noshowcmd
@@ -671,6 +767,10 @@ function! s:CmdlineUiEnter() abort
 endfunction
 
 function! s:CmdlineUiLeave() abort
+    if !exists('*hlset')
+        let &showcmd = s:cmdline_showcmd
+        return
+    endif
     if !empty(s:cmdline_msgarea)
         call hlset(s:cmdline_msgarea)
     endif
@@ -678,7 +778,7 @@ function! s:CmdlineUiLeave() abort
     redraw
 endfunction
 
-augroup beau_cmdline_ui
+augroup micro_cmdline_ui
     autocmd!
     autocmd CmdlineEnter : call <SID>CmdlineUiEnter()
     autocmd CmdlineLeave : call <SID>CmdlineUiLeave()
@@ -693,10 +793,17 @@ if !exists('s:floating_terminal')
 endif
 
 function! s:ApplyFloatingTerminalColors() abort
-    highlight BeauTerminal ctermfg=15 ctermbg=NONE
+    highlight MicroTerminal ctermfg=15 ctermbg=NONE
         \ guifg=#c0caf5 guibg=NONE
-    highlight BeauTerminalBorder cterm=bold ctermfg=12 ctermbg=NONE
+    highlight MicroTerminalBorder cterm=bold ctermfg=12 ctermbg=NONE
         \ gui=bold guifg=#7aa2f7 guibg=NONE
+    if has('popupwin') && get(s:floating_terminal, 'win', -1) > 0
+            \ && !empty(popup_getpos(s:floating_terminal.win))
+        call popup_setoptions(s:floating_terminal.win, {
+            \ 'highlight': 'MicroTerminal',
+            \ 'borderhighlight': ['MicroTerminalBorder']
+            \ })
+    endif
 endfunction
 
 function! s:FloatingTerminalSize() abort
@@ -797,6 +904,10 @@ endfunction
 
 " Visible => hide popup. Dead job => start a new shell. Else reuse buf.
 function! s:ToggleFloatingTerminal() abort
+    if !has('popupwin') || !has('terminal')
+        echoerr 'Floating terminal requires +popupwin and +terminal'
+        return
+    endif
     if s:FloatingTerminalVisible()
         call popup_close(s:floating_terminal.win)
         let s:floating_terminal.win = -1
@@ -813,7 +924,7 @@ function! s:ToggleFloatingTerminal() abort
             \ 'hidden': 1,
             \ 'term_finish': 'close',
             \ 'term_name': ' 🅣  HUSTLE ',
-            \ 'term_highlight': 'BeauTerminal',
+            \ 'term_highlight': 'MicroTerminal',
             \ 'term_rows': l:size.minheight,
             \ 'term_cols': l:size.minwidth
             \ })
@@ -837,8 +948,8 @@ function! s:ToggleFloatingTerminal() abort
         \ 'drag': 1,
         \ 'resize': 1,
         \ 'scrollbar': 0,
-        \ 'highlight': 'BeauTerminal',
-        \ 'borderhighlight': ['BeauTerminalBorder'],
+        \ 'highlight': 'MicroTerminal',
+        \ 'borderhighlight': ['MicroTerminalBorder'],
         \ 'callback': function('<SID>FloatingTerminalClosed')
         \ })
     try
@@ -858,7 +969,7 @@ call s:ApplyFloatingTerminalColors()
 command! FloatTerminal call <SID>ToggleFloatingTerminal()
 command! FloatTerminalClose call <SID>CloseFloatingTerminal()
 
-augroup beau_floating_terminal
+augroup micro_floating_terminal
     autocmd!
     autocmd ColorScheme * call <SID>ApplyFloatingTerminalColors()
     autocmd VimResized * call <SID>ResizeFloatingTerminal()
@@ -888,7 +999,7 @@ function! s:ConfigureFzfTerminalKeys() abort
     tnoremap <silent> <buffer> :q<CR> <Esc>
 endfunction
 
-augroup beau_fzf_terminal_keys
+augroup micro_fzf_terminal_keys
     autocmd!
     autocmd FileType fzf call <SID>ConfigureFzfTerminalKeys()
 augroup END
@@ -900,8 +1011,8 @@ let s:rg_history = {
 
 " All Files/Rg variants stay anchored to the directory where Vim started,
 " even after :cd or NERDTree. exists() preserves the root across :source.
-if !exists('g:beau_workspace_root')
-    let g:beau_workspace_root = getcwd()
+if !exists('g:micro_workspace_root')
+    let g:micro_workspace_root = getcwd()
 endif
 
 function! s:FzfVimAvailable() abort
@@ -919,7 +1030,7 @@ function! s:LiveRg(query, fullscreen, regex) abort
         return
     endif
 
-    let l:root = g:beau_workspace_root
+    let l:root = g:micro_workspace_root
     let l:flags = '--column --line-number --no-heading --color=always '
         \ . '--smart-case --hidden ' . s:rg_exclude_globs
     if !a:regex
@@ -997,19 +1108,27 @@ if exists('s:git_minimap')
     unlet s:git_minimap_buf
 endif
 
-if exists('s:git_signs') && has_key(s:git_signs, 'jobs')
-    for s:git_sign_job in values(s:git_signs.jobs)
-        try
-            call job_stop(s:git_sign_job, 'kill')
-        catch
-        endtry
-    endfor
+let s:git_signs_enabled = 1
+if exists('s:git_signs')
+    let s:git_signs_enabled = get(s:git_signs, 'enabled', 1)
+    if has_key(s:git_signs, 'jobs')
+        for s:git_sign_job in values(s:git_signs.jobs)
+            try
+                call job_stop(s:git_sign_job, 'kill')
+            catch
+            endtry
+        endfor
+    endif
+    if get(s:git_signs, 'timer', -1) > 0
+        call timer_stop(s:git_signs.timer)
+    endif
 endif
-if exists('s:git_signs') && get(s:git_signs, 'timer', -1) > 0
-    call timer_stop(s:git_signs.timer)
+if has('signs')
+    silent! call sign_unplace('micro_git')
+    silent! call sign_unplace('beau_git')
 endif
 let s:git_signs = {
-    \ 'enabled': 1,
+    \ 'enabled': s:git_signs_enabled,
     \ 'jobs': {},
     \ 'gen': {},
     \ 'out': {},
@@ -1024,26 +1143,26 @@ function! s:GitSignsSupported() abort
 endfunction
 
 function! s:ApplyGitSignColors() abort
-    highlight BeauGitSignAdd cterm=bold ctermfg=10 ctermbg=NONE
+    highlight MicroGitSignAdd cterm=bold ctermfg=10 ctermbg=NONE
         \ gui=bold guifg=#9ece6a guibg=NONE
-    highlight BeauGitSignChange cterm=bold ctermfg=11 ctermbg=NONE
+    highlight MicroGitSignChange cterm=bold ctermfg=11 ctermbg=NONE
         \ gui=bold guifg=#e0af68 guibg=NONE
-    highlight BeauGitSignDelete cterm=bold ctermfg=9 ctermbg=NONE
+    highlight MicroGitSignDelete cterm=bold ctermfg=9 ctermbg=NONE
         \ gui=bold guifg=#f7768e guibg=NONE
     if !s:GitSignsSupported()
         return
     endif
-    call sign_define('BeauGitAdd', {
+    call sign_define('MicroGitAdd', {
         \ 'text': '+ ',
-        \ 'texthl': 'BeauGitSignAdd'
+        \ 'texthl': 'MicroGitSignAdd'
         \ })
-    call sign_define('BeauGitChange', {
+    call sign_define('MicroGitChange', {
         \ 'text': '~ ',
-        \ 'texthl': 'BeauGitSignChange'
+        \ 'texthl': 'MicroGitSignChange'
         \ })
-    call sign_define('BeauGitDelete', {
+    call sign_define('MicroGitDelete', {
         \ 'text': '- ',
-        \ 'texthl': 'BeauGitSignDelete'
+        \ 'texthl': 'MicroGitSignDelete'
         \ })
 endfunction
 
@@ -1051,6 +1170,10 @@ function! s:GitSignsUnplace(buf) abort
     if !has('signs') || a:buf <= 0 || !bufexists(a:buf)
         return
     endif
+    try
+        call sign_unplace('micro_git', {'buffer': a:buf})
+    catch
+    endtry
     try
         call sign_unplace('beau_git', {'buffer': a:buf})
     catch
@@ -1074,9 +1197,9 @@ function! s:GitSignsParseHunks(lines, line_count) abort
         let l:new_count = empty(l:hunk[4]) ? 1 : str2nr(l:hunk[4])
         if l:new_count == 0
             let l:index = max([1, min([l:count, l:new_start])])
-            let l:marks[l:index] = 'BeauGitDelete'
+            let l:marks[l:index] = 'MicroGitDelete'
         else
-            let l:name = l:old_count > 0 ? 'BeauGitChange' : 'BeauGitAdd'
+            let l:name = l:old_count > 0 ? 'MicroGitChange' : 'MicroGitAdd'
             let l:last = min([l:count, l:new_start + l:new_count - 1])
             if l:new_start <= l:last
                 for l:index in range(l:new_start, l:last)
@@ -1100,7 +1223,7 @@ function! s:GitSignsPlace(buf, marks) abort
     for l:lnum in keys(a:marks)
         call add(l:list, {
             \ 'buffer': a:buf,
-            \ 'group': 'beau_git',
+            \ 'group': 'micro_git',
             \ 'id': str2nr(l:lnum),
             \ 'lnum': str2nr(l:lnum),
             \ 'name': a:marks[l:lnum]
@@ -1176,6 +1299,7 @@ function! s:GitSignsRefresh(...) abort
     endif
 
     let l:buf = get(s:git_signs, 'pending_buf', 0)
+    let s:git_signs.pending_buf = 0
     if l:buf <= 0 || !bufexists(l:buf)
         let l:buf = bufnr('%')
     endif
@@ -1186,8 +1310,8 @@ function! s:GitSignsRefresh(...) abort
     if getbufvar(l:buf, '&buftype') !=# ''
         return
     endif
-    if getbufvar(l:buf, 'beau_large_file', 0)
-            \ || getbufvar(l:buf, 'beau_long_text', 0)
+    if getbufvar(l:buf, 'micro_large_file', 0)
+            \ || getbufvar(l:buf, 'micro_long_text', 0)
         call s:GitSignsUnplace(l:buf)
         return
     endif
@@ -1274,6 +1398,10 @@ function! s:GitSignsDisable() abort
     endif
     if has('signs')
         try
+            call sign_unplace('micro_git')
+        catch
+        endtry
+        try
             call sign_unplace('beau_git')
         catch
         endtry
@@ -1288,7 +1416,7 @@ function! s:GitSignsEnable() abort
 endfunction
 
 call s:ApplyGitSignColors()
-augroup beau_git_signs
+augroup micro_git_signs
     autocmd!
     autocmd ColorScheme * call <SID>ApplyGitSignColors()
     autocmd VimEnter,BufEnter,BufReadPost,BufWritePost,FocusGained *
@@ -1327,8 +1455,50 @@ let g:NERDCommentEmptyLines = 1
 let g:NERDTrimTrailingWhitespace = 1
 let g:NERDCreateDefaultMappings = 1
 
+" Copy a filesystem path to register p (and + when a clipboard exists).
+" Relative form prefers the Vim-start workspace root, then cwd (fnamemodify :.).
+" Space-ip pastes register p, so this works without a clipboard provider.
+function! s:MakeRelativePath(path) abort
+    let l:abs = fnamemodify(a:path, ':p')
+    let l:root = get(g:, 'micro_workspace_root', getcwd())
+    if !empty(l:root)
+        let l:root = substitute(fnamemodify(l:root, ':p'), '[/\\]$', '', '')
+        if l:abs ==# l:root
+            return '.'
+        endif
+        if strpart(l:abs, 0, strlen(l:root) + 1) ==# l:root . '/'
+            return strpart(l:abs, strlen(l:root) + 1)
+        endif
+    endif
+    let l:rel = fnamemodify(l:abs, ':.')
+    return empty(l:rel) ? a:path : l:rel
+endfunction
+
+function! s:CopyPath(path, absolute) abort
+    if empty(a:path)
+        echohl WarningMsg
+        echomsg 'No file name'
+        echohl None
+        return
+    endif
+
+    let l:path = a:absolute ? fnamemodify(a:path, ':p') : s:MakeRelativePath(a:path)
+    call setreg('p', l:path, 'v')
+    if has('clipboard')
+        call setreg('+', l:path, 'v')
+    endif
+    echomsg (a:absolute ? 'Absolute path: ' : 'Relative path: ') . l:path
+endfunction
+
+function! s:CopyBufferPath(absolute) abort
+    if &filetype ==# 'nerdtree'
+        call s:NERDTreeCopyPath(a:absolute)
+        return
+    endif
+    call s:CopyPath(expand('%'), a:absolute)
+endfunction
+
 " Copy the selected NERDTree node path. yr = relative, ya = absolute.
-" Always fills register p so Space-ip works without a clipboard provider.
 function! s:NERDTreeCopyPath(absolute) abort
     try
         let l:node = g:NERDTreeFileNode.GetSelected()
@@ -1339,20 +1509,13 @@ function! s:NERDTreeCopyPath(absolute) abort
         echohl None
         return
     endtry
-
-    let l:path = a:absolute ? fnamemodify(l:path, ':p') : fnamemodify(l:path, ':.')
-    " Keep a private register as a clipboard-independent fallback.
-    call setreg('p', l:path, 'v')
-    if has('clipboard')
-        call setreg('+', l:path, 'v')
-    endif
-    echomsg 'Path copied: ' . l:path
+    call s:CopyPath(l:path, a:absolute)
 endfunction
 
-function! s:PasteNERDTreePath() abort
+function! s:PasteCopiedPath() abort
     if empty(getreg('p'))
         echohl WarningMsg
-        echomsg 'No NERDTree path has been copied yet'
+        echomsg 'No path has been copied yet'
         echohl None
         return
     endif
@@ -1489,7 +1652,7 @@ if exists('*NERDTreeAddKeyMap')
     call s:NERDTreeInstallFastRefresh()
 endif
 
-augroup beau_nerdtree_paths
+augroup micro_nerdtree_paths
     autocmd!
     autocmd FileType nerdtree call <SID>DefineNERDTreePathMappings()
     autocmd FileType nerdtree call <SID>NERDTreeInstallFastRefresh()
@@ -1506,7 +1669,7 @@ function! s:WorkspaceFiles() abort
         echoerr 'fzf.vim is not available'
         return
     endif
-    execute 'Files' fnameescape(g:beau_workspace_root)
+    execute 'Files' fnameescape(g:micro_workspace_root)
 endfunction
 
 function! s:BufferLines() abort
@@ -1618,6 +1781,8 @@ function! s:FzfTagUnderCursor() abort
 endfunction
 
 command! Format call <SID>FormatBuffer()
+command! CopyRelPath call <SID>CopyBufferPath(0)
+command! CopyAbsPath call <SID>CopyBufferPath(1)
 command! -nargs=0 Debug packadd termdebug | Termdebug
 
 " Leader map index (Space = <Leader>)
@@ -1631,12 +1796,14 @@ command! -nargs=0 Debug packadd termdebug | Termdebug
 "   q  quickfix                 /  comment toggle     b  jump back
 "   d  next paragraph           u  prev paragraph
 "   n  presentation view        m  restore editing view
-"   ip paste NERDTree path (register p)
-" NERDTree buffer: yr/ya copy path, r refresh cursor dir, R refresh root.
+"   yr relative path            ya absolute path      ip paste path (register p)
+" NERDTree buffer: yr/ya copy node path, r refresh cursor dir, R refresh root.
 nnoremap <silent> <C-l> :nohlsearch<Bar>diffupdate<CR><C-l>
 nnoremap n nzzzv
 nnoremap N Nzzzv
-nnoremap <silent> <Leader>ip :call <SID>PasteNERDTreePath()<CR>
+nnoremap <silent> <Leader>ip :call <SID>PasteCopiedPath()<CR>
+nnoremap <silent> <Leader>yr :call <SID>CopyBufferPath(0)<CR>
+nnoremap <silent> <Leader>ya :call <SID>CopyBufferPath(1)<CR>
 nnoremap <silent> <Leader>e :NERDTreeToggle<CR>
 nnoremap <silent> <Leader>f :call <SID>LeaderFHint()<CR>
 xnoremap <silent> <Leader>f :<C-u>call <SID>LeaderFHint()<CR>
@@ -1670,3 +1837,14 @@ nnoremap <silent> <Leader>m
     \ :set number relativenumber list mouse=a<CR>
     \ :call <SID>GitSignsEnable()<CR>
 " Insert completion uses Vim's built-in Ctrl-N and Ctrl-P.
+
+" Re-apply buffer-local session state after :source (clipboard dump
+" session, git signs that were unplaced, overlay highlights).
+if exists('*BeauStatusMode')
+    delfunction BeauStatusMode
+endif
+if exists('*BeauGitBranch')
+    delfunction BeauGitBranch
+endif
+call s:LargeFileWin()
+call s:GitSignsRefreshSoon()
