@@ -54,5 +54,13 @@
             protocol: "fuchsia.virtualization.GuestManager",
             from: "self",
         },
+        {
+            // Console `/vmm` is this package's `/pkg/data` (linux.cfg, rtos.cfg).
+            directory: "pkg",
+            from: "#guest_pkg",
+            as: "vmm",
+            subdir: "data",
+            rights: [ "r*" ],
+        },
     ],
 }

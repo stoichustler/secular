@@ -73,5 +73,11 @@
             from: "#guest-manager",
             to: "#console-launcher",
         },
+        {
+            directory: "vmm",
+            from: "#guest-manager",
+            to: "#console-launcher",
+            rights: [ "r*" ],
+        },
     ],
 }

@@ -137,6 +137,12 @@
             availability: "optional",
         },
         {
+            directory: "vmm",
+            rights: [ "r*" ],
+            path: "/vmm",
+            availability: "optional",
+        },
+        {
             // Used by console-launcher itself.
             protocol: [
                 "console", // Default device path, overriden by boot arguments.

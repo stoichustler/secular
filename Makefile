@@ -17,7 +17,7 @@ endif
 
 .DEFAULT_GOAL := help
 
-.PHONY: help configure build verify run qemu kick all clean tags
+.PHONY: help configure build verify run qemu kick atf all clean tags
 
 help: ## Show available build and verification targets.
 	$(Q)awk 'BEGIN { FS = ":.*##" } /^[a-zA-Z][a-zA-Z0-9_-]*:.*##/ { printf "  %-16s %s\n", $$1, $$2 }' $(MAKEFILE_LIST)
@@ -42,6 +42,9 @@ qemu:
 # after `--` to QEMU. Later flags override the script defaults (8 cpus, 1 GiB).
 kick: ## Boot via run-zircon; set KICK_ARGS for run-zircon, QEMU_ARGS for QEMU.
 	$(Q)$(TOOLCHAIN_PATH)/run-qemu.sh $(ARCH) $(KICK_ARGS) -- $(QEMU_ARGS)
+
+atf: ## Compile sdk/atf PLAT=qemu only (does not boot Secular).
+	$(Q)$(TOOLCHAIN_PATH)/build-atf.sh $(ARCH)
 
 all: verify ## Configure, build, and verify the default architecture.
 

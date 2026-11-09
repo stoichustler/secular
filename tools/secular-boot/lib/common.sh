@@ -107,7 +107,7 @@ resolve_tool() {
           "$base/third_party/ninja/linux-x64/bin/ninja"
         )
         ;;
-      clang | clang++ | ld.lld | llvm-ar)
+      clang | clang++ | ld.lld | llvm-ar | llvm-objcopy)
         candidates+=(
           "$base/prebuilt/third_party/clang/linux-amd64/bin/$name"
           "$base/prebuilt/third_party/clang/linux-x64/bin/$name"

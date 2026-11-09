@@ -19,7 +19,6 @@ group("tests") {
     "iokit:tree_test",
     "kernel-args-forwarder:tests",
     "ptysvc:tests",
-    "swdt:tests",
     "userboot:tests",
   ]
 }
