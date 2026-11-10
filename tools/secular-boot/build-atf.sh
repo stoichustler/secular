@@ -3,8 +3,7 @@
 # Use of this source code is governed by a BSD-style license that can be
 # found in the LICENSE file.
 
-# Compile sdk/atf for PLAT=qemu. Does not boot Secular; this only checks
-# that BL1/BL2/BL31 and qemu_fw.bios pack with the SDK clang.
+# Compile sdk/atf for PLAT=qemu with Trusty as BL32 and lkboot as BL33.
 
 set -euo pipefail
 
@@ -37,17 +36,31 @@ mkdir -p "$out_dir/logs" "$build_base"
 
 jobs="$(getconf _NPROCESSORS_ONLN 2>/dev/null || echo 1)"
 
-# PRELOADED_BL33_BASE skips packing a BL33 into the FIP so this target does
-# not need U-Boot. Secular still uses -kernel/-initrd at run time.
-secular_stage "compile ATF qemu (ARCH:$arch, OUT:$build_base)"
+lk_bin="$out_dir/lk/build-qemu-virt-arm64-lkboot/lk.bin"
+trusty_bin="$out_dir/lk/build-qemu-virt-arm64-trusty/lk.bin"
+[[ -f "$lk_bin" ]] || die "missing LK BL33: $lk_bin (run make lkboot first)"
+[[ -f "$trusty_bin" ]] || die "missing Trusty BL32: $trusty_bin (run make lkboot first)"
+
+# ATF loads BL32 (Trusty) into secure DRAM and BL33 (lkboot) at
+# NS_IMAGE_OFFSET (0x60000000). QEMU still supplies linux-arm64-boot-shim
+# and secular.zbi via -kernel/-initrd (fw_cfg).
+secular_stage "compile ATF qemu + BL32 trusty + BL33 lkboot (ARCH:$arch, OUT:$build_base)"
 make -C "$atf_src" \
   -j"$jobs" \
   PLAT=qemu \
   ARCH=aarch64 \
   DEBUG=0 \
+  LOG_LEVEL=40 \
+  SPD=trusty \
+  TRUSTY_SPD_WITH_GENERIC_SERVICES=1 \
+  NEED_BL32=yes \
+  ENABLE_SVE_FOR_NS=0 \
+  ENABLE_SME_FOR_NS=0 \
+  ENABLE_SME2_FOR_NS=0 \
   QEMU_USE_GIC_DRIVER=QEMU_GICV3 \
-  PRELOADED_BL33_BASE=0x40200000 \
   ARM_LINUX_KERNEL_AS_BL33=1 \
+  BL32="$trusty_bin" \
+  BL33="$lk_bin" \
   BUILD_BASE="$build_base" \
   CC="$clang_bin" \
   OC="$objcopy_bin" \
@@ -60,10 +73,7 @@ fi
 
 bios="$build_base/qemu/release/qemu_fw.bios"
 [[ -f "$bios" ]] || die "ATF did not produce qemu_fw.bios: $bios"
-ls -l \
-  "$build_base/qemu/release/bl1.bin" \
-  "$build_base/qemu/release/bl2.bin" \
-  "$build_base/qemu/release/bl31.bin" \
-  "$build_base/qemu/release/fip.bin" \
-  "$bios"
-secular_stage "complete (ARCH:$arch, BIOS:$bios)"
+firmware_dir="$out_dir/firmware/arm-trusted-firmware-qemu-bios"
+mkdir -p "$firmware_dir"
+cp "$bios" "$firmware_dir/qemu_fw.bios"
+secular_stage "complete (ARCH:$arch, BIOS:$firmware_dir/qemu_fw.bios)"

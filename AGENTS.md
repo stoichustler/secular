@@ -43,15 +43,22 @@ compile toolchain into this repository.
 ## Architecture
 
 ```text
-QEMU (qemu-system-aarch64)
+QEMU (qemu-system-aarch64, TrustZone secure=on)
   │
   ▼
-linux-arm64-boot-shim  →  secular.zbi
-  │                         ├─ Zircon kernel
-  │                         └─ BOOTFS
+EL3   ATF BL1/BL2/BL31 + Trusty SPD     (TEE dispatcher / monitor)
+  │     1. register SMC UUID / PSCI hooks
+  │     2. enter BL32
   ▼
-userboot → component_manager → driver_manager / console-launcher
-                                 └─ serial console + zxsh
+S-EL1 LK Trusty TEE (app/trusty, lib/sm) (TEE OS, then S-EL0 TAs later)
+  │     SMC_YC_NS_RETURN back to EL3
+  ▼
+EL3   ATF exits to normal world
+  │
+  ▼
+NS    LK lkboot BL33 (EL2) → linux-arm64-boot-shim → secular.zbi
+                                 ├─ Zircon kernel
+                                 └─ BOOTFS → userboot → zxsh
 ```
 
 Supported target: **arm64 QEMU virt**. Do not add other boards unless
@@ -61,7 +68,9 @@ the requester explicitly expands scope.
 
 ```sh
 export SECULAR_SDK=/absolute/path/to/secular-sdk   # default: ../secular-sdk
-make build        # configure + compile arm64 console image
+make build        # console image + LK bootloader + ATF BIOS
+make lkboot       # sdk/lk qemu-virt-arm64-lkboot (BL33) + qemu-virt-arm64-trusty (BL32)
+make atf          # sdk/atf PLAT=qemu SPD=trusty, Trusty BL32 + lkboot BL33
 make run          # interactive QEMU serial console
 make kick         # boot existing image via run-zircon; KICK_ARGS for its flags
 make verify       # automated boot + console check

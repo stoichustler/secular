@@ -1,0 +1,28 @@
+# Copyright 2026 The Fuchsia Authors. All rights reserved.
+# Use of this source code is governed by a BSD-style license that can be
+# found in the LICENSE file.
+
+import("//products/build/components.gni")
+
+executable("bin") {
+  output_name = "tee-probe"
+
+  sources = [ "tee-probe.cc" ]
+
+  deps = [
+    "//sdk/fidl/fuchsia.kernel:fuchsia.kernel_cpp",
+    "//sdk/lib/component/incoming/cpp",
+    "//sdk/lib/fdio",
+    "//userspace/zircon/lib/zircon",
+    "//zircon/system/ulib/zx",
+  ]
+}
+
+# GN-only Secular image: put the tool in /boot/bin.
+group("bootfs_binaries") {
+  visibility = [
+    "//products/secular:*",
+    "//userspace/zircon/bin:*",
+  ]
+  deps = [ ":bin" ]
+}

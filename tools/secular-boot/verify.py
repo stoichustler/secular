@@ -23,6 +23,16 @@ BOOT_MARKERS = (
     "physboot",
     "userboot",
 )
+TRUSTY_MARKERS = (
+    "trusty: el3 spd ready",
+    "TEE: s-el1 services started",
+    "TEE: init complete, 8 cpus",
+)
+TRUSTY_ALIVE_MARKER = "TEE: alive"
+# Kernel trusty-probe also prints TRUSTY_ALIVE_MARKER. Require the userspace
+# tee-probe SMC path specifically so a blocked SmcResource cannot pass.
+TEE_PROBE_MARKER = "tee: s-el1 nop"
+TEE_PROBE_SMP_MARKER = "tee: alive (8 cpus)"
 CONSOLE_MARKERS = (
     "component_manager",
     "zxsh",
@@ -54,8 +64,9 @@ def _run_qemu(root: pathlib.Path, arch: str, timeout_s: float) -> tuple[int, str
     chunks: list[bytes] = []
     deadline = time.monotonic() + timeout_s
     saw_prompt = False
+    probed_tee = False
+    echoed_ok = False
     try:
-        os.write(master, b"echo CONSOLE_OK\n")
         while time.monotonic() < deadline:
             events = selector.select(timeout=0.5)
             for key, _ in events:
@@ -67,13 +78,19 @@ def _run_qemu(root: pathlib.Path, arch: str, timeout_s: float) -> tuple[int, str
                     proc.poll()
                     break
                 chunks.append(data)
-                if PROMPT.search(b"".join(chunks[-8:])):
+                joined = b"".join(chunks)
+                if not saw_prompt and PROMPT.search(joined):
                     saw_prompt = True
-                    os.write(master, b"echo CONSOLE_OK\n")
+                if saw_prompt and not probed_tee:
+                    os.write(master, b"/boot/bin/tee-probe\n")
+                    probed_tee = True
             if proc.poll() is not None:
                 break
             text = b"".join(chunks).decode("utf-8", "replace")
-            if "CONSOLE_OK" in text and saw_prompt:
+            if probed_tee and TEE_PROBE_MARKER in text.lower() and not echoed_ok:
+                os.write(master, b"echo CONSOLE_OK\n")
+                echoed_ok = True
+            if "CONSOLE_OK" in text and TEE_PROBE_MARKER in text.lower() and saw_prompt:
                 break
             if any(marker in text for marker in FATAL_MARKERS):
                 break
@@ -107,6 +124,23 @@ def main(argv: list[str]) -> int:
     if missing:
         sys.stderr.write(text[-8000:])
         print(f"FAIL: missing boot markers {missing}", file=sys.stderr)
+        return 1
+    missing_trusty = [marker for marker in TRUSTY_MARKERS if marker not in lower]
+    if missing_trusty:
+        sys.stderr.write(text[-8000:])
+        print(f"FAIL: missing Trusty TEE markers {missing_trusty}", file=sys.stderr)
+        return 1
+    if TRUSTY_ALIVE_MARKER not in lower:
+        sys.stderr.write(text[-8000:])
+        print("FAIL: kernel Trusty probe did not report Trusty TEE alive", file=sys.stderr)
+        return 1
+    if TEE_PROBE_MARKER not in lower:
+        sys.stderr.write(text[-8000:])
+        print("FAIL: tee-probe did not complete userspace SMC to S-EL1", file=sys.stderr)
+        return 1
+    if TEE_PROBE_SMP_MARKER not in lower:
+        sys.stderr.write(text[-8000:])
+        print("FAIL: tee-probe did not NOP S-EL1 on all 8 cpus", file=sys.stderr)
         return 1
     if "CONSOLE_OK" not in text and not any(marker in lower for marker in CONSOLE_MARKERS):
         sys.stderr.write(text[-8000:])

@@ -17,7 +17,7 @@ endif
 
 .DEFAULT_GOAL := help
 
-.PHONY: help configure build verify run qemu kick atf all clean tags
+.PHONY: help configure build verify run qemu kick atf lkboot all clean tags
 
 help: ## Show available build and verification targets.
 	$(Q)awk 'BEGIN { FS = ":.*##" } /^[a-zA-Z][a-zA-Z0-9_-]*:.*##/ { printf "  %-16s %s\n", $$1, $$2 }' $(MAKEFILE_LIST)
@@ -25,7 +25,7 @@ help: ## Show available build and verification targets.
 configure: ## Generate the GN build directory for ARCH (default: arm64).
 	$(Q)$(TOOLCHAIN_PATH)/configure.sh $(ARCH)
 
-build: configure ## Build the console image for ARCH.
+build: configure lkboot atf ## Build the console image, LK bootloader, Trusty TEE, and ATF BIOS.
 	$(Q)$(TOOLCHAIN_PATH)/build.sh $(ARCH)
 
 verify: build ## Boot-test ARCH in QEMU (arm64 is automated).
@@ -43,7 +43,10 @@ qemu:
 kick: ## Boot via run-zircon; set KICK_ARGS for run-zircon, QEMU_ARGS for QEMU.
 	$(Q)$(TOOLCHAIN_PATH)/run-qemu.sh $(ARCH) $(KICK_ARGS) -- $(QEMU_ARGS)
 
-atf: ## Compile sdk/atf PLAT=qemu only (does not boot Secular).
+lkboot: ## Compile sdk/lk qemu-virt-arm64-lkboot (BL33) and qemu-virt-arm64-trusty (BL32).
+	$(Q)$(TOOLCHAIN_PATH)/build-lkboot.sh $(ARCH)
+
+atf: lkboot ## Pack sdk/atf PLAT=qemu with Trusty BL32 and lkboot BL33.
 	$(Q)$(TOOLCHAIN_PATH)/build-atf.sh $(ARCH)
 
 all: verify ## Configure, build, and verify the default architecture.

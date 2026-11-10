@@ -16,3 +16,7 @@ endif
 NEED_BL32		:=	yes
 
 CTX_INCLUDE_FPREGS	:=	1
+
+# Trusty peeks the BL32 header via mmap_add_dynamic_region().
+PLAT_XLAT_TABLES_DYNAMIC :=	1
+$(eval $(call add_define,PLAT_XLAT_TABLES_DYNAMIC))

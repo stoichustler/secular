@@ -1,0 +1,300 @@
+/*
+ * Copyright (c) 2014 Travis Geiselbrecht
+ *
+ * Use of this source code is governed by a MIT-style
+ * license that can be found in the LICENSE file or at
+ * https://opensource.org/licenses/MIT
+ */
+#include <kernel/vm.h>
+
+#include <arch/mmu.h>
+#include <assert.h>
+#include <kernel/thread.h>
+#include <lk/console_cmd.h>
+#include <lk/debug.h>
+#include <lk/err.h>
+#include <lk/init.h>
+#include <lk/trace.h>
+#include <string.h>
+
+#include "vm_priv.h"
+
+#define LOCAL_TRACE 0
+
+extern int _start;
+extern int _end;
+
+/* mark the physical pages backing a range of virtual as in use.
+ * allocate the physical pages and throw them away */
+static void mark_pages_in_use(vaddr_t va, size_t len) {
+    LTRACEF("va 0x%lx, len 0x%zx\n", va, len);
+
+    struct list_node list;
+    list_initialize(&list);
+
+    /* make sure we are inclusive of all of the pages in the address range */
+    len = PAGE_ALIGN(len + (va & (PAGE_SIZE - 1)));
+    va = ROUNDDOWN(va, PAGE_SIZE);
+
+    LTRACEF("aligned va 0x%lx, len 0x%zx\n", va, len);
+
+    for (size_t offset = 0; offset < len; offset += PAGE_SIZE) {
+        uint flags;
+        paddr_t pa;
+
+        status_t err = arch_mmu_query(&vmm_get_kernel_aspace()->arch_aspace, va + offset, &pa, &flags);
+        if (err >= 0) {
+            //LTRACEF("va 0x%x, pa 0x%x, flags 0x%x, err %d\n", va + offset, pa, flags, err);
+
+            /* allocate the range, throw the results away */
+            pmm_alloc_range(pa, 1, &list);
+        } else {
+            panic("Could not find pa for va 0x%lx\n", va);
+        }
+    }
+}
+
+static void vm_init_preheap(uint level) {
+    LTRACE_ENTRY;
+
+    /* allow the vmm a shot at initializing some of its data structures */
+    vmm_init_preheap();
+
+    /* mark all of the kernel pages in use */
+    LTRACEF("marking all kernel pages as used\n");
+    mark_pages_in_use((vaddr_t)&_start, ((uintptr_t)&_end - (uintptr_t)&_start));
+
+    /* mark the physical pages used by the boot time allocator */
+    if (boot_alloc_end != boot_alloc_start) {
+        LTRACEF("marking boot alloc used from 0x%lx to 0x%lx\n", boot_alloc_start, boot_alloc_end);
+
+        mark_pages_in_use(boot_alloc_start, boot_alloc_end - boot_alloc_start);
+    }
+}
+
+static void vm_init_postheap(uint level) {
+    LTRACE_ENTRY;
+
+    vmm_init();
+
+    /* create vmm regions to cover what is already there from the initial mapping table */
+    struct mmu_initial_mapping *map = mmu_initial_mappings;
+    while (map->size > 0) {
+        if (!(map->flags & MMU_INITIAL_MAPPING_TEMPORARY)) {
+            vmm_reserve_space(vmm_get_kernel_aspace(), map->name, map->size, map->virt);
+        }
+
+        map++;
+    }
+}
+
+#if LK_DEBUGLEVEL > 0
+/* the thread whose page tables are counted, NULL for none */
+static thread_t *ptable_thread;
+/* Only that thread reads and writes these: how many more tables it may
+ * allocate, negative for no limit, and how many it has allocated and freed. */
+static int ptable_budget;
+static size_t ptable_allocs;
+static size_t ptable_frees;
+
+static bool ptable_tracked(void) {
+    thread_t *t = __atomic_load_n(&ptable_thread, __ATOMIC_RELAXED);
+    return t && t == get_current_thread();
+}
+
+void vm_ptable_track(bool on) {
+    if (on) {
+        DEBUG_ASSERT(!__atomic_load_n(&ptable_thread, __ATOMIC_RELAXED));
+        ptable_budget = -1;
+        ptable_allocs = 0;
+        ptable_frees = 0;
+    } else {
+        DEBUG_ASSERT(ptable_tracked());
+    }
+    __atomic_store_n(&ptable_thread, on ? get_current_thread() : NULL, __ATOMIC_RELAXED);
+}
+
+void vm_ptable_budget_set(int count) {
+    DEBUG_ASSERT(ptable_tracked());
+    ptable_budget = count;
+}
+
+void vm_ptable_counts(size_t *allocs, size_t *frees) {
+    DEBUG_ASSERT(ptable_tracked());
+    *allocs = ptable_allocs;
+    *frees = ptable_frees;
+}
+
+bool vm_ptable_budget_take(void) {
+    if (!ptable_tracked()) {
+        return true;
+    }
+    if (ptable_budget == 0) {
+        return false;
+    }
+    if (ptable_budget > 0) {
+        ptable_budget--;
+    }
+    ptable_allocs++;
+    return true;
+}
+
+void vm_ptable_freed(size_t count) {
+    if (ptable_tracked()) {
+        ptable_frees += count;
+    }
+}
+#endif
+
+void *kvaddr_get_range(size_t *size_return) {
+    *size_return = mmu_initial_mappings->size;
+    return (void *)mmu_initial_mappings->virt;
+}
+
+void *paddr_to_kvaddr_search(paddr_t pa) {
+    /* find the mapping of an address in the initial mappings as set up by the
+     * arch or platform layers. Any mapping not marked temporary can serve as a
+     * hit to return a pointer.
+     */
+    const struct mmu_initial_mapping *map = mmu_initial_mappings;
+    while (map->size > 0) {
+        if (!(map->flags & MMU_INITIAL_MAPPING_TEMPORARY) &&
+                pa >= map->phys &&
+                pa <= map->phys + map->size - 1) {
+            return (void *)(map->virt + (pa - map->phys));
+        }
+        map++;
+    }
+    return NULL;
+}
+
+paddr_t vaddr_to_paddr(void *ptr) {
+    vmm_aspace_t *aspace = vaddr_to_aspace(ptr);
+    if (!aspace)
+        return (paddr_t)NULL;
+
+    paddr_t pa;
+    status_t rc = arch_mmu_query(&aspace->arch_aspace, (vaddr_t)ptr, &pa, NULL);
+    if (rc)
+        return (paddr_t)NULL;
+
+    return pa;
+}
+
+vmm_aspace_t *vaddr_to_aspace(void *ptr) {
+    if (is_kernel_address((vaddr_t)ptr)) {
+        return vmm_get_kernel_aspace();
+    } else if (is_user_address((vaddr_t)ptr)) {
+        // no thread yet, or a kernel thread: nothing to look in
+        thread_t *t = get_current_thread();
+        return t ? t->aspace : NULL;
+    } else {
+        return NULL;
+    }
+}
+
+static int cmd_vm(int argc, const console_cmd_args *argv) {
+    if (argc < 2) {
+notenoughargs:
+        printf("not enough arguments\n");
+usage:
+        printf("usage:\n");
+        printf("%s phys2virt <address>\n", argv[0].str);
+        printf("%s virt2phys <address>\n", argv[0].str);
+        printf("%s map <phys> <virt> <count> <flags>\n", argv[0].str);
+        printf("%s unmap <virt> <count>\n", argv[0].str);
+        printf("%s protect <virt> <count> <flags>\n", argv[0].str);
+        printf("map flags: 0x8 read (required), 0x10 write, 0x20 execute, 0x4 user,\n");
+        printf("           0x0 cached, 0x1 uncached, 0x2 device\n");
+        printf("protect flags: read, write and execute only\n");
+        return ERR_GENERIC;
+    }
+
+    if (!strcmp(argv[1].str, "phys2virt")) {
+        if (argc < 3) goto notenoughargs;
+
+        void *ptr = paddr_to_kvaddr((paddr_t)argv[2].u);
+        printf("paddr_to_kvaddr returns %p\n", ptr);
+    } else if (!strcmp(argv[1].str, "virt2phys")) {
+        if (argc < 3) goto notenoughargs;
+
+        vmm_aspace_t *aspace = vaddr_to_aspace((void *)argv[2].u);
+        if (!aspace) {
+            printf("ERROR: outside of any address space\n");
+            return -1;
+        }
+
+        paddr_t pa;
+        uint flags;
+        /* the crashed thread may hold the aspace lock */
+        const bool lock = !console_in_panic_shell();
+        if (lock) {
+            vmm_aspace_lock(aspace);
+        }
+        status_t err = arch_mmu_query(&aspace->arch_aspace, argv[2].u, &pa, &flags);
+        if (lock) {
+            vmm_aspace_unlock(aspace);
+        }
+        printf("arch_mmu_query returns %d\n", err);
+        if (err >= 0) {
+            printf("\tpa 0x%lx, flags 0x%x\n", pa, flags);
+        }
+    } else if (console_in_panic_shell()) {
+        printf("%s %s: not available in the panic shell, only phys2virt and virt2phys are\n",
+               argv[0].str, argv[1].str);
+        return ERR_NOT_SUPPORTED;
+    } else if (!strcmp(argv[1].str, "map")) {
+        if (argc < 6) goto notenoughargs;
+
+        vmm_aspace_t *aspace = vaddr_to_aspace((void *)argv[3].u);
+        if (!aspace) {
+            printf("ERROR: %p outside of any address space\n", (void *)argv[3].u);
+            return -1;
+        }
+
+        vmm_aspace_lock(aspace);
+        status_t err = arch_mmu_map(&aspace->arch_aspace, argv[3].u, argv[2].u, argv[4].u, argv[5].u);
+        vmm_aspace_unlock(aspace);
+        printf("arch_mmu_map returns %d\n", err);
+    } else if (!strcmp(argv[1].str, "unmap")) {
+        if (argc < 4) goto notenoughargs;
+
+        vmm_aspace_t *aspace = vaddr_to_aspace((void *)argv[2].u);
+        if (!aspace) {
+            printf("ERROR: outside of any address space\n");
+            return -1;
+        }
+
+        vmm_aspace_lock(aspace);
+        status_t err = arch_mmu_unmap(&aspace->arch_aspace, argv[2].u, argv[3].u);
+        vmm_aspace_unlock(aspace);
+        printf("arch_mmu_unmap returns %d\n", err);
+    } else if (!strcmp(argv[1].str, "protect")) {
+        if (argc < 5) goto notenoughargs;
+
+        vmm_aspace_t *aspace = vaddr_to_aspace((void *)argv[2].u);
+        if (!aspace) {
+            printf("ERROR: outside of any address space\n");
+            return -1;
+        }
+
+        vmm_aspace_lock(aspace);
+        status_t err = arch_mmu_protect(&aspace->arch_aspace, argv[2].u, argv[3].u, argv[4].u);
+        vmm_aspace_unlock(aspace);
+        printf("arch_mmu_protect returns %d\n", err);
+    } else {
+        printf("unknown command\n");
+        goto usage;
+    }
+
+    return NO_ERROR;
+}
+
+STATIC_COMMAND_START
+#if LK_DEBUGLEVEL > 0
+STATIC_COMMAND_MASKED("vm", "vm commands", &cmd_vm, CMD_AVAIL_ALWAYS)
+#endif
+STATIC_COMMAND_END(vm);
+
+LK_INIT_HOOK(vm_preheap, &vm_init_preheap, LK_INIT_LEVEL_HEAP - 1);
+LK_INIT_HOOK(vm, &vm_init_postheap, LK_INIT_LEVEL_VM - 1);

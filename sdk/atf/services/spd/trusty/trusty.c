@@ -6,6 +6,7 @@
  */
 
 #include <assert.h>
+#include <errno.h>
 #include <inttypes.h>
 #include <lib/xlat_tables/xlat_tables_v2.h>
 #include <stdbool.h>
@@ -19,6 +20,7 @@
 #include <common/debug.h>
 #include <common/runtime_svc.h>
 #include <lib/el3_runtime/context_mgmt.h>
+#include <lib/psci/psci_lib.h>
 #include <lib/smccc.h>
 #include <plat/common/platform.h>
 #include <tools_share/uuid.h>
@@ -298,6 +300,14 @@ static uintptr_t trusty_smc_handler(uint32_t smc_fid,
 				VERBOSE("Previous SMC not finished.\n");
 				SMC_RET1(handle, SM_ERR_BUSY);
 			}
+			/* UP stub: S-EL1 is only entered on CPU 0. A yielding
+			 * SMC on any other CPU has no saved Trusty stack.
+			 */
+			if (get_trusty_ctx()->saved_sp == NULL) {
+				VERBOSE("%s: yielding SMC 0x%x on cpu %d before S-EL1 init\n",
+					__func__, smc_fid, plat_my_core_pos());
+				SMC_RET1(handle, (uint64_t)SM_ERR_NOT_SUPPORTED);
+			}
 			current_vmid = vmid;
 			ret = trusty_context_switch(NON_SECURE, smc_fid, x1,
 				x2, x3);
@@ -455,7 +465,11 @@ static int32_t trusty_setup(void)
 			ep_info->pc, /* VA */
 			PAGE_SIZE, /* size */
 			MT_SECURE | MT_RW_DATA); /* attrs */
-	assert(ret == 0);
+	/* Overlap (-EPERM) is fine: QEMU already maps BL32 as secure DRAM. */
+	if ((ret != 0) && (ret != -EPERM)) {
+		ERROR("trusty: failed to map BL32 header, ret = %d\n", ret);
+		return -1;
+	}
 
 	/* peek into trusty's code to see if we have a 32-bit or 64-bit image */
 	instr = *(uint32_t *)ep_info->pc;
@@ -464,7 +478,7 @@ static int32_t trusty_setup(void)
 		INFO("trusty: Found 32 bit image\n");
 		aarch32 = true;
 	} else if (instr >> 8 == 0xd53810U || instr >> 16 == 0x9400U) {
-		INFO("trusty: Found 64 bit image\n");
+		INFO("trusty: Found 64 bit S-EL1 image\n");
 	} else {
 		ERROR("trusty: Found unknown image, 0x%x\n", instr);
 		return -1;
@@ -486,21 +500,21 @@ static int32_t trusty_setup(void)
 	(void)memset(&ep_info->args, 0, sizeof(ep_info->args));
 	plat_trusty_set_boot_args(&ep_info->args);
 
-	/* register init handler */
+	INFO("trusty: EL3 SPD ready, S-EL1 BL32 entry 0x%lx\n",
+	     (unsigned long)ep_info->pc);
+
+	/* EL3 dispatcher first; BL32 S-EL1 is started from trusty_init(). */
 	bl31_register_bl32_init(trusty_init);
 
-	/* register power management hooks */
+	/* Cold-boot S-EL1 on each NS CPU_ON so yielding SMCs work on all cores. */
 	psci_register_spd_pm_hook(&trusty_pm);
 
-	/* register interrupt handler */
-	flags = 0;
-	set_interrupt_rm_flag(flags, NON_SECURE);
-	ret = register_interrupt_type_handler(INTR_TYPE_S_EL1,
-					      trusty_fiq_handler,
-					      flags);
-	if (ret != 0) {
-		VERBOSE("trusty: failed to register fiq handler, ret = %d\n", ret);
-	}
+	/*
+	 * Do not steal NS IRQs as S-EL1 FIQs. Routing timer PPIs here leaves
+	 * Zircon without ticks.
+	 */
+	(void)flags;
+	(void)trusty_fiq_handler;
 
 	if (aarch32) {
 		entry_point_info_t *ns_ep_info;

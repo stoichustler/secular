@@ -1,0 +1,374 @@
+/*
+ * Copyright (C) 2025 The Android Open Source Project
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ *     http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ *
+ */
+
+#include "memory_protocols.h"
+
+#include <arch/defines.h>
+#include <arch/mmu.h>
+#include <kernel/vm.h>
+#include <lib/dlmalloc.h>
+#include <lk/err.h>
+#include <lk/trace.h>
+#include <stdint.h>
+#include <stdio.h>
+#include <string.h>
+#include <sys/types.h>
+#include <uefi/boot_service.h>
+#include <uefi/protocols/gbl_efi_boot_memory_protocol.h>
+#include <uefi/types.h>
+
+#include "image_permissions.h"
+#include "uefi_platform.h"
+
+#define LOCAL_TRACE 0
+
+// MACRO list_for_every_entry cast between int/ptr
+// NOLINTBEGIN(performance-no-int-to-ptr)
+
+namespace {
+vmm_aspace_t *old_aspace = nullptr;
+constexpr size_t kHeapSize = 300ul * 1024 * 1024;
+
+void *heap = nullptr;
+void *get_heap() {
+  if (heap == nullptr) {
+    heap = alloc_page(kHeapSize);
+  }
+  return heap;
+}
+
+mspace create_mspace_with_base_limit(void *base, size_t capacity, int locked) {
+  auto space = create_mspace_with_base(get_heap(), kHeapSize, 1);
+  mspace_set_footprint_limit(space, capacity);
+  return space;
+}
+
+mspace space = nullptr;
+
+mspace get_mspace() {
+  if (space == nullptr) {
+    space = create_mspace_with_base_limit(get_heap(), kHeapSize, 1);
+  }
+  return space;
+}
+
+vmm_aspace_t *uefi_aspace = nullptr;
+
+void restore_aspace() {
+  if (uefi_aspace != nullptr) {
+    vmm_set_active_aspace(old_aspace);
+    vmm_free_aspace(uefi_aspace);
+    uefi_aspace = nullptr;
+  }
+}
+
+}  // namespace
+
+__WEAK void setup_heap() {
+  set_boot_aspace();
+  get_mspace();
+}
+
+__WEAK void reset_heap() {
+  if (space != nullptr) {
+    destroy_mspace(space);
+    space = nullptr;
+  }
+  if (heap != nullptr) {
+    free_pages(heap, kHeapSize / PAGE_SIZE);
+    heap = nullptr;
+  }
+  restore_aspace();
+}
+
+vmm_aspace_t *set_boot_aspace() {
+  if (uefi_aspace == nullptr) {
+    auto err = vmm_create_aspace(&uefi_aspace, "linux_kernel", 0);
+    if (err) {
+      printf("Failed to create address space for linux kernel %d\n", err);
+      return nullptr;
+    }
+    old_aspace = vmm_set_active_aspace(uefi_aspace);
+  }
+  return uefi_aspace;
+}
+
+__WEAK void *alloc_page(size_t size, size_t align_log2) {
+  size = ROUNDUP(size, PAGE_SIZE);
+  auto aspace = set_boot_aspace();
+  paddr_t pa{};
+  size_t allocated =
+      pmm_alloc_contiguous(size / PAGE_SIZE, align_log2, &pa, nullptr);
+  if (allocated != size / PAGE_SIZE) {
+    printf("Failed to allocate physical memory size %zu\n", size);
+    return nullptr;
+  }
+  // General UEFI allocations (including heap and stack) are writable, not executable.
+  vmm_aspace_lock(aspace);
+  status_t ret = arch_mmu_map(&aspace->arch_aspace, pa, pa, size / PAGE_SIZE,
+                              ARCH_MMU_FLAG_PERM_READ | ARCH_MMU_FLAG_PERM_WRITE);
+  vmm_aspace_unlock(aspace);
+  if (ret != NO_ERROR) {
+    printf("Failed to arch_mmu_map(0x%lx)\n", pa);
+    return nullptr;
+  }
+  status_t err{};
+  err = vmm_reserve_space(aspace, "uefi_program", size, pa);
+  if (err) {
+    printf("Failed to vmm_reserve_space for uefi program %d\n", err);
+    return nullptr;
+  }
+  return reinterpret_cast<void *>(pa);
+}
+
+__WEAK void *alloc_page(void *addr, size_t size, size_t align_log2) {
+  if (addr == nullptr) {
+    return alloc_page(size, align_log2);
+  }
+  auto aspace = set_boot_aspace();
+  size = ROUNDUP(size, PAGE_SIZE);
+  const uint page_count = static_cast<uint>(size / PAGE_SIZE);
+  struct list_node pages;
+  list_initialize(&pages);
+  size_t allocated = pmm_alloc_range(reinterpret_cast<paddr_t>(addr),
+                                     page_count, &pages);
+  if (allocated != page_count) {
+    pmm_free(&pages);
+    printf(
+        "Failed to allocate physical memory size %zu at specified address %p "
+        "fallback to regular allocation\n",
+        size, addr);
+    return alloc_page(size, align_log2);
+  }
+
+  void *mapped_addr = addr;
+  status_t err = vmm_alloc_physical(
+      aspace, "uefi_program", size, &mapped_addr, align_log2,
+      reinterpret_cast<paddr_t>(addr), VMM_FLAG_VALLOC_SPECIFIC,
+      ARCH_MMU_FLAG_PERM_READ | ARCH_MMU_FLAG_PERM_WRITE);
+  if (err != NO_ERROR) {
+    pmm_free(&pages);
+    printf("Failed to map physical memory at %p for uefi program %d\n", addr,
+           err);
+    return nullptr;
+  }
+
+  // vmm_alloc_physical() does not own PMM pages. Unlink them from this stack
+  // list; free_pages() reconstructs and releases the list after unmapping.
+  while (list_remove_head(&pages)) {}
+  return mapped_addr;
+}
+
+EfiStatus allocate_pages(EfiAllocatorType type, EfiMemoryType memory_type,
+                         size_t pages, EfiPhysicalAddr *memory) {
+  if (memory == nullptr || pages == 0 || pages > SIZE_MAX / PAGE_SIZE) {
+    return EFI_STATUS_INVALID_PARAMETER;
+  }
+  if (type == EFI_ALLOCATOR_TYPE_ALLOCATE_MAX_ADDRESS && *memory < 0xFFFFFFFF) {
+    LTRACEF("%d, %d, %zu, 0x%llx unsupported\n", type, memory_type, pages,
+            *memory);
+    return EFI_STATUS_UNSUPPORTED;
+  }
+  void *allocation = alloc_page(pages * PAGE_SIZE);
+  if (!allocation) {
+    return EFI_STATUS_OUT_OF_RESOURCES;
+  }
+  // EFI clients write or relocate code after AllocatePages() returns. Without
+  // EFI_MEMORY_ATTRIBUTE_PROTOCOL there is no later RW -> RX transition, so
+  // these three code types must remain writable and executable for now.
+  if (arch_mmu_supports_nx_mappings() &&
+      (memory_type == EFI_MEMORY_TYPE_LOADER_CODE ||
+       memory_type == EFI_MEMORY_TYPE_BOOT_SERVICES_CODE ||
+       memory_type == EFI_MEMORY_TYPE_RUNTIME_SERVICES_CODE)) {
+    auto *aspace = set_boot_aspace();
+    vmm_aspace_lock(aspace);
+    const status_t status = arch_mmu_protect(
+        &aspace->arch_aspace, reinterpret_cast<vaddr_t>(allocation), pages,
+        ARCH_MMU_FLAG_PERM_READ | ARCH_MMU_FLAG_PERM_WRITE | ARCH_MMU_FLAG_PERM_EXECUTE);
+    vmm_aspace_unlock(aspace);
+    if (status != NO_ERROR) {
+      free_pages(allocation, pages);
+      return EFI_STATUS_OUT_OF_RESOURCES;
+    }
+  }
+  *memory = reinterpret_cast<EfiPhysicalAddr>(allocation);
+  return EFI_STATUS_SUCCESS;
+}
+
+__WEAK void *uefi_malloc(size_t size) {
+  return mspace_malloc(get_mspace(), size);
+}
+
+__WEAK EfiStatus allocate_pool(EfiMemoryType pool_type, size_t size,
+                               void **buf) {
+  if (buf == nullptr) {
+    return EFI_STATUS_INVALID_PARAMETER;
+  }
+  if (size == 0) {
+    *buf = nullptr;
+    return EFI_STATUS_SUCCESS;
+  }
+  *buf = mspace_malloc(get_mspace(), size);
+  if (*buf != nullptr) {
+    return EFI_STATUS_SUCCESS;
+  }
+  return EFI_STATUS_OUT_OF_RESOURCES;
+}
+
+__WEAK EfiStatus free_pool(void *mem) {
+  mspace_free(get_mspace(), mem);
+  return EFI_STATUS_SUCCESS;
+}
+
+__WEAK EfiStatus free_pages(void *memory, size_t pages) {
+  return free_uefi_image(memory, pages);
+}
+
+__WEAK void *alloc_uefi_stack(size_t size) {
+  return alloc_page(size, 23);
+}
+
+__WEAK void free_uefi_stack(void *stack, size_t size) {
+  free_pages(stack, ROUNDUP(size, PAGE_SIZE) / PAGE_SIZE);
+}
+
+EfiStatus get_physical_memory_map(size_t *memory_map_size,
+                                  EfiMemoryDescriptor *memory_map,
+                                  size_t *map_key, size_t *desc_size,
+                                  uint32_t *desc_version) {
+  if (memory_map_size == nullptr) {
+    return EFI_STATUS_INVALID_PARAMETER;
+  }
+  if (map_key) {
+    *map_key = 0;
+  }
+  if (desc_size) {
+    *desc_size = sizeof(EfiMemoryDescriptor);
+  }
+  if (desc_version) {
+    *desc_version = 1;
+  }
+  pmm_arena_t *a{};
+  size_t num_entries = 0;
+  list_for_every_entry(get_arena_list(), a, pmm_arena_t, node) {
+    num_entries++;
+  }
+  const size_t size_needed = num_entries * sizeof(EfiMemoryDescriptor);
+  if (*memory_map_size < size_needed) {
+    *memory_map_size = size_needed;
+    return EFI_STATUS_BUFFER_TOO_SMALL;
+  }
+  *memory_map_size = size_needed;
+  size_t i = 0;
+  memset(memory_map, 0, size_needed);
+  list_for_every_entry(get_arena_list(), a, pmm_arena_t, node) {
+    memory_map[i].physical_start = a->base;
+    memory_map[i].number_of_pages = a->size / PAGE_SIZE;
+    memory_map[i].attributes = static_cast<EfiMemoryAttribute>(memory_map[i].attributes | EFI_MEMORY_ATTRIBUTE_EMA_WB);
+    memory_map[i].memory_type = EFI_MEMORY_TYPE_LOADER_CODE;
+    i++;
+  }
+  return EFI_STATUS_SUCCESS;
+}
+
+// NOLINTEND(performance-no-int-to-ptr)
+
+namespace {
+EfiStatus get_partition_buffer(struct GblEfiBootMemoryProtocol* self,
+                               /* in */ const uint8_t* base_name,
+                               /* out */ size_t* size,
+                               /* out */ void** addr,
+                               /* out */ GblEfiPartitionBufferFlag* flag) {
+  return EFI_STATUS_NOT_FOUND;
+}
+
+EfiStatus sync_partition_buffer(struct GblEfiBootMemoryProtocol* self,
+                                /* in */ bool sync_preloaded) {
+  return EFI_STATUS_SUCCESS;
+}
+
+struct BootBufferSlot {
+  GblEfiBootBufferType type;
+  size_t size;
+  size_t align_log2;
+  void* addr;
+};
+
+// 2^21 = 2MB alignment on the load/kernel buffers, required by linux kernel
+BootBufferSlot boot_buffer_slots[] = {
+    {GBL_EFI_BOOT_BUFFER_TYPE_GENERAL_LOAD, 128ul * 1024 * 1024, 21, nullptr},
+    {GBL_EFI_BOOT_BUFFER_TYPE_KERNEL, 64ul * 1024 * 1024, 21, nullptr},
+    {GBL_EFI_BOOT_BUFFER_TYPE_RAMDISK, 64ul * 1024 * 1024, PAGE_SIZE_SHIFT,
+     nullptr},
+    {GBL_EFI_BOOT_BUFFER_TYPE_FDT, 2ul * 1024 * 1024, PAGE_SIZE_SHIFT,
+     nullptr},
+    {GBL_EFI_BOOT_BUFFER_TYPE_PVMFW_DATA, 1024ul * 1024, PAGE_SIZE_SHIFT,
+     nullptr},
+};
+
+EfiStatus get_boot_buffer(struct GblEfiBootMemoryProtocol* self,
+                          /* in */ GblEfiBootBufferType buf_type,
+                          /* out */ size_t* size,
+                          /* out */ void** addr) {
+  for (auto& slot : boot_buffer_slots) {
+    if (slot.type != buf_type) {
+      continue;
+    }
+    if (slot.addr == nullptr) {
+      slot.addr = alloc_page(slot.size, slot.align_log2);
+    }
+    if (slot.addr == nullptr) {
+      return EFI_STATUS_OUT_OF_RESOURCES;
+    }
+    *size = slot.size;
+    *addr = slot.addr;
+    return EFI_STATUS_SUCCESS;
+  }
+  printf("get_boot_buffer(%d, %zu) unsupported\n", buf_type, *size);
+  return EFI_STATUS_NOT_FOUND;
+}
+
+}  // namespace
+
+void release_boot_buffers() {
+  for (auto& slot : boot_buffer_slots) {
+    if (slot.addr == nullptr) {
+      continue;
+    }
+    // Teardown destroys the UEFI address space (reset_heap() runs right after
+    // this), so a retained pointer would be handed back by get_boot_buffer() on
+    // the next run with no valid mapping. Always drop the slot so a fresh,
+    // remapped buffer is allocated next time. free_pages() should succeed now
+    // that pages are returned via paddr_to_kvaddr(); if it ever fails we log it
+    // (the physical pages leak) rather than keep an unusable mapping reusable.
+    if (free_pages(slot.addr, slot.size / PAGE_SIZE) != EFI_STATUS_SUCCESS) {
+      printf("release_boot_buffers: failed to free %p (%zu bytes); dropping "
+             "slot anyway\n", slot.addr, slot.size);
+    }
+    slot.addr = nullptr;
+  }
+}
+
+__WEAK GblEfiBootMemoryProtocol* open_boot_memory_protocol() {
+  static GblEfiBootMemoryProtocol protocol = {
+      .revision = GBL_EFI_BOOT_MEMORY_PROTOCOL_REVISION,
+      .get_partition_buffer = get_partition_buffer,
+      .sync_partition_buffer = sync_partition_buffer,
+      .get_boot_buffer = get_boot_buffer,
+  };
+  return &protocol;
+}

@@ -73,6 +73,7 @@ void __no_pauth bl1_main(void)
 #if ENABLE_RUNTIME_INSTRUMENTATION
 	PMF_CAPTURE_TIMESTAMP(bl_svc, BL1_ENTRY, PMF_CACHE_MAINT);
 #endif
+	INFO("SECULAR ATF up and running\n");
 
 	/* Announce our arrival */
 	NOTICE(FIRMWARE_WELCOME_STR);

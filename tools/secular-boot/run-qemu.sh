@@ -60,11 +60,20 @@ runner="${SECULAR_RUN_ZIRCON:-$root/zircon/scripts/run-zircon}"
 sdk="$(resolve_sdk_root)"
 [[ -n "$sdk" ]] || die "SECULAR_SDK is not set"
 # run-zircon looks up ATF qemu_fw.bios under PREBUILT_DIR/firmware/.
-export PREBUILT_DIR="$sdk/prebuilt"
+# Prefer the in-tree BIOS (ATF + LK BL33); fall back to the SDK copy.
+in_tree_prebuilt="$root/out/$out_name"
+in_tree_bios="$in_tree_prebuilt/firmware/arm-trusted-firmware-qemu-bios/qemu_fw.bios"
+if [[ -f "$in_tree_bios" ]]; then
+  export PREBUILT_DIR="$in_tree_prebuilt"
+else
+  export PREBUILT_DIR="$sdk/prebuilt"
+fi
 bios="$PREBUILT_DIR/firmware/arm-trusted-firmware-qemu-bios/qemu_fw.bios"
-[[ -f "$bios" ]] || die "missing ATF QEMU BIOS: $bios"
+[[ -f "$bios" ]] || die "missing ATF QEMU BIOS: $bios (run make atf)"
 
-secular_stage "launch QEMU (ARCH:$arch)"
+# -kernel = linux-arm64-boot-shim (Linux Image); -initrd = zircon.zbi (ramdisk).
+# ATF EL3 Trusty SPD starts S-EL1 BL32, then lkboot BL33 loads both from firmware.
+secular_stage "launch QEMU (ARCH:$arch, linux:$QEMU_KERNEL, ramdisk:$ZBI)"
 exec "$runner" \
   -a "$arch" \
   -t "$QEMU_KERNEL" \

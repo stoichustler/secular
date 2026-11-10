@@ -1,0 +1,244 @@
+/*
+ * Copyright (c) 2014-2016 Travis Geiselbrecht
+ *
+ * Use of this source code is governed by a MIT-style
+ * license that can be found in the LICENSE file or at
+ * https://opensource.org/licenses/MIT
+ */
+#include <arch.h>
+#include <arch/arm64.h>
+#include <arch/arm64/mmu.h>
+#include <arch/arm64/mp.h>
+#include <arch/atomic.h>
+#include <arch/mmu.h>
+#include <arch/mp.h>
+#include <arch/ops.h>
+#include <assert.h>
+#include <kernel/thread.h>
+#if WITH_KERNEL_VM
+#include <kernel/vm.h>
+#endif
+#include <lk/debug.h>
+#include <lk/err.h>
+#include <lk/init.h>
+#include <lk/main.h>
+#include <lk/trace.h>
+#include <platform.h>
+#include <stdlib.h>
+#include <target.h>
+
+#include "arm64_priv.h"
+
+#define LOCAL_TRACE 0
+
+#define ID_AA64DFR0_PMUVER_SHIFT  8
+#define ID_AA64DFR0_PMUVER_MASK   (0xfU << ID_AA64DFR0_PMUVER_SHIFT)
+#define ID_AA64DFR0_PMUVER_NONE   0
+#define ID_AA64DFR0_PMUVER_IMPDEF 0xf
+
+#define PMCR_EL0_E (1U << 0)
+#define PMCR_EL0_C (1U << 2)
+#define PMCR_EL0_D (1U << 3)
+
+#define PMCNTENSET_EL0_C (1UL << 31)
+
+/* Defined in start.S. */
+extern uint64_t arm64_boot_el;
+
+bool arm64_cycle_counter_enabled;
+
+static void arm64_enable_cycle_counter(void) {
+    uint64_t dfr0 = ARM64_READ_SYSREG(id_aa64dfr0_el1);
+    uint pmuver = (dfr0 & ID_AA64DFR0_PMUVER_MASK) >> ID_AA64DFR0_PMUVER_SHIFT;
+
+    if (pmuver == ID_AA64DFR0_PMUVER_NONE || pmuver == ID_AA64DFR0_PMUVER_IMPDEF) {
+        arm64_cycle_counter_enabled = false;
+        return;
+    }
+
+    uint64_t pmcr = ARM64_READ_SYSREG(pmcr_el0);
+    pmcr |= PMCR_EL0_E | PMCR_EL0_C;
+    pmcr &= ~PMCR_EL0_D;
+
+    ARM64_WRITE_SYSREG(pmcr_el0, pmcr);
+    ARM64_WRITE_SYSREG(pmcntenset_el0, PMCNTENSET_EL0_C);
+
+    arm64_cycle_counter_enabled = true;
+}
+
+// initial setup per cpu immediately after entering C code
+void arm64_early_init_percpu(void) {
+    // set the vector base
+    ARM64_WRITE_SYSREG(VBAR_EL1, (uint64_t)&arm64_exception_table);
+
+    // hard set up the SCTLR ignoring what was there before
+    uint64_t sctlr = 0;
+    sctlr |= (1 << 0);  // M: enable mmu
+    sctlr |= (1 << 2);  // C: enable data cache
+    sctlr |= (1 << 3);  // S: enable stack alignment check for EL1
+    sctlr |= (1 << 4);  // SA0: enable stack alignment check for EL0
+    sctlr |= (1 << 8);  // SED: disable access to SETEND instructions in EL0 (or RES1)
+    sctlr |= (1 << 11); // EOS: exceptions are context synchronizing (or RES1)
+    sctlr |= (1 << 12); // I: enable instruction cache
+    sctlr |= (1 << 14); // DZE: enable access to DC ZVA instruction in EL0
+    sctlr |= (1 << 15); // UCT: enable user access to CTR_EL0
+    sctlr |= (1 << 18); // nTWE: do not trap WFE instructions in EL0
+    sctlr |= (1 << 20); // TSCXT: trap access to SCXTNUM_EL0 in EL0 (or RES1)
+    sctlr |= (1 << 22); // EIS: exception entry is context synchronizing (or RES1)
+    sctlr |= (1 << 23); // SPAN: PSTATE.PAN is left alone on exception entry (or RES1)
+    sctlr |= (1 << 26); // UCI: allow EL0 access to cache maintenance instructions
+    sctlr |= (1 << 28); // nTLSMD: do not trap load/store multiple instructions to uncached memory in EL0 (or RES1)
+    sctlr |= (1 << 29); // LSMAOE: load/store multiple ordering according to armv8.0 (or RES1)
+    // all other bits are RES0 and we can ignore for now
+    ARM64_WRITE_SYSREG(SCTLR_EL1, sctlr);
+
+    ARM64_WRITE_SYSREG(CPACR_EL1, 0UL); // disable coprocessors
+
+    ARM64_WRITE_SYSREG(MDSCR_EL1, 0UL); // disable debug
+
+    // clear the tpidr registers
+    ARM64_WRITE_SYSREG(TPIDR_EL0, 0UL);
+    ARM64_WRITE_SYSREG(TPIDRRO_EL0, 0UL);
+
+    // TODO: read feature bits on cpu 0
+    arm64_enable_cycle_counter();
+
+    arch_enable_fiqs();
+}
+
+// called very early in the main boot sequence on the boot cpu
+void arch_early_init(void) {
+    arm64_early_init_percpu();
+
+    // allow the platform a chance to inject some mappings
+    platform_init_mmu_mappings();
+}
+
+// called after the kernel has been initialized and threading is enabled on the boot cpu
+void arch_init(void) {
+    arm64_mp_init();
+
+    dprintf(INFO, "ARM64: boot EL%llu, current EL%llu%s\n",
+            arm64_get_boot_el(), ARM64_READ_SYSREG(CURRENTEL) >> 2,
+            arm64_is_kernel_in_hyp_mode() ? " (EL2 VHE host)" : "");
+    dprintf(INFO, "ARM64: %s\n", (arm64_mmu_tcr_flags & MMU_TCR_AS)
+            ? "16 bit asids, one per user aspace"
+            : "8 bit asids, user aspaces share one and flush on switch");
+}
+
+uint64_t arm64_get_boot_el(void) {
+    return arm64_boot_el >> 2;
+}
+
+void arch_quiesce(void) {
+}
+
+void arch_idle(void) {
+    __asm__ volatile("wfi");
+}
+
+void lkbootloader(void *entry, ulong arg0, ulong arg1, ulong arg2, ulong arg3) {
+    LTRACEF("entry %p, args 0x%lx 0x%lx 0x%lx 0x%lx\n", entry, arg0, arg1, arg2, arg3);
+
+    paddr_t entry_pa;
+    paddr_t loader_pa;
+
+#if WITH_KERNEL_VM
+    entry_pa = vaddr_to_paddr(entry);
+    if (entry_pa == 0) {
+        panic("error translating entry physical address\n");
+    }
+    LTRACEF("entry pa 0x%lx\n", entry_pa);
+
+    loader_pa = vaddr_to_paddr((void *)(uintptr_t)arm64_chain_load);
+    if (loader_pa == 0) {
+        panic("error translating loader physical address\n");
+    }
+    LTRACEF("loader pa 0x%lx\n", loader_pa);
+
+    /* Identity-map two pages around the trampoline so we can run it after
+     * switching TTBR0, then disable the MMU. Kernel aspace is high-only. */
+    const paddr_t map_pa = ROUNDDOWN(loader_pa, PAGE_SIZE);
+    static arch_aspace_t loader_aspace;
+    if (arch_mmu_init_aspace(&loader_aspace, map_pa, 2 * PAGE_SIZE, 0) != NO_ERROR) {
+        panic("error creating the loader aspace\n");
+    }
+    const uint map_flags = ARCH_MMU_FLAG_PERM_READ | ARCH_MMU_FLAG_PERM_EXECUTE;
+    if (arch_mmu_map(&loader_aspace, map_pa, map_pa, 2, map_flags) != NO_ERROR) {
+        panic("error identity mapping the loader\n");
+    }
+#else
+    entry_pa = (paddr_t)entry;
+    loader_pa = (paddr_t)arm64_chain_load;
+#endif
+
+    arch_disable_ints();
+    target_quiesce();
+    platform_quiesce();
+
+#if WITH_KERNEL_VM
+    arch_mmu_context_switch(NULL, &loader_aspace);
+#endif
+
+    arm64_local_clean_invalidate_cache_all();
+    arch_quiesce();
+
+    void (*loader)(paddr_t, ulong, ulong, ulong, ulong) __NO_RETURN = (void *)loader_pa;
+    loader(entry_pa, arg0, arg1, arg2, arg3);
+    __UNREACHABLE;
+}
+
+#define ZERO_REG(n) "mov x" #n ", xzr;"
+
+/*
+ * Switch to user mode at entry_point with the user stack at user_stack_top.
+ * The kernel stack is left 16 bytes below its top, which is where exceptions
+ * from EL0 then land: exceptions.S reloads x18 from the word above that, so it
+ * holds this cpu's percpu pointer, and uses the word below it to spill the
+ * user's x18 on the short frames. Every return to EL0 rewrites the percpu word,
+ * as the thread may run on another cpu by then.
+ */
+void arch_enter_uspace(vaddr_t entry_point, vaddr_t user_stack_top) {
+    DEBUG_ASSERT(IS_ALIGNED(user_stack_top, 16));
+
+    thread_t *ct = get_current_thread();
+#if WITH_KERNEL_VM
+    DEBUG_ASSERT(ct->aspace);
+#endif
+
+    vaddr_t kernel_stack_top = (uintptr_t)ct->stack + ct->stack_size;
+    kernel_stack_top = ROUNDDOWN(kernel_stack_top, 16);
+
+    uint64_t *percpu_slot = (uint64_t *)(kernel_stack_top - 8);
+    *percpu_slot = (uint64_t)arm64_get_percpu();
+    vaddr_t kernel_sp = kernel_stack_top - 16;
+
+    /* set up a default spsr to get into 64bit user space:
+     * zeroed NZCV
+     * no SS, no IL, no D
+     * all interrupts enabled
+     * mode 0: EL0t
+     */
+    uint64_t spsr = 0;
+
+    arch_disable_ints();
+
+    asm volatile(
+        "mov    sp, %[kstack];"
+        "msr    sp_el0, %[ustack];"
+        "msr    elr_el1, %[entry];"
+        "msr    spsr_el1, %[spsr];"
+        /* nothing of the kernel's, the percpu pointer in x18 included, reaches user space */
+        ZERO_REG(0) ZERO_REG(1) ZERO_REG(2) ZERO_REG(3) ZERO_REG(4) ZERO_REG(5) ZERO_REG(6) ZERO_REG(7)
+        ZERO_REG(8) ZERO_REG(9) ZERO_REG(10) ZERO_REG(11) ZERO_REG(12) ZERO_REG(13) ZERO_REG(14) ZERO_REG(15)
+        ZERO_REG(16) ZERO_REG(17) ZERO_REG(18) ZERO_REG(19) ZERO_REG(20) ZERO_REG(21) ZERO_REG(22) ZERO_REG(23)
+        ZERO_REG(24) ZERO_REG(25) ZERO_REG(26) ZERO_REG(27) ZERO_REG(28) ZERO_REG(29) ZERO_REG(30)
+        "eret;"
+        :
+        : [ustack] "r"(user_stack_top),
+          [kstack] "r"(kernel_sp),
+          [entry] "r"(entry_point),
+          [spsr] "r"(spsr)
+        : "memory");
+    __UNREACHABLE;
+}

@@ -179,6 +179,7 @@
                 target_monikers: [
                     "/bootstrap",
                     "/bootstrap/boot-drivers:**",
+                    "/bootstrap/console-launcher",
                 ],
             },
             {

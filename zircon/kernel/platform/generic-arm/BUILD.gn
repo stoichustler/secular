@@ -9,6 +9,7 @@ source_set("generic-arm") {
     "dev-init.cc",
     "efi.cc",
     "platform.cc",
+    "trusty-probe.cc",
     "uart.cc",
   ]
 

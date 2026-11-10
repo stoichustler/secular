@@ -517,9 +517,11 @@ case $ARCH in
           ARGS+=("-machine" "accel=hvf")
           ARGS+=("-cpu" "host")
         else
-          # Ask for all of the features TCG emulates
+          # TCG: need FEAT_VHE so lkboot stays at EL2 (Secular VMM / physboot).
+          # Trusty SPD cannot enable NS SVE/SME (CTX_INCLUDE_FPREGS), so turn
+          # those off; plain `-cpu max` traps in vmzircon.
           ARGS+=("-machine" "virtualization=true")
-          ARGS+=("-cpu" "max")
+          ARGS+=("-cpu" "max,sve=off,sme=off")
 
           # We boot arm64 TCG through a secure bootloader (that speaks Linux's
           # boot protocol) when we can. This gives us a 'real' PSCI
