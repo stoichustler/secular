@@ -44,6 +44,7 @@ sha1_visibility = [
 
   "//userspace/connectivity/wlan/lib/rsn:*",
   "//userspace/microfuchsia/tee/runtime/api_impl:*",
+  "//userspace/secular/bin/tee/runtime/api_impl:*",
 ]
 
 once_cell_visibility = [

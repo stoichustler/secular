@@ -143,7 +143,7 @@ static int smc_service_handle_msg(const struct ktipc_port* port,
     response.msg.params[2] = ret.r2;
     response.msg.params[3] = ret.r3;
 
-    if ((int32_t)ret.r0 == SM_ERR_UNDEFINED_SMC) {
+    if ((uint32_t)ret.r0 == (uint32_t)SM_ERR_UNDEFINED_SMC) {
         TRACEF("%s: unknown or failed smcall: %x\n", __func__, smc_nr);
         response.rc = ERR_GENERIC;
     }

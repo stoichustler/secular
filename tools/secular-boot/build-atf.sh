@@ -64,16 +64,17 @@ make -C "$atf_src" \
   BUILD_BASE="$build_base" \
   CC="$clang_bin" \
   OC="$objcopy_bin" \
-  qemu_fw.bios \
+  secular.bios \
   2>&1 | tee "$out_dir/logs/atf.log"
 make_status=${PIPESTATUS[0]}
 if [[ "$make_status" -ne 0 ]]; then
   exit "$make_status"
 fi
 
-bios="$build_base/qemu/release/qemu_fw.bios"
-[[ -f "$bios" ]] || die "ATF did not produce qemu_fw.bios: $bios"
+bios="$build_base/qemu/release/secular.bios"
+[[ -f "$bios" ]] || die "ATF did not produce secular.bios: $bios"
 firmware_dir="$out_dir/firmware/arm-trusted-firmware-qemu-bios"
 mkdir -p "$firmware_dir"
-cp "$bios" "$firmware_dir/qemu_fw.bios"
-secular_stage "complete (ARCH:$arch, BIOS:$firmware_dir/qemu_fw.bios)"
+cp "$bios" "$firmware_dir/secular.bios"
+rm -f "$firmware_dir/qemu_fw.bios"
+secular_stage "complete (ARCH:$arch, BIOS:$firmware_dir/secular.bios)"

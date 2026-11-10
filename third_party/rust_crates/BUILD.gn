@@ -889,6 +889,7 @@ group("hkdf-0.12") {
   visibility = [
     ":*",
     "//userspace/microfuchsia/tee/runtime/api_impl:*",
+    "//userspace/secular/bin/tee/runtime/api_impl:*",
     "//vendor/*",
   ]
 }
@@ -899,6 +900,7 @@ group("hkdf-0.12.4") {
   visibility = [
     ":*",
     "//userspace/microfuchsia/tee/runtime/api_impl:*",
+    "//userspace/secular/bin/tee/runtime/api_impl:*",
     "//vendor/*",
   ]
 }
@@ -917,6 +919,7 @@ group("hmac-0.12") {
   visibility = [
     ":*",
     "//userspace/microfuchsia/tee/runtime/api_impl:*",
+    "//userspace/secular/bin/tee/runtime/api_impl:*",
   ]
 }
 
@@ -926,6 +929,7 @@ group("hmac-0.12.1") {
   visibility = [
     ":*",
     "//userspace/microfuchsia/tee/runtime/api_impl:*",
+    "//userspace/secular/bin/tee/runtime/api_impl:*",
   ]
 }
 
@@ -2220,6 +2224,7 @@ group("sha1-0.10") {
   visibility = [
     ":*",
     "//userspace/microfuchsia/tee/runtime/api_impl:*",
+    "//userspace/secular/bin/tee/runtime/api_impl:*",
   ]
 }
 
@@ -2229,6 +2234,7 @@ group("sha1-0.10.7") {
   visibility = [
     ":*",
     "//userspace/microfuchsia/tee/runtime/api_impl:*",
+    "//userspace/secular/bin/tee/runtime/api_impl:*",
   ]
 }
 
@@ -2250,6 +2256,7 @@ group("sha2-0.10") {
   visibility = [
     ":*",
     "//userspace/microfuchsia/tee/runtime/api_impl:*",
+    "//userspace/secular/bin/tee/runtime/api_impl:*",
     "//vendor/*",
   ]
 }
@@ -2260,6 +2267,7 @@ group("sha2-0.10.9") {
   visibility = [
     ":*",
     "//userspace/microfuchsia/tee/runtime/api_impl:*",
+    "//userspace/secular/bin/tee/runtime/api_impl:*",
     "//vendor/*",
   ]
 }

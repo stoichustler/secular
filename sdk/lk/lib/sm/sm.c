@@ -189,10 +189,10 @@ bool sm_check_and_lock_api_version(uint32_t version_wanted) {
     spin_lock_save(&sm_api_version_lock, &state, SPIN_LOCK_FLAG_IRQ_FIQ);
     if (sm_api_version < version_wanted) {
         sm_api_version_max = MIN(sm_api_version_max, version_wanted - 1);
-        TRACEF("max api version set: %d\n", sm_api_version_max);
+        LTRACEF("max api version set: %d\n", sm_api_version_max);
     } else {
         sm_api_version_min = MAX(sm_api_version_min, version_wanted);
-        TRACEF("min api version set: %d\n", sm_api_version_min);
+        LTRACEF("min api version set: %d\n", sm_api_version_min);
     }
     DEBUG_ASSERT(sm_api_version_min <= sm_api_version_max);
     DEBUG_ASSERT(sm_api_version >= sm_api_version_min);
@@ -696,7 +696,6 @@ static int __NO_RETURN sm_vm_notifier_loop(void* arg) {
         /* Create the new VM if a message came in */
         while (true) {
             int32_t vm_id;
-            struct sm_vm* vm;
             bool inserted;
 
             state = spin_lock_irqsave(&sm_vm_lock);
@@ -968,7 +967,8 @@ static void sm_sched_nonsecure_fiq_loop(long ret, struct smc32_args* args) {
             ret = SM_ERR_PANIC;
         }
         sm_sched_nonsecure(ret, args);
-        if (atomic_load(&platform_halted) && args->smc_nr != SMC_FC_FIQ_ENTER) {
+        if (atomic_load(&platform_halted) &&
+            args->smc_nr != (uint32_t)SMC_FC_FIQ_ENTER) {
             continue;
         }
         if (SMC_IS_SMC64(args->smc_nr)) {
@@ -1292,7 +1292,8 @@ void platform_halt(platform_halt_action suggested_action,
                 event_signal(&nsirqevent[cpu], false);
             }
         }
-        dprintf(ALWAYS, "%s\n", lk_version);
+        dprintf(ALWAYS, "%s %s %s %s %s\n", lk_version.arch, lk_version.platform,
+                lk_version.target, lk_version.project, lk_version.buildid);
         dprintf(ALWAYS, "HALT: (reason = %d)\n", reason);
     }
 

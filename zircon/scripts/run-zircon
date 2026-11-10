@@ -532,7 +532,7 @@ case $ARCH in
           # GICv3 and support FEAT_RNG (which we get from `-cpu max`).
           if [[ $GIC == 3 ]]; then
             ARGS+=("-machine" "secure=true")
-            ARGS+=("-bios" "$PREBUILT_DIR/firmware/arm-trusted-firmware-qemu-bios/qemu_fw.bios")
+            ARGS+=("-bios" "$PREBUILT_DIR/firmware/arm-trusted-firmware-qemu-bios/secular.bios")
           fi
         fi
         # Ask for a specific virt machine version.

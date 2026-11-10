@@ -56,6 +56,7 @@ endif
 
 # by default we want to enable virtio TIPC device
 WITH_TRUSTY_VIRTIO_IPC_DEV ?= true
+WITH_TRUSTY_QL_TIPC_DEV ?= false
 
 ifeq (true, $(call TOBOOL,$(WITH_TRUSTY_VIRTIO_IPC_DEV)))
 MODULE_SRCS += \
@@ -63,6 +64,16 @@ MODULE_SRCS += \
 	$(LOCAL_DIR)/smcall.c \
 	$(LOCAL_DIR)/trusty_virtio.c \
 	$(LOCAL_DIR)/tipc_virtio_dev.c \
+	$(LOCAL_DIR)/tipc_dev_ql.c
+
+MODULE_DEPS += \
+	lib/extmem \
+	lib/sm \
+
+else ifeq (true, $(call TOBOOL,$(WITH_TRUSTY_QL_TIPC_DEV)))
+# Queueless TIPC only: no virtio headers required.
+MODULE_SRCS += \
+	$(LOCAL_DIR)/smcall_ql.c \
 	$(LOCAL_DIR)/tipc_dev_ql.c
 
 MODULE_DEPS += \

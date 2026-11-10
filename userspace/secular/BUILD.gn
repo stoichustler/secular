@@ -15,7 +15,10 @@ group("boot_tests") {
   deps = [ "bin:boot_tests" ]
 }
 
-_bootfs_deps = [ ":bringup-config" ]
+_bootfs_deps = [
+  ":bringup-config",
+  ":tipc-conf",
+]
 
 # Identity file for the compact console image. Generated only when the
 # external Secular SDK is in use so clang/rustc/gn/ninja/qemu paths exist.
@@ -137,4 +140,9 @@ bootfs_files_for_assembly("bootfs") {
 resource("bringup-config") {
   sources = [ "config/bringup.profiles" ]
   outputs = "config/profiles/bringup.profiles"
+}
+
+resource("tipc-conf") {
+  sources = [ "config/tipc.conf" ]
+  outputs = [ "config/tipc.conf" ]
 }

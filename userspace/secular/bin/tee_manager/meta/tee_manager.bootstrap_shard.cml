@@ -1,0 +1,31 @@
+// Copyright 2026 The Fuchsia Authors. All rights reserved.
+// Use of this source code is governed by a BSD-style license that can be
+// found in the LICENSE file.
+
+{
+    children: [
+        {
+            name: "tee_manager",
+            url: "fuchsia-boot:///tee_manager#meta/tee_manager.cm",
+            startup: "eager",
+        },
+    ],
+    offer: [
+        {
+            protocol: "fuchsia.kernel.SmcResource",
+            from: "parent",
+            to: "#tee_manager",
+        },
+        {
+            dictionary: "diagnostics",
+            from: "self",
+            to: "#tee_manager",
+        },
+    ],
+    expose: [
+        {
+            protocol: "fuchsia.tee.DeviceInfo",
+            from: "#tee_manager",
+        },
+    ],
+}

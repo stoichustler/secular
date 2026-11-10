@@ -1,6 +1,5 @@
 #pragma once
 
-#include <interface/smc/smc_def.h>
 #include <stdint.h>
 
 #define SMC_SERVICE_PORT "com.android.trusty.kernel.smc"

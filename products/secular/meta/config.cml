@@ -23,6 +23,10 @@
                 type: "string",
                 max_size: 50,
             },
+            // Component selectors (monikers), not log tags. Archivist only
+            // copies matching syslog to serial. "bootstrap/tee_manager"
+            // enables tee_manager INFO on the QEMU console (Trusty UUID).
+            // value: [ "bootstrap/tee_manager" ],
             value: [],
         },
         {

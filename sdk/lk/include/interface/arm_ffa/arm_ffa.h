@@ -50,12 +50,6 @@ enum ffa_error {
 #define SMC_FC_FFA_MEM_FRAG_TX 0x8400007BU
 #define FFA_FEATURES2_MEM_RETRIEVE_REQ_NS_BIT (1U << 1)
 
-#define TRUSTY_FFA_MSG_RUN_FASTCALL 0x0U
-#define TRUSTY_FFA_MSG_QUEUE_STDCALL 0x1U
-#define TRUSTY_FFA_MSG_GET_STDCALL_RET 0x2U
-#define TRUSTY_FFA_MSG_RUN_NOPCALL 0x3U
-#define TRUSTY_FFA_MSG_IS_IDLE 0x4U
-
 struct ffa_cons_mrd {
     uint64_t address;
     uint32_t page_count;

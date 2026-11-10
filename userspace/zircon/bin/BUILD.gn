@@ -12,7 +12,6 @@ group("bootfs_binaries") {
     "ktrace:bootfs_binaries",
     "loadgen:bootfs_binaries",
     "pistress:bootfs_binaries",
-    "tee-probe:bootfs_binaries",
     "time:bootfs_binaries",
     "uname:bootfs_binaries",
   ]

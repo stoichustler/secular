@@ -390,8 +390,14 @@ int ktipc_server_start(struct ktipc_server* ksrv) {
         return ERR_NO_MEMORY;
     }
 
+    /*
+     * Must sit above the NS idle switcher (LOWEST_PRIORITY + 1). Otherwise
+     * sm_wait_for_smcall returns to NS before this server can accept or
+     * reply, and QL-TIPC CONNECT/GET_EVENT never observe READY/MSG.
+     * Same floor as trusty_app manifest priorities.
+     */
     ksrv->thread = thread_create(ksrv->name, ksrv_thread, ksrv,
-                                 LOWEST_PRIORITY, DEFAULT_STACK_SIZE);
+                                 DEFAULT_PRIORITY, DEFAULT_STACK_SIZE);
     if (!ksrv->thread) {
         TRACEF("failed to create %s thread\n", ksrv->name);
         handle_decref(ksrv->hset);

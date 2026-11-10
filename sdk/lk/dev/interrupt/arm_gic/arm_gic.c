@@ -457,6 +457,19 @@ enum handler_return platform_irq(struct iframe *frame) {
 
 void platform_fiq(struct iframe *frame);
 void platform_fiq(struct iframe *frame) {
+#if LK_TRUSTY_TEE
+    /*
+     * Group-1 NS IRQs arrive as FIQ in S-EL1. Trusty does not own them
+     * (ATF left the GIC to NS). Mask FIQ for the rest of this S-EL1
+     * entry so eret does not re-take it; NS handles the IRQ after we
+     * SMC back.
+     */
+    if (frame) {
+        frame->spsr |= (1UL << 6); /* SPSR_ELx.F */
+    }
+    arch_disable_fiqs();
+    return;
+#else
     if (arm_gics[0].gic_revision > 2) {
         arm_gicv3_platform_fiq(frame);
         return;
@@ -464,4 +477,5 @@ void platform_fiq(struct iframe *frame) {
         arm_gicv2_platform_fiq(frame);
         return;
     }
+#endif
 }

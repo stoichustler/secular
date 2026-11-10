@@ -1,0 +1,47 @@
+# Copyright 2024 The Fuchsia Authors
+# Use of this source code is governed by a BSD-style license that can be
+# found in the LICENSE file.
+
+import("//products/build/components/fuchsia_component.gni")
+import("//products/build/components/fuchsia_package.gni")
+import("//products/build/dist/resource.gni")
+
+# Creates a component and package containing configuration data for the TA
+# manager. Produces a package named "${target_name}" with a configuration
+# component named "${target_name}" that exposes a capability named "config" that
+# must be routed to the TA manager component.
+#
+# Parameters:
+#
+#    config_sources
+#    - Required: list of paths to config files
+template("ta_manager_config") {
+  base_name = target_name
+  if (defined(invoker.base_name)) {
+    base_name = invoker.base_name
+  }
+  config_component_target = "${target_name}_component"
+  config_component_name = base_name
+  config_package_target = "${target_name}"
+  config_package_name = base_name
+
+  fuchsia_component(config_component_target) {
+    component_name = config_component_name
+    manifest = "//userspace/secular/bin/tee/manager/meta/ta-manager-config.cml"
+  }
+
+  _package_deps = [ ":${config_component_target}" ]
+  if (invoker.config_sources != []) {
+    config_resource_target = "${target_name}_resource"
+    resource(config_resource_target) {
+      sources = invoker.config_sources
+      outputs = [ "data/config/{{source_file_part}}" ]
+    }
+    _package_deps += [ ":${config_resource_target}" ]
+  }
+
+  fuchsia_package(config_package_target) {
+    package_name = config_package_name
+    deps = _package_deps
+  }
+}

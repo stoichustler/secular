@@ -25,9 +25,6 @@
 
 #include <interface/smc/smc_def.h>
 
-#define SMC_NUM_ARGS 4
-#define SMC_NUM_PARAMS (SMC_NUM_ARGS - 1)
-
 /* FC = Fast call, SC = Standard call */
 #define SMC_SC_RESTART_LAST SMC_STDCALL_NR(SMC_ENTITY_SECURE_MONITOR, 0)
 #define SMC_SC_LOCKED_NOP SMC_STDCALL_NR(SMC_ENTITY_SECURE_MONITOR, 1)

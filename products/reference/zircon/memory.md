@@ -95,7 +95,7 @@ the addresses.
 
 ```text
  PA  (qemu-system-aarch64  virt,  -m 1024,  -s 8,  --gic=3)
- 0x00000000 ┬ flash / ATF     qemu_fw.bios          EL3 → EL2
+ 0x00000000 ┬ flash / ATF     secular.bios          EL3 → EL2
  0x08000000 ├ GICv3 GICD
  0x080A0000 ├ GICv3 GICR      × NCPU
  0x09000000 ├ PL011 UART

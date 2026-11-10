@@ -23,7 +23,7 @@ Build internals, module rules, and coding conventions are in
 QEMU (qemu-system-aarch64, virt, GICv3, secure=true, -cpu max)
   │
   ▼
-ATF  BL1 / BL2 / BL31          -bios qemu_fw.bios (SPD=trusty)
+ATF  BL1 / BL2 / BL31          -bios secular.bios (SPD=trusty)
   ├── LK BL32  app/trusty      secure DRAM 0x0e100000
   └── LK BL33  app/lkboot      lk.bin at 0x60000000
   │                            firmware kernel  = linux-arm64-boot-shim
@@ -74,7 +74,7 @@ From the Secular source root (preferred):
 ```sh
 export SECULAR_SDK=/absolute/path/to/secular-sdk   # default: ../secular-sdk
 make lkboot     # BL33 lkboot + BL32 trusty → out/secular-boot-arm64/lk/...
-make atf        # pack Trusty BL32 + lkboot BL33 → qemu_fw.bios
+make atf        # pack Trusty BL32 + lkboot BL33 → secular.bios
 make build      # console image + LK + ATF
 make run        # interactive QEMU serial console
 make kick       # boot existing image (no rebuild)
@@ -96,7 +96,7 @@ Outputs:
 | ---- | ------- |
 | `out/secular-boot-arm64/lk/build-qemu-virt-arm64-lkboot/lk.bin` | BL33 lkboot packed into the FIP |
 | `out/secular-boot-arm64/lk/build-qemu-virt-arm64-trusty/lk.bin` | BL32 Trusty TEE packed into the FIP |
-| `out/secular-boot-arm64/firmware/arm-trusted-firmware-qemu-bios/qemu_fw.bios` | ATF + Trusty + lkboot, used as QEMU `-bios` |
+| `out/secular-boot-arm64/firmware/arm-trusted-firmware-qemu-bios/secular.bios` | ATF + Trusty + lkboot, used as QEMU `-bios` |
 
 Do not run `scripts/fetch-toolchains.py` here. Do not add `prebuilt/`
 under this directory.
@@ -130,8 +130,8 @@ lk finished --> jump to linux kernel 64Bit
 physboot: Handing off at physical load address ...
 starting user space
 secular $
-tee-probe: spd uuid 40ee25f0-a2bc-304c-8c4c-a173c57d8af1
-tee-probe: s-el1 nop -> 0x54454521
+ktee: spd uuid 40ee25f0-a2bc-304c-8c4c-a173c57d8af1
+ktee: s-el1 nop -> 0x54454521
 TEE: alive
 ```
 

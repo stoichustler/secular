@@ -1,0 +1,98 @@
+# Copyright 2024 The Fuchsia Authors
+# Use of this source code is governed by a BSD-style license that can be
+# found in the LICENSE file.
+
+import("//products/build/components/fuchsia_component.gni")
+import("//products/build/components/fuchsia_package.gni")
+import("//products/build/components/fuchsia_test.gni")
+import("//products/build/components/fuchsia_test_package.gni")
+import("//products/build/components/fuchsia_unittest_component.gni")
+import("//products/build/rust/rustc_binary.gni")
+import("//userspace/secular/bin/tee/manager/ta_manager_config.gni")
+
+rustc_binary("manager") {
+  edition = "2024"
+  output_name = "ta_manager"
+  sources = [ "src/main.rs" ]
+  deps = [
+    "//sdk/fidl/fuchsia.component:fuchsia.component_rust",
+    "//sdk/fidl/fuchsia.component.decl:fuchsia.component.decl_rust",
+    "//sdk/fidl/fuchsia.io:fuchsia.io_rust",
+    "//sdk/fidl/fuchsia.tee:fuchsia.tee_rust",
+    "//userspace/lib/fidl/rust/fidl",
+    "//userspace/lib/fuchsia",
+    "//userspace/lib/fuchsia-async",
+    "//userspace/lib/fuchsia-component",
+    "//userspace/lib/fuchsia-fs",
+    "//userspace/secular/bin/tee/manager-config",
+    "//userspace/secular/bin/tee/tee_internal_api:tee_internal",
+    "//third_party/rust_crates:anyhow",
+    "//third_party/rust_crates:futures",
+    "//third_party/rust_crates:log",
+  ]
+
+  test_deps = [ "//userspace/secular/bin/tee/lib/tee_properties" ]
+
+  configs += [ "//products/build/config/rust/lints:deny_unused_results" ]
+
+  with_unit_tests = true
+}
+
+fuchsia_component("manager-component") {
+  manifest = "meta/ta-manager.cml"
+  component_name = "ta-manager"
+  deps = [ ":manager" ]
+}
+
+# TODO(https://fxbug.dev/376122561): Add support for assembling prod system props.
+resource("tee-system-properties") {
+  sources = [ "config/system_properties.json5" ]
+  outputs = [ "data/properties/system_properties" ]
+}
+
+fuchsia_package("ta-manager") {
+  deps = [
+    ":manager-component",
+    ":tee-system-properties",
+  ]
+}
+
+# Empty TA index: no GlobalPlatform TAs are provisioned yet.
+ta_manager_config("ta-manager-config") {
+  config_sources = []
+}
+
+resource("test-tee-system-properties") {
+  testonly = true
+  sources = [ "config/test_system_properties.json5" ]
+  outputs = [ "data/properties/system_properties" ]
+}
+
+fuchsia_package("ta-manager-realm-test") {
+  testonly = true
+  deps = [
+    ":manager-component",
+    ":test-tee-system-properties",
+  ]
+}
+
+fuchsia_unittest_component("manager-test-component") {
+  deps = [
+    ":manager_test",
+    ":test-tee-system-properties",
+  ]
+  component_name = "ta-manager-test"
+}
+
+fuchsia_test_package("ta-manager-tests-package") {
+  test_components = [ ":manager-test-component" ]
+  package_name = "ta-manager-tests"
+}
+
+group("tests") {
+  testonly = true
+  deps = [
+    ":ta-manager-tests-package",
+    "tests",
+  ]
+}

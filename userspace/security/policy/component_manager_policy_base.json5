@@ -79,6 +79,7 @@
                     "/bootstrap",
                     "/bootstrap/sysmem",
                     "/bootstrap/boot-drivers:**",
+                    "/bootstrap/console-launcher",
                 ],
             },
             {
@@ -180,6 +181,7 @@
                     "/bootstrap",
                     "/bootstrap/boot-drivers:**",
                     "/bootstrap/console-launcher",
+                    "/bootstrap/tee_manager",
                 ],
             },
             {

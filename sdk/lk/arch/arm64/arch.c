@@ -103,7 +103,14 @@ void arm64_early_init_percpu(void) {
     // TODO: read feature bits on cpu 0
     arm64_enable_cycle_counter();
 
+#if !LK_TRUSTY_TEE
+    /*
+     * Trusty S-EL1 must keep FIQs masked. GICv3 Group-1 NS IRQs are
+     * signalled as FIQ in the secure world; unmasking them here lets a
+     * pending Zircon timer/IPI hit the unimplemented platform_fiq path.
+     */
     arch_enable_fiqs();
+#endif
 }
 
 // called very early in the main boot sequence on the boot cpu

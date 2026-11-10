@@ -1,0 +1,26 @@
+// Copyright 2024 The Fuchsia Authors
+// Use of this source code is governed by a BSD-style license that can be
+// found in the LICENSE file.
+
+// Software TEE realm for Secular. Binder-proxy (Android host / vsock) is
+// omitted until virtio vsock is available.
+{
+    include: [ "//userspace/secular/bin/tee/manager/meta/ta-manager-realm.shard.cml" ],
+    children: [
+        {
+            name: "ta-manager",
+            url: "fuchsia-boot:///ta-manager#meta/ta-manager.cm",
+        },
+        {
+            name: "ta-manager-config",
+            url: "fuchsia-boot:///ta-manager-config#meta/ta-manager-config.cm",
+        },
+    ],
+    offer: [
+        {
+            dictionary: "diagnostics",
+            from: "parent",
+            to: [ "#ta-manager-config" ],
+        },
+    ],
+}

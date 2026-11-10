@@ -94,6 +94,7 @@
                 capability: "protocol",
                 target_monikers: [
                     "/bootstrap/boot-drivers:dev",
+                    "/bootstrap/console-launcher",
                     "/toolbox",
                     "/core/testing/system-tests:**",
                     "/core/test_manager/system-tests:**",
@@ -203,6 +204,7 @@
                 capability: "protocol",
                 target_monikers: [
                     "/bootstrap/boot-drivers:dev",
+                    "/bootstrap/tee_manager",
                     "/toolbox",
                     "/core/testing/system-tests:**",
                     "/core/test_manager/system-tests:**",

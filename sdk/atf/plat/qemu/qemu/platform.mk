@@ -240,18 +240,18 @@ $(eval $(call add_define,ARM_LINUX_KERNEL_AS_BL33))
 ARM_PRELOADED_DTB_BASE := PLAT_QEMU_DT_BASE
 $(eval $(call add_define,ARM_PRELOADED_DTB_BASE))
 
-qemu_fw.bios: bl1 fip
+secular.bios: bl1 fip
 	$(s)echo "  DD      $@"
 	$(q)cp ${BUILD_PLAT}/bl1.bin ${BUILD_PLAT}/$@
 	$(q)dd if=${BUILD_PLAT}/fip.bin of=${BUILD_PLAT}/$@ bs=64k seek=4 status=none
 
-qemu_fw.rom: qemu_fw.bios
+qemu_fw.rom: secular.bios
 	$(s)echo "  DD      $@"
 	$(q)cp ${BUILD_PLAT}/$^ ${BUILD_PLAT}/$@
 	$(q)dd if=/dev/zero of=${BUILD_PLAT}/$@ bs=1M seek=64 count=0 status=none
 
 ifneq (${BL33},)
-all: qemu_fw.bios qemu_fw.rom
+all: secular.bios qemu_fw.rom
 endif
 
 ifeq (${EL3_EXCEPTION_HANDLING},1)

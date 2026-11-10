@@ -70,6 +70,7 @@ static inline bool arm_ffa_is_init(void) {
 status_t arm_ffa_mem_relinquish(uint64_t handle);
 
 struct arm_ffa_cons_mrd;
+struct ffa_part_info_desc;
 
 /**
  * struct arm_ffa_mem_frag_info - A fragment of an FF-A shared memory object.

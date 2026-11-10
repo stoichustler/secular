@@ -49,15 +49,6 @@
 #ifndef PRIxVADDR
 #define PRIxVADDR "lx"
 #endif
-#ifndef PRIxPTR_USER
-#define PRIxPTR_USER "lx"
-#endif
-#ifndef PRIxSIZE_USER
-#define PRIxSIZE_USER "zx"
-#endif
-#ifndef PRIuSIZE_USER
-#define PRIuSIZE_USER "zu"
-#endif
 
 #ifndef ENTER_USPACE_FLAGS
 #define ENTER_USPACE_FLAGS 0

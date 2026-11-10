@@ -9,13 +9,20 @@
 
 #include <stdio.h>
 
+/* Clang C prints __PRETTY_FUNCTION__ as "_Bool foo(uint32_t)"; use __func__. */
+#if defined(__cplusplus)
+#define TRACE_FN __PRETTY_FUNCTION__
+#else
+#define TRACE_FN __func__
+#endif
+
 /* trace routines */
-#define TRACE_ENTRY printf("%s: entry\n", __PRETTY_FUNCTION__)
-#define TRACE_EXIT printf("%s: exit\n", __PRETTY_FUNCTION__)
-#define TRACE_ENTRY_OBJ printf("%s: entry obj %p\n", __PRETTY_FUNCTION__, this)
-#define TRACE_EXIT_OBJ printf("%s: exit obj %p\n", __PRETTY_FUNCTION__, this)
-#define TRACE printf("%s:%d\n", __PRETTY_FUNCTION__, __LINE__)
-#define TRACEF(str, x...) do { printf("%s:%d: " str, __PRETTY_FUNCTION__, __LINE__, ## x); } while (0)
+#define TRACE_ENTRY printf("%s: entry\n", TRACE_FN)
+#define TRACE_EXIT printf("%s: exit\n", TRACE_FN)
+#define TRACE_ENTRY_OBJ printf("%s: entry obj %p\n", TRACE_FN, this)
+#define TRACE_EXIT_OBJ printf("%s: exit obj %p\n", TRACE_FN, this)
+#define TRACE printf("%s:%d\n", TRACE_FN, __LINE__)
+#define TRACEF(str, x...) do { printf("%s:%d: " str, TRACE_FN, __LINE__, ## x); } while (0)
 
 /* trace routines that work if LOCAL_TRACE is set */
 #define LTRACE_ENTRY do { if (LOCAL_TRACE) { TRACE_ENTRY; } } while (0)

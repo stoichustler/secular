@@ -59,16 +59,16 @@ runner="${SECULAR_RUN_ZIRCON:-$root/zircon/scripts/run-zircon}"
 
 sdk="$(resolve_sdk_root)"
 [[ -n "$sdk" ]] || die "SECULAR_SDK is not set"
-# run-zircon looks up ATF qemu_fw.bios under PREBUILT_DIR/firmware/.
+# run-zircon looks up ATF secular.bios under PREBUILT_DIR/firmware/.
 # Prefer the in-tree BIOS (ATF + LK BL33); fall back to the SDK copy.
 in_tree_prebuilt="$root/out/$out_name"
-in_tree_bios="$in_tree_prebuilt/firmware/arm-trusted-firmware-qemu-bios/qemu_fw.bios"
+in_tree_bios="$in_tree_prebuilt/firmware/arm-trusted-firmware-qemu-bios/secular.bios"
 if [[ -f "$in_tree_bios" ]]; then
   export PREBUILT_DIR="$in_tree_prebuilt"
 else
   export PREBUILT_DIR="$sdk/prebuilt"
 fi
-bios="$PREBUILT_DIR/firmware/arm-trusted-firmware-qemu-bios/qemu_fw.bios"
+bios="$PREBUILT_DIR/firmware/arm-trusted-firmware-qemu-bios/secular.bios"
 [[ -f "$bios" ]] || die "missing ATF QEMU BIOS: $bios (run make atf)"
 
 # -kernel = linux-arm64-boot-shim (Linux Image); -initrd = zircon.zbi (ramdisk).

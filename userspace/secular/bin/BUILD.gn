@@ -17,8 +17,12 @@ group("tests") {
     "iokit:kdmips_test",
     "iokit:runman_test",
     "iokit:tree_test",
+    "ktee:ktee_test",
     "kernel-args-forwarder:tests",
     "ptysvc:tests",
+    "tee:tests",
+    "tipc:tipc_test",
+    "tee_manager:tests",
     "userboot:tests",
   ]
 }

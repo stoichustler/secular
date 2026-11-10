@@ -49,6 +49,7 @@ measure_tape("rust_measure_tape_for_case") {
     ":*",
     "//userspace/diagnostics/tests/inspect-system:*",
     "//userspace/microfuchsia/tee/testing/enumeration_test_adapter:*",
+    "//userspace/secular/bin/tee/testing/enumeration_test_adapter:*",
     "//userspace/sys/test_runners/*",
   ]
 }

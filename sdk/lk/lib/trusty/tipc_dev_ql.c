@@ -27,6 +27,7 @@
 #include <compiler.h>
 #include <err.h>
 #include <inttypes.h>
+#include <kernel/event.h>
 #include <kernel/mutex.h>
 #include <kernel/vm.h>
 #include <lib/sm/sm_err.h>
@@ -392,6 +393,27 @@ static int dev_connect(struct ql_tipc_dev* dev,
     }
     ept_lookup(dev, local)->ref = ref;
 
+    /*
+     * CONNECT only queues the client. The ktipc server must accept before
+     * SEND works. Block so that thread can run (CPU0 would otherwise sit
+     * in the NS SMC wait loop). handle_wait consumes the one-shot READY
+     * bit; NS must not wait for READY again after this returns.
+     */
+    {
+        uint32_t event = 0;
+        rc = handle_wait(chan, &event, 5000);
+        if (rc < 0 || !(event & IPC_HANDLE_POLL_READY)) {
+            TRACEF("connect not accepted (%d, event 0x%x)\n", rc, event);
+            if (rc >= 0)
+                rc = ERR_NOT_READY;
+            handle_set_detach_ref(ref);
+            handle_decref(chan);
+            free(ref);
+            ept_lookup(dev, local)->ref = NULL;
+            goto err_alloc_ref;
+        }
+    }
+
     ns_hdr->handle = local;
 
     return set_status(dev, opcode, 0, 0);
@@ -520,6 +542,15 @@ static long dev_get_event(struct ql_tipc_dev* dev,
     if (ns_sz < sizeof(req) || ns_sz > dev->ns_sz)
         return set_status(dev, opcode, ERR_INVALID_ARGS, 0);
 
+    memcpy(&req, ns_data, sizeof(req));
+    lk_time_t timeout = 0;
+    if (req.reserved == UINT64_MAX) {
+        timeout = INFINITE_TIME;
+    } else if (req.reserved > 0) {
+        timeout = (req.reserved > INFINITE_TIME) ? INFINITE_TIME
+                                                 : (lk_time_t)req.reserved;
+    }
+
     if (target) {
         /* wait on specific handle */
         ept = ept_lookup(dev, target);
@@ -527,7 +558,7 @@ static long dev_get_event(struct ql_tipc_dev* dev,
             return set_status(dev, opcode, ERR_INVALID_ARGS, 0);
 
         chan = ept->chan;
-        rc = handle_wait(chan, &chan_event, 0);
+        rc = handle_wait(chan, &chan_event, timeout);
         if (rc == ERR_TIMED_OUT) {
             /* no events return an empty event */
             evt->handle = 0;
@@ -546,8 +577,7 @@ static long dev_get_event(struct ql_tipc_dev* dev,
         }
     } else {
         struct handle_ref hsevt;
-        /* wait for event with 0-timeout */
-        rc = handle_set_wait(dev->handle_set, &hsevt, 0);
+        rc = handle_set_wait(dev->handle_set, &hsevt, timeout);
         if (rc == ERR_NOT_FOUND) {
             /* no handles left */
             return set_status(dev, opcode, rc, 0);

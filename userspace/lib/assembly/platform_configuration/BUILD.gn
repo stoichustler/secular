@@ -86,7 +86,7 @@ rustc_library("platform_configuration") {
     "//userspace/lib/assembly/util",
     "//userspace/lib/fidl/rust/fidl",
     "//userspace/lib/fuchsia-url",
-    "//userspace/microfuchsia/tee/manager-config",
+    "//userspace/secular/bin/tee/manager-config",
     "//userspace/starnix/lib/features:starnix_features",
     "//userspace/sys/lib/cm_config",
     "//userspace/sys/lib/cm_types",

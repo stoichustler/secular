@@ -1,0 +1,68 @@
+# Copyright 2026 The Fuchsia Authors. All rights reserved.
+# Use of this source code is governed by a BSD-style license that can be
+# found in the LICENSE file.
+
+import("//products/build/components.gni")
+import("//products/build/rust/rustc_binary.gni")
+
+rustc_binary("bin") {
+  output_name = "tee_manager"
+  edition = "2024"
+  with_unit_tests = true
+
+  configs += [ "//products/build/config/rust:bootfs" ]
+  configs += [ "//products/build/config/rust/lints:clippy_warn_all" ]
+
+  deps = [
+    "//sdk/fidl/fuchsia.hardware.tee:fuchsia.hardware.tee_rust",
+    "//sdk/fidl/fuchsia.kernel:fuchsia.kernel_rust",
+    "//sdk/fidl/fuchsia.tee:fuchsia.tee_rust",
+    "//sdk/fidl/fuchsia.tee.manager:fuchsia.tee.manager_rust",
+    "//sdk/rust/zx",
+    "//userspace/lib/fidl/rust/fidl",
+    "//userspace/lib/fuchsia",
+    "//userspace/lib/fuchsia-async",
+    "//userspace/lib/fuchsia-component",
+    "//userspace/lib/fuchsia-fs",
+    "//third_party/rust_crates:anyhow",
+    "//third_party/rust_crates:futures",
+    "//third_party/rust_crates:log",
+    "//third_party/rust_crates:serde",
+    "//third_party/rust_crates:serde_derive",
+    "//third_party/rust_crates:serde_json",
+    "//third_party/rust_crates:uuid",
+  ]
+
+  test_deps = [
+    "//sdk/fidl/fuchsia.io:fuchsia.io_rust",
+    "//sdk/rust/zx-status",
+  ]
+
+  sources = [
+    "src/config.rs",
+    "src/device_server.rs",
+    "src/main.rs",
+    "src/provider_server.rs",
+    "src/trusty_device.rs",
+  ]
+}
+
+fuchsia_component("component") {
+  component_name = "tee_manager"
+  manifest = "meta/tee_manager.cml"
+  deps = [ ":bin" ]
+}
+
+fuchsia_package("package") {
+  package_name = "tee_manager"
+  deps = [ ":component" ]
+}
+
+fuchsia_unittest_package("tee-manager-tests") {
+  deps = [ ":bin_test" ]
+}
+
+group("tests") {
+  testonly = true
+  deps = [ ":tee-manager-tests" ]
+}

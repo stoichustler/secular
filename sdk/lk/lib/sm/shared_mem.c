@@ -339,9 +339,13 @@ status_t ext_mem_get_vmm_obj(ext_mem_client_id_t client_id,
  *
  */
 static void shared_mem_init(uint level) {
-    /* Check the FF-A module initialized successfully */
+    /*
+     * ATF SPD=trusty is not an FF-A SPMC, so arm_ffa stays failed.
+     * Cap the SM API below TRUSTY_API_VERSION_MEM_OBJ (5) and keep
+     * the legacy yielding-SMC path.
+     */
     if (!arm_ffa_is_init()) {
-        TRACEF("arm_ffa module is not initialized\n");
+        LTRACEF("arm_ffa not initialized; using legacy SM shared memory\n");
         if (sm_check_and_lock_api_version(TRUSTY_API_VERSION_MEM_OBJ)) {
             panic("shared_mem_init failed after mem_obj version selected\n");
         }

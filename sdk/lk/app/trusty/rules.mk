@@ -39,6 +39,7 @@ MODULE_DEPS += \
 	lib/trusty \
 	lib/ktipc \
 	services/smc \
+	services/ns_echo \
 
 include $(LOCAL_DIR)/arch/$(ARCH)/rules.mk
 

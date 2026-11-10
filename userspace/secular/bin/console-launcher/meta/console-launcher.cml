@@ -173,6 +173,7 @@
                 "fuchsia.hardware.power.statecontrol.Admin",
                 "fuchsia.kernel.DebugResource",
                 "fuchsia.kernel.InfoResource",
+                "fuchsia.kernel.IommuResource",
                 "fuchsia.kernel.ProfileResource",
                 "fuchsia.kernel.RootJobForInspect",
                 "fuchsia.kernel.SmcResource",

@@ -23,7 +23,7 @@ This note stops at the first `zxsh` prompt.
 
 ```text
  QEMU virt
-   ATF  qemu_fw.bios          EL3 → EL2 (Linux boot protocol)
+   ATF  secular.bios          EL3 → EL2 (Linux boot protocol)
    Image  linux-arm64-boot-shim.bin     x0 = DTB
    initrd secular.zbi                   kernel + BOOTFS
               │
@@ -72,7 +72,7 @@ changes here.
 
 ```text
  qemu-system-aarch64
-   -bios qemu_fw.bios
+   -bios secular.bios
    -kernel linux-arm64-boot-shim.bin
    -initrd secular.zbi
          │
@@ -128,7 +128,7 @@ changes here.
 `make run` ([`tools/secular-boot/run-qemu.sh`](../../../tools/secular-boot/run-qemu.sh)) execs `run-zircon` with:
 
 ```text
--bios  $SECULAR_SDK/prebuilt/firmware/arm-trusted-firmware-qemu-bios/qemu_fw.bios
+-bios  $SECULAR_SDK/prebuilt/firmware/arm-trusted-firmware-qemu-bios/secular.bios
 -kernel linux-arm64-boot-shim.bin
 -initrd secular.zbi
 -m 1024  -s 8  --gic=3

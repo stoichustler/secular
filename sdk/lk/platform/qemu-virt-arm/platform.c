@@ -134,6 +134,8 @@ void platform_postvm_init(uint level) {
     /*
      * Leave the GIC to ATF. Re-initializing the distributor from S-EL1
      * would drop Group0 / Group1S configuration the SPD relies on.
+     * Group-1 NS IRQs are FIQs here; S-EL1 keeps DAIF.F set so they
+     * stay pending until we return to NS.
      */
     (void)level;
 #else

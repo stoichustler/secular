@@ -66,6 +66,7 @@
             protocol: [
                 "fuchsia.kernel.DebugResource",
                 "fuchsia.kernel.InfoResource",
+                "fuchsia.kernel.IommuResource",
                 "fuchsia.kernel.ProfileResource",
                 "fuchsia.kernel.SmcResource",
                 "fuchsia.kernel.TracingResource",
