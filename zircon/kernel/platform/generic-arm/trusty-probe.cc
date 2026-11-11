@@ -45,7 +45,7 @@ int ProbeTrusty(int argc, const cmd_args* argv, uint32_t flags) {
 
   const arm_smccc_result_t nop = arm_smccc_smc(kSmcYcNop, 0, 0, 0, 0, 0, 0, 0);
   if (nop.x0 != kTrustySel1Alive && nop.x0 != kTrustySel1AliveLegacy) {
-    printf("TEE: dead (s-el1) nop=0x%" PRIx64 "\n", nop.x0);
+    printf("TEE: dead (S-EL1) nop=0x%" PRIx64 "\n", nop.x0);
     return -1;
   }
 

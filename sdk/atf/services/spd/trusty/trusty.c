@@ -344,7 +344,7 @@ static int32_t trusty_init(void)
 	 * end of exception vectors
 	 */
 	if ((cpu != 0U) && (reg_width == MODE_RW_32)) {
-		INFO("trusty: cpu %d, adjust entry point to 0x%lx\n",
+		INFO("TEE: cpu %d, adjust entry point to 0x%lx\n",
 		     cpu, ep_info->pc + (1U << 5));
 		cm_set_elr_el3(SECURE, ep_info->pc + (1U << 5));
 	}
@@ -467,7 +467,7 @@ static int32_t trusty_setup(void)
 			MT_SECURE | MT_RW_DATA); /* attrs */
 	/* Overlap (-EPERM) is fine: QEMU already maps BL32 as secure DRAM. */
 	if ((ret != 0) && (ret != -EPERM)) {
-		ERROR("trusty: failed to map BL32 header, ret = %d\n", ret);
+		ERROR("TEE: failed to map BL32 header, ret = %d\n", ret);
 		return -1;
 	}
 
@@ -475,12 +475,12 @@ static int32_t trusty_setup(void)
 	instr = *(uint32_t *)ep_info->pc;
 
 	if (instr >> 24 == 0xeaU) {
-		INFO("trusty: Found 32 bit image\n");
+		INFO("TEE: Found 32 bit image\n");
 		aarch32 = true;
 	} else if (instr >> 8 == 0xd53810U || instr >> 16 == 0x9400U) {
-		INFO("trusty: Found 64 bit S-EL1 image\n");
+		INFO("TEE: Found 64 bit S-EL1 image\n");
 	} else {
-		ERROR("trusty: Found unknown image, 0x%x\n", instr);
+		ERROR("TEE: Found unknown image, 0x%x\n", instr);
 		return -1;
 	}
 
@@ -500,7 +500,7 @@ static int32_t trusty_setup(void)
 	(void)memset(&ep_info->args, 0, sizeof(ep_info->args));
 	plat_trusty_set_boot_args(&ep_info->args);
 
-	INFO("trusty: EL3 SPD ready, S-EL1 BL32 entry 0x%lx\n",
+	INFO("TEE: EL3 SPD ready, S-EL1 BL32 entry 0x%lx\n",
 	     (unsigned long)ep_info->pc);
 
 	/* EL3 dispatcher first; BL32 S-EL1 is started from trusty_init(). */
@@ -522,7 +522,7 @@ static int32_t trusty_setup(void)
 
 		ns_ep_info = bl31_plat_get_next_image_ep_info(NON_SECURE);
 		if (ns_ep_info == NULL) {
-			NOTICE("Trusty: non-secure image missing.\n");
+			NOTICE("TEE: non-secure image missing.\n");
 			return -1;
 		}
 		spsr = ns_ep_info->spsr;
@@ -535,7 +535,7 @@ static int32_t trusty_setup(void)
 			spsr |= MODE32_svc << MODE32_SHIFT;
 		}
 		if (spsr != ns_ep_info->spsr) {
-			NOTICE("Trusty: Switch bl33 from EL2 to EL1 (spsr 0x%x -> 0x%x)\n",
+			NOTICE("TEE: Switch bl33 from EL2 to EL1 (spsr 0x%x -> 0x%x)\n",
 			       ns_ep_info->spsr, spsr);
 			ns_ep_info->spsr = spsr;
 		}

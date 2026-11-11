@@ -25,13 +25,13 @@
 #include <smccc_helpers.h>
 
 typedef struct work_statistics {
-	/* Number of s-el1 interrupts on this cpu */
+	/* Number of S-EL1 interrupts on this cpu */
 	uint32_t sel1_intr_count;
-	/* Number of non s-el1 interrupts on this cpu which preempted TSP */
+	/* Number of non S-EL1 interrupts on this cpu which preempted TSP */
 	uint32_t preempt_intr_count;
-	/* Number of sync s-el1 interrupts on this cpu */
+	/* Number of sync S-EL1 interrupts on this cpu */
 	uint32_t sync_sel1_intr_count;
-	/* Number of s-el1 interrupts returns on this cpu */
+	/* Number of S-EL1 interrupts returns on this cpu */
 	uint32_t sync_sel1_intr_ret_count;
 	uint32_t smc_count;		/* Number of returns on this cpu */
 	uint32_t eret_count;		/* Number of entries on this cpu */

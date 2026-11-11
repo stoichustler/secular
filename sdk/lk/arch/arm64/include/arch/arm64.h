@@ -51,6 +51,44 @@ void arm64_chain_load(paddr_t entry, ulong arg0, ulong arg1, ulong arg2, ulong a
 
 uint64_t arm64_get_boot_el(void);
 
+/* Enough for "S-EL1" plus NUL. */
+#define ARM64_EL_NAME_BUF 8
+
+/*
+ * Current Exception level from CurrentEL[3:2] (1, 2, or 3).
+ * This register does not encode Secure vs Non-secure.
+ */
+static inline unsigned arm64_current_el(void) {
+    return (unsigned)(ARM64_READ_SYSREG(CURRENTEL) >> 2);
+}
+
+/*
+ * Secure state of this image (SCR_EL3.NS == 0).
+ *
+ * Only EL3 can read SCR_EL3. EL1/EL2 must follow the boot contract:
+ *   Trusty BL32 (LK_TRUSTY_TEE): ATF entered with NS=0 -> Secure
+ *   NS payloads (lkboot / standalone): NS=1, or no EL3 -> Non-secure
+ */
+static inline bool arm64_in_secure_state(void) {
+#if defined(LK_TRUSTY_TEE) && LK_TRUSTY_TEE
+    return true;
+#else
+    return false;
+#endif
+}
+
+/*
+ * ARM naming: Secure EL0/EL1/EL2 are "S-ELn"; Non-secure and EL3 are "ELn".
+ * EL3 is the monitor, never "S-EL3".
+ */
+static inline bool arm64_el_has_secure_prefix(unsigned el, bool secure) {
+    return secure && (el < 3U);
+}
+
+/* Write "S-EL1" / "EL2" / "EL3" into buf. Returns buf (or "" if buf is unusable). */
+const char *arm64_format_el(char *buf, size_t len, unsigned el, bool secure);
+const char *arm64_current_el_name(char *buf, size_t len);
+
 /* exception handling */
 struct arm64_iframe_long {
     uint64_t r[30];

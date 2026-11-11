@@ -226,8 +226,8 @@ returned `'TEE!'` `0x54454521`).
 
 ```text
 TEE: spd uuid 40ee25f0-a2bc-304c-8c4c-a173c57d8af1
-TEE: s-el1 nop cpu 0 -> 0x0
-TEE: s-el1 nop cpu 1 -> 0x0
+TEE: S-EL1 nop cpu 0 -> 0x0
+TEE: S-EL1 nop cpu 1 -> 0x0
 …
 TEE: alive (8 cpus)
 ```

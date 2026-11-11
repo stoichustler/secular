@@ -448,7 +448,7 @@ impl Graph {
             let mut cur = cpu.parent();
             while let Some(node) = cur {
                 kprint::kprint!(
-                    " -> {:s} (id {:u}) ",
+                    " ➞ {:s} (id {:u}) ",
                     zbi_topology_type_to_string(&node.entity),
                     node_to_id(node)
                 );

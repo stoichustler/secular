@@ -28,7 +28,7 @@
 
 static void trusty_init(uint level) {
     printf("initializing trusty (%s)\n", lk_version.buildid);
-    printf("TEE: s-el1 services started\n");
+    printf("TEE: S-EL1 services started\n");
 
     trusty_app_init();
 }

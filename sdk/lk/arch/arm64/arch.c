@@ -24,6 +24,7 @@
 #include <lk/main.h>
 #include <lk/trace.h>
 #include <platform.h>
+#include <stdio.h>
 #include <stdlib.h>
 #include <target.h>
 
@@ -123,10 +124,16 @@ void arch_early_init(void) {
 
 // called after the kernel has been initialized and threading is enabled on the boot cpu
 void arch_init(void) {
+    char boot_el[ARM64_EL_NAME_BUF];
+    char cur_el[ARM64_EL_NAME_BUF];
+
     arm64_mp_init();
 
-    dprintf(INFO, "ARM64: boot EL%llu, current EL%llu%s\n",
-            arm64_get_boot_el(), ARM64_READ_SYSREG(CURRENTEL) >> 2,
+    dprintf(INFO, "ARM64: boot %s, current %s%s\n",
+            arm64_format_el(boot_el, sizeof(boot_el),
+                            (unsigned)arm64_get_boot_el(),
+                            arm64_in_secure_state()),
+            arm64_current_el_name(cur_el, sizeof(cur_el)),
             arm64_is_kernel_in_hyp_mode() ? " (EL2 VHE host)" : "");
     dprintf(INFO, "ARM64: %s\n", (arm64_mmu_tcr_flags & MMU_TCR_AS)
             ? "16 bit asids, one per user aspace"
@@ -135,6 +142,21 @@ void arch_init(void) {
 
 uint64_t arm64_get_boot_el(void) {
     return arm64_boot_el >> 2;
+}
+
+const char *arm64_format_el(char *buf, size_t len, unsigned el, bool secure) {
+    if (buf == NULL || len == 0) {
+        return "";
+    }
+    snprintf(buf, len, "%sEL%u",
+             arm64_el_has_secure_prefix(el, secure) ? "S-" : "",
+             el);
+    buf[len - 1] = '\0';
+    return buf;
+}
+
+const char *arm64_current_el_name(char *buf, size_t len) {
+    return arm64_format_el(buf, len, arm64_current_el(), arm64_in_secure_state());
 }
 
 void arch_quiesce(void) {

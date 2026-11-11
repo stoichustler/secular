@@ -35,10 +35,10 @@ void tsp_update_sync_sel1_intr_stats(uint32_t type, uint64_t elr_el3)
 	if (type == TSP_HANDLE_SEL1_INTR_AND_RETURN)
 		tsp_stats[linear_id].sync_sel1_intr_ret_count++;
 
-	VERBOSE("TSP: cpu 0x%lx sync s-el1 interrupt request from 0x%" PRIx64 "\n",
+	VERBOSE("TSP: cpu 0x%lx sync S-EL1 interrupt request from 0x%" PRIx64 "\n",
 		read_mpidr(), elr_el3);
-	VERBOSE("TSP: cpu 0x%lx: %u sync s-el1 interrupt requests,"
-		" %u sync s-el1 interrupt returns\n",
+	VERBOSE("TSP: cpu 0x%lx: %u sync S-EL1 interrupt requests,"
+		" %u sync S-EL1 interrupt returns\n",
 		read_mpidr(),
 		tsp_stats[linear_id].sync_sel1_intr_count,
 		tsp_stats[linear_id].sync_sel1_intr_ret_count);

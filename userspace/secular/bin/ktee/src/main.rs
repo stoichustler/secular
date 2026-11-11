@@ -31,14 +31,28 @@ fn format_smccc_uuid(w0: u32, w1: u32, w2: u32, w3: u32) -> String {
     ];
     format!(
         "{:02x}{:02x}{:02x}{:02x}-{:02x}{:02x}-{:02x}{:02x}-{:02x}{:02x}-{:02x}{:02x}{:02x}{:02x}{:02x}{:02x}",
-        b[0], b[1], b[2], b[3], b[4], b[5], b[6], b[7], b[8], b[9], b[10], b[11], b[12], b[13],
-        b[14], b[15]
+        b[0],
+        b[1],
+        b[2],
+        b[3],
+        b[4],
+        b[5],
+        b[6],
+        b[7],
+        b[8],
+        b[9],
+        b[10],
+        b[11],
+        b[12],
+        b[13],
+        b[14],
+        b[15]
     )
 }
 
 #[cfg(target_os = "fuchsia")]
 mod fuchsia_probe {
-    use super::{format_smccc_uuid, TRUSTY_UUID_WORDS};
+    use super::{TRUSTY_UUID_WORDS, format_smccc_uuid};
     use anyhow::{Context as _, Error, format_err};
     use fidl_fuchsia_kernel as fkernel;
     use fuchsia_component::client::connect_to_protocol;
@@ -150,7 +164,7 @@ mod fuchsia_probe {
                     return Err(format_err!("NOP cpu {cpu}: {status}"));
                 }
             };
-            println!("TEE: s-el1 nop cpu {cpu} -> 0x{:x}", nop_res.arg0);
+            println!("TEE: S-EL1 nop cpu {cpu} -> 0x{:x}", nop_res.arg0);
             if nop_res.arg0 != TRUSTY_SEL1_ALIVE && nop_res.arg0 != TRUSTY_SEL1_ALIVE_LEGACY {
                 println!("TEE: dead (S-EL1 cpu {cpu})");
                 return Err(format_err!("NOP cpu {cpu} returned 0x{:x}", nop_res.arg0));
@@ -165,8 +179,9 @@ mod fuchsia_probe {
 
 #[cfg(target_os = "fuchsia")]
 fn main() -> ExitCode {
-    let result =
-        fuchsia_async::LocalExecutorBuilder::new().build().run_singlethreaded(fuchsia_probe::probe());
+    let result = fuchsia_async::LocalExecutorBuilder::new()
+        .build()
+        .run_singlethreaded(fuchsia_probe::probe());
     match result {
         Ok(()) => ExitCode::SUCCESS,
         Err(_) => ExitCode::from(1),

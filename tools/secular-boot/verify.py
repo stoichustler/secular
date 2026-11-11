@@ -25,13 +25,13 @@ BOOT_MARKERS = (
 )
 TRUSTY_MARKERS = (
     "trusty: el3 spd ready",
-    "TEE: s-el1 services started",
+    "TEE: S-EL1 services started",
     "TEE: init complete, 8 cpus",
 )
 TRUSTY_ALIVE_MARKER = "TEE: alive"
 # Kernel trusty-probe also prints TRUSTY_ALIVE_MARKER. Require the userspace
 # ktee SMC path specifically so a blocked SmcResource cannot pass.
-TEE_PROBE_MARKER = "tee: s-el1 nop"
+TEE_PROBE_MARKER = "tee: S-EL1 nop"
 TEE_PROBE_SMP_MARKER = "tee: alive (8 cpus)"
 CONSOLE_MARKERS = (
     "component_manager",

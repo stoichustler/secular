@@ -5,6 +5,7 @@
  */
 
 #include <assert.h>
+#include <stdio.h>
 
 #include <platform_def.h>
 
@@ -31,7 +32,53 @@
 
 #include "bl1_private.h"
 
+/* Enough for "S-EL1" plus NUL. */
+#define BL1_EL_NAME_BUF		8
+
 static void bl1_load_bl2(void);
+
+/*
+ * CurrentEL encodes only the exception level, not Secure vs Non-secure.
+ * SCR_EL3.NS is EL3-only and describes EL2/EL1/EL0. EL3 is the monitor,
+ * never "S-EL3".
+ *
+ *   secure && el < 3  -> "S-ELn"
+ *   otherwise         -> "ELn"
+ */
+static bool bl1_in_secure_state(void)
+{
+	unsigned int el = get_current_el();
+
+	if (el == 3U) {
+		return true;
+	}
+
+	return (read_scr() & SCR_NS_BIT) == 0U;
+}
+
+static bool bl1_el_has_secure_prefix(unsigned int el, bool secure)
+{
+	return secure && (el < 3U);
+}
+
+static const char *bl1_format_el(char *buf, size_t len, unsigned int el,
+	bool secure)
+{
+	if ((buf == NULL) || (len == 0U)) {
+		return "";
+	}
+
+	(void)snprintf(buf, len, "%sEL%u",
+		bl1_el_has_secure_prefix(el, secure) ? "S-" : "",
+		el);
+	buf[len - 1U] = '\0';
+	return buf;
+}
+
+static const char *bl1_current_el_name(char *buf, size_t len)
+{
+	return bl1_format_el(buf, len, get_current_el(), bl1_in_secure_state());
+}
 
 #if ENABLE_PAUTH
 uint64_t bl1_apiakey[2];
@@ -51,6 +98,7 @@ uint64_t bl1_apiakey[2];
 void __no_pauth bl1_main(void)
 {
 	unsigned int image_id;
+	char el_name[BL1_EL_NAME_BUF];
 
 	/* Enable early console if EARLY_CONSOLE flag is enabled */
 	plat_setup_early_console();
@@ -73,10 +121,9 @@ void __no_pauth bl1_main(void)
 #if ENABLE_RUNTIME_INSTRUMENTATION
 	PMF_CAPTURE_TIMESTAMP(bl_svc, BL1_ENTRY, PMF_CACHE_MAINT);
 #endif
-	INFO("SECULAR ATF up and running\n");
-
 	/* Announce our arrival */
-	NOTICE(FIRMWARE_WELCOME_STR);
+	INFO("=== 🅐  SECULAR ATF [%s] ===\n",
+		bl1_current_el_name(el_name, sizeof(el_name)));
 	NOTICE("BL1: %s\n", build_version_string);
 	NOTICE("BL1: %s\n", build_message);
 

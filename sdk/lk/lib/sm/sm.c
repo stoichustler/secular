@@ -1124,7 +1124,7 @@ static int sm_wait_for_smcall(void* arg) {
     int cpu;
     long ret = 0;
 
-    dprintf(ALWAYS, "TEE: cpu %d ns idle, yield to NS\n",
+    dprintf(ALWAYS, "TEE: cpu %d idle, yield to HEE\n",
             arch_curr_cpu_num());
     LTRACEF("wait for stdcalls, on cpu %d\n", arch_curr_cpu_num());
 
@@ -1243,7 +1243,7 @@ LK_INIT_HOOK(libsm, sm_init, LK_INIT_LEVEL_PLATFORM - 1);
 
 static void sm_init_complete(uint level) {
     (void)level;
-    dprintf(ALWAYS, "TEE: init complete, %d cpu%s, yield to NS\n",
+    dprintf(ALWAYS, "TEE: sm initialized, %d cpu%s, yield to HEE\n",
             SMP_MAX_CPUS, SMP_MAX_CPUS == 1 ? "" : "s");
 }
 LK_INIT_HOOK(libsm_complete, sm_init_complete, LK_INIT_LEVEL_LAST);

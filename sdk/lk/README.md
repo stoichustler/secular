@@ -114,27 +114,6 @@ under this directory.
 4. `arch/arm64/arch.c` / `asm.S` — identity-map trampoline, disable
    MMU and caches, branch to the shim at EL2.
 
-A successful serial trace includes:
-
-```text
-trusty: EL3 SPD ready, S-EL1 BL32 entry ...
-trusty: Found 64 bit S-EL1 image
-welcome to trusty TEE 🅢
-TEE: S-EL1 services started
-TEE: return to EL3, then lkboot BL33
-welcome to lkboot 🅚
-ARM64: boot EL2, current EL2 (EL2 VHE host)
-lkboot: firmware kernel=linux-arm64-boot-shim ramdisk=zircon.zbi
-lkboot: jumping to secular [EL2]
-lk finished --> jump to linux kernel 64Bit
-physboot: Handing off at physical load address ...
-starting user space
-secular $
-ktee: spd uuid 40ee25f0-a2bc-304c-8c4c-a173c57d8af1
-ktee: s-el1 nop -> 0x54454521
-TEE: alive
-```
-
 ## Layout
 
 | Path | Role |

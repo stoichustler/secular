@@ -7,6 +7,9 @@
  */
 #include "dev/power/psci.h"
 
+#if LK_TRUSTY_TEE
+#include <arch/arm64.h>
+#endif
 #include <lk/debug.h>
 #include <lk/init.h>
 
@@ -71,12 +74,42 @@ void psci_system_reset(void) {
 }
 
 void psci_detect(uint level) {
+    (void)level;
+#if LK_TRUSTY_TEE
+    /*
+     * Boot chain (ATF SPD=trusty):
+     *
+     *   EL3  ATF
+     *     --enter BL32-->          S-EL1 Trusty (this image)
+     *     --SMC_YC_NS_RETURN-->    EL3
+     *     --exit to NS-->          NS EL2 lkboot (BL33)
+     *
+     * CurrentEL encodes only the exception level, not Secure vs NS.
+     * EL3 entered this payload with SCR_EL3.NS=0, so EL1 here is S-EL1.
+     *
+     * PSCI (ARM DEN0022) is a Normal-World firmware service. ATF's
+     * psci_smc_handler() returns SMC_UNK (-1) unless the caller is
+     * non-secure:
+     *
+     *   if (!is_caller_non_secure(flags))
+     *       return SMC_UNK;   // 0xffffffff -> "ffff:ffff"
+     *
+     * An SMC PSCI_VERSION from S-EL1 is therefore not a version probe,
+     * it is an illegal client. CPU on/off/suspend for TEE is driven by
+     * EL3 through psci_register_spd_pm_hook(), not by this PSCI client.
+     */
+    char el_name[ARM64_EL_NAME_BUF];
+
+    dprintf(INFO, "\nTEE: booting Trusty OS at %s\n",
+            arm64_current_el_name(el_name, sizeof(el_name)));
+#else
     uint32_t ver = psci_version();
     if (ver == 0) {
         // no psci support
         return;
     }
     dprintf(INFO, "PSCI: detected version %x:%x\n", ver >> 16, ver & 0xffff);
+#endif
 }
 
 LK_INIT_HOOK(psci, psci_detect, LK_INIT_LEVEL_PLATFORM_EARLY);
