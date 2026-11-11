@@ -1019,8 +1019,215 @@ function! s:FzfVimAvailable() abort
     return get(g:, 'loaded_fzf_vim', 0) || exists(':Files') == 2
 endfunction
 
+" Resolve a:sub to a directory under the workspace. Empty => workspace root.
+function! s:ResolveRgDir(sub) abort
+    let l:root = substitute(fnamemodify(g:micro_workspace_root, ':p'), '/\+$', '', '')
+    let l:sub = substitute(trim(a:sub), '/\+$', '', '')
+    if empty(l:sub) || l:sub ==# '.'
+        return l:root
+    endif
+
+    if l:sub =~# '^/'
+        let l:dir = fnamemodify(l:sub, ':p')
+    else
+        let l:ws = fnamemodify(l:root . '/' . l:sub, ':p')
+        let l:dir = isdirectory(l:ws) ? l:ws : fnamemodify(l:sub, ':p')
+    endif
+    let l:dir = substitute(l:dir, '/\+$', '', '')
+
+    if !isdirectory(l:dir)
+        echo 'Not a directory: ' . l:sub
+        return ''
+    endif
+    if l:dir !=# l:root && stridx(l:dir . '/', l:root . '/') != 0
+        echo 'Dir is outside workspace: ' . l:dir
+        return ''
+    endif
+    return l:dir
+endfunction
+
+" Space-fw: narrow float for the search subdirectory, then live rg.
+if exists('s:fw_popup')
+    if get(s:fw_popup, 'win', 0) > 0
+        silent! call popup_close(s:fw_popup.win)
+    endif
+endif
+let s:fw_popup = {'win': -1, 'dir': '', 'word': ''}
+
+function! s:FwDirCandidates(typed) abort
+    let l:root = substitute(fnamemodify(g:micro_workspace_root, ':p'), '/\+$', '', '')
+    if a:typed =~# '/$'
+        let l:parent = substitute(a:typed, '/$', '', '')
+        let l:pat = l:root . '/' . l:parent . '/*'
+        let l:prefix = l:parent . '/'
+    elseif a:typed =~# '/'
+        let l:parent = substitute(a:typed, '/[^/]*$', '', '')
+        let l:base = matchstr(a:typed, '[^/]*$')
+        let l:pat = l:root . '/' . l:parent . '/' . l:base . '*'
+        let l:prefix = l:parent . '/'
+    else
+        let l:pat = l:root . '/' . a:typed . '*'
+        let l:prefix = ''
+    endif
+    let l:cands = []
+    for l:path in glob(l:pat, 1, 1)
+        if isdirectory(l:path)
+            call add(l:cands, l:prefix . fnamemodify(l:path, ':t'))
+        endif
+    endfor
+    return sort(l:cands)
+endfunction
+
+function! s:FwCommonPrefix(items) abort
+    if empty(a:items)
+        return ''
+    endif
+    let l:pfx = a:items[0]
+    for l:item in a:items[1:]
+        let l:n = min([strlen(l:pfx), strlen(l:item)])
+        let l:i = 0
+        while l:i < l:n && l:pfx[l:i] ==# l:item[l:i]
+            let l:i += 1
+        endwhile
+        let l:pfx = strpart(l:pfx, 0, l:i)
+        if empty(l:pfx)
+            return ''
+        endif
+    endfor
+    return l:pfx
+endfunction
+
+" Tab: fill unique dir, else longest common prefix. No match list.
+function! s:FwCompleteDir() abort
+    let l:typed = s:fw_popup.dir
+    let l:cands = s:FwDirCandidates(l:typed)
+    if empty(l:cands)
+        return
+    endif
+    if len(l:cands) == 1
+        let s:fw_popup.dir = l:cands[0] . '/'
+        return
+    endif
+    let l:lcp = s:FwCommonPrefix(l:cands)
+    if !empty(l:lcp) && stridx(l:lcp, l:typed) == 0 && l:lcp !=# l:typed
+        let s:fw_popup.dir = l:lcp
+    endif
+endfunction
+
+function! s:FwWidth() abort
+    return max([20, min([float2nr(&columns * 0.85), &columns - 4])])
+endfunction
+
+function! s:FwRender() abort
+    let l:id = s:fw_popup.win
+    if l:id <= 0
+        return
+    endif
+    call popup_settext(l:id, [
+        \ 'press ENTER = workspace  Tab complete',
+        \ '> ' . s:fw_popup.dir . '█'
+        \ ])
+endfunction
+
+function! s:FwFilter(id, key) abort
+    if a:key ==# "\<Esc>" || a:key ==# "\<C-c>"
+        call popup_close(a:id, 0)
+        return 1
+    endif
+    if a:key ==# "\<CR>" || a:key ==# "\<C-m>"
+        call popup_close(a:id, {
+            \ 'dir': s:fw_popup.dir,
+            \ 'word': s:fw_popup.word
+            \ })
+        return 1
+    endif
+    if a:key ==# "\<Tab>"
+        call s:FwCompleteDir()
+        call s:FwRender()
+        return 1
+    endif
+    if a:key ==# "\<BS>" || a:key ==# "\<C-h>"
+        if !empty(s:fw_popup.dir)
+            let s:fw_popup.dir = strcharpart(
+                \ s:fw_popup.dir, 0, strchars(s:fw_popup.dir) - 1)
+            call s:FwRender()
+        endif
+        return 1
+    endif
+    if a:key ==# "\<C-u>"
+        let s:fw_popup.dir = ''
+        call s:FwRender()
+        return 1
+    endif
+    if a:key ==# "\<C-w>"
+        let s:fw_popup.dir = substitute(s:fw_popup.dir, '[^/]*/\=$', '', '')
+        call s:FwRender()
+        return 1
+    endif
+    if strchars(a:key) == 1 && a:key =~# '^[[:print:]]$'
+        let s:fw_popup.dir .= a:key
+        call s:FwRender()
+        return 1
+    endif
+    return 1
+endfunction
+
+function! s:FwStartSearch(timer) abort
+    let l:pending = get(s:fw_popup, 'pending', {})
+    if empty(l:pending)
+        return
+    endif
+    let l:dir = s:ResolveRgDir(get(l:pending, 'dir', ''))
+    if empty(l:dir)
+        return
+    endif
+    call s:LiveRg(get(l:pending, 'word', ''), 0, 0, l:dir)
+endfunction
+
+function! s:FwClosed(id, result) abort
+    let s:fw_popup.win = -1
+    if type(a:result) != v:t_dict
+        return
+    endif
+    let s:fw_popup.pending = a:result
+    call timer_start(0, function('<SID>FwStartSearch'))
+endfunction
+
+function! s:OpenFwPopup(word) abort
+    if !has('popupwin')
+        echoerr 'Word search requires +popupwin'
+        return
+    endif
+    if s:fw_popup.win > 0 && !empty(popup_getpos(s:fw_popup.win))
+        call popup_close(s:fw_popup.win, 0)
+    endif
+    let s:fw_popup.dir = ''
+    let s:fw_popup.word = a:word
+    let s:fw_popup.pending = {}
+    let l:width = s:FwWidth()
+    let s:fw_popup.win = popup_create([''], {
+        \ 'title': ' 🅢  Search dir ',
+        \ 'pos': 'center',
+        \ 'minwidth': l:width,
+        \ 'maxwidth': l:width,
+        \ 'minheight': 2,
+        \ 'maxheight': 2,
+        \ 'border': [1, 1, 1, 1],
+        \ 'borderchars': ['─', '│', '─', '│', '┌', '┐', '┘', '└'],
+        \ 'padding': [0, 1, 0, 1],
+        \ 'close': 'none',
+        \ 'mapping': 0,
+        \ 'filter': function('<SID>FwFilter'),
+        \ 'callback': function('<SID>FwClosed'),
+        \ 'highlight': 'MicroTerminal',
+        \ 'borderhighlight': ['MicroTerminalBorder']
+        \ })
+    call s:FwRender()
+endfunction
+
 " a:regex 0 => --fixed-strings (Space-fg). 1 => ripgrep regex (Space-re).
-function! s:LiveRg(query, fullscreen, regex) abort
+" Optional a:1 is the search root (default: workspace).
+function! s:LiveRg(query, fullscreen, regex, ...) abort
     if !executable('rg')
         echoerr 'Rg requires ripgrep (rg) in PATH'
         return
@@ -1030,7 +1237,8 @@ function! s:LiveRg(query, fullscreen, regex) abort
         return
     endif
 
-    let l:root = g:micro_workspace_root
+    let l:root = a:0 >= 1 && !empty(a:1) ? a:1 : g:micro_workspace_root
+    let l:root = substitute(fnamemodify(l:root, ':p'), '/\+$', '', '')
     let l:flags = '--column --line-number --no-heading --color=always '
         \ . '--smart-case --hidden ' . s:rg_exclude_globs
     if !a:regex
@@ -1047,7 +1255,7 @@ function! s:LiveRg(query, fullscreen, regex) abort
         \ '--info=inline-right',
         \ '--history', l:history,
         \ '--prompt', 'Search (' . l:mode . ')> ',
-        \ '--header', 'Workspace: ' . l:root
+        \ '--header', 'Dir: ' . l:root
         \   . '  |  CTRL-/ preview  CTRL-X/V/T split/vsplit/tab'
         \ ]
     let l:spec = fzf#vim#with_preview({
@@ -1063,7 +1271,7 @@ function! s:LiveRgWord() abort
     if l:query !~# '[[:alnum:]_]'
         let l:query = ''
     endif
-    call s:LiveRg(l:query, 0, 0)
+    call s:OpenFwPopup(l:query)
 endfunction
 
 function! s:LiveRgVisual() abort
@@ -1661,7 +1869,7 @@ augroup END
 
 " --- Commands and leader maps ------------------------------------------------
 function! s:LeaderFHint() abort
-    echo 'fe files  fg grep  fw word  fl lines  fb buffers  fh recent  fc commands'
+    echo 'fe files  fg grep  fw word[+dir]  fl lines  fb buffers  fh recent  fc commands'
 endfunction
 
 function! s:WorkspaceFiles() abort
@@ -1787,7 +1995,7 @@ command! -nargs=0 Debug packadd termdebug | Termdebug
 
 " Leader map index (Space = <Leader>)
 "   e  NERDTree toggle          f  find hint
-"   fe workspace files          fg live rg (text)     fw word
+"   fe workspace files          fg live rg (text)     fw word (+ optional subdir)
 "   fl buffer lines (exact)     fb buffers            fh recent files
 "   fc commands                 re live rg (regex)
 "   t  floating terminal        w  next window
