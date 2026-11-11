@@ -19,7 +19,6 @@ group("diagnostics") {
     "log_listener",
     "triage",
     "validator",
-    "//examples/diagnostics",
     "//userspace/lib/diagnostics",
   ]
 }
@@ -41,13 +40,9 @@ group("tests") {
     "tools:tests($host_toolchain)",
     "triage:tests",
     "validator:tests",
-    "//examples/diagnostics:hermetic_tests",
     "//sdk/lib/diagnostics:tests",
     "//sdk/lib/inspect:tests",
     "//sdk/lib/syslog:tests",
-    "//userspace/developer/ffx/plugins/inspect:tests($host_toolchain)",
-    "//userspace/developer/ffx/plugins/log:tests($host_toolchain)",
-    "//userspace/developer/ffx/tools/triage:tests($host_toolchain)",
     "//userspace/lib/diagnostics:tests",
   ]
 }

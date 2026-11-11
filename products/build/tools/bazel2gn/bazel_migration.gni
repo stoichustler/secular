@@ -26,8 +26,10 @@ import("//products/build/rust/rustc_library.gni")
 import("//products/build/rust/rustc_macro.gni")
 import("//products/build/sdk/sdk_host_tool.gni")
 import("//products/build/zircon/zx_library.gni")
-import("//userspace/developer/ffx/build/ffx_plugin.gni")
-import("//userspace/developer/ffx/build/ffx_tool.gni")
+if (!secular_boot_build) {
+  import("//userspace/developer/ffx/build/ffx_plugin.gni")
+  import("//userspace/developer/ffx/build/ffx_tool.gni")
+}
 import("//third_party/cobalt/metrics_registry.gni")
 import("//tools/fidl/measure-tape/measure_tape.gni")
 import("//tools/protobuf/rust_proto_library.gni")

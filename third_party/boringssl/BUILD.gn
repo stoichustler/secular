@@ -359,6 +359,14 @@ if (!is_kernel) {
   # ################################################################################
   # Fuzzers
 
+  # Secular omits //third_party/boringssl/src/fuzz (corpora + harnesses).
+  if (secular_boot_build) {
+    group("boringssl_fuzzers") {
+      testonly = true
+    }
+    not_needed([ "fuzzers" ])
+  } else {
+
   # Upstream BoringSSL defines a `fuzzers` global variable in the generated GNI
   # files; we rename it to avoid colliding with the similarly-named parameter on
   # the fuzzer_package.
@@ -437,6 +445,7 @@ if (!is_kernel) {
         deps += [ ":${name}_fuzzer" ]
       }
     }
+  }
   }
 }
 

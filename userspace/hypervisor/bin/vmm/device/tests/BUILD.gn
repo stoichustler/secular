@@ -10,7 +10,6 @@ group("tests") {
     ":virtio_balloon_device_tests",
     ":virtio_block_device_tests",
     ":virtio_console_device_tests",
-    ":virtio_gpu_device_tests",
     ":virtio_input_device_tests",
     ":virtio_mem_device_tests",
 
@@ -168,38 +167,6 @@ device_test("virtio_console_device_tests") {
       max_severity = "ERROR"
     }
   }
-}
-
-device_test("virtio_gpu_device_tests") {
-  sources = [ "virtio_gpu_test.cc" ]
-  manifest = "meta/virtio_gpu_device_tests.cml"
-  device_components =
-      [ "//userspace/hypervisor/bin/vmm/device/virtio_gpu:virtio_gpu_component" ]
-
-  deps = [
-    ":test_with_device",
-    ":virtio_queue_fake",
-    "//sdk/fidl/fuchsia.element:fuchsia.element_hlcpp",
-    "//sdk/fidl/fuchsia.logger:fuchsia.logger_hlcpp",
-    "//sdk/fidl/fuchsia.sysmem:fuchsia.sysmem_hlcpp",
-    "//sdk/fidl/fuchsia.sysmem2:fuchsia.sysmem2_hlcpp",
-    "//sdk/fidl/fuchsia.tracing.provider:fuchsia.tracing.provider_hlcpp",
-    "//sdk/fidl/fuchsia.ui.composition:fuchsia.ui.composition_hlcpp",
-    "//sdk/lib/sys/component/cpp/testing:cpp",
-    "//userspace/ui/scenic/lib/utils",
-    "//userspace/ui/testing/test_graphical_presenter",
-    "//userspace/ui/testing/ui_test_manager",
-    "//zircon/system/ulib/virtio",
-  ]
-
-  test_specs = {
-    # Vulkan is needed to support UITestManager.
-    environments = guest_vulkan_envs
-    log_settings = {
-      max_severity = "ERROR"
-    }
-  }
-  test_type = "system"
 }
 
 device_test("virtio_input_device_tests") {

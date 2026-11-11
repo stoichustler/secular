@@ -1,2 +1,0 @@
-ffx/platform.golden
-ffx/platform/preflight.golden

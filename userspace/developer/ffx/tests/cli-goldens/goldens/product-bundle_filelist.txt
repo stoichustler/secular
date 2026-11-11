@@ -1,3 +1,0 @@
-ffx/product-bundle.golden
-ffx/product-bundle/bisect.golden
-ffx/product-bundle/create.golden

@@ -130,14 +130,15 @@ template("fidl_python") {
       # when the dependency on dynamic Python bindings is removed. Otherwise,
       # the dynamic Python bindings would have to point to the new location,
       # causing similar dissonance.
-      library_deps = [
-        "//userspace/developer/fuchsia-controller:fidl_bindings",
-        "//userspace/developer/fuchsia-controller:fuchsia_controller_py",
-      ]
-      data_deps = [
-        ":${fidl_target}_host_test_data",
-        "//userspace/developer/fuchsia-controller/tests:fuchsia_controller_test_data",
-      ]
+      library_deps = []
+      data_deps = [ ":${fidl_target}_host_test_data" ]
+      if (!secular_boot_build) {
+        library_deps += [
+          "//userspace/developer/fuchsia-controller:fidl_bindings",
+          "//userspace/developer/fuchsia-controller:fuchsia_controller_py",
+        ]
+        data_deps += [ "//userspace/developer/fuchsia-controller/tests:fuchsia_controller_test_data" ]
+      }
       if (defined(invoker.public_deps)) {
         foreach(dep, invoker.public_deps) {
           label = get_label_info(dep, "label_no_toolchain")

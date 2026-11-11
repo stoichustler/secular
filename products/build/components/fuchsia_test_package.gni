@@ -157,13 +157,15 @@ template("fuchsia_test_package") {
     # ambiently available when these tests are run and is listed as a
     # dependency in //products/bundles/infra/test:host_tools.
     if (!defined(invoker.is_bootfs) || !invoker.is_bootfs) {
-      ffx_test_tool_target = "//userspace/developer/ffx/plugins/test:ffx_test_tool_test_data($host_toolchain)"
+      if (!secular_boot_build) {
+        ffx_test_tool_target = "//userspace/developer/ffx/plugins/test:ffx_test_tool_test_data($host_toolchain)"
 
-      host_test_component_target =
-          "//userspace/developer/ffx:suite_test_data($host_toolchain)"
+        host_test_component_target =
+            "//userspace/developer/ffx:suite_test_data($host_toolchain)"
 
-      resummarize_target = "//tools/test_pilot/post_processing/resummarize:test_deps($host_toolchain)"
-      test_pilot_target = "//tools/test_pilot:test_deps($host_toolchain)"
+        resummarize_target = "//tools/test_pilot/post_processing/resummarize:test_deps($host_toolchain)"
+        test_pilot_target = "//tools/test_pilot:test_deps($host_toolchain)"
+      }
     }
 
     test_deps = []
@@ -390,13 +392,15 @@ template("fuchsia_test_package") {
 
         group(runtime_deps_group_target_name) {
           testonly = true
-          data_deps = [
-            ffx_test_tool_target,
-            host_test_component_target,
-            resummarize_target,
-            test_pilot_target,
-            test_script_generator_target,
-          ]
+          data_deps = [ test_script_generator_target ]
+          if (!secular_boot_build) {
+            data_deps += [
+              ffx_test_tool_target,
+              host_test_component_target,
+              resummarize_target,
+              test_pilot_target,
+            ]
+          }
           metadata = {
             test_runtime_deps = test_script_generator_target_outputs +
                                 [ "//products/build/testing/test_config_schema.json5" ]

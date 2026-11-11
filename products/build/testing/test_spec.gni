@@ -324,7 +324,7 @@ template("test_spec") {
     package_deps = invoker.package_deps
   }
   if (package_deps != [] || defined(invoker.package_label)) {
-    if (target_cpu != "riscv64" &&
+    if (!secular_boot_build && target_cpu != "riscv64" &&
         current_build_target_api_level == "PLATFORM") {
       # TODO(https://fxbug.dev/42074048): Remove conditional once
       # debug_agent works for riscv64.

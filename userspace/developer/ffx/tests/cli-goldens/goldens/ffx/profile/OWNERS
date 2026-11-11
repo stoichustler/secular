@@ -1,3 +1,0 @@
-include /src/developer/ffx/plugins/profile/OWNERS
-
-per-file memory.golden = file:/src/memory/OWNERS

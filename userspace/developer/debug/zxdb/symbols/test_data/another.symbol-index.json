@@ -1,8 +1,0 @@
-{
-  "includes": [
-    "symbol-index.json"
-  ],
-  "gcs_flat": [
-    { "url": "gs://another-bucket", "require_authentication": true }
-  ]
-}

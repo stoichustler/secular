@@ -242,8 +242,10 @@ template("fidl") {
   # Override the category if the library is in the allowlist for ffx.
   # Only do this when building Rust bindings, which ffx uses, or the FIDL
   # library, which is a dependency of those bindings.
-  if ((is_host && enable_rust && toolchain_variant.supports_rust) ||
-      is_fidl_toolchain) {
+  # Secular has no ffx; skip the allowlist import.
+  if (!secular_boot_build &&
+      ((is_host && enable_rust && toolchain_variant.supports_rust) ||
+       is_fidl_toolchain)) {
     import("//userspace/developer/ffx/build/ffx_subtool_allowlist.gni")
     _label_name = get_label_info(_fidl_target, "label_no_toolchain")
     _is_allowed_for_ffx = ffx_subtool_fidl_allowlist + [ _label_name ] -

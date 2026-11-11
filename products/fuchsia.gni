@@ -16,7 +16,7 @@
 #   fx build
 
 # Packages to be published to universe that do not go through assembly.
-discoverable_package_labels = [ "//userspace/developer/debug/debug_agent" ]
+discoverable_package_labels = []
 
 # List which product bundles can be built using this build configuration.
 product_bundle_labels = [ "//products:product_bundles" ]

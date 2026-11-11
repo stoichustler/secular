@@ -1,3 +1,0 @@
-ffx/monitor.golden
-ffx/monitor/start.golden
-ffx/monitor/stop.golden

@@ -13,7 +13,6 @@
     { "path": "tools/ai-coding/skills/port-gn-config-to-bazel-build-flags" },
     { "path": "tools/ai-coding/skills/report-ai-bug" },
     { "path": "tools/ai-coding/skills/rust_best_practices" },
-    { "path": "tools/ai-coding/skills/starnix-guidelines" },
     { "path": "tools/ai-coding/skills/triage-recent-regression" }
   ]
 }

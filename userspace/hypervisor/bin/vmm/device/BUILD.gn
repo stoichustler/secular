@@ -14,7 +14,6 @@ group("tests") {
     "virtio_balloon:tests",
     "virtio_block:tests",
     "virtio_console:tests",
-    "virtio_gpu:tests",
     "virtio_input:tests",
     "virtio_mem:tests",
     "virtio_net:tests",
@@ -38,7 +37,6 @@ group("components") {
 
 group("extra_devices") {
   deps = [
-    "virtio_gpu:virtio_gpu_component",
     "virtio_input:virtio_input_component",
     "virtio_net:virtio_net_component",
     "virtio_sound:virtio_sound_component",

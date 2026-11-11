@@ -28,9 +28,9 @@ fuchsia_idk_contents = {
   source_libraries = _common_source_libraries
   sysroot = _common_sysroot
 
-  dart_library = [ "//sdk:core_dart_library" ]
+  dart_library = []
   packages = [ "//sdk:core_packages" ]
-  vulkan_layers = [ "//userspace/lib/vulkan:vulkan_layers" ]
+  vulkan_layers = []
 
   docs = [
     "//sdk:core_licenses",

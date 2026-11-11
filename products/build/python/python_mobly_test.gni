@@ -586,7 +586,10 @@ template("python_mobly_test") {
              rebase_path("${_test_dir}/${_test_binary_name}", root_build_dir),
            ] + _common_host_test_args
 
-    data_deps = [ "//userspace/developer/ffx:suite_test_data" ]
+    data_deps = []
+    if (!secular_boot_build) {
+      data_deps += [ "//userspace/developer/ffx:suite_test_data" ]
+    }
 
     deps =
         [
@@ -775,7 +778,10 @@ template("python_mobly_test") {
                "--hermetic",
              ] + _common_host_test_args
 
-      data_deps = [ "//userspace/developer/ffx:suite_test_data" ]
+      data_deps = []
+    if (!secular_boot_build) {
+      data_deps += [ "//userspace/developer/ffx:suite_test_data" ]
+    }
 
       deps = [
                ":${_hermetic_mobly_test_data_target}",

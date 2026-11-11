@@ -192,8 +192,9 @@ All these cases use the headers directly from the source tree in the same way.
 
 ### Building llvm-libc unit tests
 
-Most C library code is built a second time for testing purposes.  This version
-is used with the [llvm-libc unit tests](/third_party/llvm-libc/src/test).
+Most C library code is built a second time for testing purposes.  Upstream
+pairs that build with llvm-libc unit tests under `third_party/llvm-libc/src/test`
+(omitted from the Secular tree).
 Unlike when the same code is built for the C library itself or in other special
 environments, this is largely treated as normal Fuchsia userland code.  It uses
 the default GN toolchain used for the rest of the platform GN build, and thus

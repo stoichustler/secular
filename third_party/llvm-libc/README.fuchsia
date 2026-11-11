@@ -11,3 +11,4 @@ License File: src/LICENSE.TXT
 Description:
   llvm-libc is a retargetable implementation of the C standard library.
   Revision found via GitOrigin-RevId from commits.
+  Secular omits src/test (upstream unit tests; not used by the console image).

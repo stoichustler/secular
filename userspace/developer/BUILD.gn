@@ -1,46 +1,17 @@
-# Copyright 2019 The Fuchsia Authors. All rights reserved.
+# Copyright 2026 The Fuchsia Authors. All rights reserved.
 # Use of this source code is governed by a BSD-style license that can be
 # found in the LICENSE file.
 
+# Host-only leftovers still required by package-tool / product_bundle
+# (GCS credentials). ffx, debug, forensics, adb, and the rest of the
+# developer tree have been removed from Secular.
+
 group("developer") {
   testonly = true
-  deps = [
-    ":tests",
-    "console",
-    "debug",
-    "ffx",
-    "forensics",
-    "fuchsia-controller",
-    "fuchsia-criterion",
-    "lib",
-    "remote-control",
-  ]
+  deps = [ "lib" ]
 }
 
 group("tests") {
   testonly = true
-
-  deps = [
-    "adb:tests",
-    "build_info:tests",
-    "console:tests",
-    "debug:tests",
-    "ffx:tests",
-    "forensics:tests",
-    "fuchsia-controller:tests",
-    "fuchsia-criterion:tests",
-    "hw_info:tests",
-    "lib:tests",
-    "memory:tests",
-    "process_explorer:tests",
-    "remote-control:tests",
-    "sshd-host:tests",
-    "sys_info:tests",
-    "vsock-sshd-host:tests",
-  ]
-}
-
-group("e2e_tests") {
-  testonly = true
-  deps = [ "ffx:e2e_tests" ]
+  deps = [ "lib:tests" ]
 }

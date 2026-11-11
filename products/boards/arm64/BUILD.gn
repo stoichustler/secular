@@ -27,7 +27,6 @@ group("arm64.bazel_input") {
     ":main_bundle.bazel_inputs",
     ":qemu_psci_cpu_suspend_states.bazel_inputs",
     "//products/boards/emulation/virtio:virtio.bazel_inputs",
-    "//userspace/firmware/gigaboot/cpp:esp.bazel_input",
   ]
 }
 

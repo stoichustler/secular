@@ -81,6 +81,28 @@ import("//products/build/compiled_action.gni")
 #  Which is equivalent to:
 #    `ffx path to plugin src/foo/my_input_file --output-dir obj/bar`
 template("ffx_action") {
+  if (secular_boot_build) {
+    # Secular does not build ffx. Boot-test / assembly templates still
+    # instantiate ffx_action() while defining unused zbi_test targets;
+    # emit empty output files instead of invoking ffx.
+    action(target_name) {
+      forward_variables_from(invoker,
+                             [
+                               "data_deps",
+                               "depfile",
+                               "deps",
+                               "inputs",
+                               "metadata",
+                               "outputs",
+                               "public_deps",
+                               "testonly",
+                               "visibility",
+                             ])
+      script = "//userspace/developer/ffx/build/touch_outputs.py"
+      args = rebase_path(invoker.outputs, root_build_dir)
+    }
+    not_needed(invoker, "*")
+  } else {
   assert(defined(invoker.args), "args must be defined for $target_name")
   assert(defined(invoker.outputs), "outputs must be defined for $target_name")
   assert(defined(invoker.ffx_tool),
@@ -196,5 +218,6 @@ template("ffx_action") {
 
     tool = invoker.ffx_tool
     tool_output_name = invoker.ffx_tool_output_name + "_unversioned"
+  }
   }
 }

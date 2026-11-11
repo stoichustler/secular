@@ -36,7 +36,6 @@ group("tests") {
     "sys/cpp:tests",
     "sys/service/cpp:tests",
     "syslog:tests",
-    "ui/scenic/cpp/tests:scenic_cpp_tests",
     "utf-utils:tests",
     "vfs/cpp:tests",
     "zircon-assert/test",

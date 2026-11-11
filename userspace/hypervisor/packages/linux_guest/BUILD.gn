@@ -41,7 +41,6 @@ romfs_image("tests") {
   deps = [
     "//userspace/hypervisor/tests/memory_test_util(${linux_exe_toolchain})",
     "//userspace/hypervisor/tests/virtio_block_test_util(${linux_exe_toolchain})",
-    "//userspace/hypervisor/tests/virtio_gpu_test_util(${linux_exe_toolchain})",
     "//userspace/hypervisor/tests/virtio_input_test_util(${linux_exe_toolchain})",
     "//userspace/hypervisor/tests/virtio_net_test_util(${linux_exe_toolchain})",
     "//userspace/hypervisor/tests/virtio_rng_test_util(${linux_exe_toolchain})",
@@ -50,7 +49,6 @@ romfs_image("tests") {
 
   inputs = [
     "${linux_exe_path}/virtio_block_test_util",
-    "${linux_exe_path}/virtio_gpu_test_util",
     "${linux_exe_path}/virtio_input_test_util",
     "${linux_exe_path}/virtio_net_test_util",
     "${linux_exe_path}/virtio_rng_test_util",

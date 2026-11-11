@@ -10,7 +10,9 @@ import("//products/build/bazel/bazel_test_suite.gni")
 import("//products/build/config/build_api_module.gni")
 import("//products/build/config/fuchsia/platform_version.gni")
 import("//products/build/config/fuchsia/target_api_level.gni")
-import("//products/build/dart/toolchain.gni")
+if (!secular_boot_build) {
+  import("//products/build/dart/toolchain.gni")
+}
 import("//products/build/fidl/toolchain.gni")
 import("//products/build/sdk/config.gni")
 import("//products/build/sdk/idk.gni")
@@ -678,7 +680,11 @@ sdk_molecule("core_data") {
 
 sdk_molecule("core_dart_library") {
   visibility += [ "//vendor/*" ]
-  deps = [ "//sdk/testing/sl4f/client:client_sdk($dart_toolchain)" ]
+  if (secular_boot_build) {
+    deps = []
+  } else {
+    deps = [ "//sdk/testing/sl4f/client:client_sdk($dart_toolchain)" ]
+  }
 }
 
 sdk_molecule("core_experimental_python_e2e_tests") {

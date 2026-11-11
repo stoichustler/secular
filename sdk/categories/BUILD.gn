@@ -62,44 +62,46 @@ if (is_host || is_fidl_toolchain) {
   # Using this marker avoids depending on a disallowed marker above.
   idk_category_marker_template("allowed-for-ffx-subtool") {
     # Limit visibility to the sub-targets, which actually take the dependency,
-    # of the Rust targets in the allowlist.
-    import("//userspace/developer/ffx/build/ffx_subtool_allowlist.gni")
+    # of the Rust targets in the allowlist. Secular has no ffx.
     visibility = []
-    foreach(target, ffx_subtool_fidl_allowlist) {
-      visibility += [
-        "${target}_compile_fidlc",
-        "${target}_lint",
-      ]
-
-      foreach(rust_fidl_suffix,
-              [
-                "",
-                "_common",
-                "_fdomain",
-                "_next",
-                "_next_internal",
-                "_next_common",
-                "_next_common_internal",
-                "_fdomain_next",
-                "_fdomain_next_internal",
-                "_next_convert",
-              ]) {
+    if (!secular_boot_build) {
+      import("//userspace/developer/ffx/build/ffx_subtool_allowlist.gni")
+      foreach(target, ffx_subtool_fidl_allowlist) {
         visibility += [
-          "${target}_rust${rust_fidl_suffix}.actual",
-          "${target}_rust${rust_fidl_suffix}.actual.rust_compilation_deps",
-          "${target}_rust${rust_fidl_suffix}.aux.deps.deps",
-          "${target}_rust${rust_fidl_suffix}.aux.deps.transdeps",
-          "${target}_rust${rust_fidl_suffix}.rustdoc",
+          "${target}_compile_fidlc",
+          "${target}_lint",
         ]
-      }
-    }
 
-    # The FIDL compatibility tests compile all FIDL libraries in an SDK category
-    # for each API level supported by the platform, so allow those targets too.
-    import("//products/build/config/fuchsia/platform_version.gni")
-    foreach(target, ffx_subtool_fidl_partner_unstable_allowlist) {
-      foreach(level, platform_version.runtime_supported_api_levels) {
-        visibility += [ "${target}_compile_${level}_fidlc" ]
+        foreach(rust_fidl_suffix,
+                [
+                  "",
+                  "_common",
+                  "_fdomain",
+                  "_next",
+                  "_next_internal",
+                  "_next_common",
+                  "_next_common_internal",
+                  "_fdomain_next",
+                  "_fdomain_next_internal",
+                  "_next_convert",
+                ]) {
+          visibility += [
+            "${target}_rust${rust_fidl_suffix}.actual",
+            "${target}_rust${rust_fidl_suffix}.actual.rust_compilation_deps",
+            "${target}_rust${rust_fidl_suffix}.aux.deps.deps",
+            "${target}_rust${rust_fidl_suffix}.aux.deps.transdeps",
+            "${target}_rust${rust_fidl_suffix}.rustdoc",
+          ]
+        }
+      }
+
+      # The FIDL compatibility tests compile all FIDL libraries in an SDK category
+      # for each API level supported by the platform, so allow those targets too.
+      import("//products/build/config/fuchsia/platform_version.gni")
+      foreach(target, ffx_subtool_fidl_partner_unstable_allowlist) {
+        foreach(level, platform_version.runtime_supported_api_levels) {
+          visibility += [ "${target}_compile_${level}_fidlc" ]
+        }
       }
     }
   }

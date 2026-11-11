@@ -9,6 +9,7 @@ License File: src/LICENSE
 
 Description:
   A fork of OpenSSL, as described at https://www.imperialviolet.org/2014/06/20/boringssl.html
+  Secular omits src/fuzz (fuzzer harnesses and corpora; not used by the console image).
   Revision is from `git merge-base JIRI_HEAD origin/main`.
   Prerequisites: * apt install curl git golang perl python
   To update:
