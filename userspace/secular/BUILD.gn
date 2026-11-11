@@ -17,7 +17,7 @@ group("boot_tests") {
 
 _bootfs_deps = [
   ":bringup-config",
-  ":tipc-conf",
+  ":secular-cfg",
 ]
 
 # Identity file for the compact console image. Generated only when the
@@ -142,7 +142,7 @@ resource("bringup-config") {
   outputs = "config/profiles/bringup.profiles"
 }
 
-resource("tipc-conf") {
-  sources = [ "config/tipc.conf" ]
-  outputs = [ "config/tipc.conf" ]
+resource("secular-cfg") {
+  sources = [ "config/secular.cfg" ]
+  outputs = [ "config/secular.cfg" ]
 }

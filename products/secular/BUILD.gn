@@ -167,7 +167,7 @@ zbi_input("bootfs_files") {
     "//products/build/info/bootfs:minimum_utc_stamp",
     "//userspace/secular:bringup-config",
     "//userspace/secular:secular-txt",
-    "//userspace/secular:tipc-conf",
+    "//userspace/secular:secular-cfg",
     "//userspace/secular/bin/debuglog:bootfs_binaries",
     "//userspace/secular/bin/dlog:bootfs_binaries",
     "//userspace/secular/bin/iokit:bootstat",

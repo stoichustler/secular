@@ -56,7 +56,7 @@ else is a context switch into S-EL1.
 │ NS  lkboot → boot-shim → vmzircon EL1 → userboot → zxsh EL0    │
 │  /boot/bin/ktee                                                │
 │  /boot/bin/tipc                                                │
-│  /boot/config/tipc.conf                                        │
+│  /boot/config/secular.cfg                                      │
 └────────────────────────────────────────────────────────────────┘
 ```
 
@@ -239,7 +239,12 @@ debugging `tipc`.
 
 [`tipc/src/main.rs`](tipc/src/main.rs). NS contiguous page as a
 queueless TIPC device. Connect to `com.android.trusty.kernel.echo`,
-send `ping`, compare the echo. Optional argument: `tipc [port]`.
+send `ping`, compare the echo.
+
+```text
+tipc list          list TIPC windows from /boot/config/secular.cfg
+tipc kick [N]      echo ping on window N (default 0)
+```
 
 ### Framework
 
@@ -248,7 +253,7 @@ contiguous VMO, pinned with a stub IOMMU BTI, mapped RW in `tipc`.
 Trusty maps the same PA `PERM_READ|PERM_WRITE|PERM_NO_EXECUTE`.
 
 ```text
- /boot/config/tipc.conf          tipc0  0  0x1000
+ /boot/config/secular.cfg        windows[]  tipc0 paddr=0 size=4K
         │
         ▼
  NS  contiguous VMO  size 0x1000
@@ -304,7 +309,7 @@ GET_EVENT returns `{event u32, handle u32, cookie u64}`:
 | `0x4` | HUP | peer closed |
 | `0x8` | MSG | message queued |
 
-`paddr == 0` in `tipc.conf` means allocate. A non-zero `paddr` is a
+`paddr == 0` in `secular.cfg` means allocate. A non-zero `paddr` is a
 reserved PA; the client still allocates a contiguous buffer unless that
 range is carved out of PMM.
 
@@ -316,7 +321,7 @@ one-shot: Trusty CONNECT `handle_wait`s (5 s) and **consumes** READY.
 NS must not poll `0x1` again; it SEND and waits for MSG.
 
 ```text
- zxsh: tipc
+ zxsh: tipc kick
          │
          ▼  (1) SmcResource + ProfileResource, pin CPU 0
          │
@@ -439,7 +444,9 @@ From the serial `zxsh` prompt after `make run` / `make kick`:
 
 ```text
 ktee
-tipc
+tipc list
+tipc kick
+tipc kick 0
 ```
 
 Trusty changes need a new BIOS, not only a new ZBI:
@@ -451,4 +458,4 @@ make lkboot && make atf && make build
 | Image | Path |
 | --- | --- |
 | BIOS | `out/secular-boot-arm64/firmware/arm-trusted-firmware-qemu-bios/secular.bios` |
-| ZBI | `out/secular-boot-arm64/secular.zbi` (`/boot/bin/ktee`, `/boot/bin/tipc`, `/boot/config/tipc.conf`) |
+| ZBI | `out/secular-boot-arm64/secular.zbi` (`/boot/bin/ktee`, `/boot/bin/tipc`, `/boot/config/secular.cfg`) |

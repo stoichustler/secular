@@ -3,6 +3,11 @@
 // found in the LICENSE file.
 
 //! Queueless TIPC client: NS VMO <-> Trusty S-EL1 kTIPC.
+//!
+//! ```text
+//! tipc list
+//! tipc kick [N]
+//! ```
 
 use std::process::ExitCode;
 
@@ -18,7 +23,6 @@ const QL_TIPC_DEV_DISCONNECT: u16 = 0x5;
 
 const IPC_HANDLE_POLL_MSG: u32 = 0x8;
 const IPC_HANDLE_POLL_HUP: u32 = 0x4;
-const TIPC_CONF_PATH: &str = "/boot/config/tipc.conf";
 const EVENT_WAIT_MS: u64 = 5000;
 
 const SMC_ENTITY_TRUSTED_OS: u32 = 50;
@@ -63,37 +67,111 @@ struct TipcWindow {
     size: u64,
 }
 
-fn parse_u64(token: &str) -> Option<u64> {
-    let token = token.trim();
-    if let Some(hex) = token.strip_prefix("0x").or_else(|| token.strip_prefix("0X")) {
-        u64::from_str_radix(hex, 16).ok()
-    } else {
-        token.parse().ok()
+fn window_from_region(r: &secular_cfg::Region) -> TipcWindow {
+    TipcWindow { name: r.name.clone(), paddr: r.paddr, size: r.size }
+}
+
+fn window_at(windows: &[TipcWindow], index: usize) -> Option<&TipcWindow> {
+    windows.get(index)
+}
+
+fn default_window(page_size: u64) -> TipcWindow {
+    TipcWindow { name: "tipc0".into(), paddr: 0, size: page_size }
+}
+
+fn read_windows() -> Vec<TipcWindow> {
+    let text = std::fs::read_to_string(secular_cfg::CFG_PATH).unwrap_or_default();
+    match secular_cfg::parse(&text) {
+        Ok(cfg) => cfg.tipc_windows().map(window_from_region).collect(),
+        Err(e) => {
+            eprintln!("TIPC: {}: {e}", secular_cfg::CFG_PATH);
+            Vec::new()
+        }
     }
 }
 
-/// Line format: `name paddr size` (`#` comments, extra regions later as `tipc1` …).
-fn parse_tipc_conf(text: &str) -> Vec<TipcWindow> {
-    let mut out = Vec::new();
-    for raw in text.lines() {
-        let line = raw.split('#').next().unwrap_or("").trim();
-        if line.is_empty() {
-            continue;
-        }
-        let mut parts = line.split_whitespace();
-        let Some(name) = parts.next() else { continue };
-        let Some(paddr) = parts.next().and_then(parse_u64) else { continue };
-        let Some(size) = parts.next().and_then(parse_u64) else { continue };
-        if size == 0 {
-            continue;
-        }
-        out.push(TipcWindow { name: name.to_string(), paddr, size });
-    }
-    out
+/// One subcommand. Add a row here, a `Command` variant, and a match arm
+/// in `main` to extend the CLI.
+struct CommandInfo {
+    name: &'static str,
+    args: &'static str,
+    help: &'static str,
 }
 
-fn window_named<'a>(windows: &'a [TipcWindow], name: &str) -> Option<&'a TipcWindow> {
-    windows.iter().find(|w| w.name == name).or_else(|| windows.first())
+const COMMANDS: &[CommandInfo] = &[
+    CommandInfo { name: "list", args: "", help: "list TIPC windows from secular.cfg" },
+    CommandInfo { name: "kick", args: "[N]", help: "echo ping on window N (default 0)" },
+];
+
+#[derive(Clone, Debug, PartialEq, Eq)]
+enum Command {
+    List,
+    Kick { index: usize },
+}
+
+fn usage() -> String {
+    let mut s = String::from("usage: tipc <command> [args]\n");
+    for c in COMMANDS {
+        let spec = if c.args.is_empty() {
+            c.name.to_string()
+        } else {
+            format!("{} {}", c.name, c.args)
+        };
+        s.push_str(&format!("  {spec:<12} {}\n", c.help));
+    }
+    s
+}
+
+fn parse_command(args: &[String]) -> Result<Command, String> {
+    let mut it = args.iter().map(String::as_str);
+    let Some(cmd) = it.next() else {
+        return Err(usage());
+    };
+    match cmd {
+        "list" => {
+            if it.next().is_some() {
+                return Err(format!("tipc list takes no arguments\n{}", usage()));
+            }
+            Ok(Command::List)
+        }
+        "kick" => {
+            let index = match it.next() {
+                None => 0,
+                Some(token) => token.parse::<usize>().map_err(|_| {
+                    format!("tipc kick: bad window `{token}` (want a non-negative integer)\n{}", usage())
+                })?,
+            };
+            if it.next().is_some() {
+                return Err(format!("usage: tipc kick [N]\n{}", usage()));
+            }
+            Ok(Command::Kick { index })
+        }
+        "help" | "-h" | "--help" => Err(usage()),
+        other => Err(format!("tipc: unknown command `{other}`\n{}", usage())),
+    }
+}
+
+fn format_list(windows: &[TipcWindow]) -> String {
+    if windows.is_empty() {
+        return format!("TIPC: no windows in {}\n", secular_cfg::CFG_PATH);
+    }
+    let mut s = String::from("N   NAME    PADDR            SIZE\n");
+    for (i, w) in windows.iter().enumerate() {
+        s.push_str(&format!("{i:<3} {:<7} 0x{:<14x} 0x{:x}\n", w.name, w.paddr, w.size));
+    }
+    s
+}
+
+fn resolve_kick_window(windows: &[TipcWindow], index: usize, page_size: u64) -> Result<TipcWindow, String> {
+    if windows.is_empty() {
+        if index == 0 {
+            return Ok(default_window(page_size));
+        }
+        return Err(format!("TIPC: no window {index} (none configured)"));
+    }
+    window_at(windows, index).cloned().ok_or_else(|| {
+        format!("TIPC: no window {index} (have {})", windows.len())
+    })
 }
 
 #[repr(C)]
@@ -306,14 +384,7 @@ mod fuchsia_tipc {
         Err(format_err!("timeout waiting for tipc event 0x{want:x}"))
     }
 
-    fn load_window(page_size: u64) -> TipcWindow {
-        let text = std::fs::read_to_string(TIPC_CONF_PATH).unwrap_or_default();
-        window_named(&parse_tipc_conf(&text), "tipc0")
-            .cloned()
-            .unwrap_or(TipcWindow { name: "tipc0".into(), paddr: 0, size: page_size })
-    }
-
-    pub async fn run(port: &str) -> Result<(), Error> {
+    pub async fn kick(window: &TipcWindow, port: &str) -> Result<(), Error> {
         let smc = get_smc().await.map_err(|e| {
             eprintln!("TIPC: {e:?}");
             println!("TIPC: dead (no smc resource)");
@@ -343,7 +414,6 @@ mod fuchsia_tipc {
             .context("iommu create")?;
         let bti = Bti::create(&iommu, 0).context("bti create")?;
         let page_size = zx::system_get_page_size() as u64;
-        let window = load_window(page_size);
         let buf_size = window.size.max(page_size);
         if buf_size % page_size != 0 {
             println!("TIPC: dead ({} size 0x{buf_size:x} not page aligned)", window.name);
@@ -509,24 +579,64 @@ mod fuchsia_tipc {
     }
 }
 
+fn print_parse_error(msg: &str) -> ExitCode {
+    eprint!("{msg}");
+    if !msg.ends_with('\n') {
+        eprintln!();
+    }
+    ExitCode::from(2)
+}
+
 #[cfg(target_os = "fuchsia")]
 fn main() -> ExitCode {
-    let port = std::env::args().nth(1).unwrap_or_else(|| DEFAULT_PORT.to_string());
-    let result = fuchsia_async::LocalExecutorBuilder::new()
-        .build()
-        .run_singlethreaded(fuchsia_tipc::run(&port));
-    match result {
-        Ok(()) => ExitCode::SUCCESS,
-        Err(e) => {
-            eprintln!("TIPC: {e:?}");
-            ExitCode::from(1)
+    let args: Vec<String> = std::env::args().skip(1).collect();
+    let command = match parse_command(&args) {
+        Ok(c) => c,
+        Err(msg) => return print_parse_error(&msg),
+    };
+    match command {
+        Command::List => {
+            print!("{}", format_list(&read_windows()));
+            ExitCode::SUCCESS
+        }
+        Command::Kick { index } => {
+            let page_size = zx::system_get_page_size() as u64;
+            let window = match resolve_kick_window(&read_windows(), index, page_size) {
+                Ok(w) => w,
+                Err(msg) => {
+                    println!("{msg}");
+                    return ExitCode::from(1);
+                }
+            };
+            println!("TIPC: kick {index} ({})", window.name);
+            let result = fuchsia_async::LocalExecutorBuilder::new()
+                .build()
+                .run_singlethreaded(fuchsia_tipc::kick(&window, DEFAULT_PORT));
+            match result {
+                Ok(()) => ExitCode::SUCCESS,
+                Err(e) => {
+                    eprintln!("TIPC: {e:?}");
+                    ExitCode::from(1)
+                }
+            }
         }
     }
 }
 
 #[cfg(not(target_os = "fuchsia"))]
 fn main() -> ExitCode {
-    ExitCode::from(1)
+    let args: Vec<String> = std::env::args().skip(1).collect();
+    match parse_command(&args) {
+        Ok(Command::List) => {
+            print!("{}", format_list(&read_windows()));
+            ExitCode::SUCCESS
+        }
+        Ok(Command::Kick { .. }) => {
+            println!("TIPC: kick requires a Fuchsia target");
+            ExitCode::from(1)
+        }
+        Err(msg) => print_parse_error(&msg),
+    }
 }
 
 #[cfg(test)]
@@ -548,11 +658,16 @@ mod tests {
 
     #[test]
     fn parse_tipc0_and_tipc1() {
-        let windows = parse_tipc_conf(
-            "# comment\n\
-             tipc0 0x7fe00000 0x10000\n\
-             tipc1 0 4096\n",
-        );
+        let cfg = secular_cfg::parse(
+            r#"{
+              windows: [
+                { name: "tipc0", paddr: "0x7fe00000", size: "0x10000", role: "tipc" },
+                { name: "tipc1", paddr: 0, size: 4096 },
+              ],
+            }"#,
+        )
+        .unwrap();
+        let windows: Vec<TipcWindow> = cfg.tipc_windows().map(window_from_region).collect();
         assert_eq!(
             windows,
             vec![
@@ -560,6 +675,48 @@ mod tests {
                 TipcWindow { name: "tipc1".into(), paddr: 0, size: 4096 },
             ]
         );
-        assert_eq!(window_named(&windows, "tipc0").unwrap().size, 0x10000);
+        assert_eq!(window_at(&windows, 0).unwrap().name, "tipc0");
+        assert_eq!(window_at(&windows, 1).unwrap().size, 4096);
+        assert!(window_at(&windows, 2).is_none());
+    }
+
+    #[test]
+    fn parse_list_and_kick() {
+        assert_eq!(parse_command(&[]).unwrap_err().lines().next(), Some("usage: tipc <command> [args]"));
+        assert_eq!(parse_command(&[String::from("list")]).unwrap(), Command::List);
+        assert_eq!(
+            parse_command(&[String::from("kick")]).unwrap(),
+            Command::Kick { index: 0 }
+        );
+        assert_eq!(
+            parse_command(&[String::from("kick"), String::from("3")]).unwrap(),
+            Command::Kick { index: 3 }
+        );
+        assert!(parse_command(&[String::from("kick"), String::from("x")]).is_err());
+        assert!(parse_command(&[String::from("ping")]).is_err());
+        assert!(COMMANDS.iter().any(|c| c.name == "list"));
+        assert!(COMMANDS.iter().any(|c| c.name == "kick"));
+    }
+
+    #[test]
+    fn list_and_resolve() {
+        let cfg = secular_cfg::parse(
+            r#"{
+              windows: [
+                { name: "tipc0", paddr: 0, size: "0x1000", role: "tipc" },
+                { name: "tipc1", paddr: "0x10", size: "0x2000", role: "tipc" },
+              ],
+            }"#,
+        )
+        .unwrap();
+        let windows: Vec<TipcWindow> = cfg.tipc_windows().map(window_from_region).collect();
+        let table = format_list(&windows);
+        assert!(table.contains("tipc0"));
+        assert!(table.contains("tipc1"));
+        assert_eq!(resolve_kick_window(&windows, 1, 0x1000).unwrap().name, "tipc1");
+        assert!(resolve_kick_window(&windows, 2, 0x1000).is_err());
+        assert_eq!(resolve_kick_window(&[], 0, 0x1000).unwrap(), default_window(0x1000));
+        assert!(resolve_kick_window(&[], 1, 0x1000).is_err());
+        assert!(format_list(&[]).contains(secular_cfg::CFG_PATH));
     }
 }

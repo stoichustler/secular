@@ -10,8 +10,9 @@ rustc_binary("tipc") {
   source_root = "src/main.rs"
   sources = [ "src/main.rs" ]
   configs += [ "//products/build/config/rust:bootfs" ]
+  deps = [ "//userspace/secular/lib/cfg" ]
   if (is_fuchsia) {
-    deps = [
+    deps += [
       "//sdk/fidl/fuchsia.kernel:fuchsia.kernel_rust",
       "//sdk/rust/zx",
       "//userspace/lib/fuchsia-async",
