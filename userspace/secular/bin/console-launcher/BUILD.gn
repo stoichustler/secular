@@ -66,6 +66,7 @@ executable("bin") {
     "//userspace/lib/fxl",
     "//userspace/lib/loader_service",
     "//userspace/storage/lib/vfs/cpp",
+    "//userspace/storage/memfs:lib",
     "//userspace/sys/lib/stdout-to-debuglog/cpp",
     "//zircon/system/ulib/sync:sync-cpp",
     "//zircon/system/ulib/zx",

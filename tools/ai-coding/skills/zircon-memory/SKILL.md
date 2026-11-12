@@ -1,8 +1,10 @@
 ---
 name: zircon-memory
 description: >
-  Use when changing page tables, physmap, VMOs/VMARs, PTE bits, translation faults on the Secular console image. Read the map
-  in products/reference/zircon/memory.md before editing.
+  Use when changing page tables, physmap, VMOs/VMARs, PTE bits, PMM, heap,
+  page queues, demand paging, cache coherency, ASIDs, or translation
+  faults on the Secular console image. Read the map in
+  products/reference/zircon/memory.md before editing.
 ---
 
 # zircon-memory
@@ -17,6 +19,8 @@ checklist.
 ## When to use
 
 * Changing page tables, physmap, VMOs/VMARs, PTE bits, or translation faults.
+* Changing PMM arenas, `vm_page` state, kernel heap, VMO page allocation,
+  demand paging, cache coherency, VMARs, or ASIDs.
 
 ## Do not
 

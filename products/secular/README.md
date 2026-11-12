@@ -17,5 +17,8 @@ The ZBI is a bringup-class system assembled without Bazel:
   guest_manager (eager; Linux/RTOS guests; no guest kernel image yet)
 - `/boot/bin`: `sh` (`zxsh`), `vmm`, `cat`, `clear`, `tree`, `dlog`, `debuglog`,
   psutils, `kcounter`, `ktrace`, `loadgen`, `pistress`, `time`, `uname`, `hwstress`
+- `/code`: writable RAM memfs (same level as `/boot` and `/vmm`). Use for
+  `ktrace save /code/trace.fxt`. Cleared on reboot. BOOTFS itself is
+  read-only.
 - `/boot/config/profiles`: bringup scheduler profiles for `role_manager`
 - `/boot/meta/secular.txt`: microkernel identity, version, and toolchain stamp

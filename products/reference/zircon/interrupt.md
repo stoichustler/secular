@@ -16,7 +16,9 @@ Stop when the handler has EOI'd, a fault has filled or killed, or a vINTID sits 
 ## When not to use
 
 * The thread that the IRQ preempts — `cpu.md`.
-* The PTE the fault must install — `memory.md`.
+* How the VM fills the PTE (demand page, CoW, AF) — `memory.md`
+  **Page fault**. Cache coherency around that Map — `memory.md`
+  **Cache coherency**.
 
 > [!NOTE]
 > Console image: Zircon kernel + linux-arm64-boot-shim + BOOTFS + serial
@@ -546,7 +548,8 @@ Resolved faults (`ZX_OK`) just `eret` to the same `ELR`. The instruction
 retries; the mapping / AF bit is now valid. This is how first-touch of a
 mapped VMO, stack growth via a mapped region, and AF updates work on the
 console image. There is no anonymous mmap-without-a-VMO: userspace maps
-VMOs through a VMAR (`memory.md`).
+VMOs through a VMAR. How the VM finds the mapping, allocates the page,
+does CoW, and installs the PTE is `memory.md` **Page fault**.
 
 #### User-copy (kernel touching user memory)
 

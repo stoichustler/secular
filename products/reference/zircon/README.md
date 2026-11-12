@@ -23,7 +23,7 @@ zircon kernel + linux-arm64-boot-shim + BOOTFS + serial console + zxsh
 | Skill | Map | Read when |
 | --- | --- | --- |
 | [`zircon-bootstrap`](../../../tools/ai-coding/skills/zircon-bootstrap/SKILL.md) | [`bootstrap.md`](bootstrap.md) | ATF, Trusty, lkboot, physboot, userboot, QEMU `-bios` |
-| [`zircon-memory`](../../../tools/ai-coding/skills/zircon-memory/SKILL.md) | [`memory.md`](memory.md) | page tables, physmap, PTE, translation fault |
+| [`zircon-memory`](../../../tools/ai-coding/skills/zircon-memory/SKILL.md) | [`memory.md`](memory.md) | page tables, physmap, PMM, VMO/VMAR, page fault, cache, ASID |
 | [`zircon-cpu`](../../../tools/ai-coding/skills/zircon-cpu/SKILL.md) | [`cpu.md`](cpu.md) | thread, syscall, idle, SMP, VCPU |
 | [`zircon-interrupt`](../../../tools/ai-coding/skills/zircon-interrupt/SKILL.md) | [`interrupt.md`](interrupt.md) | GICv3, SYNC, vGIC |
 | [`zircon-ipc`](../../../tools/ai-coding/skills/zircon-ipc/SKILL.md) | [`ipc.md`](ipc.md) | handles, channel, FIDL |

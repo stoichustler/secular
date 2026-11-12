@@ -43,6 +43,8 @@
 #include "src/storage/lib/vfs/cpp/remote_dir.h"
 #include "src/storage/lib/vfs/cpp/vfs_types.h"
 #include "src/storage/lib/vfs/cpp/vnode.h"
+#include "src/storage/memfs/memfs.h"
+#include "src/storage/memfs/vnode_dir.h"
 #include "src/sys/lib/stdout-to-debuglog/cpp/stdout-to-debuglog.h"
 
 namespace {
@@ -290,6 +292,33 @@ int main(int argv, char** argc) {
 
   async_dispatcher_t* dispatcher = loop.dispatcher();
   fbl::RefPtr root = fbl::MakeRefCounted<fs::PseudoDir>();
+
+  // /boot is read-only BOOTFS. /vmm is optional and also not a dump
+  // target. Mount a RAM-backed memfs at /code (same level) so the
+  // console can stash ktrace and similar files until reboot.
+  std::unique_ptr<memfs::Memfs> code_fs;
+  {
+    zx::result created = memfs::Memfs::Create(dispatcher, "code");
+    if (created.is_error()) {
+      FX_PLOGS(FATAL, created.status_value()) << "failed to create /code memfs";
+    }
+    auto [fs, vnode] = std::move(created.value());
+    zx::result endpoints = fidl::CreateEndpoints<fuchsia_io::Directory>();
+    if (endpoints.is_error()) {
+      FX_PLOGS(FATAL, endpoints.status_value()) << "failed to create /code endpoints";
+    }
+    if (zx_status_t status = fs->ServeDirectory(vnode, std::move(endpoints->server));
+        status != ZX_OK) {
+      FX_PLOGS(FATAL, status) << "failed to serve /code";
+    }
+    if (zx_status_t status = root->AddEntry(
+            "code", fbl::MakeRefCounted<fs::RemoteDir>(std::move(endpoints->client)));
+        status != ZX_OK) {
+      FX_PLOGS(FATAL, status) << "failed to add /code";
+    }
+    code_fs = std::move(fs);
+    FX_LOGS(INFO) << "mounted '/code' (memfs)";
+  }
 
   std::unordered_map<std::string_view, std::thread> threads;
   fdio_flat_namespace_t* flat;

@@ -48,6 +48,7 @@ static_library("lib") {
   visibility = [
     ":*",
     "//userspace/lib/loader_service:loader_service_test_fixture",
+    "//userspace/secular/bin/console-launcher:*",
     "//userspace/storage/memfs/test/*",
     "//userspace/sys/component_manager/tests/rights:expose_dir_rights_bin",
   ]

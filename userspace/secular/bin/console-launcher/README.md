@@ -14,6 +14,11 @@ Console-launcher should be built and launched automatically in every
 configuration. Console-launcher will decide if the console should be launched
 depending on the kernel commandline arguments.
 
+On the Secular console image the shell namespace includes `/code`, a
+RAM-backed memfs next to `/boot` and `/vmm`. `/boot` is read-only
+BOOTFS; dump files such as `ktrace save /code/trace.fxt` go under
+`/code` and last until reboot.
+
 ## Testing
 
 Unit tests for console-launcher are available in the `console-launcher-tests`
