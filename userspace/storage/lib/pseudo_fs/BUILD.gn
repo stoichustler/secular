@@ -31,16 +31,8 @@ rustc_library("pseudo_fs") {
   deps += [ "//userspace/storage/lib/vfs/rust:vfs" ]
   visibility = [
     ":*",
-    "//userspace/storage/fshost:*",
     "//userspace/sys/lib/elf_runner:*",
   ]
-}
-
-rustc_library("pseudo_fs_static") {
-  name = "pseudo_fs"
-  forward_variables_from(common_pseudo_fs_args, "*")
-  deps += [ "//userspace/storage/lib/vfs/rust:vfs_static" ]
-  visibility = [ "//userspace/storage/fxfs/*" ]
 }
 
 fuchsia_unittest_package("pseudo_fs_tests") {

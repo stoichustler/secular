@@ -13,6 +13,13 @@
     { "path": "tools/ai-coding/skills/port-gn-config-to-bazel-build-flags" },
     { "path": "tools/ai-coding/skills/report-ai-bug" },
     { "path": "tools/ai-coding/skills/rust_best_practices" },
-    { "path": "tools/ai-coding/skills/triage-recent-regression" }
+    { "path": "tools/ai-coding/skills/triage-recent-regression" },
+    { "path": "tools/ai-coding/skills/zircon-async" },
+    { "path": "tools/ai-coding/skills/zircon-bootstrap" },
+    { "path": "tools/ai-coding/skills/zircon-cpu" },
+    { "path": "tools/ai-coding/skills/zircon-interrupt" },
+    { "path": "tools/ai-coding/skills/zircon-ipc" },
+    { "path": "tools/ai-coding/skills/zircon-memory" },
+    { "path": "tools/ai-coding/skills/zircon-sync" }
   ]
 }

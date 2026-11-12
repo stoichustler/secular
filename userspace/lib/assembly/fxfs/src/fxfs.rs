@@ -2,13 +2,24 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-use anyhow::{Context, Result};
+use anyhow::{Context, Result, bail};
 use assembly_blobfs::BlobManifest;
 use camino::{Utf8Path, Utf8PathBuf};
 use fuchsia_pkg::PackageManifest;
-use fxfs_make_blob_image::CompressionAlgorithm;
 use serde::Deserialize;
 use std::fs::File;
+
+/// Compression algorithm for fxfs blob images.
+///
+/// Secular does not ship fxfs or `fxfs_make_blob_image`; this enum exists so
+/// host package-tool / assembled_system still type-check.
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub enum CompressionAlgorithm {
+    /// zstd compression.
+    Zstd,
+    /// LZ4 compression.
+    Lz4,
+}
 
 /// Builder for Fxfs images which can be preinstalled with a set of initial packages.
 ///
@@ -64,40 +75,18 @@ impl FxfsBuilder {
         output: impl AsRef<Utf8Path>,
         sparse_output: Option<impl AsRef<Utf8Path>>,
     ) -> Result<Utf8PathBuf> {
-        // Delete the output file if it exists.
-        let output = output.as_ref();
-        if output.exists() {
-            std::fs::remove_file(&output)
-                .with_context(|| format!("Failed to delete previous Fxfs file: {}", output))?;
-        }
-
-        // Write the blob manifest.
-        let blob_manifest_path = gendir.as_ref().join("blob.manifest");
-        self.manifest.write(&blob_manifest_path).context("Failed to write to blob.manifest")?;
-
-        let blobs_json_path = gendir.as_ref().join("blobs.json");
-
-        struct Cleanup(Option<String>);
-        impl Drop for Cleanup {
-            fn drop(&mut self) {
-                if let Some(path) = &self.0 {
-                    // Best-effort, ignore warnings.
-                    let _ = std::fs::remove_file(path);
-                }
-            }
-        }
-        let mut cleanup = Cleanup(Some(output.as_str().to_string()));
-        fxfs_make_blob_image::make_blob_image(
-            output.as_str(),
-            sparse_output.as_ref().map(|s| s.as_ref().as_str()),
-            self.manifest.to_vec(),
-            blobs_json_path.as_str(),
+        // Keep the parameters live so `-Dwarnings` does not fire on the stub.
+        let _ = (
+            gendir.as_ref(),
+            output.as_ref(),
+            sparse_output.as_ref().map(|path| path.as_ref()),
+            &self.manifest,
             self.size_bytes,
             self.compression_algorithm,
+        );
+        bail!(
+            "Fxfs image generation is not available: fxfs_make_blob_image was removed from the Secular console tree"
         )
-        .await?;
-        cleanup.0 = None;
-        Ok(blobs_json_path)
     }
 }
 

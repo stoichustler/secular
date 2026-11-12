@@ -174,8 +174,10 @@ template("update_package") {
     deps += [ invoker.partitions ]
 
     # Used by create-update for size checks.
-    deps += [ blobfs_tool_target ]
-    inputs += [ blobfs_tool_path ]
+    if (defined(blobfs_tool_target)) {
+      deps += [ blobfs_tool_target ]
+      inputs += [ blobfs_tool_path ]
+    }
 
     if (defined(invoker.system_a)) {
       args += [

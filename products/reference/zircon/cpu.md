@@ -1,33 +1,34 @@
-# CPU
+---
+name: zircon-cpu
+description: >
+  Use when changing threads, context switch, syscalls, idle/WFI, SMP bring-up, or VCPU enter on the Secular console image.
+---
 
-Secular boots a Zircon kernel on `qemu-system-aarch64` (virt, arm64). The
-kernel runs at EL1. Each physical CPU is a Cortex-A model that QEMU presents
-as an independent PE: it has its own GPRs, EL1 system registers, caches, and
-GIC redistributor. This note is the map of that CPU path: how a PE finds the
-current thread, what is saved on exception and on context switch, how a
-user thread enters and leaves the kernel (syscalls included), how caches
-are maintained, how the scheduler picks the next thread, how a **guest
-VCPU** is still that same thread (with a few extra tricks), and how the
-job / process / thread objects that userspace sees sit on top of that.
+# Zircon CPU: Thread, Idle, and VCPU
 
-The product stays:
+Stop at idle `WFI` and at `zx_vcpu_enter`.
 
-```text
-zircon kernel + linux-arm64-boot-shim + BOOTFS + serial console + zxsh
-```
+## When to use
 
-Read [`memory.md`](memory.md) first for the MMU / TTBR picture. This note assumes that
-map: kernel at TTBR1, user at TTBR0, physmap for kernel access to RAM.
+* Editing `Thread`, `arch_context_switch`, `do_syscall`, idle, or `zx_vcpu_enter`.
+* A hang that is scheduler/idle rather than a missing IRQ.
 
-## CPU
+## When not to use
 
-### Framework
+* IRQ acknowledge / EOI — `interrupt.md`.
+* Which lock to take — `sync.md`.
+
+> [!NOTE]
+> Console image: Zircon kernel + linux-arm64-boot-shim + BOOTFS + serial
+> console + `zxsh`. The kernel is an EL2 VHE host.
+
+## 1. Framework
 
 One PE, two software identities, three register pictures, one local scheduler.
 
 ```text
 ┌──────────────────────────────────────────────────────────────────────────┐
-│ QEMU virt PE  (EL1, cpu_num ← MPIDR_EL1)                                 │
+│ QEMU virt PE  (EL2 VHE host, cpu_num ← MPIDR_EL1)                        │
 │                                                                          │
 │   GPRs x0–x30     ELR_EL1 / SPSR_EL1     DAIF     I$ / D$ (CTR_EL0)      │
 │                                                                          │
@@ -50,7 +51,7 @@ One PE, two software identities, three register pictures, one local scheduler.
    (userspace objects; see Job, process, thread)
 ```
 
-### Flow
+## 2. Flow
 
 Two switches, not one. A syscall or IRQ from EL0 is the same `Thread*`
 on a different exception level. A scheduler switch is a different
@@ -83,7 +84,7 @@ CPU0 ─ PSCI CPU_ON ─► secondary.S ── MMU on ─► idle thread ─► 
         guest EL1  ← not a scheduler switch       IPI to last_cpu_ if RUNNING
 ```
 
-### Physical CPUs on QEMU virt
+## 3. Physical CPUs on QEMU virt
 
 `make run` / `make kick` default to eight vCPUs (`-smp 8`). QEMU virt numbers
 them with MPIDR affinity:
@@ -127,7 +128,7 @@ PE (QEMU vCPU)
                                                       idle_power_thread
 ```
 
-### CPU context
+## 4. CPU context
 
 There are three register pictures, not one.
 
@@ -193,7 +194,7 @@ kernel stack top. Later returns from syscall / IRQ / fault use
 story, and how it differs from a scheduler switch, is **User ↔ kernel**
 below.
 
-### User ↔ kernel
+## 5. User ↔ kernel
 
 A PE is always running some `Thread`. That thread is either in the
 kernel (EL1, `SPSel=1`, `SP_EL1`) or in userspace (EL0, user PC, `SP_EL0`).
@@ -336,7 +337,7 @@ Switching from one user process to another also switches `TTBR0` (see
 **CPU context**, `ArmArchVmAspace::ContextSwitch`). Switching between
 two threads of the same process does not.
 
-### System calls
+## 6. System calls
 
 Userspace does not `svc` from arbitrary code. Every Zircon syscall is a
 vDSO stub. The vDSO is mapped into every process (`vdso_code_address`
@@ -432,7 +433,7 @@ are sampled, they are either consumed or the thread is back in EL0.
 into a new process as `arg1`, and it may run only once (the first
 thread). Extra threads take integer arguments, not handles.
 
-### Job, process, thread
+## 7. Job, process, thread
 
 The CPU runs a `Thread`. Userspace names three kernel objects that
 wrap that:
@@ -527,7 +528,7 @@ kernel thread.
 Idle, DPC, and the CPU0 bootstrap thread are `Thread`s with no
 dispatcher. They never enter EL0.
 
-### Lifecycle
+## 8. Lifecycle
 
 Three machines. Do not conflate them.
 
@@ -657,7 +658,7 @@ root job                         READY  (max_height 32)
 `RUNNING`, kernel `Thread` `BLOCKED`, that CPU's scheduler on
 `IdlePowerThread` (`WFI`).
 
-### Cache
+## 9. Cache
 
 AArch64 has separate I and D caches. The kernel talks to them with
 `DC` / `IC` by MVA, line size from `CTR_EL0` (`arm64_dcache_size`).
@@ -699,7 +700,7 @@ on ([`memory.md`](memory.md)). MAIR indices decide whether a page is cached at a
 Do not run cache-by-MVA on device memory. GIC / UART mappings are
 `UNCACHED_DEVICE`.
 
-### CPU scheduler
+## 10. CPU scheduler
 
 Each CPU has its own `Scheduler` in `percpu`. There is no global run queue.
 A thread is **Ready** on exactly one CPU's queue, **Running** on that CPU,
@@ -752,7 +753,7 @@ A guest VCPU is **not** a third discipline. It is a Fair (or Deadline,
 if userspace applied a profile) thread with `THREAD_FLAG_VCPU`. See
 **VCPU scheduling**.
 
-### VCPU scheduling
+## 11. VCPU scheduling
 
 Secular's hypervisor does **not** add a second run queue. Guest tasks
 never appear in `Scheduler`. A VCPU is a **host `Thread*`** that spends
@@ -990,7 +991,7 @@ userspace.
 | [`zircon/kernel/object/vcpu.rs`](../../../zircon/kernel/object/vcpu.rs) | `zx_vcpu_*` object; `cpp_vcpu_enter` |
 | [`userspace/hypervisor/bin/vmm/vcpu.cc`](../../../userspace/hypervisor/bin/vmm/vcpu.cc) | one host thread per VCPU, enter loop |
 
-### CPU STR
+## 12. CPU STR
 
 STR here is **state transition**: two machines, not one. Threads move through
 `thread_state`. The CPU's idle/power thread has a second machine
@@ -1077,7 +1078,7 @@ when `current` is not Active/Wakeup **or** `current != target`.
 Secondary bring-up ends in Active on the idle thread. Console boot does not
 exercise Suspend/Offline unless something calls the power APIs.
 
-### When the CPU enters idle
+## 13. When the CPU enters idle
 
 "Idle" means **this PE is running `IdlePowerThread::Run`**, not that the
 hardware is off. The scheduler picks that thread in
@@ -1148,7 +1149,7 @@ preempt pending → `Reschedule` → a real thread if one is Ready.
       Reschedule → work or WFI again
 ```
 
-### Idle
+## 14. Idle
 
 Idle is a **per-CPU kernel thread**, not a special CPU mode bit. Hardware
 low power is a `WFI` (or a platform suspend) **inside** that thread.
@@ -1226,7 +1227,7 @@ the console's life in `WFI` on seven PEs, while CPU0 runs `zxsh` / UART.
 | Offline | [`mp.cc`](../../../zircon/kernel/arch/arm64/mp.cc) `mp_unplug_current_cpu` |
 | IRQ that ends `WFI` | [`interrupt.md`](interrupt.md) |
 
-### SMP bring-up
+## 15. SMP bring-up
 
 ```text
 CPU0  (already at EL1, MMU on)
@@ -1247,7 +1248,7 @@ CPU n  EL1, MMU off, identity later
 
 Until `mp_set_curr_cpu_online(true)`, that CPU is not a reschedule target.
 
-### Basic registers (CPU)
+## 16. Basic registers (CPU)
 
 | Register | Role |
 | --- | --- |
@@ -1270,7 +1271,7 @@ Until `mp_set_curr_cpu_online(true)`, that CPU is not a reschedule target.
 Exception entry always runs with IRQs masked. `arch_enable_ints` is
 `daifclr #6`. `arch_ints_disabled` tests DAIF.I (bit 7).
 
-### Where in the tree
+## 17. References
 
 Read in this order.
 
@@ -1322,22 +1323,45 @@ second QEMU vCPU come online as idle, userboot's first `eret`, and a
 guest `WFI` block the host VCPU thread (same scheduler).
 
 IRQ delivery itself is [`interrupt.md`](interrupt.md). Locks and barriers are
-[`synchronization.md`](synchronization.md). The first process is [`bootstrap.md`](bootstrap.md). User TTBR0
-is [`memory.md`](memory.md).
+[`sync.md`](sync.md). The first process is [`bootstrap.md`](bootstrap.md). User TTBR0
+is [`memory.md`](memory.md). The port loop is [`async.md`](async.md).
 
-### Terminology
+## Anti-patterns
+
+* **Assume the kernel runs at EL1.** This product is EL2 VHE with EL1-named sysregs.
+* **Block in IRQ context with `Mutex`.** Use `SpinLock` + `IrqSave`.
+* **Treat a VCPU as a second scheduler.** It is the same `Thread*` with `THREAD_FLAG_VCPU`.
+
+## First-pass checklist
+
+- [ ] iframe + `TPIDR_EL1` → `Thread*`
+- [ ] EL0 `svc` → `do_syscall` → `eret`
+- [ ] `Reschedule` → idle `WFI` or another thread
+
+## Related
+
+* [`bootstrap.md`](bootstrap.md)
+* [`memory.md`](memory.md)
+* [`cpu.md`](cpu.md)
+* [`interrupt.md`](interrupt.md)
+* [`ipc.md`](ipc.md)
+* [`async.md`](async.md)
+* [`sync.md`](sync.md)
+
+## 18. Terminology
 
 | Term | Meaning in this note |
 | --- | --- |
 | PE | Processing Element. One QEMU vCPU; one set of GPRs, EL1 sysregs, GIC redistributor. |
 | EL0 | Exception level 0. Userspace. `zxsh`, userboot, component_manager. |
-| EL1 | Exception level 1. The Zircon kernel on this product. |
+| EL1 | Exception level 1. EL1-named sysregs; on this product the kernel is an EL2 VHE host. |
+| EL2 VHE | Host at EL2 with `HCR_EL2.{RW,E2H,TGE}`. Looks like EL1 to most kernel code. |
 | `eret` | Exception return. Hardware restores `PSTATE` from `SPSR_EL1` and `PC` from `ELR_EL1`. The only way back to EL0. |
 | `svc` | Supervisor call. EL0 instruction that takes a sync exception; Zircon uses `svc #0` with the syscall number in `x16`. |
 | iframe | `iframe_t`. The 272-byte exception frame on the kernel stack: GPRs, `ELR`, `SPSR`, `SP_EL0`. Syscalls reuse it as `syscall_regs_t`. |
 | Context-switch frame | `arm64_context_switch_frame`. Callee-saved integer regs (`x19`, `x21`–`lr`) swapped by `arm64_context_switch`. Not an iframe. |
-| Scheduler context switch | Changing `Thread*` on this PE. Saves the switch frame, FPU, user TLS; may switch `TTBR0`. Both threads are in EL1. |
-| Exception / syscall switch | Same `Thread*`, EL0 ↔ EL1. Pushes or pops an iframe. `TPIDR_EL1` unchanged. |
+| Scheduler context switch | Changing `Thread*` on this PE. Saves the switch frame, FPU, user TLS; may switch `TTBR0`. Both threads stay in the kernel (EL2 VHE). |
+| Exception / syscall switch | Same `Thread*`, EL0 ↔ kernel. Pushes or pops an iframe. `TPIDR_EL1` unchanged. |
 | Kernel stack | `SP_EL1` for this `Thread`. Holds the iframe and kernel C++ frames. Default 2 pages. |
 | User stack | `SP_EL0`. Mapped in the process aspace by userspace. |
 | `TPIDR_EL1` | Kernel TLS. Holds the current `Thread`'s `thread_pointer_location`; source of `Thread::Current`. |
@@ -1381,6 +1405,3 @@ is [`memory.md`](memory.md).
 | Exceptionate | Channel that receives thread/process/job exceptions. Walk is thread → process → job → parent jobs. |
 | Restricted mode | Optional split aspace (private + shared) used by Starnix. Not on the console boot path. ARM32 `svc` is rejected unless this is set. |
 
----
-
-Everyday's a Hustle.

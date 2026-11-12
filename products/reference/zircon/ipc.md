@@ -1,27 +1,28 @@
-# IPC
+---
+name: zircon-ipc
+description: >
+  Use when changing channels, handles, FIDL wire format, sockets, FIFOs, or the console bootstrap channel on the Secular image.
+---
 
-Secular boots a Zircon kernel on `qemu-system-aarch64` (virt, arm64).
-Processes do not share a POSIX fd table or a global namespace. They talk
-through **kernel objects** named by **handles**. This note is the map of
-that path: what each IPC object is for, how a message or a signal moves,
-how **FIDL** sits on a channel (wire format, encode/decode, txid),
-and which of them the console image actually uses.
+# Zircon IPC: Handles, Channels, and FIDL
 
-The product stays:
+Stop when a FIDL reply is decoded, or when `zxsh` is on serial.
 
-```text
-zircon kernel + linux-arm64-boot-shim + BOOTFS + serial console + zxsh
-```
+## When to use
 
-Read [`cpu.md`](cpu.md) for syscalls / `Thread` block, [`memory.md`](memory.md)
-for VMOs, [`synchronization.md`](synchronization.md) for `WaitQueue` /
-`CriticalMutex`. Userboot's two channel messages are [`bootstrap.md`](bootstrap.md).
-FIDL as a capability protocol (not a kernel object) is also
-[`microkernel.md`](../microkernel.md) Security.
+* Editing `ChannelDispatcher`, handle rights, FIDL encode/decode, or userboot messages.
+* Choosing channel vs socket vs FIFO vs port.
 
-## IPC
+## When not to use
 
-### Framework
+* The port observer / `async_loop` — `async.md`.
+* Futex implementation — `sync.md`.
+
+> [!NOTE]
+> Console image: Zircon kernel + linux-arm64-boot-shim + BOOTFS + serial
+> console + `zxsh`. The kernel is an EL2 VHE host.
+
+## 1. Framework
 
 One kernel object, two (or one) handles, signals to wait on. Data either
 moves as a **message** or stays in a **shared VMO**.
@@ -52,14 +53,14 @@ moves as a **message** or stays in a **shared VMO**.
 | FIFO | small fixed records | no | driver ↔ userspace rings |
 | Event / EventPair | only signals | no | notify / hangup |
 | Port | packets from many objects | no | async wait (one thread, many sources) |
-| Futex | nothing; a user word | no | libc mutex (`synchronization.md`) |
+| Futex | nothing; a user word | no | libc mutex ([`sync.md`](sync.md)) |
 | VMO | pages, not messages | mapping, not send | shared buffers |
 
 Peered objects (`Channel`, `Socket`, `FIFO`, `EventPair`) are created as
 a pair. `related_koid` of one end is the other. Closing one end asserts
 `PEER_CLOSED` on the survivor.
 
-### Flow
+## 2. Flow
 
 Channel is the one that carries capabilities. Write on A, queue on B,
 wake whoever waits on B.
@@ -86,7 +87,7 @@ wake whoever waits on B.
 `zx_channel_call` is write then wait for a reply whose `txid` matches
 (kernel-generated txids have bit 31 set).
 
-### Handles and rights
+## 3. Handles and rights
 
 A handle is a process-local integer: `(object, rights)`. It is not a
 pointer and is not valid in another process until it is **transferred**.
@@ -134,7 +135,7 @@ channel. Without `ZX_RIGHT_WAIT` you cannot `zx_object_wait_*`.
 The kernel may write an endpoint (owner koid `ZX_KOID_INVALID`) — that
 is how `userboot_init` stuffs the bootstrap channel.
 
-### Signals and wait
+## 4. Signals and wait
 
 Every waitable object has a signal bitset. The kernel raises/clears
 bits; userspace waits for a mask.
@@ -199,10 +200,10 @@ Wait APIs:
 `wait_one` / `wait_many` attach a `WaitSignalObserver`, then
 `Event::Wait` (`Blocked::WAIT_ONE` / `WAIT_MANY`). When the object
 raises a watched bit, the observer signals that event and the thread
-becomes `READY` (`synchronization.md`). Closing the handle while
+becomes `READY` ([`sync.md`](sync.md)). Closing the handle while
 waiting returns `ZX_ERR_CANCELED` (`ZX_SIGNAL_HANDLE_CLOSED`).
 
-### Channel
+## 5. Channel
 
 **Principle:** a two-ended queue of messages. Each message is atomic
 (all bytes and handles, or none). This is how Zircon moves
@@ -283,7 +284,7 @@ bootstrap channel (process caps, then system caps). No FIDL bytes.
 `component_manager` then speaks FIDL over channels to
 console-launcher and everyone else.
 
-### FIDL
+## 6. FIDL
 
 **Principle:** FIDL is not a kernel object. It is a **language**
 (`.fidl`), a **wire format** (bytes + handles), and **bindings** that
@@ -658,7 +659,7 @@ not a kernel FIDL object. Debug a bad FIDL call as: wrong ordinal
 (bindings mismatch), truncated message, handle count off, or peer
 closed — then look at the channel, not at a FIDL syscall.
 
-### Socket
+## 7. Socket
 
 **Principle:** a pipe of bytes, not capabilities. Stream (TCP-like) or
 datagram (`ZX_SOCKET_DATAGRAM`). No handles in the payload.
@@ -705,7 +706,7 @@ Use when you want bulk data and already have a channel to pass the
 socket handle itself. The console image does not need sockets for
 `zxsh`.
 
-### FIFO
+## 8. FIFO
 
 **Principle:** a tiny kernel ring of fixed-size elements. Fast, no
 handles, no 64 KiB packets.
@@ -754,7 +755,7 @@ carries counts / indices.
 Drivers use this for “I completed N records in a VMO you already
 mapped.” The records stay small; the payload lives in the VMO.
 
-### Event and EventPair
+## 9. Event and EventPair
 
 **Principle:** signals with no queue.
 
@@ -795,12 +796,13 @@ mapped.” The records stay small; the payload lives in the VMO.
 `PEER_CLOSED` on an event pair is a hangup: the other process dropped
 its end. Cheaper than a channel if you only need “it happened.”
 
-### Port
+## 10. Port
 
 **Principle:** one wait site for many objects. Bind with
 `zx_object_wait_async(port, handle, key, signals)`. When the object
 matches, a packet `{key, observed signals}` is queued. `zx_port_wait`
-blocks on that queue (`Blocked::PORT`).
+blocks on that queue (`Blocked::PORT`). The full observer / packet /
+cancel map is [`async.md`](async.md) **Port**.
 
 #### Framework
 
@@ -853,7 +855,7 @@ Cancel: close the handle, or `zx_port_cancel`. The observer may sit on
 both the object and the port until the packet is queued
 ([`port_dispatcher.h`](../../../zircon/kernel/object/include/object/port_dispatcher.h)).
 
-### Futex
+## 11. Futex
 
 **Principle:** the wait is in the kernel; the lock word is in **user**
 memory (often a shared VMO). `zx_futex_wait(addr, expected, …)` sleeps
@@ -892,10 +894,10 @@ if `*addr == expected`. `zx_futex_wake` readies waiters.
 ```
 
 No handle to a futex object. The key is the user VA (and the aspace).
-Libc `sync_mutex_t` is this (`synchronization.md`). It is IPC only if
+Libc `sync_mutex_t` is this ([`sync.md`](sync.md)). It is IPC only if
 two processes map the same page and agree on the word.
 
-### VMO (shared memory)
+## 12. VMO (shared memory)
 
 **Principle:** do not copy. Map the same pages in two aspaces
 (`zx_vmar_map`, [`memory.md`](memory.md)). Pass the VMO **handle** over a
@@ -932,49 +934,59 @@ carry offsets and lengths.
 Kernel never interprets the bytes. Cacheability follows the mapping
 flags. This is how large payloads avoid 64 KiB channel messages.
 
-### Console path
+## 13. Console path
 
 ```text
-userboot_init                         kernel
-  channel ── two handle-only msgs ──► userboot EL0
-                                        unpack BOOTFS
-                                        launch component_manager
-                                          channels (FIDL) to
-                                            console-launcher
-                                              kernel serial syscalls
-                                                zxsh  (stdio is serial,
-                                                       not a channel)
+┌────────────────────────────────────────────────────────────────┐
+│ userboot_init  (kernel)                                        │
+│   channel ── two handle-only msgs ──► userboot EL0             │
+└────────────────────────────┬───────────────────────────────────┘
+                             ▼
+┌────────────────────────────────────────────────────────────────┐
+│ userboot                                                       │
+│   unpack BOOTFS                                                │
+│   launch libexec/component_manager --boot                      │
+└────────────────────────────┬───────────────────────────────────┘
+                             ▼
+┌────────────────────────────────────────────────────────────────┐
+│ component_manager                                              │
+│   FIDL channels → console-launcher                             │
+└────────────────────────────┬───────────────────────────────────┘
+                             ▼
+┌────────────────────────────────────────────────────────────────┐
+│ console-launcher                                               │
+│   kernel serial syscalls                                       │
+│   fdio_spawn /boot/bin/sh                                      │
+└────────────────────────────┬───────────────────────────────────┘
+                             ▼
+┌────────────────────────────────────────────────────────────────┐
+│ zxsh   stdio is serial, not a channel                          │
+└────────────────────────────────────────────────────────────────┘
 ```
 
 `zxsh` on this image talks to the kernel console, not to a userspace
 TTY channel. The IPC you will see on serial boot is: bootstrap
 channel (handle-only, **not** FIDL), then `component_manager`'s
 **FIDL** channels to launchers. UART IRQ → wait wakeup is
-[`interrupt.md`](interrupt.md) + [`synchronization.md`](synchronization.md),
+[`interrupt.md`](interrupt.md) + [`sync.md`](sync.md),
 not a Zircon socket.
 
-### How to choose
+## 14. How to choose
 
 ```text
-Need a typed RPC / protocol on a channel?
-  → FIDL (userspace). Kernel still a Channel.
-Need to send a handle / capability?
-  → Channel (FIDL if the protocol says so)
-Need an event loop over many objects?
-  → Port + wait_async
-Need to sleep on one object?
-  → zx_object_wait_one
-Need bytes, no handles, maybe a lot?
-  → Socket, or VMO + Channel/FIFO for control
-Need tiny fixed records to a driver?
-  → FIFO (+ VMO for payload)
-Need only “signalled / hangup”?
-  → Event / EventPair
-Need a userspace mutex?
-  → futex (sync_mutex), not a kernel Mutex
+┌────────────────────────────────┬───────────────────────────────────┐
+│ Need a typed RPC / protocol?   │ FIDL. Kernel still a Channel      │
+│ Need to send a handle?         │ Channel                           │
+│ Need an event loop?            │ Port + wait_async ([async.md])    │
+│ Need to sleep on one object?   │ zx_object_wait_one                │
+│ Need bytes, no handles?        │ Socket, or VMO + Channel/FIFO     │
+│ Need tiny fixed records?       │ FIFO (+ VMO for payload)          │
+│ Need only signalled / hangup?  │ Event / EventPair                 │
+│ Need a userspace mutex?        │ futex (sync_mutex), not Mutex     │
+└────────────────────────────────┴───────────────────────────────────┘
 ```
 
-### Where in the tree
+## 15. References
 
 | File | Why |
 | --- | --- |
@@ -1004,7 +1016,29 @@ receiver)**. Then **port wait_async**. Then **FIDL header + ordinal +
 txid** on those same bytes. That is enough to see userboot's two
 messages (not FIDL), and a FIDL call from `component_manager`.
 
-### Terminology
+## Anti-patterns
+
+* **`zx_object_wait_one` inside a port handler.** It stalls every other source.
+* **Put userboot in BOOTFS.** It unpacks BOOTFS; it lives in `STORAGE_KERNEL`.
+* **Assume `zxsh` speaks FIDL.** Its stdio is kernel serial.
+
+## First-pass checklist
+
+- [ ] Handle + rights on a Channel
+- [ ] FIDL header (txid, ordinal) on that channel
+- [ ] Port wait_async for many channels — then `async.md`
+
+## Related
+
+* [`bootstrap.md`](bootstrap.md)
+* [`memory.md`](memory.md)
+* [`cpu.md`](cpu.md)
+* [`interrupt.md`](interrupt.md)
+* [`ipc.md`](ipc.md)
+* [`async.md`](async.md)
+* [`sync.md`](sync.md)
+
+## 16. Terminology
 
 | Term | Meaning in this note |
 | --- | --- |
@@ -1028,6 +1062,3 @@ messages (not FIDL), and a FIDL call from `component_manager`.
 | Epitaph | Last FIDL message before close; body is a `zx_status_t`. |
 | `fidl_next` | Rust bindings: codec + protocol + typed bind. |
 
----
-
-Everyday's a Hustle.

@@ -357,7 +357,7 @@ template("boot_test") {
     _recovery_board_config_label = recovery_board_configuration_label
   }
 
-  if (current_toolchain == default_toolchain) {
+  if (current_toolchain == default_toolchain && !secular_boot_build) {
     assembled_system_target = "_$main_target.assembled_system"
     recovery_assembled_system_target = "${assembled_system_target}.recovery"
 
@@ -432,7 +432,9 @@ template("boot_test") {
 
     group(product_bundle_target) {
       testonly = true
-      deps = [ ":${product_bundle_target}($default_toolchain)" ]
+      if (current_toolchain != default_toolchain) {
+        deps = [ ":${product_bundle_target}($default_toolchain)" ]
+      }
     }
   }
 

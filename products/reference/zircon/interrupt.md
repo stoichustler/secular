@@ -1,25 +1,28 @@
-# Interrupt
+---
+name: zircon-interrupt
+description: >
+  Use when changing GICv3, IRQ handlers, page faults, exception vectors, or guest vGIC injection on the Secular console image.
+---
 
-Secular boots a Zircon kernel on `qemu-system-aarch64` (virt, arm64). The
-kernel runs at EL1. Device IRQs, timers, and IPIs arrive through a **GICv3**.
-Synchronous faults (page fault, BRK, undef, …) take the same `VBAR_EL1`
-table but a different slot and a different C path. A guest (Linux or RTOS)
-sees a **vGIC**: the same GICv3 virtualization extensions at EL2, plus a
-distributor the userspace VMM emulates. This note is the map of those
-interrupt and exception paths.
+# Zircon Interrupt: GICv3, SYNC, and vGIC
 
-The product stays:
+Stop when the handler has EOI'd, a fault has filled or killed, or a vINTID sits in an ICH LR.
 
-```text
-zircon kernel + linux-arm64-boot-shim + BOOTFS + serial console + zxsh
-```
+## When to use
 
-Read [`cpu.md`](cpu.md) for iframe / DAIF / `x20` / syscall `svc`, and
-[`memory.md`](memory.md) for the MMU. Guest entry is
-[`virtualization.md`](../virtualization.md) plus
-[`userspace/hypervisor/README.md`](../../../userspace/hypervisor/README.md).
+* Editing `arm64_irq`, GICD/GICR, `vmm_page_fault_handler`, or ICH list registers.
+* A missing timer tick, UART IRQ, or guest vINTID.
 
-## GIC
+## When not to use
+
+* The thread that the IRQ preempts — `cpu.md`.
+* The PTE the fault must install — `memory.md`.
+
+> [!NOTE]
+> Console image: Zircon kernel + linux-arm64-boot-shim + BOOTFS + serial
+> console + `zxsh`. The kernel is an EL2 VHE host.
+
+## 1. GIC
 
 ### Framework
 
@@ -28,7 +31,7 @@ IRQs in ICH list registers; GICD/GICR emulated in `bin/vmm`).
 
 ```text
 ┌────────────────────────────────┐    ┌────────────────────────────────┐
-│ Host  kernel EL1               │    │ Guest  Linux / RTOS VCPU       │
+│ Host  EL2 VHE                  │    │ Guest  Linux / RTOS VCPU       │
 │                                │    │                                │
 │  VBAR_EL1  arm64_el1_exception │    │  ICC_*_EL1  virtual CPU ifc    │
 │   0x200 kernel IRQ  (SP_ELx)   │    │   hardware; not trapped        │
@@ -243,7 +246,7 @@ On the console image the interesting sources are:
 `register_int_handler` takes a lock that is also held during dispatch, so
 register/unregister synchronizes with in-flight IRQs.
 
-## Exception
+## 2. Exception
 
 IRQ is **GIC** above. This section is everything else that takes
 `VBAR_EL1`: synchronous exceptions (page fault, BRK, undef, alignment)
@@ -636,20 +639,25 @@ IRQs stay off. That is not IdlePowerThread (`cpu.md`).
  process killed
 ```
 
-## vGIC
+## 3. vGIC
 
 A guest does not program the host GICD. It sees a virtual GICv3:
 
 ```text
-guest EL1
-  ICC_*_EL1          virtual CPU interface (hardware, GICv3 VE)
-  GICD / GICR MMIO   emulated by userspace VMM (traps)
-        │
-        ▼  zx_guest_set_trap  (MMIO)
-EL2  ICH_*           list registers, VMCR, HCR
-        │  inject vIRQ into the virtual CPU interface
-        ▼
-host EL1  VMM thread  (bin/vmm) + kernel Vcpu
+┌────────────────────────────────────────────────────────────────┐
+│ guest EL1                                                      │
+│   ICC_*_EL1          virtual CPU interface (hardware)          │
+│   GICD / GICR MMIO   emulated by userspace VMM (traps)         │
+└────────────────────────────┬───────────────────────────────────┘
+                             ▼  zx_guest_set_trap (MMIO)
+┌────────────────────────────────────────────────────────────────┐
+│ EL2  ICH_*           list registers, VMCR, HCR                 │
+│      inject vIRQ into the virtual CPU interface                │
+└────────────────────────────┬───────────────────────────────────┘
+                             ▼
+┌────────────────────────────────────────────────────────────────┐
+│ host  VMM thread (bin/vmm) + kernel Vcpu                       │
+└────────────────────────────────────────────────────────────────┘
 ```
 
 `HCR_EL2.IMO/FMO/AMO` route physical IRQ/FIQ/SError to EL2 while a VCPU is
@@ -755,7 +763,7 @@ secondary CPU      init_percpu_early + unmask SGIs
 QEMU virt is GICv3. GICv2 (`arm_gicv2.rs`, memory-mapped GICC/GICH/GICV)
 is in the tree for other boards and is not the console path.
 
-## Where in the tree
+## 4. References
 
 Read in this order.
 
@@ -813,7 +821,29 @@ enough to see a host timer tick, a first-touch page fill, an unmapped
 load kill `zxsh`, and a guest `vmm launch` inject vINTID 0 (SGI) or a
 virtio SPI.
 
-### Terminology
+## Anti-patterns
+
+* **Forget `ICC_EOIR1_EL1`.** The INTID stays Active.
+* **Handle `svc` in `arm64_sync_exception`.** Syscalls peel off in assembly.
+* **Program the host GICD from a guest.** Guests see emulated GICD + ICH LRs.
+
+## First-pass checklist
+
+- [ ] VBAR IRQ slot → `arm64_irq` → `ICC_IAR1` → handler → `ICC_EOIR1`
+- [ ] EL0 SYNC abort → DFSC → `vmm_page_fault_handler`
+- [ ] Guest inject: `gich_maybe_interrupt` + LR
+
+## Related
+
+* [`bootstrap.md`](bootstrap.md)
+* [`memory.md`](memory.md)
+* [`cpu.md`](cpu.md)
+* [`interrupt.md`](interrupt.md)
+* [`ipc.md`](ipc.md)
+* [`async.md`](async.md)
+* [`sync.md`](sync.md)
+
+## 6. Terminology
 
 | Term | Meaning in this note |
 | --- | --- |
@@ -840,6 +870,3 @@ virtio SPI.
 | `ZX_EXCP_*` | Userspace exception type in [`exception.h`](../../../zircon/system/public/zircon/syscalls/exception.h). Hardware or synthetic (`POLICY_ERROR`, thread start/exit). |
 | `exception_die` | Kernel fatal: print ESR/FAR/iframe, halt. Not a user exception. |
 
----
-
-Everyday's a Hustle.

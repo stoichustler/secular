@@ -1,26 +1,28 @@
-# Memory
+---
+name: zircon-memory
+description: >
+  Use when changing page tables, physmap, VMOs/VMARs, PTE bits, or diagnosing translation faults on the Secular console image.
+---
 
-Secular boots a Zircon kernel on `qemu-system-aarch64` (virt, arm64). The
-kernel runs at EL1 with a 4 KiB, 4-level, 48-bit VMSAv8-64 stage-1 MMU. This
-note is the map of that memory path: how physical RAM becomes a virtual
-address space, how **user and kernel page tables** sit next to each other,
-how the same physical page is visible in both, how a VA is translated, and
-which registers control it.
+# Zircon Memory: Physmap, TTBR, and Walks
 
-The product stays:
+Stop when a user load has a PA.
 
-```text
-zircon kernel + linux-arm64-boot-shim + BOOTFS + serial console + zxsh
-```
+## When to use
 
-ATF → shim → physboot → `lk_main` → userboot is [`bootstrap.md`](bootstrap.md).
-The linker scripts that place the load images are in that note. Exceptions
-from a failed walk are [`interrupt.md`](interrupt.md). Context switch of
-`TTBR0` is [`cpu.md`](cpu.md).
+* Editing `ArmArchVmAspace`, physboot address space, or kernel.ld layout.
+* A translation fault / `FAR_EL1` that is not a missing user mapping policy.
 
-## Memory
+## When not to use
 
-### Framework
+* The fault *handler* and ESR decode — `interrupt.md`.
+* Context switch of `TTBR0` — `cpu.md`.
+
+> [!NOTE]
+> Console image: Zircon kernel + linux-arm64-boot-shim + BOOTFS + serial
+> console + `zxsh`. The kernel is an EL2 VHE host.
+
+## 1. Framework
 
 Physical RAM and MMIO on the left; two translation regimes and the
 registers that walk them on the right.
@@ -46,7 +48,7 @@ registers that walk them on the right.
   AttrIndx     T0SZ/T1SZ=16  user L0+ASID  kernel L0     M / C / I
 ```
 
-### Flow
+## 2. Flow
 
 Physboot turns the MMU on; the kernel reuses those tables, then the VM
 installs later maps.
@@ -65,7 +67,7 @@ installs later maps.
 └────────┬────────┘
          ▼
 ┌─────────────────┐
-│ kernel EL1      │  arm64_mmu_early_init reads TTBR0/TTBR1
+│ kernel EL2 VHE  │  arm64_mmu_early_init reads TTBR0/TTBR1
 │                 │  reuse TTBR1 root, ASID 1
 │                 │  PMM owns RAM; tables → vm_page_state::MMU
 └────────┬────────┘
@@ -86,47 +88,50 @@ installs later maps.
     TTBR0 or TTBR1 → PA
 ```
 
-### Overall layout on QEMU virt
+## 3. Overall layout on QEMU virt
 
-Two pictures. First is the **physical** map QEMU and the Linux boot
-protocol actually load. Second is the same DRAM after physboot turns
-the MMU on. Sequence is [`bootstrap.md`](bootstrap.md); this section is
-the addresses.
+Two pictures. First is the **physical** map firmware and lkboot
+place. Second is the same DRAM after physboot turns the MMU on.
+Sequence is [`bootstrap.md`](bootstrap.md); this section is the
+addresses.
 
 ```text
- PA  (qemu-system-aarch64  virt,  -m 1024,  -s 8,  --gic=3)
- 0x00000000 ┬ flash / ATF     secular.bios          EL3 → EL2
+ PA  (qemu-system-aarch64  virt,  -m 1024,  -s 8,  --gic=3,  secure=on)
+ 0x00000000 ┬ flash / secular.bios     BL1 + FIP (BL31 / Trusty / lkboot)
  0x08000000 ├ GICv3 GICD
  0x080A0000 ├ GICv3 GICR      × NCPU
  0x09000000 ├ PL011 UART
+ 0x09020000 ├ fw_cfg          -kernel / -initrd selectors
+ 0x0e000000 ├ secure SRAM     ATF BL1 RW / BL2 / BL31
+ 0x0e100000 ├ secure DRAM     Trusty BL32
             │
  0x40000000 ▼ DRAM  1 GiB
-            │
             │  ┌──────────────────────────────────────────────────────────┐
-            │  │ DTB           x0 at LinuxbootEntry                       │
-            │  │               typically DRAM base (below the Image)      │
+            │  │ 0x40000000  DTB           x0; ATF-patched                │
             │  ├──────────────────────────────────────────────────────────┤
-            │  │ Image         linux-arm64-boot-shim.bin                  │
-            │  │               2 MiB-aligned; typical DRAM+0x80000        │
+            │  │ 0x40200000  Image         linux-arm64-boot-shim (lkboot) │
             │  ├──────────────────────────────────────────────────────────┤
-            │  │ initrd        secular.zbi     QEMU -initrd               │
-            │  │               start page-aligned                         │
-            │  │               length padded to 4 KiB                     │
+            │  │ 0x44000000  initrd ZBI    secular.zbi, 4 KiB padded      │
             │  │               last page = kDataZbi only                  │
+            │  ├──────────────────────────────────────────────────────────┤
+            │  │ 0x60000000  lkboot BL33   dead after chain-load → PMM    │
             │  ├──────────────────────────────────────────────────────────┤
             │  │ free RAM      memalloc kFreeRam → PMM after handoff      │
             │  └──────────────────────────────────────────────────────────┘
  0x80000000   DRAM end (default 1 GiB)
 ```
 
-Typical `-kernel` / `-initrd` placement on virt (QEMU, 1 GiB):
+Firmware-placed occupants on virt (QEMU, 1 GiB). QEMU `-kernel` /
+`-initrd` feed fw_cfg; lkboot copies them here. QEMU may also dump the
+Image at `DRAM+0x80000`; the boot path ignores that copy.
 
-| Occupant | Typical PA | Size rule |
+| Occupant | PA | Size rule |
 | --- | --- | --- |
-| DTB | `0x40000000` | FDT blob; `x0` |
-| Image (shim) | `0x40080000` | Linux header: load anywhere 2 MiB-aligned; `LINUXBOOT_SIZE` includes `.bss` |
-| initrd (ZBI) | `DRAM + min(ram/2, 128 MiB)` → `0x48000000` | file size, **4 KiB padded** |
-| free RAM | after initrd | rest of `[0x40000000, 0x80000000)` |
+| DTB | `0x40000000` | FDT blob; `x0`; 1 MiB window |
+| Image (shim) | `0x40200000` | lkboot copy; 16 MiB max |
+| initrd (ZBI) | `0x44000000` | lkboot copy; **4 KiB padded** |
+| lkboot BL33 | `0x60000000` | FIP payload; reclaimable after jump |
+| free RAM | rest | `[0x40000000, 0x80000000)` minus the above |
 
 Device MMIO is **not** DRAM. The kernel maps GIC / UART only where a
 driver or the UART path needs them. RAM is tracked by phys `memalloc`
@@ -186,23 +191,26 @@ On QEMU virt, `paddr_to_physmap(0x40000000)` is `0xffff000040000000`.
       └─ UART 0x09000000       a kernel device VA      TTBR1, AttrIndx 1
 ```
 
-### Virtual address space
+## 4. Virtual address space
 
-ARM EL1&0 uses two translation regimes. VA bit 55 (equivalently VA[63:48]
+ARM EL1&0 (VHE: EL2&0 with EL1-named TTBRs) uses two translation
+regimes. VA bit 55 (equivalently VA[63:48]
 all-zero vs all-one for a 48-bit VA) selects the root:
 
 ```text
-0x0000_0000_0000_0000   unused (2 MiB low guard)
-0x0000_0000_0020_0000   USER_ASPACE_BASE          TTBR0_EL1  (user)
-        …  user VA, 48-bit half minus guards …
-0x0000_ffff_ff00_0000   USER_ASPACE end (exclusive; 16 MiB high guard)
-
-0xffff_0000_0000_0000   KERNEL_ASPACE_BASE        TTBR1_EL1  (kernel)
-        physmap  [0, last RAM)  linearly mapped
-        hand-off data
-        kernel image at kHandoffVirtualAddress
-        heap / first-class kernel mappings
-0xffff_ffff_ffff_ffff   last kernel byte (base + 2^48 wraps in 64-bit)
+┌────────────────────────────────────────────────────────────────┐
+│ 0x0000_0000_0000_0000   unused (2 MiB low guard)               │
+│ 0x0000_0000_0020_0000   USER_ASPACE_BASE     TTBR0_EL1  (user)  │
+│         …  user VA, 48-bit half minus guards …                 │
+│ 0x0000_ffff_ff00_0000   USER_ASPACE end (16 MiB high guard)     │
+├────────────────────────────────────────────────────────────────┤
+│ 0xffff_0000_0000_0000   KERNEL_ASPACE_BASE   TTBR1_EL1 (kernel)│
+│         physmap  [0, last RAM)  linearly mapped                │
+│         hand-off data                                          │
+│         kernel image at kHandoffVirtualAddress                 │
+│         heap / first-class kernel mappings                     │
+│ 0xffff_ffff_ffff_ffff   last kernel byte                       │
+└────────────────────────────────────────────────────────────────┘
 ```
 
 Constants live in [`zircon/kernel/arch/arm64/include/arch/kernel_aspace.h`](../../../zircon/kernel/arch/arm64/include/arch/kernel_aspace.h):
@@ -228,7 +236,7 @@ high-half. How they share RAM is **User and kernel page tables** and
 **Memory relationship**. How a load becomes a PA is **Translation
 flow**.
 
-### User and kernel page tables
+## 5. User and kernel page tables
 
 EL1&0 stage-1 always has two roots. `VA[55]` picks which one the
 hardware walks. There is no combined L0.
@@ -284,7 +292,7 @@ Restricted / shared aspaces (`ZX_PROCESS_SHARED`) split TTBR0 further.
 The console image does not: userboot, component_manager, and `zxsh`
 each have one user L0.
 
-### Memory relationship
+## 6. Memory relationship
 
 Physical DRAM is one pool. Virtual windows are many. PMM owns the
 pages; aspaces only install PTEs.
@@ -338,7 +346,7 @@ PA 0x40000000…     DRAM
 the kernel half. The kernel sees every process's user half only while
 that process's thread is current (or via an explicit aspace switch).
 
-### Translation flow
+## 7. Translation flow
 
 A load, store, or fetch at `VA` on this PE:
 
@@ -392,30 +400,38 @@ Failed walks are `ESR` instruction/data abort, `FAR` = VA. Recoverable
 translation / AF / permission faults go to `vmm_page_fault_handler`
 ([`interrupt.md`](interrupt.md)).
 
-### How mapping is completed
+## 8. How mapping is completed
 
 There are two phases. Physboot builds the first tables and turns the MMU on.
 The kernel then takes those tables over and maps everything else through the
 VM.
 
 ```text
-boot-shim (MMU off)
-    │  DTB in x0, RAM / UART / GIC as ZBI items
-    ▼
-physboot
-    │  ArchSetUpAddressSpace
-    │    MAIR + identity-map RAM and UART (TTBR0)
-    │    enable SCTLR.M/C/I
-    │  load kernel ELF at 0xffff_ffff_0000_0000 (TTBR1)
-    │  map physmap, hand-off, kernel image
-    ▼
-kernel EL1
-    │  arm64_mmu_early_init reads TTBR0/TTBR1
-    │  PMM owns RAM; page-table pages become vm_page_state::MMU
-    │  VmAspace + ArmArchVmAspace::Map install later mappings
-    ▼
-user process
-       zx_vmar_map → VmMapping → ArmArchVmAspace::Map → TTBR0 walk
+┌────────────────────────────────────────────────────────────────┐
+│ boot-shim (MMU off)                                            │
+│   DTB in x0, RAM / UART / GIC as ZBI items                     │
+└────────────────────────────┬───────────────────────────────────┘
+                             ▼
+┌────────────────────────────────────────────────────────────────┐
+│ physboot                                                       │
+│   ArchSetUpAddressSpace                                        │
+│     MAIR + identity-map RAM and UART (TTBR0)                   │
+│     enable SCTLR.M/C/I                                         │
+│   load kernel ELF at 0xffff_ffff_0000_0000 (TTBR1)             │
+│   map physmap, hand-off, kernel image                          │
+└────────────────────────────┬───────────────────────────────────┘
+                             ▼
+┌────────────────────────────────────────────────────────────────┐
+│ kernel EL2 VHE                                                 │
+│   arm64_mmu_early_init reads TTBR0/TTBR1                       │
+│   PMM owns RAM; page-table pages become vm_page_state::MMU     │
+│   VmAspace + ArmArchVmAspace::Map install later mappings       │
+└────────────────────────────┬───────────────────────────────────┘
+                             ▼
+┌────────────────────────────────────────────────────────────────┐
+│ user process                                                   │
+│   zx_vmar_map → VmMapping → ArmArchVmAspace::Map → TTBR0 walk  │
+└────────────────────────────────────────────────────────────────┘
 ```
 
 #### 1. Physboot identity map
@@ -521,7 +537,7 @@ Context switch (`ArmArchVmAspace::ContextSwitch`) writes:
 
 `TTBR1_EL1` stays the kernel root + global ASID for the life of the CPU.
 
-### Page table establishment
+## 9. Page table establishment
 
 <img src="../images/4KB-translation-granule.png" alt="translation granule" width="600">
 
@@ -583,7 +599,7 @@ Kernel root is shared by every CPU. User roots are per `VmAspace`. PTEs
 carry a software odd-parity bit (`MMU_PTE_RES_PARITY`, bit 56) checked on
 every load; mismatch panics.
 
-### Page table translation
+## 10. Page table translation
 
 End-to-end (TLB, `VA[55]`, EL0 vs EL1 permissions) is **Translation
 flow**. This subsection is the table walk itself.
@@ -625,7 +641,7 @@ A translation fault becomes a synchronous exception: `ESR_EL1` class
 `IABT`/`DABT`, `FAR_EL1` holds the VA. The VM fault path looks up the
 `VmMapping`, may demand-page the VMO, then `Map`s the page and retries.
 
-### PTE bits
+## 11. PTE bits
 
 64-bit descriptor ([`zircon/kernel/arch/arm64/include/arch/arm64/mmu.h`](../../../zircon/kernel/arch/arm64/include/arch/arm64/mmu.h)):
 
@@ -671,7 +687,7 @@ MAIR_EL1 indices (physboot and kernel must match):
 `CACHED` / `UNCACHED` / `UNCACHED_DEVICE` / `WRITE_COMBINING` plus
 `PERM_{USER,READ,WRITE,EXECUTE}`.
 
-### Basic registers
+## 12. Basic registers
 
 #### General-purpose (AArch64)
 
@@ -773,7 +789,7 @@ jump to kernel VA          # secondary.S: br kernel_vaddr
 TCR_EL1 ← EPD0             # drop identity TTBR0 once running at high VA
 ```
 
-### Where in the tree
+## 13. References
 
 | Path | Why |
 | --- | --- |
@@ -792,7 +808,29 @@ TCR_EL1 ← EPD0             # drop identity TTBR0 once running at high VA
 | [`zircon/kernel/object/include/object/shareable_process_state.h`](../../../zircon/kernel/object/include/object/shareable_process_state.h) | process aspace + handle table |
 | [`zircon/kernel/lib/page/BUILD.gn`](../../../zircon/kernel/lib/page/BUILD.gn) | `4k-48bit` paging config |
 
-### Terminology
+## Anti-patterns
+
+* **Treat QEMU `-kernel` PA as the shim.** lkboot places it at `0x40200000`.
+* **Walk TTBR1 for a user VA.** Bit 55 selects the root.
+* **Forget `tlbi` + `dsb ishst` after publishing a PTE.**
+
+## First-pass checklist
+
+- [ ] DTB / shim / ZBI PAs in `bootstrap.md` physical map
+- [ ] physboot identity TTBR0 then kernel TTBR1 at `0xffffffff00000000`
+- [ ] `paddr_to_physmap` then a `zx_vmar_map` walk
+
+## Related
+
+* [`bootstrap.md`](bootstrap.md)
+* [`memory.md`](memory.md)
+* [`cpu.md`](cpu.md)
+* [`interrupt.md`](interrupt.md)
+* [`ipc.md`](ipc.md)
+* [`async.md`](async.md)
+* [`sync.md`](sync.md)
+
+## 14. Terminology
 
 | Term | Meaning in this note |
 | --- | --- |
@@ -815,6 +853,3 @@ TCR_EL1 ← EPD0             # drop identity TTBR0 once running at high VA
 | Stage-1 | EL1&0 translation (this product). Stage-2 is guest IPA; not on the console path. |
 | `AT` / `PAR_EL1` | Address-translate instruction and its result register. Software probe of the same walk. |
 
----
-
-Everyday's a Hustle.

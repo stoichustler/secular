@@ -3,9 +3,7 @@
 # found in the LICENSE file.
 
 import("//products/build/components.gni")
-import("//products/build/dist/packaged_shared_library.gni")
 import("//products/build/test.gni")
-import("//userspace/storage/fs_test/suite.gni")
 
 test("memfs-test") {
   sources = [ "memfs-tests.cc" ]
@@ -29,40 +27,6 @@ test("memfs-test") {
 
 fuchsia_unittest_package("memfs-tests") {
   deps = [ ":memfs-test" ]
-}
-
-shared_library("memfs_fs_test") {
-  testonly = true
-  sources = [ "memfs_fs_test.cc" ]
-  deps = [
-    "//sdk/fidl/fuchsia.io:fuchsia.io_cpp",
-    "//sdk/lib/async-loop",
-    "//sdk/lib/async-loop:async-loop-cpp",
-    "//sdk/lib/fdio",
-    "//sdk/lib/fidl/cpp/wire",
-    "//userspace/storage/fs_test",
-    "//userspace/storage/lib/fs_management/cpp:fs-management",
-    "//userspace/storage/memfs:lib",
-    "//zircon/system/ulib/zx",
-  ]
-}
-
-packaged_shared_library("memfs_fs_test_as_module") {
-  testonly = true
-  library = ":memfs_fs_test"
-}
-
-fs_test_config("memfs") {
-  data_deps = [ ":memfs_fs_test_as_module" ]
-  library = "libmemfs_fs_test.so"
-}
-
-fs_test_suite("memfs") {
-  deps = [ ":memfs_fs_test_config" ]
-}
-
-slow_fs_test_suite("memfs") {
-  deps = [ ":memfs_fs_test_config" ]
 }
 
 test("memfs-legacy-test") {
@@ -101,9 +65,7 @@ fuchsia_unittest_package("memfs-legacy-tests") {
 group("tests") {
   testonly = true
   deps = [
-    ":memfs-fs-tests",
     ":memfs-legacy-tests",
-    ":memfs-slow-fs-tests",
     ":memfs-tests",
   ]
 }

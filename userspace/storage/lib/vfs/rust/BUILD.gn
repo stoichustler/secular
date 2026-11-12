@@ -197,7 +197,6 @@ if (is_fuchsia) {
     version = "0.1.0"
     visibility = [
       ":*",
-      "//userspace/storage/fxfs/*",
       "//userspace/storage/lib/pseudo_fs/*",
     ]
     deps = _COMMON_DEPS + _FUCHSIA_DEPS + [ "//third_party/rust_crates:log" ]

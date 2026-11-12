@@ -266,10 +266,6 @@ template("assembled_system") {
     }
   }
 
-  fvm_tool_target = "//userspace/storage/bin/fvm($host_toolchain)"
-  fvm_tool_path = get_label_info(fvm_tool_target, "root_out_dir")
-  fvm_tool_path += "/fvm"
-
   # Internal labels used for Image Assembly.
 
   _use_bringup_aibs_only = false
@@ -659,16 +655,16 @@ template("assembled_system") {
     }
 
     # Tools used by create-system.
-    deps += [
-      blobfs_tool_target,
-      fvm_tool_target,
-      zbi_tool_target,
-    ]
-    inputs += [
-      blobfs_tool_path,
-      fvm_tool_path,
-      zbi_tool_path,
-    ]
+    deps += [ zbi_tool_target ]
+    inputs += [ zbi_tool_path ]
+    if (defined(blobfs_tool_target)) {
+      deps += [ blobfs_tool_target ]
+      inputs += [ blobfs_tool_path ]
+    }
+    if (defined(fvm_tool_target)) {
+      deps += [ fvm_tool_target ]
+      inputs += [ fvm_tool_path ]
+    }
 
     outputs = [
       files.image_command_log,
@@ -709,15 +705,14 @@ template("assembled_system") {
 
     # Base package dependencies and outputs, if this configuration uses them.
     if (_supports_blobs) {
-      deps += [
-        blobfs_tool_target,
-        fvm_tool_target,
-      ]
-
-      inputs += [
-        blobfs_tool_path,
-        fvm_tool_path,
-      ]
+      if (defined(blobfs_tool_target)) {
+        deps += [ blobfs_tool_target ]
+        inputs += [ blobfs_tool_path ]
+      }
+      if (defined(fvm_tool_target)) {
+        deps += [ fvm_tool_target ]
+        inputs += [ fvm_tool_path ]
+      }
 
       outputs += [
         # In the gendir.

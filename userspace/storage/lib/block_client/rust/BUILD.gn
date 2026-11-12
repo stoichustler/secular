@@ -4,58 +4,13 @@
 
 import("//products/build/components.gni")
 import("//products/build/rust/rustc_test.gni")
-import("//userspace/storage/testing/driver_test_realm.gni")
 
 group("rust") {
   public_deps = [ ":block-client" ]
 }
 
-# The libraries are defined in BUILD.bazel. The block-client unit tests stay
-# in GN because //userspace/storage/lib/block_server and
-# //userspace/storage/lib/ramdevice_client have no Bazel build yet.
-rustc_test("block-client_test") {
-  edition = "2024"
-  output_name = "block_client_lib_test"
-  deps = [
-    "//sdk/fidl/fuchsia.storage.block:fuchsia.storage.block_rust",
-    "//sdk/rust/zx",
-    "//userspace/lib/fidl/rust/fidl",
-    "//userspace/lib/fuchsia",
-    "//userspace/lib/fuchsia-async",
-    "//userspace/lib/fuchsia-sync",
-    "//userspace/storage/lib/block_protocol",
-    "//userspace/storage/lib/block_server",
-    "//userspace/storage/lib/ramdevice_client",
-    "//userspace/storage/lib/trace",
-    "//third_party/rust_crates:anyhow",
-    "//third_party/rust_crates:futures",
-    "//third_party/rust_crates:linked-hash-map",
-    "//third_party/rust_crates:log",
-  ]
-
-  sources = [
-    "src/cache.rs",
-    "src/lib.rs",
-  ]
-}
-
-storage_driver_test_realm_component("block-client-tests-component") {
-  component_name = "block-client-tests"
-  deps = [ ":block-client_test" ]
-}
-
-fuchsia_test_package("block-client-tests") {
-  test_specs = {
-    log_settings = {
-      max_severity = "ERROR"
-    }
-  }
-  test_components = [ ":block-client-tests-component" ]
-}
-
 group("tests") {
   testonly = true
-  deps = [ ":block-client-tests" ]
 }
 
 ## BAZEL2GN SENTINEL - DO NOT EDIT BELOW THIS LINE ##
@@ -92,11 +47,9 @@ if (is_fuchsia) {
     edition = "2024"
     visibility = [
       ":*",
-      "//userspace/storage/benchmarks/fuchsia:*",
-      "//userspace/storage/gpt/component:*",
+      "//userspace/hypervisor/*",
       "//userspace/storage/lib/fs_management/rust:*",
       "//userspace/storage/lib/storage_device:*",
-      "//vendor/google/*",
     ]
     deps = [
       "//sdk/fidl/fuchsia.storage.block:fuchsia.storage.block_rust",

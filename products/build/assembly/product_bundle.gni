@@ -204,8 +204,10 @@ template("product_bundle") {
 
     # Used by create-update for size checks. Needed because product bundle
     # creation also creates an update package
-    deps += [ blobfs_tool_target ]
-    inputs += [ blobfs_tool_path ]
+    if (defined(blobfs_tool_target)) {
+      deps += [ blobfs_tool_target ]
+      inputs += [ blobfs_tool_path ]
+    }
 
     if (defined(invoker.update)) {
       update = invoker.update

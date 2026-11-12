@@ -15,7 +15,6 @@ rustc_library("fxfs") {
   deps = [
     "//userspace/lib/assembly/blobfs",
     "//userspace/lib/assembly/util",
-    "//userspace/storage/fxfs/make-blob-image",
     "//userspace/sys/pkg/lib/fuchsia-pkg",
     "//third_party/rust_crates:anyhow",
     "//third_party/rust_crates:camino",
