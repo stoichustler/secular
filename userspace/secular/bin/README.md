@@ -4,7 +4,7 @@ Secular boots a Zircon kernel on `qemu-system-aarch64` (virt, arm64) with
 TrustZone `secure=on`. ATF is EL3 firmware (`SPD=trusty`). LK Trusty is
 BL32 at S-EL1. The NS image is still the console product. This note is
 the map of the two BOOTFS probes that reach that TEE from `zxsh`:
-**ktee** (SPD UUID + S-EL1 NOP) and **tipc** (queueless TIPC echo).
+**lktee** (SPD UUID, LK version/API/SMP, S-EL1 NOP) and **tipc** (queueless TIPC echo).
 
 The product stays:
 
@@ -19,7 +19,7 @@ for affinity. LK Trusty / lkboot is [`sdk/lk/README.md`](../../../sdk/lk/README.
 GlobalPlatform TAs hosted **inside** Zircon are [`tee/README.md`](tee/README.md);
 they are a different TEE.
 
-`ktee` and `tipc` are `/boot/bin` programs, not CML components. They are
+`lktee` and `tipc` are `/boot/bin` programs, not CML components. They are
 started by `zxsh`. They talk to BL32 with `zx_smc_call`.
 
 ## Trusty
@@ -54,7 +54,7 @@ else is a context switch into S-EL1.
                              ▼  SMC_YC_NS_RETURN
 ┌────────────────────────────────────────────────────────────────┐
 │ NS  lkboot → boot-shim → vmzircon EL1 → userboot → zxsh EL0    │
-│  /boot/bin/ktee                                                │
+│  /boot/bin/lktee                                                │
 │  /boot/bin/tipc                                                │
 │  /boot/config/secular.cfg                                      │
 └────────────────────────────────────────────────────────────────┘
@@ -62,7 +62,7 @@ else is a context switch into S-EL1.
 
 | Probe | Question | Worlds |
 | --- | --- | --- |
-| `ktee` | Is the Trusty SPD present, and does S-EL1 return a NOP? | EL3, then S-EL1 per CPU |
+| `lktee` | Is the Trusty SPD present, what is LK's identity, and does S-EL1 return a NOP? | EL3, then S-EL1 per CPU |
 | `tipc` | Can an NS page carry a TIPC ping to the kernel echo port? | EL3 + S-EL1 + ktipc |
 
 ### Flow
@@ -73,7 +73,7 @@ may return `SM_ERR_INTERRUPTED` / `SM_ERR_CPU_IDLE` until the work is
 done.
 
 ```text
- zxsh  ktee | tipc
+ zxsh  lktee | tipc
          │
          ▼
  fuchsia.kernel.SmcResource.Get     (console-launcher namespace)
@@ -110,12 +110,12 @@ first SMC:
          │
          ▼
  console-launcher
-   fuchsia.kernel.SmcResource       ktee, tipc
+   fuchsia.kernel.SmcResource       lktee, tipc
    fuchsia.kernel.ProfileResource   CPU pin
    fuchsia.kernel.IommuResource     tipc BTI
          │
          ▼
- zxsh  →  ktee | tipc
+ zxsh  →  lktee | tipc
 ```
 
 | Line | Missing |
@@ -141,7 +141,9 @@ Bits 15:0 are the function.
 | --- | --- | --- | --- | --- |
 | `SMC_FC_GET_UUID` | `0xbf00ff01` | 63 | yes | ATF SPD |
 | `SMC_YC_NOP` / `SMC_SC_LOCKED_NOP` | `0x3c000001` | 60 | no | Trusty `smc_nop_stdcall` → `0` |
+| `SMC_FC_GET_VERSION_STR` | `0xbc00000a` | 60 | yes | Trusty `lk_version.buildid` |
 | `SMC_FC_API_VERSION` | `0xbc00000b` | 60 | yes | Trusty lib/sm |
+| `SMC_FC_GET_SMP_MAX_CPUS` | `0xbc00000d` | 60 | yes | Trusty `SMP_MAX_CPUS` |
 | `SMC_SC_RESTART_LAST` | `0x3c000000` | 60 | no | resume stdcall |
 | `SMC_SC_CREATE_QL_TIPC_DEV` | `0x3200001e` | 50 | no | `ql_tipc_create_device` |
 | `SMC_SC_SHUTDOWN_QL_TIPC_DEV` | `0x3200001f` | 50 | no | `ql_tipc_shutdown_device` |
@@ -169,23 +171,27 @@ returns to NS:
  lower   LOWEST               (must not host ktipc)
 ```
 
-## ktee
+## lktee
 
-[`ktee/src/main.rs`](ktee/src/main.rs). EL3 SPD presence, then S-EL1
-liveness on every Zircon CPU. No shared memory, no TIPC, no TA.
+[`iokit/src/lktee.rs`](iokit/src/lktee.rs). EL3 SPD presence, LK identity
+fastcalls, then S-EL1 liveness on every Zircon CPU. No shared memory, no
+TIPC, no TA. `/boot/bin/lktee` is an IOKit command.
 
 ### Framework
 
-Two SMCs. UUID is answered in EL3 (the SPD is the object). NOP is a
-yielding call into S-EL1 (`smc_nop_stdcall` returns `0`; a legacy stub
-returned `'TEE!'` `0x54454521`).
+UUID is answered in EL3 (the SPD is the object). Version, API, and
+SMP-max are Trusty lib/sm fastcalls. NOP is a yielding call into S-EL1
+(`smc_nop_stdcall` returns `0`; a legacy stub returned `'TEE!'`
+`0x54454521`).
 
 ```text
- ktee
+ lktee
    │
-   ├─ GET_UUID  0xbf00ff01     EL3 only
+   ├─ GET_UUID           0xbf00ff01     EL3 only
    │     words  40ee25f0-a2bc-304c-8c4c-a173c57d8af1
-   │
+   ├─ GET_VERSION_STR    0xbc00000a     S-EL1  compact b36 buildid
+   ├─ API_VERSION        0xbc00000b     S-EL1  negotiate CURRENT (5)
+   ├─ GET_SMP_MAX_CPUS   0xbc00000d     S-EL1  SMP_MAX_CPUS
    └─ for cpu in 0 .. zx_system_get_num_cpus
          pin thread to cpu
          SMC_YC_NOP  0x3c000001     EL3 → S-EL1 → 0
@@ -194,7 +200,7 @@ returned `'TEE!'` `0x54454521`).
 ### Flow
 
 ```text
- zxsh: ktee
+ zxsh: lktee
          │
          ▼  (1) SmcResource.Get
          │
@@ -204,35 +210,46 @@ returned `'TEE!'` `0x54454521`).
     SMC_UNK ──────────────► TEE: dead (spd)
     other UUID ───────────► TEE: dead (unexpected uuid)
          │
-         ▼  (3) ProfileResource.Get
+         ▼  (3) GET_VERSION_STR / API_VERSION / GET_SMP_MAX_CPUS
+ S-EL1 fastcall; missing info prints `unavailable`, not `dead`
          │
-         ▼  (4) each online CPU
+         ▼  (4) ProfileResource.Get
+         │
+         ▼  (5) each online CPU
  pin → SMC_YC_NOP
          │
     arg0 not 0 / TEE! ────► TEE: dead (S-EL1 cpu N)
          │
          ▼
- TEE: alive (N cpus)
+ TEE: alive (N/M)
 ```
 
 | Node | EL | Who |
 | --- | --- | --- |
 | (1) | EL0 | FIDL |
 | (2) | EL0 → EL1 → EL3 | ATF SPD |
-| (3) | EL0 | FIDL |
-| (4) | EL0 → EL1 → EL3 → S-EL1 | Trusty `smc_nop_stdcall` |
+| (3) | EL0 → EL1 → EL3 → S-EL1 | Trusty lib/sm fastcalls |
+| (4) | EL0 | FIDL |
+| (5) | EL0 → EL1 → EL3 → S-EL1 | Trusty `smc_nop_stdcall` |
 
 ### Serial
 
 ```text
 TEE: spd uuid 40ee25f0-a2bc-304c-8c4c-a173c57d8af1
+TEE: version 2026-11-13 14:38Z local
+TEE: api 4 (phys-mem-obj)
 TEE: S-EL1 nop cpu 0 -> 0x0
 TEE: S-EL1 nop cpu 1 -> 0x0
 …
-TEE: alive (8 cpus)
+TEE: alive (8/8)
 ```
 
-A BIOS without `SPD=trusty` fails at (2). `ktee` should pass before
+`GET_VERSION_STR` returns the compact `buildid.sh` stamp (`PBDEJ_LOCAL`).
+`lktee` decodes it to `YYYY-MM-DD HH:MMZ` (`local` means unofficial).
+LK serial `print_version` uses `lk_buildid_string()` for the same UTC
+text. `alive (N/M)` is NOP-live CPUs over Trusty `SMP_MAX_CPUS`.
+
+A BIOS without `SPD=trusty` fails at (2). `lktee` should pass before
 debugging `tipc`.
 
 ## tipc
@@ -423,27 +440,27 @@ Trusty-side files:
 ## How they differ
 
 ```text
- ktee                         tipc
+ lktee                         tipc
   GET_UUID (EL3)               API_VERSION 4
-  NOP per CPU (S-EL1)          NS page as QL-TIPC device
-                               CONNECT / SEND / RECV echo
-  TEE: alive (N cpus)          TIPC: alive (echo 4 bytes)
+  version / api                NS page as QL-TIPC device
+  NOP per CPU (S-EL1)          CONNECT / SEND / RECV echo
+  TEE: alive (N/M)             TIPC: alive (echo 4 bytes)
 ```
 
-| | `ktee` | `tipc` |
+| | `lktee` | `tipc` |
 | --- | --- | --- |
 | Goal | SPD + S-EL1 alive | IPC payload path |
 | Shared memory | none | 4 KiB contiguous NS window |
 | CPU pin | every online CPU | CPU 0 only |
 | Trusty work | `smc_nop_stdcall` | QL-TIPC + `ns_echo` |
 
-`ktee` passing means ATF and BL32 answer SMCs. `tipc` passing means NS
+`lktee` passing means ATF and BL32 answer SMCs. `tipc` passing means NS
 memory, stdcall restart, ktipc scheduling, and the echo port all work.
 
 From the serial `zxsh` prompt after `make run` / `make kick`:
 
 ```text
-ktee
+lktee
 tipc list
 tipc kick
 tipc kick 0
@@ -458,4 +475,4 @@ make lkboot && make atf && make build
 | Image | Path |
 | --- | --- |
 | BIOS | `out/secular-boot-arm64/firmware/arm-trusted-firmware-qemu-bios/secular.bios` |
-| ZBI | `out/secular-boot-arm64/secular.zbi` (`/boot/bin/ktee`, `/boot/bin/tipc`, `/boot/config/secular.cfg`) |
+| ZBI | `out/secular-boot-arm64/secular.zbi` (`/boot/bin/lktee`, `/boot/bin/tipc`, `/boot/config/secular.cfg`) |

@@ -9,8 +9,10 @@ Copy an existing tool rather than inventing a new layout:
 | Example | When to copy it |
 | --- | --- |
 | `src/clear.rs`, `src/cat.rs` | Pure std: files, stdout, no kernel |
+| `src/kdump.rs` | Pure std: parse `/stow/*.fxt` (ktrace save) |
 | `src/bootstat.rs` | vDSO syscalls only (`zx_sys::zx_*`) |
 | `src/cpustat.rs` | FIDL + `zx` (`InfoResource`, `ZX_INFO_*`) |
+| `src/lktee.rs` | FIDL `SmcResource` / `ProfileResource` + `zx_smc_call` |
 | `src/kdmips.rs` | Host-runnable compute with unit tests for scoring |
 
 Do **not** add a command here if it needs a component manifest, a package, or
@@ -171,8 +173,9 @@ Do not add new capabilities unless launch fails without them.
 | --- | --- |
 | Clock, CPU count, page size, physmem, version | `zx_sys::zx_*` vDSO. No routing. See `bootstat.rs`. |
 | `ZX_INFO_CPU_STATS`, `ZX_INFO_KMEM_STATS` | `fuchsia.kernel.InfoResource` → `zx::Resource::{cpu_stats,mem_stats}`. See `cpustat.rs`. |
+| Trusty SMC (`GET_UUID`, version, API, NOP) | `fuchsia.kernel.SmcResource` + `zx_smc_call`. Pin with `ProfileResource`. See `lktee.rs`. |
 | `GetCpuLoad` / `GetCpuStats` tables | `fuchsia.kernel.Stats` (not used by current iokit tools; `InfoResource` is enough). |
-| Files under `/boot`, `/tmp` | `std::fs`. No extra routing. |
+| Files under `/boot`, `/tmp`, `/stow` | `std::fs`. No extra routing. `kdump` reads `/stow/*.fxt`. |
 
 Connect to a protocol with a short executor; do not add `#[fuchsia::main]`
 unless the binary is a component:

@@ -1827,7 +1827,7 @@ static void __NO_RETURN trusty_app_exit_etc(int status,
             panic("Unclean exit from critical app\n");
         }
         dump_backtrace();
-        dprintf(ALWAYS, "%s\n", lk_version.buildid);
+        dprintf(ALWAYS, "%s\n", lk_buildid_string());
         restart_timeout = TRUSTY_APP_RESTART_TIMEOUT_FAILURE;
     } else {
         restart_timeout = TRUSTY_APP_RESTART_TIMEOUT_SUCCESS;

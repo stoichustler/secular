@@ -294,30 +294,30 @@ int main(int argv, char** argc) {
   fbl::RefPtr root = fbl::MakeRefCounted<fs::PseudoDir>();
 
   // /boot is read-only BOOTFS. /vmm is optional and also not a dump
-  // target. Mount a RAM-backed memfs at /code (same level) so the
+  // target. Mount a RAM-backed memfs at /stow (same level) so the
   // console can stash ktrace and similar files until reboot.
-  std::unique_ptr<memfs::Memfs> code_fs;
+  std::unique_ptr<memfs::Memfs> stow_fs;
   {
-    zx::result created = memfs::Memfs::Create(dispatcher, "code");
+    zx::result created = memfs::Memfs::Create(dispatcher, "stow");
     if (created.is_error()) {
-      FX_PLOGS(FATAL, created.status_value()) << "failed to create /code memfs";
+      FX_PLOGS(FATAL, created.status_value()) << "failed to create /stow memfs";
     }
     auto [fs, vnode] = std::move(created.value());
     zx::result endpoints = fidl::CreateEndpoints<fuchsia_io::Directory>();
     if (endpoints.is_error()) {
-      FX_PLOGS(FATAL, endpoints.status_value()) << "failed to create /code endpoints";
+      FX_PLOGS(FATAL, endpoints.status_value()) << "failed to create /stow endpoints";
     }
     if (zx_status_t status = fs->ServeDirectory(vnode, std::move(endpoints->server));
         status != ZX_OK) {
-      FX_PLOGS(FATAL, status) << "failed to serve /code";
+      FX_PLOGS(FATAL, status) << "failed to serve /stow";
     }
     if (zx_status_t status = root->AddEntry(
-            "code", fbl::MakeRefCounted<fs::RemoteDir>(std::move(endpoints->client)));
+            "stow", fbl::MakeRefCounted<fs::RemoteDir>(std::move(endpoints->client)));
         status != ZX_OK) {
-      FX_PLOGS(FATAL, status) << "failed to add /code";
+      FX_PLOGS(FATAL, status) << "failed to add /stow";
     }
-    code_fs = std::move(fs);
-    FX_LOGS(INFO) << "mounted '/code' (memfs)";
+    stow_fs = std::move(fs);
+    FX_LOGS(INFO) << "mounted '/stow' (memfs)";
   }
 
   std::unordered_map<std::string_view, std::thread> threads;

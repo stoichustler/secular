@@ -1293,7 +1293,7 @@ void platform_halt(platform_halt_action suggested_action,
             }
         }
         dprintf(ALWAYS, "%s %s %s %s %s\n", lk_version.arch, lk_version.platform,
-                lk_version.target, lk_version.project, lk_version.buildid);
+                lk_version.target, lk_version.project, lk_buildid_string());
         dprintf(ALWAYS, "HALT: (reason = %d)\n", reason);
     }
 

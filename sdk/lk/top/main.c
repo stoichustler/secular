@@ -69,9 +69,9 @@ void lk_main(ulong arg0, ulong arg1, ulong arg2, ulong arg3) {
     target_early_init();
 
 #if LK_TRUSTY_TEE
-    dprintf(INFO, "\nwelcome to lk trusty TEE 🅣 \n\n");
+    dprintf(INFO, "\nwelcome to LK TEE 🅣 \n\n");
 #elif LK_BOOTLOADER
-    dprintf(INFO, "\nwelcome to lk bootloader 🅚 \n\n");
+    dprintf(INFO, "\nwelcome to LKBOOT 🅚 \n\n");
 #elif WITH_SMP
     dprintf(INFO, "\nwelcome to lk/MP\n\n");
 #else

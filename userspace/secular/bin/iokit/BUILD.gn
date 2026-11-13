@@ -79,6 +79,33 @@ rustc_binary("kdmips") {
   with_unit_tests = true
 }
 
+rustc_binary("kdump") {
+  output_name = "kdump"
+  edition = "2024"
+  source_root = "src/kdump.rs"
+  sources = [ "src/kdump.rs" ]
+  configs += [ "//products/build/config/rust:bootfs" ]
+  with_unit_tests = true
+}
+
+rustc_binary("lktee") {
+  output_name = "lktee"
+  edition = "2024"
+  source_root = "src/lktee.rs"
+  sources = [ "src/lktee.rs" ]
+  configs += [ "//products/build/config/rust:bootfs" ]
+  if (is_fuchsia) {
+    deps = [
+      "//sdk/fidl/fuchsia.kernel:fuchsia.kernel_rust",
+      "//sdk/rust/zx",
+      "//userspace/lib/fuchsia-async",
+      "//userspace/lib/fuchsia-component",
+      "//userspace/lib/fuchsia-runtime",
+    ]
+  }
+  with_unit_tests = true
+}
+
 rustc_binary("runman") {
   output_name = "runman"
   edition = "2024"
@@ -106,6 +133,8 @@ group("iokit") {
     ":elfdump",
     ":hexdump",
     ":kdmips",
+    ":kdump",
+    ":lktee",
     ":runman",
     ":tree",
   ]

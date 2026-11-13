@@ -150,7 +150,7 @@ mod tests {
 
     #[test]
     fn trusty_spd_uuid_words() {
-        // ktee packed words for 40ee25f0-a2bc-304c-8c4c-a173c57d8af1
+        // lktee packed words for 40ee25f0-a2bc-304c-8c4c-a173c57d8af1
         let uuid = smccc_uuid_to_tee_uuid(0xf025ee40, 0x4c30bca2, 0x73a14c8c, 0xf18a7dc5);
         assert_eq!(uuid.time_low, 0x40ee25f0);
         assert_eq!(uuid.time_mid, 0xa2bc);

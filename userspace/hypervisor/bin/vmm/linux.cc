@@ -7,8 +7,10 @@
 #include <endian.h>
 #include <fcntl.h>
 #include <lib/fdio/fd.h>
+#include <lib/syslog/cpp/macros.h>
 #include <lib/zircon-internal/e820.h>
 #include <sys/stat.h>
+#include <unistd.h>
 
 #include <fbl/unique_fd.h>
 
@@ -20,9 +22,12 @@ __BEGIN_CDECLS
 __END_CDECLS
 
 #if __aarch64__
-// This address works for direct-mapping of host memory. This address is chosen
-// to ensure that we do not collide with the mapping of the host kernel.
-static constexpr uintptr_t kKernelOffset = 0x2080000;
+// 2 MiB-aligned GPA for relocatable ARM64 Images (Linux 5.8+, flags bit 3).
+// Position-dependent Images (Zephyr) keep the legacy 0x2080000 link address.
+static constexpr uintptr_t kKernelOffset = 0x2000000;
+static constexpr uintptr_t kArm64ImageAlign = 0x200000;
+static constexpr uintptr_t kArm64LegacyOffset = 0x2080000;
+static constexpr uint64_t kArm64FlagAnywhere = 1ull << 3;
 #elif __x86_64__
 static constexpr uintptr_t kKernelOffset = 0x200000;
 #include "src/virtualization/bin/vmm/arch/x64/acpi.h"
@@ -202,14 +207,15 @@ static zx_status_t read_fd(const int fd, const PhysMem& phys_mem, const uintptr_
   return ZX_OK;
 }
 
-static size_t GetKernelMemorySize(const PhysMem& phys_mem, size_t file_size) {
+static size_t GetKernelMemorySize(const PhysMem& phys_mem, size_t file_size,
+                                  uintptr_t kernel_off) {
   // Modern x86 kernels report the amount of memory they need for initialization.
   if (is_boot_params(phys_mem) && read_bp(phys_mem, VERSION) >= 0x210) {
     return read_bp(phys_mem, INIT_SIZE);
   }
 
   // ARM64 kernels store the effective image size in the header.
-  Arm64ImageHeader image_header = phys_mem.read<Arm64ImageHeader>(kKernelOffset);
+  Arm64ImageHeader image_header = phys_mem.read<Arm64ImageHeader>(kernel_off);
   if (is_arm64_image(&image_header)) {
     return image_header.kernel_len;
   }
@@ -225,7 +231,7 @@ zx_status_t load_kernel(fbl::unique_fd kernel_fd, const PhysMem& phys_mem,
     FX_LOGS(ERROR) << "Failed to read kernel image";
     return status;
   }
-  size_t kernel_size = GetKernelMemorySize(phys_mem, file_size);
+  size_t kernel_size = GetKernelMemorySize(phys_mem, file_size, kernel_off);
   if (is_within(DtbOverlayOffset(), kernel_off, kernel_size)) {
     FX_LOGS(ERROR) << "Kernel size would clobber DTB memory, consider adjusting offsets.";
     return ZX_ERR_OUT_OF_RANGE;
@@ -355,16 +361,36 @@ static zx_status_t write_boot_params(const PhysMem& phys_mem, const DevMem& dev_
   return ZX_OK;
 }
 
-static zx_status_t read_image_header(const PhysMem& phys_mem, uintptr_t* guest_ip) {
-  Arm64ImageHeader image_header = phys_mem.read<Arm64ImageHeader>(kKernelOffset);
+static zx_status_t read_image_header(const PhysMem& phys_mem, uintptr_t kernel_off,
+                                     uintptr_t* guest_ip) {
+  Arm64ImageHeader image_header = phys_mem.read<Arm64ImageHeader>(kernel_off);
   if (!is_arm64_image(&image_header)) {
     FX_LOGS(ERROR) << "Kernel does not have a valid header";
     return ZX_ERR_NOT_SUPPORTED;
   }
 
-  *guest_ip = kKernelOffset;
+  *guest_ip = kernel_off;
   return ZX_OK;
 }
+
+#if __aarch64__
+static zx_status_t peek_arm64_image_header(int fd, Arm64ImageHeader* header) {
+  ssize_t n = pread(fd, header, sizeof(*header), 0);
+  if (n != static_cast<ssize_t>(sizeof(*header))) {
+    return ZX_ERR_IO;
+  }
+  return ZX_OK;
+}
+
+static uintptr_t arm64_load_offset(const Arm64ImageHeader& header) {
+  // flags bit 3: 2MiB-aligned base may be anywhere. Linux 7.3.1 sets this
+  // (text_offset 0). Zephyr does not and is linked at kArm64LegacyOffset.
+  if (header.flags & kArm64FlagAnywhere) {
+    return kKernelOffset + static_cast<uintptr_t>(header.kernel_off);
+  }
+  return kArm64LegacyOffset;
+}
+#endif
 
 static void device_tree_error_msg(const char* property_name) {
   FX_LOGS(ERROR) << "Failed to add \"" << property_name << "\" to device "
@@ -563,7 +589,23 @@ zx_status_t setup_linux(fuchsia::virtualization::GuestConfig* cfg, const PhysMem
     FX_LOGS(ERROR) << "Failed to open kernel image";
     return status;
   }
-  status = load_kernel(std::move(kernel_fd), phys_mem, kKernelOffset);
+  uintptr_t kernel_off = kKernelOffset;
+#if __aarch64__
+  Arm64ImageHeader image_header{};
+  if (peek_arm64_image_header(kernel_fd.get(), &image_header) == ZX_OK &&
+      is_arm64_image(&image_header)) {
+    kernel_off = arm64_load_offset(image_header);
+    if ((image_header.flags & kArm64FlagAnywhere) && kernel_off % kArm64ImageAlign != 0) {
+      FX_LOGS(WARNING) << fxl::StringPrintf("ARM64 Image GPA 0x%lx is not 2MiB-aligned",
+                                            static_cast<unsigned long>(kernel_off));
+    }
+    FX_LOGS(INFO) << fxl::StringPrintf(
+        "ARM64 Image text_offset=0x%lx flags=0x%lx load GPA=0x%lx",
+        static_cast<unsigned long>(image_header.kernel_off),
+        static_cast<unsigned long>(image_header.flags), static_cast<unsigned long>(kernel_off));
+  }
+#endif
+  status = load_kernel(std::move(kernel_fd), phys_mem, kernel_off);
   if (status != ZX_OK) {
     return status;
   }
@@ -602,7 +644,7 @@ zx_status_t setup_linux(fuchsia::virtualization::GuestConfig* cfg, const PhysMem
     }
     *boot_ptr = kKernelOffset;
   } else {
-    status = read_image_header(phys_mem, guest_ip);
+    status = read_image_header(phys_mem, kernel_off, guest_ip);
     if (status != ZX_OK) {
       return status;
     }

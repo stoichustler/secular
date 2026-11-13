@@ -81,7 +81,7 @@ The **framework can boot ARM64 Linux and RTOS guests** from the guest package
 | `HypervisorResource` + `VmexResource` | Yes, routed to VMM | `zx_guest_create` / executable mappings |
 | VMM: GIC, PL011 UART, PL031 RTC, PCI | Yes | ARM64 machine |
 | virtio-console / block / rng / balloon / vsock / mem | Yes | Console, disk, entropy |
-| ARM64 `Image` + DTB (`setup_linux`) | Yes | Kernel at `0x2080000`, DTB `/pkg/data/board.dtb` |
+| ARM64 `Image` + DTB (`setup_linux`) | Yes | Linux at `0x2000000` (2 MiB aligned); RTOS at `0x2080000`; DTB `/pkg/data/board.dtb` |
 | `vmm` CLI + `GuestManager` (vmid) | Yes | `vmm launch vmid=0` from zxsh |
 | Guest kernel (`data/Image`) | Yes | Linux 7.3.1 ARM64 Image, `vmm launch vmid=1` |
 | initrd (`data/minifs.cpio`) | Yes | Alpine busybox minifs; `rdinit=/init` |
@@ -162,7 +162,7 @@ This is the userspace half of the hypervisor.
 | `userspace/hypervisor/bin/vmm/vmm.cc` | `IsValidConfig`; GIC, UART, PCI, virtio; `setup_linux` / `setup_zircon` |
 | `userspace/hypervisor/bin/vmm/guest.cc` | `zx::guest::create`; GPA VMO; trap ranges vs device MMIO |
 | `userspace/hypervisor/bin/vmm/sysinfo.h` | `get_hypervisor_resource()` |
-| `userspace/hypervisor/bin/vmm/linux.cc` | ARM64 `Image` header `0x644d5241`; load at `0x2080000`; DTB `/pkg/data/board.dtb` |
+| `userspace/hypervisor/bin/vmm/linux.cc` | ARM64 `Image` header `0x644d5241`; Linux `0x2000000`, RTOS `0x2080000`; DTB `/pkg/data/board.dtb` |
 | `userspace/hypervisor/bin/vmm/arch/arm64/dts/board.dts` | Machina DTB: PSCI, GIC, PCI ECAM, PL011, PL031 |
 | `userspace/hypervisor/bin/vmm/arch/arm64/gic_distributor.cc` | Emulated GIC |
 | `userspace/hypervisor/bin/vmm/arch/arm64/pl011.cc` | Guest UART (serial) |

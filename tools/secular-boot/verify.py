@@ -30,9 +30,9 @@ TRUSTY_MARKERS = (
 )
 TRUSTY_ALIVE_MARKER = "TEE: alive"
 # Kernel trusty-probe also prints TRUSTY_ALIVE_MARKER. Require the userspace
-# ktee SMC path specifically so a blocked SmcResource cannot pass.
-TEE_PROBE_MARKER = "tee: S-EL1 nop"
-TEE_PROBE_SMP_MARKER = "tee: alive (8 cpus)"
+# lktee SMC path specifically so a blocked SmcResource cannot pass.
+TEE_PROBE_MARKER = "TEE: S-EL1 nop"
+TEE_PROBE_SMP_MARKER = "TEE: alive (8/8)"
 CONSOLE_MARKERS = (
     "component_manager",
     "zxsh",
@@ -82,7 +82,7 @@ def _run_qemu(root: pathlib.Path, arch: str, timeout_s: float) -> tuple[int, str
                 if not saw_prompt and PROMPT.search(joined):
                     saw_prompt = True
                 if saw_prompt and not probed_tee:
-                    os.write(master, b"/boot/bin/ktee\n")
+                    os.write(master, b"/boot/bin/lktee\n")
                     probed_tee = True
             if proc.poll() is not None:
                 break
@@ -136,11 +136,11 @@ def main(argv: list[str]) -> int:
         return 1
     if TEE_PROBE_MARKER not in lower:
         sys.stderr.write(text[-8000:])
-        print("FAIL: ktee did not complete userspace SMC to S-EL1", file=sys.stderr)
+        print("FAIL: lktee did not complete userspace SMC to S-EL1", file=sys.stderr)
         return 1
     if TEE_PROBE_SMP_MARKER not in lower:
         sys.stderr.write(text[-8000:])
-        print("FAIL: ktee did not NOP S-EL1 on all 8 cpus", file=sys.stderr)
+        print("FAIL: lktee did not NOP S-EL1 on all 8 cpus", file=sys.stderr)
         return 1
     if "CONSOLE_OK" not in text and not any(marker in lower for marker in CONSOLE_MARKERS):
         sys.stderr.write(text[-8000:])
