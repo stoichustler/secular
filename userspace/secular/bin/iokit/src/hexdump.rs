@@ -9,7 +9,7 @@ use std::io::{self, ErrorKind, Read, Seek, SeekFrom, Write};
 use std::process::ExitCode;
 
 const STDIN_OPERAND: &str = "-";
-const USAGE: &str = "Usage: hexdump [-C] [-n length] [-s offset] [file...]";
+const USAGE: &str = "Usage: hexdump [-C] [-n length] [-s offset] file...";
 const BYTES_PER_LINE: usize = 16;
 const MIDDLE_SPLIT: usize = 8;
 const READ_BUFFER_SIZE: usize = 4096;
@@ -89,6 +89,9 @@ fn parse_args(args: &[String]) -> Result<(Options, Vec<&str>), String> {
             continue;
         }
         operands.push(arg.as_str());
+    }
+    if operands.is_empty() {
+        return Err(format!("hexdump: missing file operand\n{USAGE}"));
     }
     Ok((options, operands))
 }
@@ -232,8 +235,7 @@ fn run(args: &[String]) -> i32 {
 
     let mut stdout = io::stdout().lock();
     let mut status = 0;
-    let paths: &[&str] = if operands.is_empty() { &[STDIN_OPERAND] } else { operands.as_slice() };
-    for path in paths {
+    for path in operands {
         if let Err(err) = dump_path(path, &mut stdout, options) {
             report_error(path, &err);
             status = 1;
@@ -253,11 +255,19 @@ mod tests {
     use std::io::Cursor;
 
     #[test]
-    fn parse_args_defaults() {
+    fn parse_args_requires_file() {
         let args: [String; 0] = [];
-        let (options, operands) = parse_args(&args).unwrap();
-        assert_eq!(options, Options::default());
-        assert!(operands.is_empty());
+        let message = parse_args(&args).unwrap_err();
+        assert!(message.contains("missing file operand"));
+        assert!(message.contains(USAGE));
+    }
+
+    #[test]
+    fn parse_args_flags_still_require_file() {
+        let args = ["-C".to_string(), "-n16".to_string()];
+        let message = parse_args(&args).unwrap_err();
+        assert!(message.contains("missing file operand"));
+        assert!(message.contains(USAGE));
     }
 
     #[test]
