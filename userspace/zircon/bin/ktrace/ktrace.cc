@@ -32,6 +32,8 @@ Where <control> is one of:\n\
     Note: This value doesn't reset on \"rewind\". Instead, the rewind\n\
     takes effect on the next \"start\".\n\
   save <path>                - save contents of trace buffer to <path>\n\
+    Summarize a saved FXT with: fxtdump [path]\n\
+    (fxtdump defaults to /stow/*.fxt)\n\
 \n\
 Options:\n\
   --help  - Print this help.\n\

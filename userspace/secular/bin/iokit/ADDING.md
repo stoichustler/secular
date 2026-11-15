@@ -9,7 +9,8 @@ Copy an existing tool rather than inventing a new layout:
 | Example | When to copy it |
 | --- | --- |
 | `src/clear.rs`, `src/cat.rs` | Pure std: files, stdout, no kernel |
-| `src/kdump.rs` | Pure std: parse `/stow/*.fxt` (ktrace save) |
+| `src/delay.rs` | Pure std: delay N milliseconds |
+| `src/fxtdump.rs` | Pure std: parse FXT from `ktrace save` / `ktrace stream` |
 | `src/bootstat.rs` | vDSO syscalls only (`zx_sys::zx_*`) |
 | `src/cpustat.rs` | FIDL + `zx` (`InfoResource`, `ZX_INFO_*`) |
 | `src/lktee.rs` | FIDL `SmcResource` / `ProfileResource` + `zx_smc_call` |
@@ -175,7 +176,7 @@ Do not add new capabilities unless launch fails without them.
 | `ZX_INFO_CPU_STATS`, `ZX_INFO_KMEM_STATS` | `fuchsia.kernel.InfoResource` → `zx::Resource::{cpu_stats,mem_stats}`. See `cpustat.rs`. |
 | Trusty SMC (`GET_UUID`, version, API, NOP) | `fuchsia.kernel.SmcResource` + `zx_smc_call`. Pin with `ProfileResource`. See `lktee.rs`. |
 | `GetCpuLoad` / `GetCpuStats` tables | `fuchsia.kernel.Stats` (not used by current iokit tools; `InfoResource` is enough). |
-| Files under `/boot`, `/tmp`, `/stow` | `std::fs`. No extra routing. `kdump` reads `/stow/*.fxt`. |
+| Files under `/boot`, `/tmp`, `/stow` | `std::fs`. No extra routing. `fxtdump` reads FXT from `ktrace save`. |
 
 Connect to a protocol with a short executor; do not add `#[fuchsia::main]`
 unless the binary is a component:

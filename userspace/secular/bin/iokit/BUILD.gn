@@ -34,6 +34,23 @@ rustc_binary("clear") {
   with_unit_tests = true
 }
 
+rustc_binary("cope") {
+  output_name = "cope"
+  edition = "2024"
+  source_root = "src/cope.rs"
+  sources = [ "src/cope.rs" ]
+  configs += [ "//products/build/config/rust:bootfs" ]
+  deps = [ "//third_party/rust_crates:libc" ]
+  if (is_fuchsia) {
+    deps += [
+      "//sdk/fidl/fuchsia.hardware.pty:fuchsia.hardware.pty_rust",
+      "//sdk/rust/zx",
+      "//userspace/lib/fdio/rust:fdio",
+    ]
+  }
+  with_unit_tests = true
+}
+
 rustc_binary("elfdump") {
   output_name = "elfdump"
   edition = "2024"
@@ -79,11 +96,11 @@ rustc_binary("kdmips") {
   with_unit_tests = true
 }
 
-rustc_binary("kdump") {
-  output_name = "kdump"
+rustc_binary("fxtdump") {
+  output_name = "fxtdump"
   edition = "2024"
-  source_root = "src/kdump.rs"
-  sources = [ "src/kdump.rs" ]
+  source_root = "src/fxtdump.rs"
+  sources = [ "src/fxtdump.rs" ]
   configs += [ "//products/build/config/rust:bootfs" ]
   with_unit_tests = true
 }
@@ -115,6 +132,15 @@ rustc_binary("runman") {
   with_unit_tests = true
 }
 
+rustc_binary("delay") {
+  output_name = "delay"
+  edition = "2024"
+  source_root = "src/delay.rs"
+  sources = [ "src/delay.rs" ]
+  configs += [ "//products/build/config/rust:bootfs" ]
+  with_unit_tests = true
+}
+
 rustc_binary("tree") {
   output_name = "tree"
   edition = "2024"
@@ -129,11 +155,13 @@ group("iokit") {
     ":bootstat",
     ":cat",
     ":clear",
+    ":cope",
     ":cpustat",
+    ":delay",
     ":elfdump",
+    ":fxtdump",
     ":hexdump",
     ":kdmips",
-    ":kdump",
     ":lktee",
     ":runman",
     ":tree",

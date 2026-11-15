@@ -10,9 +10,10 @@ Source lives under `~/opt/vim-src` by default; the install prefix is `~/opt`.
 A pinned tag makes editor behavior easier to reproduce across machines:
 
 ```sh
-mkdir -p ~/opt
-git clone https://github.com/vim/vim.git ~/opt/vim-src
-cd ~/opt/vim-src
+       mkdir -p ~/opt
+opt 0: git clone https://github.com/vim/vim.git ~/opt/vim-src
+opt 1: git clone https://gitee.com/stoichustler/vim.git ~/opt/vim-secular
+       cd ~/opt/vim-src
 
 # Optional: replace <tag> with the team's agreed Vim tag
 git fetch --tags --depth=1

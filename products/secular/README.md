@@ -18,8 +18,8 @@ The ZBI is a bringup-class system assembled without Bazel:
 - `/boot/bin`: `sh` (`zxsh`), `vmm`, `cat`, `clear`, `tree`, `dlog`, `debuglog`,
   psutils, `kcounter`, `ktrace`, `loadgen`, `pistress`, `time`, `uname`, `hwstress`
 - `/stow`: writable RAM memfs (same level as `/boot` and `/vmm`). Use for
-  `ktrace save /stow/trace.fxt`. Summarize with `kdump` (defaults to
-  `/stow/*.fxt`). Cleared on reboot. BOOTFS itself is
-  read-only.
+  `ktrace save /stow/trace.fxt` or `ktrace stream <mask> <secs> /stow/trace.fxt`.
+  Summarize with `fxtdump` (defaults to `/stow/*.fxt`). Cleared on reboot.
+  BOOTFS itself is read-only.
 - `/boot/config/profiles`: bringup scheduler profiles for `role_manager`
 - `/boot/meta/secular.txt`: microkernel identity, version, and toolchain stamp

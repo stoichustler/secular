@@ -2,7 +2,7 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-//! Summarize ktrace FXT files, defaulting to `/stow/*.fxt`.
+//! Summarize FXT files from `ktrace save` / `ktrace stream`. Defaults to `/stow/*.fxt`.
 
 use std::collections::BTreeMap;
 use std::fs::{self, File};
@@ -10,7 +10,18 @@ use std::io::{self, Read, Write};
 use std::path::{Path, PathBuf};
 use std::process::ExitCode;
 
-const USAGE: &str = "Usage: kdump [-v] [file|dir...]";
+const USAGE: &str = "\
+Usage: fxtdump [-v] [file|dir...]
+Summarize FXT from ktrace. No operands: /stow/*.fxt. -v lists every event.
+
+  ktrace start <group_mask>
+  ktrace stop
+  ktrace save /stow/trace.fxt
+  fxtdump
+
+  ktrace stream <group_mask> <secs> /stow/trace.fxt
+  fxtdump
+";
 const DEFAULT_ROOT: &str = "/stow";
 const FXT_EXTENSION: &str = "fxt";
 const LABEL_WIDTH: usize = 10;
@@ -41,6 +52,7 @@ const REC_LARGE: u8 = 15;
 
 #[derive(Clone, Debug, Default, PartialEq, Eq)]
 struct Options {
+    help: bool,
     verbose: bool,
     paths: Vec<String>,
 }
@@ -89,12 +101,17 @@ fn parse_args(args: &[String]) -> Result<Options, String> {
             options_ended = true;
             continue;
         }
+        if !options_ended && (arg == "--help" || arg == "-h") {
+            options.help = true;
+            continue;
+        }
         if !options_ended && arg.starts_with('-') && arg != "-" {
             for flag in arg.chars().skip(1) {
-                if flag != 'v' {
-                    return Err(format!("kdump: invalid option -- '{flag}'\n{USAGE}"));
+                match flag {
+                    'h' => options.help = true,
+                    'v' => options.verbose = true,
+                    _ => return Err(format!("fxtdump: invalid option -- '{flag}'\n{USAGE}")),
                 }
-                options.verbose = true;
             }
             continue;
         }
@@ -347,7 +364,7 @@ fn write_event_table<W: Write>(writer: &mut W, summary: &Summary, verbose: bool)
         )?;
     }
     if hidden > 0 {
-        writeln!(writer, "  ... {hidden} more (kdump -v)")?;
+        writeln!(writer, "  ... {hidden} more (fxtdump -v)")?;
     }
     Ok(())
 }
@@ -383,12 +400,12 @@ fn write_summary<W: Write>(
 fn collect_fxt_files(paths: &[String]) -> Result<Vec<PathBuf>, String> {
     let mut files = Vec::new();
     for path in paths {
-        let meta = fs::metadata(path).map_err(|err| format!("kdump: {path}: {err}"))?;
+        let meta = fs::metadata(path).map_err(|err| format!("fxtdump: {path}: {err}"))?;
         if meta.is_dir() {
-            let entries = fs::read_dir(path).map_err(|err| format!("kdump: {path}: {err}"))?;
+            let entries = fs::read_dir(path).map_err(|err| format!("fxtdump: {path}: {err}"))?;
             let mut found = Vec::new();
             for entry in entries {
-                let entry = entry.map_err(|err| format!("kdump: {path}: {err}"))?;
+                let entry = entry.map_err(|err| format!("fxtdump: {path}: {err}"))?;
                 let child = entry.path();
                 if child.is_file() && is_fxt_path(&child) {
                     found.push(child);
@@ -399,7 +416,7 @@ fn collect_fxt_files(paths: &[String]) -> Result<Vec<PathBuf>, String> {
         } else if meta.is_file() {
             files.push(PathBuf::from(path));
         } else {
-            return Err(format!("kdump: {path}: not a file or directory\n{USAGE}"));
+            return Err(format!("fxtdump: {path}: not a file or directory\n{USAGE}"));
         }
     }
     Ok(files)
@@ -432,6 +449,10 @@ fn run(args: &[String]) -> i32 {
             return 1;
         }
     };
+    if options.help {
+        let _ = write!(io::stdout(), "{USAGE}");
+        return 0;
+    }
     let roots = if options.paths.is_empty() {
         vec![DEFAULT_ROOT.to_string()]
     } else {
@@ -445,7 +466,11 @@ fn run(args: &[String]) -> i32 {
         }
     };
     if files.is_empty() {
-        let _ = writeln!(io::stderr(), "kdump: no *.{FXT_EXTENSION} in {}", display_roots(&roots));
+        let _ = writeln!(
+            io::stderr(),
+            "fxtdump: no *.{FXT_EXTENSION} in {}\n  capture with: ktrace save /stow/trace.fxt",
+            display_roots(&roots)
+        );
         return 1;
     }
 
@@ -459,12 +484,12 @@ fn run(args: &[String]) -> i32 {
         match load_file(path).and_then(|bytes| parse_fxt(&bytes)) {
             Ok(summary) => {
                 if let Err(err) = write_summary(&mut stdout, &summary, options.verbose) {
-                    let _ = writeln!(io::stderr(), "kdump: {err}");
+                    let _ = writeln!(io::stderr(), "fxtdump: {err}");
                     return 1;
                 }
             }
             Err(err) => {
-                let _ = writeln!(io::stderr(), "kdump: {display}: {err}");
+                let _ = writeln!(io::stderr(), "fxtdump: {display}: {err}");
                 status = 1;
             }
         }
@@ -532,7 +557,26 @@ mod tests {
     #[test]
     fn parse_args_rejects_unknown_flag() {
         let args = ["-x".to_string()];
-        assert!(parse_args(&args).unwrap_err().contains("invalid option"));
+        let err = parse_args(&args).unwrap_err();
+        assert!(err.contains("invalid option"));
+        assert!(err.contains("ktrace save"));
+    }
+
+    #[test]
+    fn parse_args_help() {
+        let args = ["--help".to_string()];
+        assert!(parse_args(&args).unwrap().help);
+        let args = ["-h".to_string()];
+        assert!(parse_args(&args).unwrap().help);
+    }
+
+    #[test]
+    fn usage_mentions_ktrace() {
+        assert!(USAGE.contains("ktrace start"));
+        assert!(USAGE.contains("ktrace stop"));
+        assert!(USAGE.contains("ktrace save /stow/trace.fxt"));
+        assert!(USAGE.contains("ktrace stream"));
+        assert!(USAGE.contains("fxtdump"));
     }
 
     #[test]
@@ -583,14 +627,13 @@ mod tests {
         let mut out = Vec::new();
         write_summary(&mut out, &summary, false).unwrap();
         let text = String::from_utf8(out).unwrap();
-        assert!(text.starts_with("/stow/trace.fxt\n"));
         assert!(text.contains("magic      FXT"));
         assert!(text.contains("type            count    pct"));
         let event_row = text.lines().find(|line| line.contains("event")).expect("event row");
         assert!(event_row.contains("28.6%"), "{event_row}");
         assert!(text.contains("kernel"));
         assert!(text.contains("irq"));
-        assert!(!text.contains("more (kdump -v)"));
+        assert!(!text.contains("more (fxtdump -v)"));
     }
 
     #[test]

@@ -750,10 +750,23 @@ set statusline+=%=
 let &statusline .= '🅡  %#MicroStatusMeta# %y %l:%c %p%% '
 
 " --- Command-line UI ---------------------------------------------------------
-" Style the native ':' command line as a thin bottom command panel.
+" Native ':' command line. Idle command bar shows EVERYDAY'S A HUSTLE
+" with no highlight. SafeState keeps it there; cheaper than remapping
+" ':' to input().
 " Temporarily link MsgArea to Pmenu and hide showcmd so the panel is uncluttered.
+silent! nunmap :
+silent! xunmap :
 let s:cmdline_msgarea = []
 let s:cmdline_showcmd = &showcmd
+let s:cmdline_prompt = "EVERYDAY'S A HUSTLE"
+
+function! s:ShowCmdPrompt() abort
+    let l:m = mode()
+    if l:m =~# '^c' || l:m ==# 'r' || l:m ==# 'rm'
+        return
+    endif
+    echo s:cmdline_prompt
+endfunction
 
 function! s:CmdlineUiEnter() abort
     if !exists('*hlget') || !exists('*hlset')
@@ -767,21 +780,18 @@ function! s:CmdlineUiEnter() abort
 endfunction
 
 function! s:CmdlineUiLeave() abort
-    if !exists('*hlset')
-        let &showcmd = s:cmdline_showcmd
-        return
-    endif
-    if !empty(s:cmdline_msgarea)
+    if exists('*hlset') && !empty(s:cmdline_msgarea)
         call hlset(s:cmdline_msgarea)
     endif
     let &showcmd = s:cmdline_showcmd
-    redraw
+    call s:ShowCmdPrompt()
 endfunction
 
 augroup micro_cmdline_ui
     autocmd!
     autocmd CmdlineEnter : call <SID>CmdlineUiEnter()
     autocmd CmdlineLeave : call <SID>CmdlineUiLeave()
+    autocmd VimEnter,SafeState * call <SID>ShowCmdPrompt()
 augroup END
 
 " --- Floating terminal -------------------------------------------------------
@@ -1282,6 +1292,232 @@ function! s:LiveRgVisual() abort
     call s:LiveRg(l:query, 0, 0)
 endfunction
 
+" Space-fr: workspace-wide literal replace. Same rg globs as Space-fg.
+" Always case-sensitive. Popup collects find/replace, then fzf previews
+" matches; ENTER replaces every match in the workspace.
+if exists('s:fr_popup')
+    if get(s:fr_popup, 'win', 0) > 0
+        silent! call popup_close(s:fr_popup.win)
+    endif
+endif
+let s:fr_popup = {'win': -1, 'find': '', 'repl': '', 'field': 0}
+
+function! s:FrRender() abort
+    let l:id = s:fr_popup.win
+    if l:id <= 0
+        return
+    endif
+    let l:find = s:fr_popup.find
+    let l:repl = s:fr_popup.repl
+    if s:fr_popup.field == 0
+        let l:find .= '█'
+    else
+        let l:repl .= '█'
+    endif
+    call popup_settext(l:id, [
+        \ 'ENTER preview  Tab field  Esc cancel',
+        \ 'Find:    ' . l:find,
+        \ 'Replace: ' . l:repl
+        \ ])
+endfunction
+
+function! s:FrEdit(key) abort
+    let l:name = s:fr_popup.field == 0 ? 'find' : 'repl'
+    let l:val = s:fr_popup[l:name]
+    if a:key ==# "\<BS>" || a:key ==# "\<C-h>"
+        if !empty(l:val)
+            let s:fr_popup[l:name] = strcharpart(l:val, 0, strchars(l:val) - 1)
+        endif
+    elseif a:key ==# "\<C-u>"
+        let s:fr_popup[l:name] = ''
+    elseif a:key ==# "\<C-w>"
+        let s:fr_popup[l:name] = substitute(l:val, '\S\+\s*$', '', '')
+    elseif strchars(a:key) == 1 && a:key =~# '^[[:print:]]$'
+        let s:fr_popup[l:name] .= a:key
+    else
+        return 0
+    endif
+    return 1
+endfunction
+
+function! s:FrFilter(id, key) abort
+    if a:key ==# "\<Esc>" || a:key ==# "\<C-c>"
+        call popup_close(a:id, 0)
+        return 1
+    endif
+    if a:key ==# "\<Tab>" || a:key ==# "\<Down>" || a:key ==# "\<C-n>"
+        let s:fr_popup.field = 1
+        call s:FrRender()
+        return 1
+    endif
+    if a:key ==# "\<S-Tab>" || a:key ==# "\<Up>" || a:key ==# "\<C-p>"
+        let s:fr_popup.field = 0
+        call s:FrRender()
+        return 1
+    endif
+    if a:key ==# "\<CR>" || a:key ==# "\<C-m>"
+        if empty(s:fr_popup.find)
+            return 1
+        endif
+        call popup_close(a:id, {
+            \ 'find': s:fr_popup.find,
+            \ 'repl': s:fr_popup.repl
+            \ })
+        return 1
+    endif
+    if s:FrEdit(a:key)
+        call s:FrRender()
+    endif
+    return 1
+endfunction
+
+function! s:FrStartPreview(timer) abort
+    let l:pending = get(s:fr_popup, 'pending', {})
+    if empty(l:pending)
+        return
+    endif
+    call s:ProjectReplacePreview(l:pending.find, l:pending.repl)
+endfunction
+
+function! s:FrClosed(id, result) abort
+    let s:fr_popup.win = -1
+    if type(a:result) != v:t_dict
+        return
+    endif
+    let s:fr_popup.pending = a:result
+    call timer_start(0, function('<SID>FrStartPreview'))
+endfunction
+
+function! s:OpenFrPopup(default) abort
+    if !has('popupwin')
+        echoerr 'Replace requires +popupwin'
+        return
+    endif
+    if s:fr_popup.win > 0 && !empty(popup_getpos(s:fr_popup.win))
+        call popup_close(s:fr_popup.win, 0)
+    endif
+    let s:fr_popup.find = a:default
+    let s:fr_popup.repl = ''
+    let s:fr_popup.field = empty(a:default) ? 0 : 1
+    let s:fr_popup.pending = {}
+    let l:width = s:FwWidth()
+    let s:fr_popup.win = popup_create([''], {
+        \ 'title': ' 🅡  Replace ',
+        \ 'pos': 'center',
+        \ 'minwidth': l:width,
+        \ 'maxwidth': l:width,
+        \ 'minheight': 3,
+        \ 'maxheight': 3,
+        \ 'border': [1, 1, 1, 1],
+        \ 'borderchars': ['─', '│', '─', '│', '┌', '┐', '┘', '└'],
+        \ 'padding': [0, 1, 0, 1],
+        \ 'close': 'none',
+        \ 'mapping': 0,
+        \ 'filter': function('<SID>FrFilter'),
+        \ 'callback': function('<SID>FrClosed'),
+        \ 'highlight': 'MicroTerminal',
+        \ 'borderhighlight': ['MicroTerminalBorder']
+        \ })
+    call s:FrRender()
+endfunction
+
+function! s:ProjectReplaceApply(find, repl, lines) abort
+    if empty(a:lines)
+        return
+    endif
+
+    let l:root = substitute(fnamemodify(g:micro_workspace_root, ':p'), '/\+$', '', '')
+    let l:cmd = 'rg --files-with-matches --fixed-strings --hidden --case-sensitive '
+        \ . s:rg_exclude_globs . ' -- ' . shellescape(a:find) . ' '
+        \ . shellescape(l:root)
+    let l:files = systemlist(l:cmd)
+    if v:shell_error == 2
+        echoerr 'rg failed'
+        return
+    endif
+    if empty(l:files)
+        echo 'No matches to replace'
+        return
+    endif
+
+    let l:pat = '\C\V' . escape(a:find, '\/')
+    let l:sub = escape(a:repl, '\/~&')
+    let l:buf = bufnr('%')
+    let l:view = winsaveview()
+    let l:written = 0
+    for l:file in l:files
+        if l:file !~# '^/'
+            let l:file = l:root . '/' . l:file
+        endif
+        execute 'silent keepalt hide edit' fnameescape(l:file)
+        if get(b:, 'micro_large_file', 0)
+            continue
+        endif
+        execute printf('silent! keepjumps %%s/%s/%s/ge', l:pat, l:sub)
+        if &modified
+            silent update
+            let l:written += 1
+        endif
+    endfor
+    if bufexists(l:buf)
+        execute 'silent keepalt buffer' l:buf
+        call winrestview(l:view)
+    endif
+    nohlsearch
+    echo printf('Replaced in %d files', l:written)
+endfunction
+
+function! s:ProjectReplacePreview(find, repl) abort
+    if !s:FzfVimAvailable()
+        echoerr 'fzf.vim is not available'
+        return
+    endif
+    let l:root = substitute(fnamemodify(g:micro_workspace_root, ':p'), '/\+$', '', '')
+    let l:rg = 'rg --column --line-number --no-heading --color=always '
+        \ . '--fixed-strings --hidden --case-sensitive '
+        \ . s:rg_exclude_globs . ' -- ' . shellescape(a:find) . ' '
+        \ . shellescape(l:root)
+    let l:header = 'Find: ' . a:find . '  →  ' . a:repl
+        \ . '  |  ENTER replace all  ESC cancel  CTRL-/ preview'
+    let l:spec = fzf#vim#with_preview({
+        \ 'source': l:rg,
+        \ 'dir': l:root,
+        \ 'options': [
+        \   '--ansi',
+        \   '--layout=reverse',
+        \   '--info=inline-right',
+        \   '--delimiter', ':',
+        \   '--nth', '4..',
+        \   '--prompt', 'Replace> ',
+        \   '--header', l:header,
+        \   '--preview-window', '+{2}/2'
+        \ ]
+        \ })
+    let l:spec['sink*'] = function('<SID>ProjectReplaceApply', [a:find, a:repl])
+    call fzf#run(fzf#wrap('project-replace', l:spec, 0))
+endfunction
+
+function! s:ProjectReplace(visual) abort
+    if !executable('rg')
+        echoerr 'Replace requires ripgrep (rg) in PATH'
+        return
+    endif
+
+    let l:default = ''
+    if a:visual
+        let l:saved = [getreg('z'), getregtype('z')]
+        silent normal! gv"zy
+        let l:default = trim(substitute(getreg('z'), '\r\?\n', ' ', 'g'))
+        call setreg('z', l:saved[0], l:saved[1])
+    else
+        let l:default = expand('<cword>')
+        if l:default !~# '[[:alnum:]_]'
+            let l:default = ''
+        endif
+    endif
+    call s:OpenFrPopup(l:default)
+endfunction
+
 function! s:DefineRgCommands() abort
     command! -bang -nargs=* Rg
         \ call <SID>LiveRg(<q-args>, <bang>0, 0)
@@ -1733,6 +1969,8 @@ endfunction
 function! s:DefineNERDTreePathMappings() abort
     nnoremap <silent><buffer> yr :call <SID>NERDTreeCopyPath(0)<CR>
     nnoremap <silent><buffer> ya :call <SID>NERDTreeCopyPath(1)<CR>
+    " NERDTree binds e to OpenExpl; keep Space-e as close, not explore.
+    nnoremap <silent><buffer> <Leader>e :call <SID>ToggleNERDTree()<CR>
 endfunction
 
 " Fast r / R: stock NERDTree refresh globs every cached subdirectory and
@@ -1860,6 +2098,39 @@ if exists('*NERDTreeAddKeyMap')
     call s:NERDTreeInstallFastRefresh()
 endif
 
+" Space-e: close an open tree (from the file window or the tree itself).
+" Opening with a named file buffer reveals that node instead of landing on
+" the tree root. Unnamed / special buffers still use a plain toggle.
+" A fullscreen tree (vim .) is the last window: NERDTreeClose would E444,
+" so replace it with an empty buffer instead.
+function! s:NERDTreeWinCount() abort
+    let l:n = 0
+    for l:win in range(1, winnr('$'))
+        if getwinvar(l:win, '&filetype') ==# 'nerdtree'
+            let l:n += 1
+        endif
+    endfor
+    return l:n
+endfunction
+
+function! s:ToggleNERDTree() abort
+    let l:trees = s:NERDTreeWinCount()
+    if l:trees > 0
+        if winnr('$') <= l:trees
+            enew
+            return
+        endif
+        NERDTreeClose
+        return
+    endif
+    " expand('%:p') on an unnamed buffer can be the cwd; require a name.
+    if &buftype ==# '' && !empty(expand('%'))
+        NERDTreeFind
+        return
+    endif
+    NERDTreeToggle
+endfunction
+
 augroup micro_nerdtree_paths
     autocmd!
     autocmd FileType nerdtree call <SID>DefineNERDTreePathMappings()
@@ -1869,7 +2140,7 @@ augroup END
 
 " --- Commands and leader maps ------------------------------------------------
 function! s:LeaderFHint() abort
-    echo 'fe files  fg grep  fw word[+dir]  fl lines  fb buffers  fh recent  fc commands'
+    echo 'fe files  fg grep  fw word[+dir]  fr replace  fl lines  fb buffers  fh recent  fc commands'
 endfunction
 
 function! s:WorkspaceFiles() abort
@@ -1991,13 +2262,14 @@ endfunction
 command! Format call <SID>FormatBuffer()
 command! CopyRelPath call <SID>CopyBufferPath(0)
 command! CopyAbsPath call <SID>CopyBufferPath(1)
+command! ProjectReplace call <SID>ProjectReplace(0)
 command! -nargs=0 Debug packadd termdebug | Termdebug
 
 " Leader map index (Space = <Leader>)
-"   e  NERDTree toggle          f  find hint
+"   e  NERDTree toggle/find     f  find hint
 "   fe workspace files          fg live rg (text)     fw word (+ optional subdir)
-"   fl buffer lines (exact)     fb buffers            fh recent files
-"   fc commands                 re live rg (regex)
+"   fr replace (float+preview)  fl buffer lines (exact)  fb buffers
+"   fh recent files             fc commands           re live rg (regex)
 "   t  floating terminal        w  next window
 "   g  fzf tags                 s  GtagsCursor / tags a  Gtags -r
 "   o  Tagbar                   h  header <-> source  =  formatprg
@@ -2012,12 +2284,14 @@ nnoremap N Nzzzv
 nnoremap <silent> <Leader>ip :call <SID>PasteCopiedPath()<CR>
 nnoremap <silent> <Leader>yr :call <SID>CopyBufferPath(0)<CR>
 nnoremap <silent> <Leader>ya :call <SID>CopyBufferPath(1)<CR>
-nnoremap <silent> <Leader>e :NERDTreeToggle<CR>
+nnoremap <silent> <Leader>e :call <SID>ToggleNERDTree()<CR>
 nnoremap <silent> <Leader>f :call <SID>LeaderFHint()<CR>
 xnoremap <silent> <Leader>f :<C-u>call <SID>LeaderFHint()<CR>
 nnoremap <silent> <Leader>fe :call <SID>WorkspaceFiles()<CR>
 nnoremap <silent> <Leader>fg :Rg<CR>
 nnoremap <silent> <Leader>fw :call <SID>LiveRgWord()<CR>
+nnoremap <silent> <Leader>fr :call <SID>ProjectReplace(0)<CR>
+xnoremap <silent> <Leader>fr :<C-u>call <SID>ProjectReplace(1)<CR>
 xnoremap <silent> <Leader>fg :<C-u>call <SID>LiveRgVisual()<CR>
 nnoremap <silent> <Leader>fl :call <SID>BufferLines()<CR>
 nnoremap <silent> <Leader>fb :Buffers<CR>
