@@ -1,9 +1,9 @@
 " MICRO / SMOS host Vimrc (not shipped in the target image).
 "
-" Source of truth: sdk/smos/vim/.vimrc
-" Install:         install -Dm644 sdk/smos/vim/.vimrc ~/.vimrc
+" Source of truth: products/reference/vim/.vimrc
+" Install:         install -Dm644 products/reference/vim/.vimrc ~/.vimrc
 " Reload:          :source $MYVIMRC
-" Related notes:   sdk/smos/vim/vim.md
+" Related notes:   products/reference/vim/vim.md
 "
 " This file is reload-safe: jobs, timers, and popups from a previous
 " :source are stopped before their script-local state is recreated.
@@ -13,8 +13,8 @@
 "   1. Startup, leader, runtime packs
 "   2. Core buffer / window options
 "   3. Colorscheme
-"   4. Indentation and C/C++ style commands
-"   5. File defaults (formatprg, last-position, autoread)
+"   4. Indentation and C/C++ style (path auto + :MICROStyle)
+"   5. File defaults (formatprg, gn/fidl, last-position, autoread)
 "   5a. Large / AEE *_RAW dumps (no wrap/syntax/list/search-scan)
 "   6. Clipboard (X11/Wayland, OSC 52, W23)
 "   7. Display, search, undo, completion
@@ -82,7 +82,8 @@ call s:RetireLegacyPrefix()
 
 " Space is the leader for project-style commands.
 " Map Space to <Nop> so a lone Space does not move the cursor while waiting
-" for timeoutlen (600 ms) to decide whether a leader sequence follows.
+" for timeoutlen to decide whether a leader sequence follows. Prefix chords:
+" Space-f* (find), Space-yr/ya, Space-ip, Space-re.
 let mapleader = ' '
 let maplocalleader = '\'
 nnoremap <Space> <Nop>
@@ -100,6 +101,9 @@ set hidden
 set magic
 set number
 set relativenumber
+if exists('+signcolumn')
+    set signcolumn=yes
+endif
 " Mouse support in normal, visual, insert, and terminal modes.
 " SGR is needed for columns beyond 223 in modern terminals.
 set mouse=a
@@ -107,6 +111,7 @@ if has('mouse_sgr')
     set ttymouse=sgr
 endif
 set scrolloff=10
+set sidescrolloff=5
 set splitbelow
 set splitright
 if exists('+smoothscroll')
@@ -115,6 +120,8 @@ endif
 if exists('+splitkeep')
     set splitkeep=screen
 endif
+set nostartofline
+set virtualedit=block
 set confirm
 set belloff=all
 set history=1000
@@ -122,11 +129,16 @@ set undolevels=5000
 set nrformats-=octal
 set display+=lastline
 set switchbuf=useopen,usetab
+if exists('+jumpoptions')
+    set jumpoptions=stack
+endif
 set updatetime=400
-" timeoutlen: mapped key sequences (leader maps). ttimeoutlen: Esc / keycodes.
+" timeoutlen: mapped chords (Space-f*, Space-yr, Space-re). 400ms is short
+" enough that a completed map (Space-e, Space-f hint) does not feel lagged,
+" long enough to type fe/fg/fr. ttimeoutlen: Esc / keycodes only.
 set timeout
 set ttimeout
-set timeoutlen=600
+set timeoutlen=400
 set ttimeoutlen=20
 
 " --- Colorscheme -------------------------------------------------------------
@@ -162,9 +174,11 @@ set expandtab
 set shiftround
 
 " --- C/C++ indent profiles ---------------------------------------------------
-" Buffer-local only. :MICROStyle / :GOOGLEStyle / :LINUXStyle.
-" Run gg=G after selecting a profile to reindent existing code.
-function! s:ApplyCStyle(style) abort
+" Buffer-local only. :MICROStyle / :GOOGLEStyle / :LINUXStyle, or automatic
+" from the file path (zircon/ → tabs 8, userspace/ → spaces 2). A manual
+" command wins for that buffer. Run gg=G after changing a profile.
+" a:000[0] is truthy for a quiet autocmd apply (no echo).
+function! s:ApplyCStyle(style, ...) abort
     setlocal autoindent cindent nosmartindent
     setlocal nocopyindent nopreserveindent
 
@@ -186,7 +200,22 @@ function! s:ApplyCStyle(style) abort
     endif
 
     let b:micro_c_style = a:style
-    echo 'C/C++ style: ' . l:name
+    if !(a:0 && a:1)
+        echo 'C/C++ style: ' . l:name
+    endif
+endfunction
+
+" First FileType only. Skip if the user already ran :MICROStyle etc.
+function! s:AutoCStyle() abort
+    if get(b:, 'micro_c_style', '') !=# ''
+        return
+    endif
+    let l:path = expand('%:p')
+    if l:path =~# '/zircon/'
+        call s:ApplyCStyle('hypervisor', 1)
+    elseif l:path =~# '/userspace/'
+        call s:ApplyCStyle('google', 1)
+    endif
 endfunction
 
 if exists(':BEAUStyle') == 2
@@ -197,18 +226,46 @@ command! GOOGLEStyle call <SID>ApplyCStyle('google')
 command! LINUXStyle call <SID>ApplyCStyle('linux')
 
 " --- File defaults -----------------------------------------------------------
-" formatprg feeds :Format / Space-=. Last-position restore skips special
-" buffers. checktime implements autoread when focus returns.
+" formatprg feeds :Format / Space-=. gn/fidl get commentstring so Space-/
+" works. Last-position restore skips special buffers. checktime implements
+" autoread when focus returns.
+function! s:ApplyCodeFormatOptions() abort
+    if get(b:, 'micro_large_file', 0) || &buftype !=# ''
+        return
+    endif
+    if index(['gitcommit', 'gitrebase', 'markdown', 'text', 'mail'], &filetype) >= 0
+        return
+    endif
+    setlocal formatoptions+=j
+    setlocal formatoptions+=rql
+    setlocal formatoptions-=t
+    setlocal formatoptions-=o
+endfunction
+
 augroup micro_file_defaults
     autocmd!
+    autocmd FileType * call <SID>ApplyCodeFormatOptions()
     autocmd FileType c,cpp,objc,objcpp
         \ if executable('clang-format') |
         \     setlocal formatprg=clang-format |
-        \ endif
+        \ endif |
+        \ setlocal suffixesadd=.h,.hh,.hpp,.hxx,.c,.cc,.cpp,.cxx,.inl,.inc,.S,.s |
+        \ call <SID>AutoCStyle()
     autocmd FileType rust
         \ if executable('rustfmt') |
         \     setlocal formatprg=rustfmt |
-        \ endif
+        \ endif |
+        \ setlocal suffixesadd=.rs
+    autocmd FileType asm,gas
+        \ setlocal suffixesadd=.h,.S,.s,.c commentstring=//\ %s
+    autocmd FileType gn
+        \ setlocal commentstring=#\ %s comments=:#
+        \ tabstop=2 shiftwidth=2 softtabstop=2 expandtab
+    autocmd FileType fidl
+        \ setlocal commentstring=//\ %s
+        \ tabstop=2 shiftwidth=2 softtabstop=2 expandtab
+    autocmd BufNewFile,BufRead *.gn,*.gni set filetype=gn
+    autocmd BufNewFile,BufRead *.fidl set filetype=fidl
     autocmd BufReadPost *
         \ if !get(b:, 'micro_large_file', 0)
         \     && line("'\"") > 0 && line("'\"") <= line('$') && &buftype ==# '' |
@@ -286,6 +343,9 @@ function! s:ApplyLargeFileOptions() abort
     setlocal undolevels=-1
     setlocal nowrap nolinebreak nobreakindent
     setlocal nolist nocursorline norelativenumber
+    if exists('+signcolumn')
+        setlocal signcolumn=no
+    endif
     if exists('+smoothscroll')
         setlocal nosmoothscroll
     endif
@@ -302,6 +362,9 @@ endfunction
 function! s:ApplyLongTextOptions() abort
     setlocal nowrap nolinebreak nobreakindent
     setlocal norelativenumber
+    if exists('+signcolumn')
+        setlocal signcolumn=no
+    endif
     if exists('+smoothscroll')
         setlocal nosmoothscroll
     endif
@@ -312,6 +375,9 @@ endfunction
 function! s:LargeFileDisplayOnly() abort
     setlocal nowrap nolinebreak nobreakindent
     setlocal nolist nocursorline norelativenumber
+    if exists('+signcolumn')
+        setlocal signcolumn=no
+    endif
     if exists('+smoothscroll')
         setlocal nosmoothscroll
     endif
@@ -389,11 +455,17 @@ function! s:LargeFileWin() abort
     elseif get(b:, 'micro_long_text', 0)
         setlocal nowrap nolinebreak nobreakindent
         setlocal norelativenumber
+        if exists('+signcolumn')
+            setlocal signcolumn=no
+        endif
         if exists('+smoothscroll')
             setlocal nosmoothscroll
         endif
         call s:SyncLargeFileSession()
     else
+        if exists('+signcolumn') && &number
+            setlocal signcolumn=yes
+        endif
         call s:SyncLargeFileSession()
     endif
 endfunction
@@ -460,10 +532,15 @@ set incsearch
 set ignorecase
 set smartcase
 set infercase
+set showmatch
 set matchtime=1
 set nobackup
 set shortmess+=c
+set shortmess-=S
 set formatoptions+=j
+set formatoptions+=rql
+set formatoptions-=t
+set formatoptions-=o
 set synmaxcol=1000
 " No swap files. Crash recovery is via undofile under ~/.vim/undo instead.
 " updatecount=0 also blocks a later :set swapfile from creating .swp files.
@@ -486,7 +563,11 @@ set wildignorecase
 set wildignore+=*/.git/*,*/.hg/*,*/.svn/*
 set wildignore+=*/out/*,*/build/*,*/target/*,*/node_modules/*
 set wildignore+=*.o,*.obj,*.a,*.so,*.pyc,*.class,*.swp,*.bin
+set wildignore+=*.d,*.gcda,*.gcno
 set wildignore+=tags,TAGS,GTAGS,GRTAGS,GPATH,cscope.out
+" Skip included-file scans in completion; they hitch on Zircon-sized trees.
+set complete-=i
+set pumheight=12
 set completeopt=menuone,popup
 silent! set completeopt+=fuzzy
 if exists('+completepopup')
@@ -501,6 +582,9 @@ set diffopt=internal,filler,closeoff,hiddenoff,algorithm:histogram,indent-heuris
 set backspace=indent,eol,start
 " Search tags from the current file upward, then from the working directory.
 set tags=./tags;,tags
+if exists('+tagcase')
+    set tagcase=followscs
+endif
 
 " :grep and fzf file listing share the same hidden-but-not-.git rg flags.
 " Shared rg globs: skip git internals and AEE dump binaries (preview/open
@@ -1293,36 +1377,48 @@ function! s:LiveRgVisual() abort
 endfunction
 
 " Space-fr: workspace-wide literal replace. Same rg globs as Space-fg.
-" Always case-sensitive. Popup collects find/replace, then fzf previews
-" matches; ENTER replaces every match in the workspace.
+" Always case-sensitive. Independent find popup, then replace popup, then
+" fzf match preview. The last float is Confirm; only that ENTER applies.
 if exists('s:fr_popup')
     if get(s:fr_popup, 'win', 0) > 0
         silent! call popup_close(s:fr_popup.win)
     endif
 endif
-let s:fr_popup = {'win': -1, 'find': '', 'repl': '', 'field': 0}
+let s:fr_popup = {'win': -1, 'find': '', 'repl': '', 'step': 'find'}
 
 function! s:FrRender() abort
     let l:id = s:fr_popup.win
     if l:id <= 0
         return
     endif
-    let l:find = s:fr_popup.find
+    if s:fr_popup.step ==# 'find'
+        call popup_settext(l:id, [
+            \ 'ENTER replace  Esc cancel',
+            \ '> ' . s:fr_popup.find . '█'
+            \ ])
+        return
+    endif
+    if s:fr_popup.step ==# 'repl'
+        call popup_settext(l:id, [
+            \ 'Find: ' . s:fr_popup.find,
+            \ 'ENTER preview  Esc back',
+            \ '> ' . s:fr_popup.repl . '█'
+            \ ])
+        return
+    endif
     let l:repl = s:fr_popup.repl
-    if s:fr_popup.field == 0
-        let l:find .= '█'
-    else
-        let l:repl .= '█'
+    if empty(l:repl)
+        let l:repl = '(empty)'
     endif
     call popup_settext(l:id, [
-        \ 'ENTER preview  Tab field  Esc cancel',
-        \ 'Find:    ' . l:find,
-        \ 'Replace: ' . l:repl
+        \ 'Find:    ' . s:fr_popup.find,
+        \ 'Replace: ' . l:repl,
+        \ 'ENTER confirm replace all  Esc back'
         \ ])
 endfunction
 
 function! s:FrEdit(key) abort
-    let l:name = s:fr_popup.field == 0 ? 'find' : 'repl'
+    let l:name = s:fr_popup.step ==# 'find' ? 'find' : 'repl'
     let l:val = s:fr_popup[l:name]
     if a:key ==# "\<BS>" || a:key ==# "\<C-h>"
         if !empty(l:val)
@@ -1341,28 +1437,41 @@ function! s:FrEdit(key) abort
 endfunction
 
 function! s:FrFilter(id, key) abort
-    if a:key ==# "\<Esc>" || a:key ==# "\<C-c>"
+    let l:step = s:fr_popup.step
+    if a:key ==# "\<C-c>"
         call popup_close(a:id, 0)
         return 1
     endif
-    if a:key ==# "\<Tab>" || a:key ==# "\<Down>" || a:key ==# "\<C-n>"
-        let s:fr_popup.field = 1
-        call s:FrRender()
-        return 1
-    endif
-    if a:key ==# "\<S-Tab>" || a:key ==# "\<Up>" || a:key ==# "\<C-p>"
-        let s:fr_popup.field = 0
-        call s:FrRender()
+    if a:key ==# "\<Esc>"
+                \ || (l:step !=# 'find'
+                \     && (a:key ==# "\<S-Tab>" || a:key ==# "\<Up>"
+                \         || a:key ==# "\<C-p>"))
+                \ || (l:step ==# 'confirm' && a:key =~# '^[nN]$')
+        if l:step ==# 'find'
+            call popup_close(a:id, 0)
+        else
+            call popup_close(a:id, {'action': 'back'})
+        endif
         return 1
     endif
     if a:key ==# "\<CR>" || a:key ==# "\<C-m>"
-        if empty(s:fr_popup.find)
-            return 1
+                \ || (l:step ==# 'find'
+                \     && (a:key ==# "\<Tab>" || a:key ==# "\<Down>"
+                \         || a:key ==# "\<C-n>"))
+                \ || (l:step ==# 'confirm' && a:key =~# '^[yY]$')
+        if l:step ==# 'find'
+            if empty(s:fr_popup.find)
+                return 1
+            endif
+            call popup_close(a:id, {'action': 'next'})
+        elseif l:step ==# 'repl'
+            call popup_close(a:id, {'action': 'preview'})
+        else
+            call popup_close(a:id, {'action': 'apply'})
         endif
-        call popup_close(a:id, {
-            \ 'find': s:fr_popup.find,
-            \ 'repl': s:fr_popup.repl
-            \ })
+        return 1
+    endif
+    if l:step ==# 'confirm'
         return 1
     endif
     if s:FrEdit(a:key)
@@ -1371,12 +1480,24 @@ function! s:FrFilter(id, key) abort
     return 1
 endfunction
 
-function! s:FrStartPreview(timer) abort
+function! s:FrAdvance(timer) abort
     let l:pending = get(s:fr_popup, 'pending', {})
     if empty(l:pending)
         return
     endif
-    call s:ProjectReplacePreview(l:pending.find, l:pending.repl)
+    let l:action = get(l:pending, 'action', '')
+    let l:step = s:fr_popup.step
+    if l:action ==# 'next'
+        call s:OpenFrPopup('repl')
+    elseif l:action ==# 'back'
+        call s:OpenFrPopup(l:step ==# 'confirm' ? 'repl' : 'find')
+    elseif l:action ==# 'preview'
+        call s:ProjectReplacePreview(s:fr_popup.find, s:fr_popup.repl)
+    elseif l:action ==# 'confirm'
+        call s:OpenFrPopup('confirm')
+    elseif l:action ==# 'apply'
+        call s:ProjectReplaceApply(s:fr_popup.find, s:fr_popup.repl)
+    endif
 endfunction
 
 function! s:FrClosed(id, result) abort
@@ -1385,10 +1506,10 @@ function! s:FrClosed(id, result) abort
         return
     endif
     let s:fr_popup.pending = a:result
-    call timer_start(0, function('<SID>FrStartPreview'))
+    call timer_start(0, function('<SID>FrAdvance'))
 endfunction
 
-function! s:OpenFrPopup(default) abort
+function! s:OpenFrPopup(step) abort
     if !has('popupwin')
         echoerr 'Replace requires +popupwin'
         return
@@ -1396,18 +1517,26 @@ function! s:OpenFrPopup(default) abort
     if s:fr_popup.win > 0 && !empty(popup_getpos(s:fr_popup.win))
         call popup_close(s:fr_popup.win, 0)
     endif
-    let s:fr_popup.find = a:default
-    let s:fr_popup.repl = ''
-    let s:fr_popup.field = empty(a:default) ? 0 : 1
+    let s:fr_popup.step = a:step
     let s:fr_popup.pending = {}
     let l:width = s:FwWidth()
+    if a:step ==# 'find'
+        let l:title = ' 🅕  Find '
+        let l:height = 2
+    elseif a:step ==# 'repl'
+        let l:title = ' 🅡  Replace '
+        let l:height = 3
+    else
+        let l:title = ' 🅒  Confirm '
+        let l:height = 3
+    endif
     let s:fr_popup.win = popup_create([''], {
-        \ 'title': ' 🅡  Replace ',
+        \ 'title': l:title,
         \ 'pos': 'center',
         \ 'minwidth': l:width,
         \ 'maxwidth': l:width,
-        \ 'minheight': 3,
-        \ 'maxheight': 3,
+        \ 'minheight': l:height,
+        \ 'maxheight': l:height,
         \ 'border': [1, 1, 1, 1],
         \ 'borderchars': ['─', '│', '─', '│', '┌', '┐', '┘', '└'],
         \ 'padding': [0, 1, 0, 1],
@@ -1421,11 +1550,7 @@ function! s:OpenFrPopup(default) abort
     call s:FrRender()
 endfunction
 
-function! s:ProjectReplaceApply(find, repl, lines) abort
-    if empty(a:lines)
-        return
-    endif
-
+function! s:ProjectReplaceApply(find, repl) abort
     let l:root = substitute(fnamemodify(g:micro_workspace_root, ':p'), '/\+$', '', '')
     let l:cmd = 'rg --files-with-matches --fixed-strings --hidden --case-sensitive '
         \ . s:rg_exclude_globs . ' -- ' . shellescape(a:find) . ' '
@@ -1478,7 +1603,7 @@ function! s:ProjectReplacePreview(find, repl) abort
         \ . s:rg_exclude_globs . ' -- ' . shellescape(a:find) . ' '
         \ . shellescape(l:root)
     let l:header = 'Find: ' . a:find . '  →  ' . a:repl
-        \ . '  |  ENTER replace all  ESC cancel  CTRL-/ preview'
+        \ . '  |  ENTER continue  ESC cancel  CTRL-/ preview'
     let l:spec = fzf#vim#with_preview({
         \ 'source': l:rg,
         \ 'dir': l:root,
@@ -1488,13 +1613,23 @@ function! s:ProjectReplacePreview(find, repl) abort
         \   '--info=inline-right',
         \   '--delimiter', ':',
         \   '--nth', '4..',
-        \   '--prompt', 'Replace> ',
+        \   '--prompt', 'Preview> ',
         \   '--header', l:header,
         \   '--preview-window', '+{2}/2'
         \ ]
         \ })
-    let l:spec['sink*'] = function('<SID>ProjectReplaceApply', [a:find, a:repl])
+    let l:spec['sink*'] = function('<SID>ProjectReplacePreviewSink', [a:find, a:repl])
     call fzf#run(fzf#wrap('project-replace', l:spec, 0))
+endfunction
+
+function! s:ProjectReplacePreviewSink(find, repl, lines) abort
+    if empty(a:lines)
+        return
+    endif
+    let s:fr_popup.find = a:find
+    let s:fr_popup.repl = a:repl
+    let s:fr_popup.pending = {'action': 'confirm'}
+    call timer_start(0, function('<SID>FrAdvance'))
 endfunction
 
 function! s:ProjectReplace(visual) abort
@@ -1515,7 +1650,9 @@ function! s:ProjectReplace(visual) abort
             let l:default = ''
         endif
     endif
-    call s:OpenFrPopup(l:default)
+    let s:fr_popup.find = l:default
+    let s:fr_popup.repl = ''
+    call s:OpenFrPopup('find')
 endfunction
 
 function! s:DefineRgCommands() abort
@@ -1859,6 +1996,29 @@ function! s:GitSignsEnable() abort
     call s:GitSignsRefresh()
 endfunction
 
+function! s:GitHunkJump(dir) abort
+    if !has('signs')
+        echo 'No git hunks'
+        return
+    endif
+    let l:info = sign_getplaced(bufnr('%'), {'group': 'micro_git'})
+    if empty(l:info) || empty(l:info[0].signs)
+        echo 'No git hunks'
+        return
+    endif
+    let l:lnums = sort(map(copy(l:info[0].signs), 'v:val.lnum'), 'n')
+    let l:cur = line('.')
+    if a:dir > 0
+        let l:hits = filter(copy(l:lnums), 'v:val > l:cur')
+        let l:dest = empty(l:hits) ? l:lnums[0] : l:hits[0]
+    else
+        let l:hits = filter(copy(l:lnums), 'v:val < l:cur')
+        let l:dest = empty(l:hits) ? l:lnums[-1] : l:hits[-1]
+    endif
+    execute l:dest
+    normal! zz
+endfunction
+
 call s:ApplyGitSignColors()
 augroup micro_git_signs
     autocmd!
@@ -1892,16 +2052,67 @@ let g:tagbar_sort = 0
 let g:tagbar_width = 32
 let g:tagbar_silent = 1
 
-" NERDCommenter: keep default maps and add Space-/ as a toggle.
+" NERDCommenter: Space-/ toggles. Default Space-c* maps are off so Space-c
+" does not wait timeoutlen for cc/cu/ci.
 let g:NERDSpaceDelims = 1
 let g:NERDDefaultAlign = 'left'
 let g:NERDCommentEmptyLines = 1
 let g:NERDTrimTrailingWhitespace = 1
-let g:NERDCreateDefaultMappings = 1
+let g:NERDCreateDefaultMappings = 0
+
+" AutoPairs Meta shortcuts emit garbage over SSH/tmux. Keep pair insert.
+let g:AutoPairsCenterLine = 0
+let g:AutoPairsShortcutToggle = ''
+let g:AutoPairsShortcutFastWrap = ''
+let g:AutoPairsShortcutJump = ''
+let g:AutoPairsShortcutBackInsert = ''
+let g:AutoPairsMoveCharacter = ''
 
 " Copy a filesystem path to register p (and + when a clipboard exists).
 " Relative form prefers the Vim-start workspace root, then cwd (fnamemodify :.).
 " Space-ip pastes register p, so this works without a clipboard provider.
+" Space-yr / Space-ya and NERDTree yr/ya show the copied path in a brief float.
+if exists('s:notify_popup')
+    if get(s:notify_popup, 'win', 0) > 0
+        silent! call popup_close(s:notify_popup.win)
+    endif
+endif
+let s:notify_popup = {'win': -1}
+
+function! s:NotifyPopupClosed(id, result) abort
+    if get(s:notify_popup, 'win', -1) == a:id
+        let s:notify_popup.win = -1
+    endif
+endfunction
+
+function! s:NotifyPopup(title, text) abort
+    if !has('popupwin')
+        echomsg a:title . ': ' . a:text
+        return
+    endif
+    if s:notify_popup.win > 0 && !empty(popup_getpos(s:notify_popup.win))
+        call popup_close(s:notify_popup.win)
+    endif
+
+    let l:width = s:FwWidth()
+    let s:notify_popup.win = popup_create(a:text, {
+        \ 'title': ' 🅨  ' . a:title . ' ',
+        \ 'pos': 'center',
+        \ 'minwidth': l:width,
+        \ 'maxwidth': l:width,
+        \ 'wrap': 1,
+        \ 'border': [1, 1, 1, 1],
+        \ 'borderchars': ['─', '│', '─', '│', '┌', '┐', '┘', '└'],
+        \ 'padding': [0, 1, 0, 1],
+        \ 'time': 3000,
+        \ 'close': 'click',
+        \ 'highlight': 'MicroTerminal',
+        \ 'borderhighlight': ['MicroTerminalBorder'],
+        \ 'callback': function('<SID>NotifyPopupClosed'),
+        \ 'zindex': 300
+        \ })
+endfunction
+
 function! s:MakeRelativePath(path) abort
     let l:abs = fnamemodify(a:path, ':p')
     let l:root = get(g:, 'micro_workspace_root', getcwd())
@@ -1920,9 +2131,7 @@ endfunction
 
 function! s:CopyPath(path, absolute) abort
     if empty(a:path)
-        echohl WarningMsg
-        echomsg 'No file name'
-        echohl None
+        call s:NotifyPopup('Path', 'No file name')
         return
     endif
 
@@ -1931,7 +2140,7 @@ function! s:CopyPath(path, absolute) abort
     if has('clipboard')
         call setreg('+', l:path, 'v')
     endif
-    echomsg (a:absolute ? 'Absolute path: ' : 'Relative path: ') . l:path
+    call s:NotifyPopup(a:absolute ? 'Absolute path' : 'Relative path', l:path)
 endfunction
 
 function! s:CopyBufferPath(absolute) abort
@@ -1948,9 +2157,7 @@ function! s:NERDTreeCopyPath(absolute) abort
         let l:node = g:NERDTreeFileNode.GetSelected()
         let l:path = l:node.path.str()
     catch
-        echohl WarningMsg
-        echomsg 'NERDTree: no file or directory is selected'
-        echohl None
+        call s:NotifyPopup('Path', 'NERDTree: no file or directory is selected')
         return
     endtry
     call s:CopyPath(l:path, a:absolute)
@@ -2131,12 +2338,75 @@ function! s:ToggleNERDTree() abort
     NERDTreeToggle
 endfunction
 
+" Color a small set of extensions in NERDTree. Tokyo Night fg colors.
+" .c/.cc/.cpp share blue; .S/.s share gold. Patterns are case-sensitive.
+let s:nerdtree_ext_hl = [
+    \ ['rs',  'MicroNerdTreeRs'],
+    \ ['c',   'MicroNerdTreeC'],
+    \ ['cc',  'MicroNerdTreeCc'],
+    \ ['cpp', 'MicroNerdTreeCpp'],
+    \ ['h',   'MicroNerdTreeH'],
+    \ ['S',   'MicroNerdTreeAsm'],
+    \ ['s',   'MicroNerdTreeAsm'],
+    \ ['py',  'MicroNerdTreePy'],
+    \ ['sh',  'MicroNerdTreeSh'],
+    \ ['gn',  'MicroNerdTreeGn'],
+    \ ['md',  'MicroNerdTreeMd'],
+    \ ['txt', 'MicroNerdTreeTxt'],
+    \ ['rst', 'MicroNerdTreeRst']
+    \ ]
+
+function! s:ApplyNERDTreeFileColors() abort
+    highlight MicroNerdTreeRs  ctermfg=209 guifg=#ff9e64
+    highlight MicroNerdTreeC   ctermfg=12  guifg=#7aa2f7
+    highlight MicroNerdTreeCc  ctermfg=12  guifg=#7aa2f7
+    highlight MicroNerdTreeCpp ctermfg=12  guifg=#7aa2f7
+    highlight MicroNerdTreeH   ctermfg=14  guifg=#7dcfff
+    highlight MicroNerdTreeAsm ctermfg=11  guifg=#e0af68
+    highlight MicroNerdTreePy  ctermfg=11  guifg=#e0af68
+    highlight MicroNerdTreeSh  ctermfg=10  guifg=#9ece6a
+    highlight MicroNerdTreeGn  ctermfg=13  guifg=#bb9af7
+    highlight MicroNerdTreeMd  ctermfg=15  guifg=#c0caf5
+    highlight MicroNerdTreeTxt ctermfg=8   guifg=#a9b1d6
+    highlight MicroNerdTreeRst ctermfg=15  guifg=#c0caf5
+endfunction
+
+function! s:NERDTreeDefineFileSyntax() abort
+    if &filetype !=# 'nerdtree'
+        return
+    endif
+    for [l:ext, l:group] in s:nerdtree_ext_hl
+        execute 'silent! syntax clear' l:group
+    endfor
+    for [l:ext, l:group] in s:nerdtree_ext_hl
+        execute 'syntax match' l:group '/\v\S+\.' . l:ext . '$/ containedin=NERDTreeFile'
+        execute 'syntax match' l:group '/\v\S+\.' . l:ext . '\W*\*$/ containedin=NERDTreeExecFile'
+    endfor
+    call s:ApplyNERDTreeFileColors()
+endfunction
+
+function! s:NERDTreeDefineFileSyntaxOpen() abort
+    for l:info in getbufinfo()
+        if getbufvar(l:info.bufnr, '&filetype') !=# 'nerdtree'
+            continue
+        endif
+        for l:win in l:info.windows
+            call win_execute(l:win, 'call <SID>NERDTreeDefineFileSyntax()')
+            break
+        endfor
+    endfor
+endfunction
+
 augroup micro_nerdtree_paths
     autocmd!
     autocmd FileType nerdtree call <SID>DefineNERDTreePathMappings()
     autocmd FileType nerdtree call <SID>NERDTreeInstallFastRefresh()
+    autocmd FileType nerdtree call <SID>NERDTreeDefineFileSyntax()
     autocmd VimEnter * call <SID>NERDTreeInstallFastRefresh()
+    autocmd ColorScheme * call <SID>ApplyNERDTreeFileColors()
 augroup END
+call s:ApplyNERDTreeFileColors()
+call s:NERDTreeDefineFileSyntaxOpen()
 
 " --- Commands and leader maps ------------------------------------------------
 function! s:LeaderFHint() abort
@@ -2175,7 +2445,7 @@ function! s:FormatBuffer() abort
 endfunction
 
 " Same directory first, then walk parents with findfile(). Not a project-wide
-" ctags lookup; use Space-g / Space-s for that.
+" ctags lookup; use Space-g / Space-s for that. Mapped to Space-x (h is help).
 function! s:SwitchHeaderSource() abort
     let l:name = expand('%:t')
     if empty(l:name)
@@ -2244,6 +2514,34 @@ function! s:ToggleQuickfix() abort
     botright copen 10
 endfunction
 
+function! s:ListJump(cmd) abort
+    try
+        execute a:cmd
+        normal! zz
+    catch /^Vim\%((\a\+)\)\=:E\%(42\|553\)/
+        echo 'No more items'
+    endtry
+endfunction
+
+" Run make from the Vim-start workspace root so :cd / NERDTree do not
+" change the build directory. Arguments are make targets (e.g. :Make verify).
+function! s:WorkspaceMake(...) abort
+    let l:root = get(g:, 'micro_workspace_root', getcwd())
+    if !isdirectory(l:root)
+        echoerr 'No workspace root'
+        return
+    endif
+    let l:save = getcwd()
+    execute 'lcd' fnameescape(l:root)
+    try
+        execute 'silent make!' join(map(copy(a:000), 'fnameescape(v:val)'))
+    finally
+        execute 'lcd' fnameescape(l:save)
+    endtry
+    botright cwindow
+    redraw!
+endfunction
+
 function! s:FzfTagUnderCursor() abort
     let l:symbol = expand('<cword>')
     if empty(l:symbol)
@@ -2263,24 +2561,271 @@ command! Format call <SID>FormatBuffer()
 command! CopyRelPath call <SID>CopyBufferPath(0)
 command! CopyAbsPath call <SID>CopyBufferPath(1)
 command! ProjectReplace call <SID>ProjectReplace(0)
+command! -nargs=* Make call <SID>WorkspaceMake(<f-args>)
 command! -nargs=0 Debug packadd termdebug | Termdebug
 
+" Space-h: scrollable shortcut manual. Same width as Space-fr.
+if exists('s:help_popup')
+    if get(s:help_popup, 'win', 0) > 0
+        silent! call popup_close(s:help_popup.win)
+    endif
+endif
+let s:help_popup = {'win': -1, 'nlines': 0}
+
+function! s:HelpManualLines() abort
+    return [
+        \ 'Space is <Leader>.  j/k  C-d/C-u  g/G  q/Esc/h close',
+        \ '',
+        \ 'Find',
+        \ '  Space-fe          workspace files',
+        \ '  Space-fg          live ripgrep, literal  (visual: selection)',
+        \ '  Space-fw          word under cursor; optional subdir float',
+        \ '  Space-re          live ripgrep, regex',
+        \ '  Space-fl          buffer lines, exact substrings',
+        \ '  Space-fb          buffers',
+        \ '  Space-fh          recent files',
+        \ '  Space-fc          commands',
+        \ '  Space-f           short find hint',
+        \ '',
+        \ 'Replace',
+        \ '  Space-fr          find float → replace float → preview',
+        \ '                    → Confirm (ENTER/y apply, Esc/n back)',
+        \ '',
+        \ 'Files and windows',
+        \ '  Space-e           NERDTree toggle / find current file',
+        \ '  Space-t           floating terminal',
+        \ '  Space-w           next window',
+        \ '  Ctrl-w h/l        window left / right',
+        \ '  Space-o           Tagbar',
+        \ '  Space-q           quickfix toggle',
+        \ '  Space-x           C/C++ header ↔ source',
+        \ '  Space-h           this manual',
+        \ '',
+        \ 'Code',
+        \ '  Space-g           fzf tags for word under cursor',
+        \ '  Space-s           GtagsCursor, else fzf tags',
+        \ '  Space-a           Gtags -r (references)',
+        \ '  Space-=           format buffer (formatprg)',
+        \ '  Space-/           toggle comment',
+        \ '  Space-b           jump back',
+        \ '  Space-d / u       next / previous paragraph',
+        \ '  Space-n / m       presentation view / restore numbers+signs',
+        \ '',
+        \ 'Editing',
+        \ '  Y                 yank to end of line',
+        \ '  * / #             search word, keep cursor centered',
+        \ '  visual * / #      search selection',
+        \ '  visual p          paste without clobbering clipboard',
+        \ '  visual < / >      indent and keep selection',
+        \ '  Ctrl-j / Ctrl-k   window down / up',
+        \ '  ]q / [q           next / previous quickfix  (]Q [Q first/last)',
+        \ '  ]h / [h           next / previous git hunk',
+        \ '',
+        \ 'Paths',
+        \ '  Space-yr          copy relative path (float)',
+        \ '  Space-ya          copy absolute path (float)',
+        \ '  Space-ip          paste copied path (register p)',
+        \ '',
+        \ 'Other keys',
+        \ '  Ctrl-L            clear search highlight, refresh diff',
+        \ '  n / N             search next / prev, keep cursor centered',
+        \ '  Ctrl-N / Ctrl-P   insert completion',
+        \ '',
+        \ 'Floating terminal',
+        \ '  Space-t           show / hide',
+        \ '  Ctrl-Q            hide, keep the shell',
+        \ '  Esc Esc           close and wipe the shell',
+        \ '',
+        \ 'NERDTree',
+        \ '  yr / ya           copy node relative / absolute path',
+        \ '  r / R             refresh cursor dir / tree root',
+        \ '  Space-e           close tree',
+        \ '  colors            rs cc/cpp/c h S/s py sh gn md txt rst',
+        \ '',
+        \ 'Commands',
+        \ '  :MICROStyle       tabs 8 (auto under zircon/)',
+        \ '  :GOOGLEStyle      spaces 2 (auto under userspace/)',
+        \ '  :LINUXStyle       tabs 8    :Format       formatprg',
+        \ '  :Make [target]    make from workspace root → quickfix',
+        \ '  :Rg  :RgRegex     :ProjectReplace  :FloatTerminal  :Debug',
+        \ ]
+endfunction
+
+function! s:HelpPopupClosed(id, result) abort
+    if get(s:help_popup, 'win', -1) == a:id
+        let s:help_popup.win = -1
+    endif
+endfunction
+
+function! s:HelpPopupVisible() abort
+    if s:help_popup.win <= 0
+        return 0
+    endif
+    let l:pos = popup_getpos(s:help_popup.win)
+    return !empty(l:pos) && get(l:pos, 'visible', 0)
+endfunction
+
+function! s:HelpPopupSize() abort
+    let l:width = s:FwWidth()
+    let l:maxh = max([8, min([float2nr((&lines - 2) * 0.70), &lines - 4])])
+    let l:height = max([8, min([s:help_popup.nlines, l:maxh])])
+    return {
+        \ 'minwidth': l:width,
+        \ 'maxwidth': l:width,
+        \ 'minheight': l:height,
+        \ 'maxheight': l:height
+        \ }
+endfunction
+
+function! s:HelpScroll(id, delta) abort
+    let l:pos = popup_getpos(a:id)
+    if empty(l:pos)
+        return
+    endif
+    let l:maxfirst = max([1, s:help_popup.nlines - get(l:pos, 'core_height', 1) + 1])
+    let l:first = max([1, min([l:pos.firstline + a:delta, l:maxfirst])])
+    call popup_setoptions(a:id, {'firstline': l:first})
+endfunction
+
+function! s:HelpFilter(id, key) abort
+    if a:key ==# "\<Esc>" || a:key ==# 'q' || a:key ==# "\<C-c>"
+                \ || a:key ==# 'h' || a:key ==# "\<CR>"
+        call popup_close(a:id, 0)
+        return 1
+    endif
+    if a:key ==# 'j' || a:key ==# "\<Down>" || a:key ==# "\<C-n>"
+                \ || a:key ==# "\<C-e>"
+        call s:HelpScroll(a:id, 1)
+        return 1
+    endif
+    if a:key ==# 'k' || a:key ==# "\<Up>" || a:key ==# "\<C-p>"
+                \ || a:key ==# "\<C-y>"
+        call s:HelpScroll(a:id, -1)
+        return 1
+    endif
+    if a:key ==# "\<ScrollWheelDown>"
+        call s:HelpScroll(a:id, 3)
+        return 1
+    endif
+    if a:key ==# "\<ScrollWheelUp>"
+        call s:HelpScroll(a:id, -3)
+        return 1
+    endif
+    if a:key ==# "\<C-d>" || a:key ==# "\<PageDown>" || a:key ==# "\<C-f>"
+        let l:pos = popup_getpos(a:id)
+        call s:HelpScroll(a:id, max([1, get(l:pos, 'core_height', 8) / 2]))
+        return 1
+    endif
+    if a:key ==# "\<C-u>" || a:key ==# "\<PageUp>" || a:key ==# "\<C-b>"
+        let l:pos = popup_getpos(a:id)
+        call s:HelpScroll(a:id, -max([1, get(l:pos, 'core_height', 8) / 2]))
+        return 1
+    endif
+    if a:key ==# 'g'
+        call popup_setoptions(a:id, {'firstline': 1})
+        return 1
+    endif
+    if a:key ==# 'G'
+        call s:HelpScroll(a:id, s:help_popup.nlines)
+        return 1
+    endif
+    return 1
+endfunction
+
+function! s:ResizeHelpPopup() abort
+    if s:HelpPopupVisible()
+        call popup_setoptions(s:help_popup.win, s:HelpPopupSize())
+    endif
+endfunction
+
+function! s:ToggleHelp() abort
+    if !has('popupwin')
+        echoerr 'Help requires +popupwin'
+        return
+    endif
+    if s:HelpPopupVisible()
+        call popup_close(s:help_popup.win, 0)
+        let s:help_popup.win = -1
+        return
+    endif
+
+    let l:lines = s:HelpManualLines()
+    let s:help_popup.nlines = len(l:lines)
+    let l:size = s:HelpPopupSize()
+    let s:help_popup.win = popup_create(l:lines, extend(l:size, {
+        \ 'title': ' 🅗  Help ',
+        \ 'pos': 'center',
+        \ 'border': [1, 1, 1, 1],
+        \ 'borderchars': ['─', '│', '─', '│', '┌', '┐', '┘', '└'],
+        \ 'padding': [0, 1, 0, 1],
+        \ 'close': 'none',
+        \ 'mapping': 0,
+        \ 'scrollbar': 1,
+        \ 'filter': function('<SID>HelpFilter'),
+        \ 'callback': function('<SID>HelpPopupClosed'),
+        \ 'highlight': 'MicroTerminal',
+        \ 'borderhighlight': ['MicroTerminalBorder'],
+        \ 'zindex': 300
+        \ }))
+endfunction
+
+command! MicroHelp call <SID>ToggleHelp()
+
+augroup micro_help_popup
+    autocmd!
+    autocmd VimResized * call <SID>ResizeHelpPopup()
+augroup END
+
 " Leader map index (Space = <Leader>)
-"   e  NERDTree toggle/find     f  find hint
+"   h  shortcut manual          e  NERDTree toggle/find     f  find hint
 "   fe workspace files          fg live rg (text)     fw word (+ optional subdir)
-"   fr replace (float+preview)  fl buffer lines (exact)  fb buffers
+"   fr replace (find, replace, confirm)  fl buffer lines (exact)  fb buffers
 "   fh recent files             fc commands           re live rg (regex)
-"   t  floating terminal        w  next window
+"   t  floating terminal        w  next window (Ctrl-w h/l for left/right)
 "   g  fzf tags                 s  GtagsCursor / tags a  Gtags -r
-"   o  Tagbar                   h  header <-> source  =  formatprg
+"   o  Tagbar                   x  header <-> source  =  formatprg
 "   q  quickfix                 /  comment toggle     b  jump back
 "   d  next paragraph           u  prev paragraph
 "   n  presentation view        m  restore editing view
 "   yr relative path            ya absolute path      ip paste path (register p)
+" ]q [q quickfix  ]h [h git hunks  Ctrl-j/k windows  Y yank-to-eol
+" :Make [target]  from workspace root.  :MICROStyle / :GOOGLEStyle / :LINUXStyle
 " NERDTree buffer: yr/ya copy node path, r refresh cursor dir, R refresh root.
+function! s:VisualStar() abort
+    let l:saved = [getreg('"'), getregtype('"')]
+    normal! gvy
+    let l:pat = '\V' . substitute(escape(@", '\'), '\n', '\\n', 'g')
+    call setreg('"', l:saved[0], l:saved[1])
+    let @/ = l:pat
+    call histadd('/', l:pat)
+    let v:hlsearch = 1
+endfunction
+
 nnoremap <silent> <C-l> :nohlsearch<Bar>diffupdate<CR><C-l>
+nnoremap <C-j> <C-w>j
+nnoremap <C-k> <C-w>k
 nnoremap n nzzzv
 nnoremap N Nzzzv
+nnoremap * *zzzv
+nnoremap # #zzzv
+nnoremap g* g*zzzv
+nnoremap g# g#zzzv
+nnoremap Y y$
+xnoremap < <gv
+xnoremap > >gv
+xnoremap p P
+xnoremap <silent> * :<C-u>call <SID>VisualStar()<CR>nzzzv
+xnoremap <silent> # :<C-u>call <SID>VisualStar()<CR>Nzzzv
+inoremap <C-u> <C-g>u<C-u>
+inoremap <C-w> <C-g>u<C-w>
+nnoremap <silent> ]q :call <SID>ListJump('cnext')<CR>
+nnoremap <silent> [q :call <SID>ListJump('cprevious')<CR>
+nnoremap <silent> ]Q :call <SID>ListJump('clast')<CR>
+nnoremap <silent> [Q :call <SID>ListJump('cfirst')<CR>
+nnoremap <silent> ]l :call <SID>ListJump('lnext')<CR>
+nnoremap <silent> [l :call <SID>ListJump('lprevious')<CR>
+nnoremap <silent> ]h :call <SID>GitHunkJump(1)<CR>
+nnoremap <silent> [h :call <SID>GitHunkJump(-1)<CR>
 nnoremap <silent> <Leader>ip :call <SID>PasteCopiedPath()<CR>
 nnoremap <silent> <Leader>yr :call <SID>CopyBufferPath(0)<CR>
 nnoremap <silent> <Leader>ya :call <SID>CopyBufferPath(1)<CR>
@@ -2304,7 +2849,9 @@ nnoremap <silent> <Leader>g <Cmd>call <SID>FzfTagUnderCursor()<CR>
 nnoremap <silent> <Leader>s :call <SID>JumpGtagsCursor()<CR>
 nnoremap <silent> <Leader>a :call <SID>GtagsRefs()<CR>
 nnoremap <silent> <Leader>o :TagbarToggle<CR>
-nnoremap <silent> <Leader>h :call <SID>SwitchHeaderSource()<CR>
+nnoremap <silent> <Leader>h :call <SID>ToggleHelp()<CR>
+xnoremap <silent> <Leader>h :<C-u>call <SID>ToggleHelp()<CR>
+nnoremap <silent> <Leader>x :call <SID>SwitchHeaderSource()<CR>
 nnoremap <silent> <Leader>= :Format<CR>
 nnoremap <silent> <Leader>q :call <SID>ToggleQuickfix()<CR>
 nmap <silent> <Leader>/ <Plug>NERDCommenterToggle
@@ -2313,10 +2860,10 @@ nnoremap <silent> <Leader>b <C-o>
 nnoremap <silent> <Leader>d }
 nnoremap <silent> <Leader>u {
 nnoremap <silent> <Leader>n
-    \ :set nonumber norelativenumber nolist mouse=<CR>
+    \ :set nonumber norelativenumber nolist mouse= signcolumn=no<CR>
     \ :call <SID>GitSignsDisable()<CR>
 nnoremap <silent> <Leader>m
-    \ :set number relativenumber list mouse=a<CR>
+    \ :set number relativenumber list mouse=a signcolumn=yes<CR>
     \ :call <SID>GitSignsEnable()<CR>
 " Insert completion uses Vim's built-in Ctrl-N and Ctrl-P.
 
