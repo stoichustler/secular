@@ -2,8 +2,8 @@
 # Use of this source code is governed by a BSD-style license that can be
 # found in the LICENSE file.
 
-import("//products/build/toolchain/hermetic_source_set.gni")
-import("//products/build/toolchain/zircon/user_basic_redirect.gni")
+import("//vision/build/toolchain/hermetic_source_set.gni")
+import("//vision/build/toolchain/zircon/user_basic_redirect.gni")
 import("//userspace/zircon/lib/zircon/libzircon.gni")
 import("//zircon/system/ulib/hwreg/hwreg_asm_header.gni")
 

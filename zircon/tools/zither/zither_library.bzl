@@ -6,7 +6,7 @@
 
 load("@bazel_skylib//lib:paths.bzl", "paths")
 load("@rules_cc//cc:defs.bzl", "cc_library")
-load("//products/build/bazel/rules/rust:rustc_library.bzl", "rustc_library")
+load("//vision/build/bazel/rules/rust:rustc_library.bzl", "rustc_library")
 
 # LINT.IfChange
 

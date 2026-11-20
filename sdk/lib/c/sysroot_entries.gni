@@ -11,7 +11,7 @@
 # it to a generated_file() target and later process it with a build-time
 # script.
 
-import("//products/build/config/sysroot.gni")
+import("//vision/build/config/sysroot.gni")
 import("//sdk/lib/c/include/libc_headers.gni")
 import("//sdk/lib/c/libc_toolchain.gni")
 import("//zircon/vdso/vdso.gni")
@@ -175,7 +175,7 @@ foreach(variant, sysroot_variants) {
     # who indirectly depend on the core SDK.
     #
     # IMPORTANT: KEEP THIS IN SYNC WITH THE toolchain_variant.libprefix
-    # computation in //products/build/config/BUILDCONFIG.gni
+    # computation in //vision/build/config/BUILDCONFIG.gni
     #
     _libprefix = ""
     _libc_target = system_libc_target

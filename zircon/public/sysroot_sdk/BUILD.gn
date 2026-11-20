@@ -9,8 +9,8 @@
 #
 # Note however that both files parse the same inputs collected from
 # sysroot_entries.gni files. See below for details.
-import("//products/build/config/fuchsia/target_api_level.gni")
-import("//products/build/sdk/sdk_atom.gni")
+import("//vision/build/config/fuchsia/target_api_level.gni")
+import("//vision/build/sdk/sdk_atom.gni")
 
 # Collect the metadata for the SDK.
 file_base = "${sdk_prebuilt_base_for_target_api_level}/sysroot"
@@ -237,6 +237,6 @@ generated_file("sysroot_for_fuchsia_platform") {
   # LINT.IfChange(sysroot_for_fuchsia_platform_json)
   outputs = [ "$root_build_dir/sysroot_for_fuchsia_platform.json" ]
 
-  # LINT.ThenChange(//products/build/regenerator.py:sysroot_for_fuchsia_platform_json)
+  # LINT.ThenChange(//vision/build/regenerator.py:sysroot_for_fuchsia_platform_json)
   output_conversion = "json"
 }

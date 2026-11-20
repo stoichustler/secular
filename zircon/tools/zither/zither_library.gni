@@ -2,14 +2,14 @@
 # Use of this source code is governed by a BSD-style license that can be
 # found in the LICENSE file.
 
-import("//products/build/compiled_action.gni")
-import("//products/build/config/clang/clang.gni")
-import("//products/build/cpp/library_headers.gni")
-import("//products/build/go/go_library.gni")
-import("//products/build/rust/config.gni")
-import("//products/build/rust/rustc_library.gni")
-import("//products/build/toolchain/toolchain_environment.gni")
-import("//products/build/toolchain/zircon/user_basic_redirect.gni")
+import("//vision/build/compiled_action.gni")
+import("//vision/build/config/clang/clang.gni")
+import("//vision/build/cpp/library_headers.gni")
+import("//vision/build/go/go_library.gni")
+import("//vision/build/rust/config.gni")
+import("//vision/build/rust/rustc_library.gni")
+import("//vision/build/toolchain/toolchain_environment.gni")
+import("//vision/build/toolchain/zircon/user_basic_redirect.gni")
 
 # LINT.IfChange
 
@@ -536,8 +536,8 @@ template("_zither_rust_library") {
       ":${zither_target}.check($default_toolchain)",
     ]
     deps = crate_deps
-    configs += [ "//products/build/config/rust/lints:deny_unused_results" ]
-    configs += [ "//products/build/config/rust/lints:allow_missing_unsafe_on_extern" ]
+    configs += [ "//vision/build/config/rust/lints:deny_unused_results" ]
+    configs += [ "//vision/build/config/rust/lints:allow_missing_unsafe_on_extern" ]
     disable_clippy = true
   }
 }
@@ -656,7 +656,7 @@ template("_zither_legacy_syscall_cdecl_sources") {
                          ])
 
   # This list must be kept in sync with
-  # //products/build/bazel/fuchsia_idk/generate_repository.py:sysroot_generated_cdecl_sources.
+  # //vision/build/bazel/fuchsia_idk/generate_repository.py:sysroot_generated_cdecl_sources.
   # An IFTTT comment cannot be used because there is already one for the file.
   generated_files = [
     "$output_dir/${output_namespace}/cdecls.inc",

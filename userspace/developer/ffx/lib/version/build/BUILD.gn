@@ -7,8 +7,8 @@ executable("truncate") {
 }
 
 if (current_toolchain == default_toolchain) {
-  import("//products/build/compiled_action.gni")
-  import("//products/build/info/info.gni")
+  import("//vision/build/compiled_action.gni")
+  import("//vision/build/info/info.gni")
 
   action("gen_version_info") {
     script = "gn_write_version_info.sh"
@@ -26,7 +26,7 @@ if (current_toolchain == default_toolchain) {
                        ],
                        root_build_dir)
 
-    deps = [ "//products/build/info:build_info_files" ]
+    deps = [ "//vision/build/info:build_info_files" ]
   }
 
   compiled_action("version-info.bin") {
@@ -56,6 +56,6 @@ if (current_toolchain == default_toolchain) {
       "64",
     ]
 
-    deps = [ "//products/build/info:build_info_files" ]
+    deps = [ "//vision/build/info:build_info_files" ]
   }
 }

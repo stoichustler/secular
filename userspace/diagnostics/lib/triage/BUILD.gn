@@ -2,8 +2,8 @@
 # Use of this source code is governed by a BSD-style license that can be
 # found in the LICENSE file.
 
-import("//products/build/rust/rustc_library.gni")
-import("//products/build/rust/rustc_test.gni")
+import("//vision/build/rust/rustc_library.gni")
+import("//vision/build/rust/rustc_test.gni")
 
 lib_deps = [
   "//sdk/fidl/fuchsia.diagnostics:fuchsia.diagnostics_rust_common",
@@ -65,7 +65,7 @@ rustc_library("triage") {
 
   sources = library_sources
 
-  configs += [ "//products/build/config/rust/lints:clippy_warn_all" ]
+  configs += [ "//vision/build/config/rust/lints:clippy_warn_all" ]
 }
 
 rustc_test("triage-lib-unittests") {
@@ -78,7 +78,7 @@ rustc_test("triage-lib-unittests") {
 
   sources = library_sources
 
-  configs += [ "//products/build/config/rust/lints:clippy_warn_all" ]
+  configs += [ "//vision/build/config/rust/lints:clippy_warn_all" ]
 }
 
 group("tests") {

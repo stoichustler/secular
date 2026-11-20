@@ -2,11 +2,11 @@
 # Use of this source code is governed by a BSD-style license that can be
 # found in the LICENSE file.
 
-import("//products/boards/default_for_emulator.gni")
-import("//products/build/assembly/test_product_bundle.gni")
-import("//products/build/go/go_library.gni")
-import("//products/build/go/go_test.gni")
-import("//products/build/testing/boot_tests/zbi_test.gni")
+import("//vision/boards/default_for_emulator.gni")
+import("//vision/build/assembly/test_product_bundle.gni")
+import("//vision/build/go/go_library.gni")
+import("//vision/build/go/go_test.gni")
+import("//vision/build/testing/boot_tests/zbi_test.gni")
 import("//zircon/kernel/phys/zbi_executable.gni")
 
 group("polling-input-test") {

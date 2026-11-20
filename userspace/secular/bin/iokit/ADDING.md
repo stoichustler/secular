@@ -114,7 +114,7 @@ rustc_binary("example") {
   edition = "2024"
   source_root = "src/example.rs"
   sources = [ "src/example.rs" ]
-  configs += [ "//products/build/config/rust:bootfs" ]
+  configs += [ "//vision/build/config/rust:bootfs" ]
   if (is_fuchsia) {
     deps = [ "//sdk/rust/zx-sys" ]
   }
@@ -136,7 +136,7 @@ FIDL / `zx` (like `cpustat`):
   }
 ```
 
-`configs += [ "//products/build/config/rust:bootfs" ]` is required: these
+`configs += [ "//vision/build/config/rust:bootfs" ]` is required: these
 binaries go in the ZBI. Prefer vDSO over FIDL, and FIDL over new libraries.
 `fuchsia-async` + `fuchsia-component` is the size cost of talking to `/svc`.
 
@@ -149,7 +149,7 @@ never run.
 
 1. `BUILD.gn` — `rustc_binary` + `group("iokit")` deps.
 2. `README.md` — one row in the command table.
-3. `products/secular/BUILD.gn` — `zbi_input("bootfs_files")` deps:
+3. `vision/secular/BUILD.gn` — `zbi_input("bootfs_files")` deps:
 
    ```gn
    "//userspace/secular/bin/iokit:example",
@@ -165,7 +165,7 @@ never run.
 
 If the tool needs a protocol in the zxsh namespace (for example
 `fuchsia.kernel.InfoResource`), confirm it is already `use`d by
-`console-launcher` and offered from `products/secular/meta/console.shard.cml`.
+`console-launcher` and offered from `vision/secular/meta/console.shard.cml`.
 Do not add new capabilities unless launch fails without them.
 
 ## Kernel and `/svc` access
@@ -225,7 +225,7 @@ the unit-test fixtures.
 - [ ] `src/<name>.rs` with `USAGE`, `parse_args`, `run`, `ExitCode`, tests
 - [ ] `rustc_binary("<name>")` + `group("iokit")`
 - [ ] `configs += bootfs`; Fuchsia deps under `if (is_fuchsia)`
-- [ ] `products/secular/BUILD.gn` `bootfs_files`
+- [ ] `vision/secular/BUILD.gn` `bootfs_files`
 - [ ] `userspace/secular/bin/BUILD.gn` `iokit:<name>_test`
 - [ ] `README.md` row
 - [ ] `/svc` protocol already offered to console-launcher, or CML updated

@@ -4,10 +4,10 @@
 # license that can be found in the LICENSE file or at
 # https://opensource.org/licenses/MIT
 
-import("//products/build/config/compiler_config.gni")
-import("//products/build/cpp/library_headers.gni")
-import("//products/build/toolchain/toolchain_environment.gni")
-import("//products/build/toolchain/zircon/zircon_toolchain_suite.gni")
+import("//vision/build/config/compiler_config.gni")
+import("//vision/build/cpp/library_headers.gni")
+import("//vision/build/toolchain/toolchain_environment.gni")
+import("//vision/build/toolchain/zircon/zircon_toolchain_suite.gni")
 import("//zircon/kernel/kernel_bindgen_crate.gni")
 import("//zircon/kernel/kernel_rust_mod.gni")
 
@@ -24,7 +24,7 @@ if (toolchain_environment == "kernel.phys" ||
 
       # Don't use the outline atomics since we don't have the helper functions.
       # TODO(mcgrathr): use code-patching to define the outcalls for the kernel
-      "//products/build/config/arm64:no-outline-atomics",
+      "//vision/build/config/arm64:no-outline-atomics",
     ]
   }
 

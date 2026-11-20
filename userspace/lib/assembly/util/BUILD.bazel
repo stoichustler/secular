@@ -2,7 +2,7 @@
 # Use of this source code is governed by a BSD-style license that can be
 # found in the LICENSE file.
 
-load("//products/build/bazel/rules/rust:defs.bzl", "rustc_library")
+load("//vision/build/bazel/rules/rust:defs.bzl", "rustc_library")
 
 package(default_applicable_licenses = ["//:license"])
 
@@ -22,9 +22,9 @@ rustc_library(
         "//third_party/rust_crates/vendor:tempfile",
     ],
     visibility = [
-        "//products/build/assembly/tools/assembly:__pkg__",
-        "//products/build/assembly/tools/assembly_config:__pkg__",
-        "//products/build/assembly/tools/mos_tool:__pkg__",
+        "//vision/build/assembly/tools/assembly:__pkg__",
+        "//vision/build/assembly/tools/assembly_config:__pkg__",
+        "//vision/build/assembly/tools/mos_tool:__pkg__",
         "//userspace/developer/ffx/plugins:__subpackages__",
         "//userspace/lib/assembly:__subpackages__",
     ],

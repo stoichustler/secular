@@ -2,9 +2,9 @@
 # Use of this source code is governed by a BSD-style license that can be
 # found in the LICENSE file.
 
-import("//products/build/components.gni")
-import("//products/build/fuzz.gni")
-import("//products/build/testing/cc_test_executable.gni")
+import("//vision/build/components.gni")
+import("//vision/build/fuzz.gni")
+import("//vision/build/testing/cc_test_executable.gni")
 import("//userspace/hypervisor/bin/args.gni")
 
 group("vmm") {
@@ -29,7 +29,7 @@ source_set("bits") {
 source_set("lib") {
   visibility = [ ":*" ]
 
-  configs += [ "//products/build/config:all_source" ]
+  configs += [ "//vision/build/config:all_source" ]
   if (!defined(public_configs)) {
     public_configs = []
   }
@@ -168,7 +168,7 @@ executable("bin") {
     "//zircon/system/ulib/trace-provider",
   ]
 
-  configs += [ "//products/build/config:all_source" ]
+  configs += [ "//vision/build/config:all_source" ]
 }
 
 resource("vmm-resources") {

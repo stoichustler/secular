@@ -2,7 +2,7 @@
 # Use of this source code is governed by a BSD-style license that can be
 # found in the LICENSE file.
 
-load("//products/build/bazel/rules/rust:defs.bzl", "rustc_library")
+load("//vision/build/bazel/rules/rust:defs.bzl", "rustc_library")
 
 package(default_applicable_licenses = ["//:license"])
 
@@ -36,7 +36,7 @@ rustc_library(
         "//third_party/rust_crates/vendor:serde_json",
     ],
     visibility = [
-        "//products/build/assembly:__subpackages__",
+        "//vision/build/assembly:__subpackages__",
         "//userspace/developer/ffx:__subpackages__",
         "//userspace/diagnostics/archivist:__subpackages__",
         "//userspace/fonts:__subpackages__",

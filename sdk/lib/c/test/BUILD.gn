@@ -2,13 +2,13 @@
 # Use of this source code is governed by a BSD-style license that can be
 # found in the LICENSE file.
 
-import("//products/build/components.gni")
-import("//products/build/fuzz.gni")
-import("//products/build/rust/rustc_binary.gni")
-import("//products/build/test.gni")
-import("//products/build/testing/boot_tests/kernel_zbi_test.gni")
-import("//products/build/testing/boot_tests/zbi_test_executable.gni")
-import("//products/build/testing/environments.gni")
+import("//vision/build/components.gni")
+import("//vision/build/fuzz.gni")
+import("//vision/build/rust/rustc_binary.gni")
+import("//vision/build/test.gni")
+import("//vision/build/testing/boot_tests/kernel_zbi_test.gni")
+import("//vision/build/testing/boot_tests/zbi_test_executable.gni")
+import("//vision/build/testing/environments.gni")
 import("//zircon/kernel/params.gni")
 import("../libc.gni")
 
@@ -72,7 +72,7 @@ source_set("safe-zero-construction") {
   public_deps = [ "//zircon/system/ulib/zxtest:zxtest-streams" ]
 }
 
-fdio_config = [ "//products/build/config/fuchsia:fdio_config" ]
+fdio_config = [ "//vision/build/config/fuchsia:fdio_config" ]
 
 # noop-test is a basic test that verifies that C library initialization
 # and process startup work correctly. Same as "hello world" without
@@ -106,7 +106,7 @@ libc_component_tests += [ ":static-pie-noop-test" ]
 test("static-pie-noop-test") {
   configs += fdio_config
   configs -= fdio_config
-  configs += [ "//products/build/config:standalone" ]
+  configs += [ "//vision/build/config:standalone" ]
   ldflags = [ "-Wl,-z,stack-size=0x40000" ]
   deps = [
     ":noop-test.common",
@@ -130,11 +130,11 @@ rustc_binary("rust-static-pie-noop-test") {
   # done for Rust, even more than for C++ as in static-pie-noop-test.
   configs += fdio_config
   configs -= fdio_config
-  configs += [ "//products/build/config:standalone" ]
+  configs += [ "//vision/build/config:standalone" ]
   deps += [ "..:static" ]
 
   # static_rust_standard_library is propagated, but this has to be removed too.
-  configs -= [ "//products/build/config/fuchsia:dynamic_rust_standard_library" ]
+  configs -= [ "//vision/build/config/fuchsia:dynamic_rust_standard_library" ]
 
   # The static libc.a doesn't handle the setup needed for things like ASan.
   exclude_toolchain_tags = [ "uses-shadow" ]
@@ -182,8 +182,8 @@ executable("static-pie-custom-startup-test") {
   configs += fdio_config
   configs -= fdio_config
   configs += [
-    "//products/build/config:standalone",
-    "//products/build/config/sanitizers:no_sanitizers",
+    "//vision/build/config:standalone",
+    "//vision/build/config/sanitizers:no_sanitizers",
   ]
   ldflags = [ "-Wl,-z,stack-size=0x40000" ]
 
@@ -257,7 +257,7 @@ libc_component_tests += [ ":atexit-test" ]
 
 test("atexit-test") {
   if (is_fuchsia) {
-    configs += [ "//products/build/config:all_source" ]
+    configs += [ "//vision/build/config:all_source" ]
   }
   if (is_fuchsia) {
     configs += fdio_config
@@ -410,10 +410,10 @@ template("executable_with_backtrace") {
 
     # Enable frame pointer for backtrace.
     configs += [
-      "//products/build/config:frame_pointers",
-      "//products/build/config:default_frame_pointers",
+      "//vision/build/config:frame_pointers",
+      "//vision/build/config:default_frame_pointers",
     ]
-    configs -= [ "//products/build/config:default_frame_pointers" ]
+    configs -= [ "//vision/build/config:default_frame_pointers" ]
   }
 }
 

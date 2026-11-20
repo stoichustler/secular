@@ -2,7 +2,7 @@
 # Use of this source code is governed by a BSD-style license that can be
 # found in the LICENSE file.
 
-import("//products/build/fuzz.gni")
+import("//vision/build/fuzz.gni")
 import("../libc.gni")
 
 # TODO(https://fxbug.dev/502668972): It should be fine to have this be a

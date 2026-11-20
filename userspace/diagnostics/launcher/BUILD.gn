@@ -2,8 +2,8 @@
 # Use of this source code is governed by a BSD-style license that can be
 # found in the LICENSE file.
 
-import("//products/build/components.gni")
-import("//products/build/rust/rustc_binary.gni")
+import("//vision/build/components.gni")
+import("//vision/build/rust/rustc_binary.gni")
 
 launcher_sources = [ "src/main.rs" ]
 
@@ -26,7 +26,7 @@ rustc_binary("bin") {
 
   sources = launcher_sources
 
-  configs += [ "//products/build/config/rust/lints:clippy_warn_all" ]
+  configs += [ "//vision/build/config/rust/lints:clippy_warn_all" ]
 }
 
 # The Detect integration test needs a "with fake time" version of Launcher.
@@ -44,7 +44,7 @@ rustc_binary("bin_with_fake_time") {
 
   visibility = [ "//userspace/diagnostics/detect/integration/target:*" ]
 
-  configs += [ "//products/build/config/rust/lints:clippy_warn_all" ]
+  configs += [ "//vision/build/config/rust/lints:clippy_warn_all" ]
 }
 
 group("launcher") {

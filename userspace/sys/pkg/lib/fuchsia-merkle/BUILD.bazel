@@ -2,10 +2,10 @@
 # Use of this source code is governed by a BSD-style license that can be
 # found in the LICENSE file.
 
-load("//products/build/bazel/rules/host_tests:host_rustc_test.bzl", "wrap_host_rust_test")
-load("//products/build/bazel/rules/rust:rustc_library.bzl", "rustc_library")
-load("//products/build/bazel/rules/rust:rustc_test.bzl", "rustc_test")
-load("//products/build/bazel/rules/testing:fx_unittest_package.bzl", "fx_unittest_package")
+load("//vision/build/bazel/rules/host_tests:host_rustc_test.bzl", "wrap_host_rust_test")
+load("//vision/build/bazel/rules/rust:rustc_library.bzl", "rustc_library")
+load("//vision/build/bazel/rules/rust:rustc_test.bzl", "rustc_test")
+load("//vision/build/bazel/rules/testing:fx_unittest_package.bzl", "fx_unittest_package")
 
 package(default_applicable_licenses = ["//:license"])
 
@@ -18,7 +18,7 @@ rustc_library(
         "src/util.rs",
     ],
     edition = "2024",
-    lint_config = "//products/build/config/rust/lints:clippy_warn_all",
+    lint_config = "//vision/build/config/rust/lints:clippy_warn_all",
     visibility = [
         "//userspace/secular:__subpackages__",
         "//userspace/developer:__subpackages__",
@@ -42,7 +42,7 @@ rustc_test(
     name = "fuchsia-merkle_test",
     crate = ":fuchsia-merkle",
     edition = "2024",
-    lint_config = "//products/build/config/rust/lints:clippy_warn_all",
+    lint_config = "//vision/build/config/rust/lints:clippy_warn_all",
     deps = [
         "//third_party/rust_crates/vendor:anyhow",
         "//third_party/rust_crates/vendor:assert_matches",

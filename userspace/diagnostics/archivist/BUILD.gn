@@ -1,11 +1,11 @@
 # Copyright 2019 The Fuchsia Authors. All rights reserved.
 # Use of this source code is governed by a BSD-style license that can be
 # found in the LICENSE file.
-import("//products/build/bazel/export_fuchsia_package_to_bazel.gni")
-import("//products/build/components.gni")
-import("//products/build/fuzz.gni")
-import("//products/build/rust/rustc_fuzzer.gni")
-import("//products/build/rust/rustc_library.gni")
+import("//vision/build/bazel/export_fuchsia_package_to_bazel.gni")
+import("//vision/build/components.gni")
+import("//vision/build/fuzz.gni")
+import("//vision/build/rust/rustc_fuzzer.gni")
+import("//vision/build/rust/rustc_library.gni")
 import("//userspace/diagnostics/archivist/build/archivist.gni")
 import("//tools/fidl/measure-tape/measure_tape.gni")
 
@@ -223,15 +223,15 @@ fuchsia_package("package") {
 
 fuchsia_package("archivist-for-embedding") {
   visibility = [
-    "//products/bundles/buildbot/*",
+    "//vision/bundles/buildbot/*",
     "//userspace/diagnostics/archivist/bench:*",
     "//userspace/diagnostics/persistence/tests:*",
     "//userspace/lib/diagnostics/log/rust/tests:*",
 
     # TODO(crbug.com/1408597): Remove once the Chromium tests package the fakes.
     ":archivist-for-embedding.bazel_input.archive",
-    "//products/build/bazel/assembly:verify_assembly_configs",
-    "//products/terminal:*",
+    "//vision/build/bazel/assembly:verify_assembly_configs",
+    "//vision/terminal:*",
     "//userspace/chromium:*",
     "//vendor/google/*",
   ]

@@ -4,7 +4,7 @@
 # license that can be found in the LICENSE file or at
 # https://opensource.org/licenses/MIT
 
-import("//products/build/zircon/c_utils.gni")
+import("//vision/build/zircon/c_utils.gni")
 
 # Provide an ELF executable() or loadable_module() target with a PT_INTERP
 # string based on the build ID of another linking target.

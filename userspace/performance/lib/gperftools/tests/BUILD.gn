@@ -2,7 +2,7 @@
 # Use of this source code is governed by a BSD-style license that can be
 # found in the LICENSE file.
 
-import("//products/build/components.gni")
+import("//vision/build/components.gni")
 
 gperftools_src_root = "//third_party/gperftools/src/tests/"
 
@@ -18,7 +18,7 @@ executable("stacktrace_unittest") {
   ]
 
   # TODO(https://fxbug.dev/42136089): delete the below and fix compiler warnings
-  configs += [ "//products/build/config:Wno-conversion" ]
+  configs += [ "//vision/build/config:Wno-conversion" ]
 
   cflags = [ "-Wno-extra-semi" ]
 }
@@ -28,7 +28,7 @@ source_set("testutil") {
   deps = [ "//userspace/performance/lib/gperftools:profiler_static" ]
 
   # TODO(https://fxbug.dev/42136089): delete the below and fix compiler warnings
-  configs += [ "//products/build/config:Wno-conversion" ]
+  configs += [ "//vision/build/config:Wno-conversion" ]
 
   cflags = [ "-Wno-extra-semi" ]
 }
@@ -59,7 +59,7 @@ executable("profiledata_unittest") {
   ]
 
   # TODO(https://fxbug.dev/42136089): delete the below and fix compiler warnings
-  configs += [ "//products/build/config:Wno-conversion" ]
+  configs += [ "//vision/build/config:Wno-conversion" ]
 }
 
 fuchsia_package("profiler_tests") {

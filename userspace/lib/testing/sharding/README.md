@@ -39,7 +39,7 @@ test-sharding client shard:
 Then use `fuchsia_sharded_test_package` to declare the test package in GN:
 
 ```gn
-import("//products/build/rust/rustc_test.gni")
+import("//vision/build/rust/rustc_test.gni")
 import("//userspace/lib/testing/sharding/fuchsia_sharded_test_package.gni")
 
 rustc_test("underlying_test_to_be_sharded") {

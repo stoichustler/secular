@@ -2,8 +2,8 @@
 # Use of this source code is governed by a BSD-style license that can be
 # found in the LICENSE file.
 
-import("//products/build/python/python_host_test.gni")
-import("//products/build/testing/host_test_data.gni")
+import("//vision/build/python/python_host_test.gni")
+import("//vision/build/testing/host_test_data.gni")
 
 assert(is_host)
 

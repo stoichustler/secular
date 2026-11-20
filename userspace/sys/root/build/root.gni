@@ -2,7 +2,7 @@
 # Use of this source code is governed by a BSD-style license that can be
 # found in the LICENSE file.
 
-import("//products/build/dist/component_manifest_resources.gni")
+import("//vision/build/dist/component_manifest_resources.gni")
 import("//tools/cmc/build/cmc.gni")
 
 # Defines a new root realm.

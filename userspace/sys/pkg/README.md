@@ -87,7 +87,7 @@ working with tests, your build configuration is quite simple:
 
 ```sh
 
-Tab 1 > fx set core.x64 --with //products/bundles/tests && fx build && fx serve -v
+Tab 1 > fx set core.x64 --with //vision/bundles/tests && fx build && fx serve -v
 
 Tab 2 > sudo ip tuntap add dev qemu mode tap user $USER && sudo ip link set qemu up
 

@@ -2,7 +2,7 @@
 # Use of this source code is governed by a BSD-style license that can be
 # found in the LICENSE file.
 
-import("//products/build/rust/rustc_binary.gni")
+import("//vision/build/rust/rustc_binary.gni")
 
 # Define a Rust binary with optimizations used by the Archivist.
 #
@@ -16,7 +16,7 @@ template("archivist_optimized_binary") {
     if (defined(invoker.configs)) {
       configs += invoker.configs
     }
-    configs += [ "//products/build/config/rust:bootfs" ]
-    configs += [ "//products/build/config/rust/lints:clippy_warn_all" ]
+    configs += [ "//vision/build/config/rust:bootfs" ]
+    configs += [ "//vision/build/config/rust/lints:clippy_warn_all" ]
   }
 }

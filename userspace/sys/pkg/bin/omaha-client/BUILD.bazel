@@ -4,14 +4,14 @@
 
 load("@fuchsia_rules_common//packages:resources.bzl", "resource")
 load(
-    "//products/build/bazel/rules/components:fx_component.bzl",
+    "//vision/build/bazel/rules/components:fx_component.bzl",
     "fx_component_manifest",
 )
 load(
-    "//products/build/bazel/rules/components:structured_config.bzl",
+    "//vision/build/bazel/rules/components:structured_config.bzl",
     "fuchsia_structured_config_rust_lib",
 )
-load("//products/build/bazel/rules/rust:rustc_library.bzl", "rustc_library")
+load("//vision/build/bazel/rules/rust:rustc_library.bzl", "rustc_library")
 load("//third_party/cobalt:metrics_registry.bzl", "metrics_registry")
 
 package(default_applicable_licenses = ["//:license"])
@@ -21,7 +21,7 @@ exports_files(
         "meta/omaha_client_service.core_shard.cml",
         "meta/omaha_client_service.system_update_shard.cml",
     ],
-    visibility = ["//products/bundles/assembly:__subpackages__"],
+    visibility = ["//vision/bundles/assembly:__subpackages__"],
 )
 
 # `omaha-client` is conceptually a binary, but is built as a lib here so it can
@@ -56,7 +56,7 @@ rustc_library(
     crate_name = "omaha_client_service",
     crate_root = "src/main.rs",
     edition = "2024",
-    lint_config = "//products/build/config/rust/lints:clippy_warn_all",
+    lint_config = "//vision/build/config/rust/lints:clippy_warn_all",
     visibility = ["//userspace/sys/pkg/bin/grand-swd-binary:__pkg__"],
     deps = [
         ":mos_metrics_registry_rustlib",

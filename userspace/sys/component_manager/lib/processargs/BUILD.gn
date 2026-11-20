@@ -2,8 +2,8 @@
 # Use of this source code is governed by a BSD-style license that can be
 # found in the LICENSE file.
 
-import("//products/build/components.gni")
-import("//products/build/rust/rustc_library.gni")
+import("//vision/build/components.gni")
+import("//vision/build/rust/rustc_library.gni")
 
 visibility = [ "//userspace/sys/component_manager/*" ]
 

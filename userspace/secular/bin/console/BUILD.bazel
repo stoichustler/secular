@@ -9,5 +9,5 @@ exports_files(
         "meta/console.shard.cml",
         "meta/console_eng.shard.cml",
     ],
-    visibility = ["//products/bundles/assembly:__subpackages__"],
+    visibility = ["//vision/bundles/assembly:__subpackages__"],
 )

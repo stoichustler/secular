@@ -2,7 +2,7 @@
 # Use of this source code is governed by a BSD-style license that can be
 # found in the LICENSE file.
 
-import("//products/build/cpp/library_headers.gni")
+import("//vision/build/cpp/library_headers.gni")
 
 group("tests") {
   testonly = true
@@ -58,7 +58,7 @@ static_library("ddk") {
   }
 
   # TODO(https://fxbug.dev/42136089): delete the below and fix compiler warnings
-  configs += [ "//products/build/config:Wno-conversion" ]
+  configs += [ "//vision/build/config:Wno-conversion" ]
 
   #  ________  _________  ________  ________
   # |\   ____\|\___   ___\\   __  \|\   __  \

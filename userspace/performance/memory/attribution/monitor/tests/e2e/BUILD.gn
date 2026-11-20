@@ -1,8 +1,8 @@
 # Copyright 2024 The Fuchsia Authors. All rights reserved.
 # Use of this source code is governed by a BSD-style license that can be
 # found in the LICENSE file.
-import("//products/build/python/python_mobly_test.gni")
-import("//products/build/testing/environments.gni")
+import("//vision/build/python/python_mobly_test.gni")
+import("//vision/build/testing/environments.gni")
 
 if (is_host) {
   python_mobly_test("memory_monitor2_e2e_test") {

@@ -4,8 +4,8 @@
 
 load("@fuchsia_rules_common//packages:resources.bzl", "fuchsia_package_resource_group")
 load("@platforms//host:constraints.bzl", "HOST_CONSTRAINTS")
-load("//products/build/bazel/rules:compiled_action.bzl", "compiled_action")
-load("//products/build/bazel/rules/rust:defs.bzl", "rustc_binary")
+load("//vision/build/bazel/rules:compiled_action.bzl", "compiled_action")
+load("//vision/build/bazel/rules/rust:defs.bzl", "rustc_binary")
 
 package(default_applicable_licenses = ["//:license"])
 
@@ -13,7 +13,7 @@ rustc_binary(
     name = "generator",
     srcs = ["src/main.rs"],
     edition = "2024",
-    lint_config = "//products/build/config/rust/lints:clippy_warn_all",
+    lint_config = "//vision/build/config/rust/lints:clippy_warn_all",
     target_compatible_with = HOST_CONSTRAINTS,
     deps = [
         "//userspace/sys/pkg/lib/far/rust:fuchsia-archive",
@@ -78,7 +78,7 @@ fuchsia_package_resource_group(
     basename_only = True,
     dest = "data/invalid-fars",
     visibility = [
-        "//products/build/bazel/rules/tests:__pkg__",
+        "//vision/build/bazel/rules/tests:__pkg__",
         "//userspace/sys/pkg/lib/far:__subpackages__",
     ],
 )

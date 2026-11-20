@@ -3,7 +3,7 @@
 # found in the LICENSE file.
 
 load(
-    "//products/build/bazel/rules/rust:defs.bzl",
+    "//vision/build/bazel/rules/rust:defs.bzl",
     "rustc_library",
 )
 
@@ -18,13 +18,13 @@ rustc_library(
         "src/lib.rs",
         "src/moniker.rs",
     ] + select({
-        "//products/build/bazel/platforms:is_host_os": [
+        "//vision/build/bazel/platforms:is_host_os": [
             "src/serde_ext.rs",
         ],
         "//conditions:default": [],
     }),
     crate_features = select({
-        "//products/build/bazel/platforms:is_host_os": [
+        "//vision/build/bazel/platforms:is_host_os": [
             "serde",
         ],
         "//conditions:default": [],
@@ -41,7 +41,7 @@ rustc_library(
         "//third_party/rust_crates/vendor:flyweights",
         "//third_party/rust_crates/vendor:thiserror",
     ] + select({
-        "//products/build/bazel/platforms:is_host_os": [
+        "//vision/build/bazel/platforms:is_host_os": [
             "//third_party/rust_crates/vendor:schemars",
             "//third_party/rust_crates/vendor:serde",
         ],

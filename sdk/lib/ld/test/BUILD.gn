@@ -2,12 +2,12 @@
 # Use of this source code is governed by a BSD-style license that can be
 # found in the LICENSE file.
 
-import("//products/build/components/fuchsia_unittest_package.gni")
-import("//products/build/dist/distribution_manifest.gni")
-import("//products/build/test.gni")
-import("//products/build/testing/golden_files.gni")
-import("//products/build/toolchain/zircon/user_basic_redirect.gni")
-import("//products/build/zircon/c_utils.gni")
+import("//vision/build/components/fuchsia_unittest_package.gni")
+import("//vision/build/dist/distribution_manifest.gni")
+import("//vision/build/test.gni")
+import("//vision/build/testing/golden_files.gni")
+import("//vision/build/toolchain/zircon/user_basic_redirect.gni")
+import("//vision/build/zircon/c_utils.gni")
 import("//sdk/lib/ld/distribution_manifest_prefix.gni")
 import("//sdk/lib/ld/remote_perfect_symbol_filter.gni")
 import("//sdk/lib/ld/testing/test_elf_object.gni")
@@ -135,8 +135,8 @@ source_set("load-tests") {
   }
 
   # Let gtest describe TYPED_TEST cases nicely.
-  configs += [ "//products/build/config:no_rtti" ]
-  configs -= [ "//products/build/config:no_rtti" ]
+  configs += [ "//vision/build/config:no_rtti" ]
+  configs -= [ "//vision/build/config:no_rtti" ]
 }
 
 # Collect all the .test-data deps used by load-tests.
@@ -272,7 +272,7 @@ if (is_fuchsia) {
     deps = [ ":libc-noop-test" ]
   }
 
-  fdio_config = [ "//products/build/config/fuchsia:fdio_config" ]
+  fdio_config = [ "//vision/build/config/fuchsia:fdio_config" ]
 
   # This is the same as //sdk/lib/c/test:noop-test but placed in bin/ instead
   # of test/, so ld::testing::GetExecutableVmo will find it.
@@ -340,7 +340,7 @@ if (is_fuchsia) {
     # LdRemoteTests.RemotePerfectSymbolFilterTestElf32 needs an Elf32 object,
     # but it doesn't really matter what machine or OS it's for.  The Elf32
     # target that conveniently works out of the box is armv7-linux-gnu.
-    elf32_tc = "//products/build/toolchain:linux_arm"
+    elf32_tc = "//vision/build/toolchain:linux_arm"
     data_deps = [ "modules:symbol-filter-elf32.fuchsia-test-data($elf32_tc)" ]
 
     # LdRemoteTests.ForeignMachine expects that to be ET_ARM in particular,

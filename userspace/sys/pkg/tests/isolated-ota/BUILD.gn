@@ -2,8 +2,8 @@
 # Use of this source code is governed by a BSD-style license that can be
 # found in the LICENSE file.
 
-import("//products/build/components.gni")
-import("//products/build/rust/rustc_test.gni")
+import("//vision/build/components.gni")
+import("//vision/build/rust/rustc_test.gni")
 
 rustc_test("driver") {
   name = "isolated-ota-integration-test"
@@ -39,7 +39,7 @@ rustc_test("driver") {
   ]
 
   sources = [ "src/lib.rs" ]
-  configs += [ "//products/build/config/rust/lints:clippy_warn_all" ]
+  configs += [ "//vision/build/config/rust/lints:clippy_warn_all" ]
 }
 
 fuchsia_test_component("isolated-ota-integration-test") {

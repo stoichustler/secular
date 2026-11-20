@@ -2,8 +2,8 @@
 # Use of this source code is governed by a BSD-style license that can be
 # found in the LICENSE file.
 
-import("//products/build/components.gni")
-import("//products/build/rust/rustc_library.gni")
+import("//vision/build/components.gni")
+import("//vision/build/rust/rustc_library.gni")
 
 # Integration test binary for sampler service.
 rustc_test("integration-bin") {
@@ -36,7 +36,7 @@ rustc_test("integration-bin") {
     "utils.rs",
   ]
 
-  configs += [ "//products/build/config/rust/lints:clippy_warn_all" ]
+  configs += [ "//vision/build/config/rust/lints:clippy_warn_all" ]
 }
 
 fuchsia_component("sampler-test-suite-component") {

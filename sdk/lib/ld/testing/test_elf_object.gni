@@ -2,7 +2,7 @@
 # Use of this source code is governed by a BSD-style license that can be
 # found in the LICENSE file.
 
-import("//products/build/zircon/c_utils.gni")
+import("//vision/build/zircon/c_utils.gni")
 
 # Generate ld::testing::TestElfObject data.
 #

@@ -4,10 +4,10 @@
 # license that can be found in the LICENSE file or at
 # https://opensource.org/licenses/MIT
 
-import("//products/build/testing/boot_tests/boot_test.gni")
-import("//products/build/testing/boot_tests/kernel_zbi_test.gni")
-import("//products/build/testing/boot_tests/zbi_test.gni")
-import("//products/build/toolchain/zircon/user_basic_redirect.gni")
+import("//vision/build/testing/boot_tests/boot_test.gni")
+import("//vision/build/testing/boot_tests/kernel_zbi_test.gni")
+import("//vision/build/testing/boot_tests/zbi_test.gni")
+import("//vision/build/toolchain/zircon/user_basic_redirect.gni")
 import("//zircon/kernel/kernel_package.gni")
 import("//zircon/kernel/phys/kernel_elf_binary.gni")
 

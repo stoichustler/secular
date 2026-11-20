@@ -2,13 +2,13 @@
 # Use of this source code is governed by a BSD-style license that can be
 # found in the LICENSE file.
 
-import("//products/build/components/fuchsia_test_package.gni")
-import("//products/build/components/fuchsia_unittest_component.gni")
-import("//products/build/rust/rustc_binary.gni")
-import("//products/build/test.gni")
-import("//products/build/testing/bootfs_test.gni")
+import("//vision/build/components/fuchsia_test_package.gni")
+import("//vision/build/components/fuchsia_unittest_component.gni")
+import("//vision/build/rust/rustc_binary.gni")
+import("//vision/build/test.gni")
+import("//vision/build/testing/bootfs_test.gni")
 
-fdio_config = [ "//products/build/config/fuchsia:fdio_config" ]
+fdio_config = [ "//vision/build/config/fuchsia:fdio_config" ]
 
 sanitizer_tests = []
 
@@ -156,7 +156,7 @@ source_set("memory-snapshot-test") {
 
   # This test needs to verify how stack allocations come out, which is
   # incompatible with ASan fake-stack allocations.
-  deps += [ "//products/build/config/sanitizers:suppress-asan-stack-use-after-return" ]
+  deps += [ "//vision/build/config/sanitizers:suppress-asan-stack-use-after-return" ]
 }
 
 shared_library("sanitizer-memory-snapshot-test-needed-dso") {
@@ -275,7 +275,7 @@ executable("sanitizer-log-test-helper") {
   deps = [ "../..:static" ]
   configs += fdio_config
   configs -= fdio_config
-  configs += [ "//products/build/config:standalone" ]
+  configs += [ "//vision/build/config:standalone" ]
   ldflags = [ "-Wl,-z,stack-size=0x40000" ]
 }
 
@@ -295,8 +295,8 @@ rustc_binary("rust-sanitizer-log-test-helper") {
   deps += [ "../..:static" ]
   configs += fdio_config
   configs -= fdio_config
-  configs += [ "//products/build/config:standalone" ]
-  configs -= [ "//products/build/config/fuchsia:dynamic_rust_standard_library" ]
+  configs += [ "//vision/build/config:standalone" ]
+  configs -= [ "//vision/build/config/fuchsia:dynamic_rust_standard_library" ]
 }
 
 sanitizer_tests += [ "sanitizer-allocator-test" ]
@@ -310,11 +310,11 @@ test("sanitizer-allocator-test") {
 }
 
 fp_related_configs = [
-  "//products/build/config:default_frame_pointers",
-  "//products/build/config:frame_pointers",
-  "//products/build/config:no_frame_pointers",
+  "//vision/build/config:default_frame_pointers",
+  "//vision/build/config:frame_pointers",
+  "//vision/build/config:no_frame_pointers",
 ]
-lsan_configs = [ "//products/build/config:frame_pointers" ]
+lsan_configs = [ "//vision/build/config:frame_pointers" ]
 
 if (toolchain_variant.tags + [ "lsan" ] - [ "lsan" ] !=
     toolchain_variant.tags) {
@@ -327,7 +327,7 @@ if (toolchain_variant.tags + [ "lsan" ] - [ "lsan" ] !=
 } else {
   # Neither replaces-allocator nor lsan is in tags.  We can just add the lsan
   # config and build the test normally.
-  lsan_configs += [ "//products/build/config/sanitizers:lsan" ]
+  lsan_configs += [ "//vision/build/config/sanitizers:lsan" ]
 }
 
 if (lsan_configs != false) {

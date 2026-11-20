@@ -21,7 +21,7 @@
 #
 #  * boot_tests
 #    - Standalone boot tests; used in $default_toolchain;
-#      rolls up into //products/bundles/boot_tests.
+#      rolls up into //vision/bundles/boot_tests.
 #
 
 all_libs = [

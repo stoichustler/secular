@@ -2,9 +2,9 @@
 # Use of this source code is governed by a BSD-style license that can be
 # found in the LICENSE file.
 
-import("//products/build/components.gni")
-import("//products/build/rust/rustc_binary.gni")
-import("//products/build/testing/perf/test.gni")
+import("//vision/build/components.gni")
+import("//vision/build/rust/rustc_binary.gni")
+import("//vision/build/testing/perf/test.gni")
 
 group("benchmarks") {
   deps = [
@@ -30,7 +30,7 @@ rustc_binary("bin_rseq") {
   ]
   check_cfgs = [ "rcu_backend, values(\"rseq\", \"atomic\")" ]
   rustflags = [ "--cfg=rcu_backend=\"rseq\"" ]
-  configs += [ "//products/build/config/rust/lints:deny_unused_results" ]
+  configs += [ "//vision/build/config/rust/lints:deny_unused_results" ]
 }
 
 rustc_binary("bin_atomic") {
@@ -44,7 +44,7 @@ rustc_binary("bin_atomic") {
   ]
   check_cfgs = [ "rcu_backend, values(\"rseq\", \"atomic\")" ]
   rustflags = [ "--cfg=rcu_backend=\"atomic\"" ]
-  configs += [ "//products/build/config/rust/lints:deny_unused_results" ]
+  configs += [ "//vision/build/config/rust/lints:deny_unused_results" ]
 }
 
 fuchsia_component("rcu_rseq_benchmarks_component") {

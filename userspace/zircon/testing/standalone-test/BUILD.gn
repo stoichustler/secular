@@ -7,7 +7,7 @@
 # with options and stdio.
 # This implementation is meant for testing environments.
 
-import("//products/build/cpp/library_headers.gni")
+import("//vision/build/cpp/library_headers.gni")
 
 library_headers("headers") {
   testonly = true

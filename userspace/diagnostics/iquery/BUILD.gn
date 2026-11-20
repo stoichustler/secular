@@ -2,10 +2,10 @@
 # Use of this source code is governed by a BSD-style license that can be
 # found in the LICENSE file.
 
-import("//products/build/components.gni")
-import("//products/build/dist/renamed_binary.gni")
-import("//products/build/rust/rustc_binary.gni")
-import("//products/build/rust/rustc_library.gni")
+import("//vision/build/components.gni")
+import("//vision/build/dist/renamed_binary.gni")
+import("//vision/build/rust/rustc_binary.gni")
+import("//vision/build/rust/rustc_library.gni")
 
 iquery_common_deps = [
   "//userspace/lib/diagnostics/data/rust",
@@ -88,7 +88,7 @@ template("iquery_lib") {
     }
     sources += [ "src/lib.rs" ]
 
-    configs += [ "//products/build/config/rust/lints:clippy_warn_all" ]
+    configs += [ "//vision/build/config/rust/lints:clippy_warn_all" ]
   }
 }
 
@@ -123,7 +123,7 @@ rustc_binary("bin") {
   source_root = "src/main.rs"
 
   if (is_fuchsia) {
-    configs += [ "//products/build/config/rust:bootfs" ]
+    configs += [ "//vision/build/config/rust:bootfs" ]
   }
 
   deps = [
@@ -139,7 +139,7 @@ rustc_binary("bin") {
 
   sources = [ "src/main.rs" ]
 
-  configs += [ "//products/build/config/rust/lints:clippy_warn_all" ]
+  configs += [ "//vision/build/config/rust/lints:clippy_warn_all" ]
 }
 
 renamed_binary("inspect_bin") {
@@ -215,7 +215,7 @@ rustc_test("iquery_test") {
     "test_data/show_test.text",
   ]
 
-  configs += [ "//products/build/config/rust/lints:clippy_warn_all" ]
+  configs += [ "//vision/build/config/rust/lints:clippy_warn_all" ]
 }
 
 fuchsia_component("iquery-test") {
@@ -248,7 +248,7 @@ group("iquery") {
   deps = [
     ":bin",
     ":inspect_bin",
-    "//products/build/validate:non_production_tag",
+    "//vision/build/validate:non_production_tag",
   ]
 }
 

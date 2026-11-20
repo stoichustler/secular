@@ -2,9 +2,9 @@
 # Use of this source code is governed by a BSD-style license that can be
 # found in the LICENSE file.
 
-import("//products/build/components.gni")
-import("//products/build/rust/rustc_test.gni")
-import("//products/build/testing/environments.gni")
+import("//vision/build/components.gni")
+import("//vision/build/rust/rustc_test.gni")
+import("//vision/build/testing/environments.gni")
 
 rustc_test("driver") {
   name = "pkg_cache_integration_test"
@@ -95,7 +95,7 @@ rustc_test("driver") {
     "src/toolbox_resolver.rs",
     "src/write_blobs.rs",
   ]
-  configs += [ "//products/build/config/rust/lints:clippy_warn_all" ]
+  configs += [ "//vision/build/config/rust/lints:clippy_warn_all" ]
 }
 
 fuchsia_component("pkg-cache-integration-test") {

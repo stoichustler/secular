@@ -4,8 +4,8 @@
 # license that can be found in the LICENSE file or at
 # https://opensource.org/licenses/MIT
 
-import("//products/build/toolchain/toolchain_environment.gni")
-import("//products/build/toolchain/variant.gni")
+import("//vision/build/toolchain/toolchain_environment.gni")
+import("//vision/build/toolchain/variant.gni")
 import("//zircon/system/ulib/hwreg/hwreg_asm_header.gni")
 
 if (toolchain_environment == "kernel.phys" ||

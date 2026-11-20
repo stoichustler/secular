@@ -3,7 +3,7 @@
 # found in the LICENSE file.
 
 # Note: Tests specified using `bootfs_test` are included via
-# //products/bringup_with_tests and not this target.
+# //vision/bringup_with_tests and not this target.
 group("tests") {
   testonly = true
   deps = [

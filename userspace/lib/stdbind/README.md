@@ -11,7 +11,7 @@ to use the Rust equivalents.
 ## Example usage
 
 ```gn
-import("//products/build/rust/rustc_bindgen.gni)
+import("//vision/build/rust/rustc_bindgen.gni)
 
 rustc_bindgen_crate("my-bindings") {
     # ...

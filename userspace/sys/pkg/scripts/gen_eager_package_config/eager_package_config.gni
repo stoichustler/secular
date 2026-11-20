@@ -2,8 +2,8 @@
 # Use of this source code is governed by a BSD-style license that can be
 # found in the LICENSE file.
 
-import("//products/build/compiled_action.gni")
-import("//products/build/components.gni")
+import("//vision/build/compiled_action.gni")
+import("//vision/build/components.gni")
 
 # eager_package_config produces config-data for omaha-client and pkg-resolver to
 # to support eager package updates.

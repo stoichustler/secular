@@ -2,9 +2,9 @@
 # Use of this source code is governed by a BSD-style license that can be
 # found in the LICENSE file.
 
-import("//products/build/components.gni")
-import("//products/build/rust/rustc_binary.gni")
-import("//products/build/testing/cc_test_executable.gni")
+import("//vision/build/components.gni")
+import("//vision/build/rust/rustc_binary.gni")
+import("//vision/build/testing/cc_test_executable.gni")
 
 cc_test_executable("getaddrinfo_test") {
   testonly = true
@@ -32,7 +32,7 @@ rustc_binary("lookup_server") {
     "//third_party/rust_crates:futures",
   ]
 
-  configs += [ "//products/build/config/rust/lints:deny_unused_results" ]
+  configs += [ "//vision/build/config/rust/lints:deny_unused_results" ]
 }
 
 fuchsia_test_component("getaddrinfo_test_component") {

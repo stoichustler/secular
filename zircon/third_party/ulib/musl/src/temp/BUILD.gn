@@ -14,5 +14,5 @@ source_set("temp") {
     "mktemp.c",
   ]
 
-  configs -= [ "//products/build/config:symbol_visibility_hidden" ]
+  configs -= [ "//vision/build/config:symbol_visibility_hidden" ]
 }

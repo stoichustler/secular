@@ -2,13 +2,13 @@
 name: zircon-bootstrap
 description: >
   Use when changing Secular boot, ATF, Trusty, lkboot, physboot, userboot, QEMU -bios/-kernel/-initrd on the Secular console image. Read the map
-  in products/reference/zircon/bootstrap.md before editing.
+  in vision/reference/zircon/bootstrap.md before editing.
 ---
 
 # zircon-bootstrap
 
 Before changing this area, read
-[`products/reference/zircon/bootstrap.md`](../../../../products/reference/zircon/bootstrap.md).
+[`vision/reference/zircon/bootstrap.md`](../../../../vision/reference/zircon/bootstrap.md).
 
 That file is written as a Secular skill: **When to use**, numbered
 sections, box-drawing diagrams, **Anti-patterns**, and a first-pass
@@ -26,4 +26,4 @@ checklist.
 
 ## Related
 
-* Other maps: [`products/reference/zircon/README.md`](../../../../products/reference/zircon/README.md)
+* Other maps: [`vision/reference/zircon/README.md`](../../../../vision/reference/zircon/README.md)

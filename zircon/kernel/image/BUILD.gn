@@ -4,7 +4,7 @@
 # license that can be found in the LICENSE file or at
 # https://opensource.org/licenses/MIT
 
-import("//products/build/zbi/kernel_cmdline.gni")
+import("//vision/build/zbi/kernel_cmdline.gni")
 
 #
 # Any targets common to multiple images may be put here.

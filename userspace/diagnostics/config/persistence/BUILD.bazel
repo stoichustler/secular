@@ -14,5 +14,5 @@ exports_files(
         "power.persist",
         "network_policy.persist",
     ],
-    visibility = ["//products/bundles/assembly:__subpackages__"],
+    visibility = ["//vision/bundles/assembly:__subpackages__"],
 )

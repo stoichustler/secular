@@ -1,7 +1,7 @@
 """A macro for running go tests that use the fidlgentest library."""
 
-load("//products/build/bazel/rules/host_tests:host_go_test.bzl", "host_go_test")
-load("//products/build/bazel/rules/host_tests:host_test_data.bzl", "host_test_data_files")
+load("//vision/build/bazel/rules/host_tests:host_go_test.bzl", "host_go_test")
+load("//vision/build/bazel/rules/host_tests:host_test_data.bzl", "host_test_data_files")
 
 def fidlgentest_go_test(
         name,

@@ -2,8 +2,8 @@
 # Use of this source code is governed by a BSD-style license that can be
 # found in the LICENSE file.
 
-load("//products/build/bazel/rules/cc:fx_cc_library.bzl", "fx_cc_library")
-load("//products/build/bazel/rules/idk:idk_cc_source_library.bzl", "idk_cc_source_library")
+load("//vision/build/bazel/rules/cc:fx_cc_library.bzl", "fx_cc_library")
+load("//vision/build/bazel/rules/idk:idk_cc_source_library.bzl", "idk_cc_source_library")
 
 package(default_applicable_licenses = ["//:license"])
 
@@ -75,7 +75,7 @@ idk_cc_source_library(
     # In Bazel, the library must be visible to the package containing the symbolic macro.
     # In GN, the library must be visible to any path that defines a `fidl()` target.
     visibility = [
-        "//products/build/bazel/rules/fidl:__subpackages__",
+        "//vision/build/bazel/rules/fidl:__subpackages__",
         "//sdk/lib/fidl:__subpackages__",
         "//tools/fidlcat:__subpackages__",
     ],  # @bazel2gn:raw_overwrite:[ "//*" ]
@@ -88,7 +88,7 @@ idk_cc_source_library(
     # Bazel's `linkopts` attribute is public.
     configs = select(
         {
-            "@platforms//os:fuchsia": ["//products/build/config/fuchsia:no_cpp_standard_library"],
+            "@platforms//os:fuchsia": ["//vision/build/config/fuchsia:no_cpp_standard_library"],
             "//conditions:default": [],
         },
     ),

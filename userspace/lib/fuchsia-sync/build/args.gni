@@ -8,5 +8,5 @@ declare_args() {
   # balanced/release too slow for real use.
   # LINT.IfChange
   fuchsia_sync_detect_lock_cycles = compilation_mode == "debug"
-  # LINT.ThenChange(//products/build/bazel/BUILD.gn)
+  # LINT.ThenChange(//vision/build/bazel/BUILD.gn)
 }

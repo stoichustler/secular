@@ -2,11 +2,11 @@
 # Use of this source code is governed by a BSD-style license that can be
 # found in the LICENSE file.
 
-import("//products/build/components.gni")
-import("//products/build/icu/icu_executable.gni")
-import("//products/build/icu/icu_source_set.gni")
-import("//products/build/icu/third_party_icu_headers.gni")
-import("//products/build/testing/cc_test_executable.gni")
+import("//vision/build/components.gni")
+import("//vision/build/icu/icu_executable.gni")
+import("//vision/build/icu/icu_source_set.gni")
+import("//vision/build/icu/third_party_icu_headers.gni")
+import("//vision/build/testing/cc_test_executable.gni")
 
 group("time_zone_info") {
   testonly = true

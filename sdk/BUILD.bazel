@@ -4,20 +4,20 @@
 
 load("@fuchsia_build_info//:args.bzl", "target_cpu")
 load("@platforms//host:constraints.bzl", "HOST_CONSTRAINTS")
-load("//products/build/bazel/platforms:constraints.bzl", "HOST_OS_CONSTRAINTS")
+load("//vision/build/bazel/platforms:constraints.bzl", "HOST_OS_CONSTRAINTS")
 load(
-    "//products/build/bazel/rules/idk:idk_molecule.bzl",
+    "//vision/build/bazel/rules/idk:idk_molecule.bzl",
     "idk_all_api_level_and_cpu_combinations_molecule",
     "idk_host_tool_molecule_for_configured_host_cpus",
     "idk_host_tool_molecule_for_current_host_cpu",
     "idk_molecule",
 )
 load(
-    "//products/build/bazel/rules/idk:idk_transitions.bzl",
+    "//vision/build/bazel/rules/idk:idk_transitions.bzl",
     "build_in_all_idk_api_level_and_cpu_combinations",
 )
 load(
-    "//products/build/sdk:sdk_version_history.bzl",
+    "//vision/build/sdk:sdk_version_history.bzl",
     "sdk_version_history",
 )
 load(
@@ -45,7 +45,7 @@ idk_molecule(
     name = "fuchsia_idk_molecule_idk",
     allowed_in_configurations = "once",
     target_compatible_with = ["@platforms//os:fuchsia"],
-    visibility = ["//products/build/bazel/rules/tests:__subpackages__"],
+    visibility = ["//vision/build/bazel/rules/tests:__subpackages__"],
     # TODO(https://fxbug.dev/507577175): Add all molecules to match the GN definition.
     deps = [
         ":fuchsia_idk_atoms_produced_by_main_platform_build_idk",
@@ -71,7 +71,7 @@ idk_molecule(
     name = "in_tree_idk_molecule_idk",
     allowed_in_configurations = "once",
     target_compatible_with = ["@platforms//os:fuchsia"],
-    visibility = ["//products/build/bazel/rules/tests:__subpackages__"],
+    visibility = ["//vision/build/bazel/rules/tests:__subpackages__"],
     # TODO(https://fxbug.dev/507577175): Add all molecules to match the GN definition.
     deps = [
         ":fuchsia_idk_atoms_produced_by_main_platform_build_idk",
@@ -113,7 +113,7 @@ idk_molecule(
     # statement into `deps` directly once sysroots are available for all CPU
     # architectures.
     deps = select({
-        "//products/build/bazel/platforms:is_fuchsia_" + target_cpu: [
+        "//vision/build/bazel/platforms:is_fuchsia_" + target_cpu: [
             ":cc_prebuilt_libraries_idk",
 
             # TODO(https://fxbug.dev/507577175): Add the sysroot atom.
@@ -166,7 +166,7 @@ filegroup(
     srcs = select({
         # TODO(https://fxbug.dev/505380228): Merge these targets into the main
         # list once sysroots are available for all CPU architectures.
-        "//products/build/bazel/platforms:is_fuchsia_" + target_cpu: [
+        "//vision/build/bazel/platforms:is_fuchsia_" + target_cpu: [
             atom.removesuffix("_idk")
             for atom in ALL_CC_SOURCE_LIBRARY_ATOMS
         ],
@@ -236,7 +236,7 @@ build_in_all_idk_api_level_and_cpu_combinations(
     name = "all_underlying_libraries_not_built_with_atoms_in_all_api_level_and_cpu_combinations",
     testonly = True,
     target_compatible_with = ["@platforms//os:fuchsia"],
-    visibility = ["//products/build/bazel/rules/tests:__subpackages__"],
+    visibility = ["//vision/build/bazel/rules/tests:__subpackages__"],
     deps = [
         ":all_noop_atoms",
         ":all_underlying_cc_source_libraries",

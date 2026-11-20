@@ -2,8 +2,8 @@
 # Use of this source code is governed by a BSD-style license that can be
 # found in the LICENSE file.
 
-import("//products/build/components.gni")
-import("//products/build/rust/rustc_binary.gni")
+import("//vision/build/components.gni")
+import("//vision/build/rust/rustc_binary.gni")
 
 rustc_binary("bin") {
   testonly = true
@@ -40,7 +40,7 @@ rustc_binary("bin") {
     "//third_party/rust_crates:log",
     "//third_party/rust_crates:serde_json5",
   ]
-  configs += [ "//products/build/config/rust/lints:clippy_warn_all" ]
+  configs += [ "//vision/build/config/rust/lints:clippy_warn_all" ]
 
   inputs = [
     "configs/reboot_required_config.json",

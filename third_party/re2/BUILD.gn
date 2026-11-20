@@ -2,7 +2,7 @@
 # Use of this source code is governed by a BSD-style
 # license that can be found in the LICENSE file.
 
-import("//products/build/components/fuchsia_unittest_package.gni")
+import("//vision/build/components/fuchsia_unittest_package.gni")
 
 config("re2_config") {
   include_dirs = [ "src" ]
@@ -81,7 +81,7 @@ source_set("re2_source") {
   # Ensure the symbols are not hidden else the .so won't have any exported
   # symbols. When we build the .so (below) we supply a linker script which
   # limits the set of public symbols.
-  configs -= [ "//products/build/config:symbol_visibility_hidden" ]
+  configs -= [ "//vision/build/config:symbol_visibility_hidden" ]
 }
 
 # Building as a shared library to reduce space usage in production images.
@@ -92,7 +92,7 @@ target(default_library_type, "re2_lib") {
   public = [ "src/re2/re2.h" ]
   public_configs = [ ":re2_config" ]
   configs += [ ":re2_skipped_warnings" ]
-  configs -= [ "//products/build/config:symbol_visibility_hidden" ]
+  configs -= [ "//vision/build/config:symbol_visibility_hidden" ]
 
   if (default_library_type == "shared_library") {
     version_script = "src/libre2.symbols"

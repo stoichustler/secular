@@ -2,9 +2,9 @@
 # Use of this source code is governed by a BSD_style license that can be
 # found in the LICENSE file.
 
-import("//products/build/bind/bind.gni")
-import("//products/build/components.gni")
-import("//products/build/drivers.gni")
+import("//vision/build/bind/bind.gni")
+import("//vision/build/components.gni")
+import("//vision/build/drivers.gni")
 
 driver_bind_rules("use_bind") {
   testonly = true

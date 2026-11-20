@@ -2,7 +2,7 @@
 # Use of this source code is governed by a BSD-style license that can be
 # found in the LICENSE file.
 
-import("//products/build/cpp/sdk_shared_library.gni")
+import("//vision/build/cpp/sdk_shared_library.gni")
 
 source_set("recorder") {
   sources = [

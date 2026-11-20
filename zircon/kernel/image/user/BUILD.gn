@@ -4,7 +4,7 @@
 # license that can be found in the LICENSE file or at
 # https://opensource.org/licenses/MIT
 
-import("//products/build/zbi/kernel_cmdline.gni")
+import("//vision/build/zbi/kernel_cmdline.gni")
 import("//zircon/kernel/kernel_image.gni")
 import("//zircon/kernel/kernel_package.gni")
 
@@ -27,7 +27,7 @@ kernel_cmdline("cmdline") {
     "kernel.enable-debugging-syscalls=false",
     "kernel.enable-serial-syscalls=false",
 
-    # LINT.ThenChange(//products/bundles/assembly/BUILD.gn)
+    # LINT.ThenChange(//vision/bundles/assembly/BUILD.gn)
   ]
 }
 

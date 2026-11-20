@@ -2,7 +2,7 @@
 # Use of this source code is governed by a BSD-style license that can be
 # found in the LICENSE file.
 
-load("//products/build/bazel/rules/idk:idk_cc_prebuilt_library.bzl", "idk_cc_shared_library")
+load("//vision/build/bazel/rules/idk:idk_cc_prebuilt_library.bzl", "idk_cc_shared_library")
 
 package(default_applicable_licenses = ["//:license"])
 
@@ -65,7 +65,7 @@ idk_cc_shared_library(
     #
     # BUILD.gn's other visibility entries are omitted: the same package is always
     # visible in Bazel, the IDK macros add //sdk:__pkg__ to the atom, and the
-    # //products/build/sdk and driver_manager entries are GN-only. If driver_manager is
+    # //vision/build/sdk and driver_manager entries are GN-only. If driver_manager is
     # migrated to Bazel, see BUILD.gn for why it needs access.
     visibility = [
         "//sdk/lib/vfs/cpp:__pkg__",

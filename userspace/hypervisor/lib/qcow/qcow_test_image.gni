@@ -1,7 +1,7 @@
 # Copyright 2022 The Fuchsia Authors. All rights reserved.
 # Use of this source code is governed by a BSD-style license that can be
 # found in the LICENSE file.
-import("//products/build/dist/resource.gni")
+import("//vision/build/dist/resource.gni")
 
 # Generates a disk image in qcow2 format. The disk images created by this
 # template are simple regions of specific byte patterns that can be read in

@@ -2,9 +2,9 @@
 # Use of this source code is governed by a BSD-style license that can be
 # found in the LICENSE file.
 
-import("//products/build/components.gni")
-import("//products/build/cpp/sdk_source_set.gni")
-import("//products/build/test.gni")
+import("//vision/build/components.gni")
+import("//vision/build/cpp/sdk_source_set.gni")
+import("//vision/build/test.gni")
 
 # API calibration.
 

@@ -2,9 +2,9 @@
 # Use of this source code is governed by a BSD-style license that can be
 # found in the LICENSE file.
 
-load("//products/build/bazel/rules/cc:fx_cc_binary.bzl", "fx_cc_binary")
-load("//products/build/bazel/rules/cc:fx_cc_library.bzl", "fx_cc_library")
-load("//products/build/bazel/rules/testing:fx_unittest_package.bzl", "fx_unittest_package")
+load("//vision/build/bazel/rules/cc:fx_cc_binary.bzl", "fx_cc_binary")
+load("//vision/build/bazel/rules/cc:fx_cc_library.bzl", "fx_cc_library")
+load("//vision/build/bazel/rules/testing:fx_unittest_package.bzl", "fx_unittest_package")
 
 package(default_applicable_licenses = ["//:license"])
 
@@ -97,6 +97,6 @@ fx_cc_binary(
 # @bazel2gn:skip
 fx_unittest_package(
     name = "timekeeper_lib_tests",
-    environments = ["//products/build/testing/environments:emu_env"],
+    environments = ["//vision/build/testing/environments:emu_env"],
     unit_tests = [":timekeeper_lib_unittests"],
 )

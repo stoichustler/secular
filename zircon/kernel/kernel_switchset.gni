@@ -4,11 +4,11 @@
 # license that can be found in the LICENSE file or at
 # https://opensource.org/licenses/MIT
 
-import("//products/build/config/compilation_modes.gni")
-import("//products/build/config/zircon/standard.gni")
-import("//products/build/rust/config.gni")
-import("//products/build/toolchain/zircon/zircon_toolchain_suite.gni")
-import("//products/build/zircon/zircon_cpu.gni")
+import("//vision/build/config/compilation_modes.gni")
+import("//vision/build/config/zircon/standard.gni")
+import("//vision/build/rust/config.gni")
+import("//vision/build/toolchain/zircon/zircon_toolchain_suite.gni")
+import("//vision/build/zircon/zircon_cpu.gni")
 import("params.gni")
 
 assert(
@@ -232,7 +232,7 @@ template("kernel_switchset") {
 
       # The kernel_config includes the use of the custom target.
       # The default config for --target=$rust_target would conflict.
-      remove_common_configs = [ "//products/build/config/rust:target" ]
+      remove_common_configs = [ "//vision/build/config/rust:target" ]
       configs = [
         "//zircon/kernel/switch:abi",
 
@@ -278,15 +278,15 @@ template("kernel_switchset") {
       # TODO(mcgrathr): Consider either removing this so there's a
       # no-frame-pointers option, or removing the kernel's support for
       # !WITH_FRAME_POINTERS if it will never be used.
-      remove_common_configs += [ "//products/build/config:default_frame_pointers" ]
-      configs += [ "//products/build/config:frame_pointers" ]
+      remove_common_configs += [ "//vision/build/config:default_frame_pointers" ]
+      configs += [ "//vision/build/config:frame_pointers" ]
 
       if (cpu == "x64") {
         # TODO(https://fxbug.dev/42101838): x86 kernel can't be built without --gc-sections
         # because of crufty acpica code, and some compiler instrumentation
         # is broken wrt --gc-sections semantics.
         # Ensure that linker GC is enabled.
-        configs += [ "//products/build/config:linker_gc" ]
+        configs += [ "//vision/build/config:linker_gc" ]
       }
 
       configs += [ "//zircon/kernel/switch:lk_debug_level_${_lk_debug_level}" ]
@@ -297,8 +297,8 @@ template("kernel_switchset") {
 
       # TODO(https://fxbug.dev/42117912): Map debug level to assert level for
       # now.
-      remove_common_configs += [ "//products/build/config/zircon:default_assert_level" ]
-      configs += [ "//products/build/config/zircon:assert_level_${_lk_debug_level}" ]
+      remove_common_configs += [ "//vision/build/config/zircon:default_assert_level" ]
+      configs += [ "//vision/build/config/zircon:assert_level_${_lk_debug_level}" ]
 
       toolchain_args = {
         if (defined(invoker.toolchain_args)) {
@@ -307,7 +307,7 @@ template("kernel_switchset") {
         optimize = switchset_optimize
       }
 
-      remove_common_configs += [ "//products/build/config/rust:no_features" ]
+      remove_common_configs += [ "//vision/build/config/rust:no_features" ]
     }
   }
 }

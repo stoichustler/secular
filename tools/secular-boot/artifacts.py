@@ -67,7 +67,7 @@ def main(argv: list[str]) -> int:
     root = args.source_root.resolve()
     out_dir = args.out_dir.resolve()
     zbi = _pick(
-        _gn_outputs(root, out_dir, args.gn, "//products/secular:secular"),
+        _gn_outputs(root, out_dir, args.gn, "//vision/secular:secular"),
         ".zbi",
         out_dir,
         "ZBI",

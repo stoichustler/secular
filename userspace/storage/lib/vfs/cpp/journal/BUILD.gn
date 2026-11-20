@@ -2,9 +2,9 @@
 # Use of this source code is governed by a BSD-style license that can be
 # found in the LICENSE file.
 
-import("//products/build/components.gni")
-import("//products/build/fuzz.gni")
-import("//products/build/test.gni")
+import("//vision/build/components.gni")
+import("//vision/build/fuzz.gni")
+import("//vision/build/test.gni")
 
 static_library("journal") {
   friend = [ ":*" ]
@@ -39,7 +39,7 @@ static_library("journal") {
 
   deps = [ "//zircon/third_party/ulib/cksum" ]
 
-  configs += [ "//products/build/config:all_source" ]
+  configs += [ "//vision/build/config:all_source" ]
 
   if (is_fuchsia) {
     sources += [
@@ -75,7 +75,7 @@ group("tests") {
 
 test("journal-unit") {
   if (is_fuchsia) {
-    fdio_config = [ "//products/build/config/fuchsia:fdio_config" ]
+    fdio_config = [ "//vision/build/config/fuchsia:fdio_config" ]
     if (configs + fdio_config - fdio_config != configs) {
       configs -= fdio_config
     }

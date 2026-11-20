@@ -21,5 +21,5 @@ filegroup(
         "//userspace/lib/fidl/rust_next/fidl_next_protocol",
         "//userspace/lib/fidl/rust_next/fidl_next_util",
     ],
-    visibility = ["//products/build/bazel/rules/tests:__pkg__"],
+    visibility = ["//vision/build/bazel/rules/tests:__pkg__"],
 )

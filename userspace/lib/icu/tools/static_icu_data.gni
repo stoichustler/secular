@@ -2,8 +2,8 @@
 # Use of this source code is governed by a BSD-style license that can be
 # found in the LICENSE file.
 
-import("//products/build/compiled_action.gni")
-import("//products/build/icu/third_party_icu_headers.gni")
+import("//vision/build/compiled_action.gni")
+import("//vision/build/icu/third_party_icu_headers.gni")
 import("//userspace/lib/icu/tzdata/icu_tzres_source.gni")
 
 # Generates a file containing static data extracted from ICU using
@@ -12,8 +12,8 @@ import("//userspace/lib/icu/tzdata/icu_tzres_source.gni")
 # Example:
 #
 #   import("//userspace/lib/icu/tools/static_icu_data.gni")
-#   import("//products/build/components.gni")
-#   import("//products/build/dist/resource.gni")
+#   import("//vision/build/components.gni")
+#   import("//vision/build/dist/resource.gni")
 #
 #   static_icu_data("revision") {
 #     command = "tz-version"

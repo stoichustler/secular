@@ -2,9 +2,9 @@
 # Use of this source code is governed by a BSD-style license that can be
 # found in the LICENSE file.
 
-import("//products/build/compiled_action.gni")
-import("//products/build/cpp/fidlmerge_cpp.gni")
-import("//products/build/fidl/toolchain.gni")
+import("//vision/build/compiled_action.gni")
+import("//vision/build/cpp/fidlmerge_cpp.gni")
+import("//vision/build/fidl/toolchain.gni")
 
 # Declares a fostr library that contains C++ ostream formatting for a FIDL
 # library.

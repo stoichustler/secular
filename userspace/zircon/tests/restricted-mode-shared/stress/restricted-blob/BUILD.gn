@@ -2,9 +2,9 @@
 # Use of this source code is governed by a BSD-style license that can be
 # found in the LICENSE file.
 
-import("//products/build/toolchain/zircon/user_basic_redirect.gni")
-import("//products/build/zircon/embedded_blob.gni")
-import("//products/build/zircon/hermetic_code_blob.gni")
+import("//vision/build/toolchain/zircon/user_basic_redirect.gni")
+import("//vision/build/zircon/embedded_blob.gni")
+import("//vision/build/zircon/hermetic_code_blob.gni")
 
 user_basic_redirect("restricted-blob") {
   visibility = [ "../*" ]

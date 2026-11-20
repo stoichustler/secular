@@ -4,25 +4,25 @@
 
 # Definitions to build each of the Fuchsia IDKs.
 
-import("//products/build/bazel/bazel_build_action.gni")
-import("//products/build/bazel/bazel_fuchsia_sdk.gni")
-import("//products/build/bazel/bazel_test_suite.gni")
-import("//products/build/config/build_api_module.gni")
-import("//products/build/config/fuchsia/platform_version.gni")
-import("//products/build/config/fuchsia/target_api_level.gni")
+import("//vision/build/bazel/bazel_build_action.gni")
+import("//vision/build/bazel/bazel_fuchsia_sdk.gni")
+import("//vision/build/bazel/bazel_test_suite.gni")
+import("//vision/build/config/build_api_module.gni")
+import("//vision/build/config/fuchsia/platform_version.gni")
+import("//vision/build/config/fuchsia/target_api_level.gni")
 if (!secular_boot_build) {
-  import("//products/build/dart/toolchain.gni")
+  import("//vision/build/dart/toolchain.gni")
 }
-import("//products/build/fidl/toolchain.gni")
-import("//products/build/sdk/config.gni")
-import("//products/build/sdk/idk.gni")
-import("//products/build/sdk/idk_archive.gni")
-import("//products/build/sdk/idk_subbuilds.gni")
-import("//products/build/sdk/sdk_collection.gni")
-import("//products/build/sdk/sdk_documentation.gni")
-import("//products/build/sdk/sdk_final_manifest_golden.gni")
-import("//products/build/sdk/sdk_molecule.gni")
-import("//products/build/sdk/sdk_version_history.gni")
+import("//vision/build/fidl/toolchain.gni")
+import("//vision/build/sdk/config.gni")
+import("//vision/build/sdk/idk.gni")
+import("//vision/build/sdk/idk_archive.gni")
+import("//vision/build/sdk/idk_subbuilds.gni")
+import("//vision/build/sdk/sdk_collection.gni")
+import("//vision/build/sdk/sdk_documentation.gni")
+import("//vision/build/sdk/sdk_final_manifest_golden.gni")
+import("//vision/build/sdk/sdk_molecule.gni")
+import("//vision/build/sdk/sdk_version_history.gni")
 import("//tools/check-licenses/build/license_data.gni")
 import("config.gni")
 
@@ -194,7 +194,7 @@ bazel_build_action("final_fuchsia_idk.exported") {
   # target_cpus = idk_buildable_cpus
   # api_levels = idk_buildable_api_levels
 
-  bazel_target = "//products/build/bazel/bazel_sdk:final_fuchsia_idk"
+  bazel_target = "//vision/build/bazel/bazel_sdk:final_fuchsia_idk"
   deps = [ "//sdk:fuchsia_collection_all_subbuilds_for_merge" ]
   ninja_base_dir = root_build_dir
   directory_outputs = [
@@ -279,8 +279,8 @@ if (!is_host) {
       ":final_fuchsia_idk.exported",
       ":generate_compatibility_goldens",
       ":plasa_manifest",
-      "//products/build/bazel/licenses:all_bazel_inputs",
-      "//products/build/bazel/licenses:all_bazel_inputs.licenses_spdx.licenses_metadata",
+      "//vision/build/bazel/licenses:all_bazel_inputs",
+      "//vision/build/bazel/licenses:all_bazel_inputs.licenses_spdx.licenses_metadata",
     ]
     subbuilds_visibility = [
       ":final_fuchsia_idk.exported",
@@ -505,7 +505,7 @@ if (is_host) {
   # should be moved to "non_build_host_tools". See https://fxbug.dev/395968221.
   sdk_molecule("non_build_host_tools_required_by_bazel_sdk") {
     deps = [
-      "//products/build/assembly/tools/assembly_config:assembly_config_sdk",
+      "//vision/build/assembly/tools/assembly_config:assembly_config_sdk",
       "//userspace/developer/ffx:bin_sdk",
       "//userspace/developer/ffx/plugins/product:sdk",
       "//userspace/developer/ffx/plugins/product_bundle:sdk",
@@ -816,7 +816,7 @@ sdk_molecule("core_licenses") {
 #
 # This only contains the targets necessary to generate this IDK,
 # as validation is performed in both Ninja and Bazel targets
-# defined in //products/build/bazel/bazel_sdk/BUILD.gn
+# defined in //vision/build/bazel/bazel_sdk/BUILD.gn
 
 if (current_toolchain == default_toolchain) {
   # An IDK used to expose the SDK atoms to the in-tree Bazel workspace's
@@ -835,7 +835,7 @@ if (current_toolchain == default_toolchain) {
       ":bazel_in_tree_idk_tests_${target_cpu}",
       ":bazel_in_tree_idk_tests_${target_cpu}.bazel",
       ":ensure_bazel_in_tree_idk_is_populated_for_bazel_action",
-      "//products/build/bazel/bazel_sdk:*",
+      "//vision/build/bazel/bazel_sdk:*",
     ]
 
     assert_no_deps = [
@@ -859,7 +859,7 @@ if (current_toolchain == default_toolchain) {
   # This is only useful for development,
   # as the content of the @fuchsia_sdk repository, populated
   # from the same IDK, is already checked by a different suite
-  # of tests defined under //products/build/bazel/bazel_sdk.
+  # of tests defined under //vision/build/bazel/bazel_sdk.
   run_fuchsia_bazel_sdk_tests("bazel_in_tree_idk_tests") {
     target_cpus = [ target_cpu ]
 
@@ -877,10 +877,10 @@ if (current_toolchain == default_toolchain) {
   # ":bazel_in_tree_idk" with broader visibility.
   group("ensure_bazel_in_tree_idk_is_populated_for_bazel_action") {
     visibility += [
-      "//products/boards/*",
-      "//products/build/*",
+      "//vision/boards/*",
+      "//vision/build/*",
       "//examples/*",
-      "//products/*",
+      "//vision/*",
       "//sdk/lib/driver/*",
       "//userspace/*",
       "//tools/*",
@@ -991,7 +991,7 @@ if (current_toolchain == default_toolchain) {
   # TODO(https://fxbug.dev/333907192): Remove this.
   idk("bazel_internal_only_idk") {
     visibility = []
-    visibility = [ "//products/build/bazel:fuchsia_internal_only_idk.hash" ]
+    visibility = [ "//vision/build/bazel:fuchsia_internal_only_idk.hash" ]
     output_name = "bazel_internal_only_idk"
     sdk_collection_label = "//sdk:bazel_internal_only"
 
@@ -1077,7 +1077,7 @@ if (current_toolchain == default_toolchain) {
     }
   }
 
-  # LINT.ThenChange(//products/build/subbuild.py:subbuild_config)
+  # LINT.ThenChange(//vision/build/subbuild.py:subbuild_config)
 }  # current_toolchain == default_toolchain
 
 if (is_host) {
@@ -1116,7 +1116,7 @@ if (is_host) {
 # have access to binaries that they explicitly depend on via this rule.
 copy("idk_build_tools") {
   visibility += [
-    "//products/build/*",
+    "//vision/build/*",
     "//sdk/firmware:*",
     "//sdk/pdk:*",
     "//vendor/*",
@@ -1165,8 +1165,8 @@ copy("idk_build_tools") {
   # The following tools are generated directly from Bazel.
   sources += [ "${host_out_dir}/json_validator_valico" ]
   deps += [
-    "//products/build/tools/json_merge($host_toolchain)",
-    "//products/build/tools/json_validator:json_validator_valico($host_toolchain)",
+    "//vision/build/tools/json_merge($host_toolchain)",
+    "//vision/build/tools/json_validator:json_validator_valico($host_toolchain)",
     "//tools/fidl/fidl_api_diff($host_toolchain)",
     "//tools/fidl/fidl_api_summarize($host_toolchain)",
     "//tools/fidl/fidlgen_rust($host_toolchain)",

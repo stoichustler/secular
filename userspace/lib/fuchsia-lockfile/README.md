@@ -6,7 +6,7 @@
 
 Since this is a host library, the host toolchain needs to be specified for the target.
 For a `x64`, to add tests for this library to your build, append the following to the `fx set`:
-`--with //userspace/lib/fuchsia-lockfile:host_tests\(//products/build/toolchain:host_x64\)`.
+`--with //userspace/lib/fuchsia-lockfile:host_tests\(//vision/build/toolchain:host_x64\)`.
 
 ## Testing
 

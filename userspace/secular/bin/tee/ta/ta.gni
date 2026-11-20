@@ -2,11 +2,11 @@
 # Use of this source code is governed by a BSD-style license that can be
 # found in the LICENSE file.
 
-import("//products/build/components/fuchsia_package.gni")
-import("//products/build/cpp/verify_public_symbols.gni")
-import("//products/build/dist/generated_resource.gni")
-import("//products/build/dist/renamed_binary.gni")
-import("//products/build/toolchain/ifs_extract.gni")
+import("//vision/build/components/fuchsia_package.gni")
+import("//vision/build/cpp/verify_public_symbols.gni")
+import("//vision/build/dist/generated_resource.gni")
+import("//vision/build/dist/renamed_binary.gni")
+import("//vision/build/toolchain/ifs_extract.gni")
 
 # Defines a Fuchsia package containing a Trusted Application
 #

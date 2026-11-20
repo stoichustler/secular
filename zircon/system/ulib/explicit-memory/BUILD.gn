@@ -2,8 +2,8 @@
 # Use of this source code is governed by a BSD-style license that can be
 # found in the LICENSE file.
 
-import("//products/build/rust/rustc_library.gni")
-import("//products/build/zircon/migrated_targets.gni")
+import("//vision/build/rust/rustc_library.gni")
+import("//vision/build/zircon/migrated_targets.gni")
 
 zx_library("explicit-memory") {
   sdk = "static"

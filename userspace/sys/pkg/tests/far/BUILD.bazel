@@ -3,17 +3,17 @@
 # found in the LICENSE file.
 
 load(
-    "//products/build/bazel/rules/components:fx_component.bzl",
+    "//vision/build/bazel/rules/components:fx_component.bzl",
     "fx_component_manifest",
     "fx_test_component",
 )
-load("//products/build/bazel/rules/packages:fx_package.bzl", "fx_package")
+load("//vision/build/bazel/rules/packages:fx_package.bzl", "fx_package")
 load(
-    "//products/build/bazel/rules/packages:fx_packaged_binary.bzl",
+    "//vision/build/bazel/rules/packages:fx_packaged_binary.bzl",
     "fx_packaged_binary",
 )
-load("//products/build/bazel/rules/rust:defs.bzl", "rustc_test")
-load("//products/build/bazel/rules/testing:fx_test.bzl", "fx_test")
+load("//vision/build/bazel/rules/rust:defs.bzl", "rustc_test")
+load("//vision/build/bazel/rules/testing:fx_test.bzl", "fx_test")
 
 package(default_applicable_licenses = ["//:license"])
 
@@ -23,7 +23,7 @@ rustc_test(
     srcs = ["src/lib.rs"],
     crate_name = "far_integration_test",
     edition = "2024",
-    lint_config = "//products/build/config/rust/lints:clippy_warn_all",
+    lint_config = "//vision/build/config/rust/lints:clippy_warn_all",
     visibility = ["//visibility:private"],
     deps = [
         "//userspace/lib/fuchsia",

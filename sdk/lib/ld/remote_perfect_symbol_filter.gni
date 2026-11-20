@@ -2,8 +2,8 @@
 # Use of this source code is governed by a BSD-style license that can be
 # found in the LICENSE file.
 
-import("//products/build/toolchain/generated_ifs_file.gni")
-import("//products/build/toolchain/ifs_shared_library.gni")
+import("//vision/build/toolchain/generated_ifs_file.gni")
+import("//vision/build/toolchain/ifs_shared_library.gni")
 
 # Generate an ld::RemotePerfectSymbolFilterMaker function.
 #

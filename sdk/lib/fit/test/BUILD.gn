@@ -2,11 +2,11 @@
 # Use of this source code is governed by a BSD-style license that can be
 # found in the LICENSE file.
 
-import("//products/build/components.gni")
-import("//products/build/config/fuchsia_cxx_version.gni")
-import("//products/build/cpp/sdk_cpp_test.gni")
-import("//products/build/cpp/sdk_cpp_unittest_package.gni")
-import("//products/build/test.gni")
+import("//vision/build/components.gni")
+import("//vision/build/config/fuchsia_cxx_version.gni")
+import("//vision/build/cpp/sdk_cpp_test.gni")
+import("//vision/build/cpp/sdk_cpp_unittest_package.gni")
+import("//vision/build/test.gni")
 
 group("tests") {
   testonly = true
@@ -37,7 +37,7 @@ sdk_cpp_test("fit") {
     "//userspace/lib/fxl/test:gtest_main",
     "//userspace/sys/test_runners/gtest:death_test",
   ]
-  configs += [ "//products/build/config:test_exercising_sdk_headers" ]
+  configs += [ "//vision/build/config:test_exercising_sdk_headers" ]
 }
 
 sdk_cpp_unittest_package("fit-test-pkg") {

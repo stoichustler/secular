@@ -2,8 +2,8 @@
 # Use of this source code is governed by a BSD-style license that can be
 # found in the LICENSE file.
 
-import("//products/build/rust/rustc_binary.gni")
-import("//products/build/rust/rustc_test.gni")
+import("//vision/build/rust/rustc_binary.gni")
+import("//vision/build/rust/rustc_test.gni")
 
 shared_deps = [
   "//userspace/diagnostics/lib/triage",
@@ -18,7 +18,7 @@ rustc_test("triage_config_test_runner_test") {
   deps = shared_deps + [ "//userspace/lib/fuchsia" ]
 
   sources = [ "src/main.rs" ]
-  configs += [ "//products/build/config/rust/lints:clippy_warn_all" ]
+  configs += [ "//vision/build/config/rust/lints:clippy_warn_all" ]
 }
 
 rustc_binary("triage_config_test_runner") {
@@ -27,7 +27,7 @@ rustc_binary("triage_config_test_runner") {
   deps = shared_deps
 
   sources = [ "src/main.rs" ]
-  configs += [ "//products/build/config/rust/lints:clippy_warn_all" ]
+  configs += [ "//vision/build/config/rust/lints:clippy_warn_all" ]
 }
 
 group("tests") {

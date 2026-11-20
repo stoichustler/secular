@@ -4,8 +4,8 @@
 # license that can be found in the LICENSE file or at
 # https://opensource.org/licenses/MIT
 
-import("//products/build/cpp/library_headers.gni")
-import("//products/build/rust/rustc_library.gni")
+import("//vision/build/cpp/library_headers.gni")
+import("//vision/build/rust/rustc_library.gni")
 import("//zircon/kernel/kernel_bindgen_crate.gni")
 
 if (zircon_toolchain == false) {
@@ -125,10 +125,10 @@ library_headers("testing") {
 }
 
 if (!is_kernel) {
-  import("//products/build/components.gni")
-  import("//products/build/cpp/cpp_fuzzer.gni")
-  import("//products/build/fuzz.gni")
-  import("//products/build/test.gni")
+  import("//vision/build/components.gni")
+  import("//vision/build/cpp/cpp_fuzzer.gni")
+  import("//vision/build/fuzz.gni")
+  import("//vision/build/test.gni")
 
   test("memalloc-test") {
     sources = [

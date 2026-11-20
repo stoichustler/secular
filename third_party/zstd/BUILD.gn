@@ -5,8 +5,8 @@
 # NOTE: The definitions in this file are too complex to be handled by
 # bazel2gn, so keep this file and BUILD.bazel in sync manually.
 
-import("//products/build/host.gni")
-import("//products/build/zircon/migrated_targets.gni")
+import("//vision/build/host.gni")
+import("//vision/build/zircon/migrated_targets.gni")
 
 # *NOTE*: This check is used to ensure that the Rust zstd bindings we use in
 # //third_party/rust_crates/forks/zstd-sys stays in sync with the pinned version
@@ -17,7 +17,7 @@ import("//products/build/zircon/migrated_targets.gni")
 #      If so, update the crate accordingly.
 #   2. Disable the check below, adding a TODO comment referencing a bug tracking the zstd
 #      update, and indicate that the check will be re-enabled once the crate is updated.
-#   3. Update the pinned version of zstd in //products/integration/third_party/flower
+#   3. Update the pinned version of zstd in //vision/integration/third_party/flower
 #   4. Run third_party/rust_crates/forks/zstd-sys/bindgen.sh to update the Rust bindings
 #      and re-enable the check below.
 verify_rust_zstd_sys_crate_binding_version = !secular_boot_build
@@ -185,13 +185,13 @@ static_library("zstd") {
   # compress blobs during package resolution which is often in the critical
   # path of engineers running tests, which we also want to be fast
   # (https://fxbug.dev/42144717).
-  configs -= [ "//products/build/config:default_optimize" ]
-  configs += [ "//products/build/config:optimize_speed" ]
+  configs -= [ "//vision/build/config:default_optimize" ]
+  configs += [ "//vision/build/config:optimize_speed" ]
 
   # Do not profile zstd for coverage since we don't need to measure
   # third_party coverage and many parts of the system are highly sensitive
   # to the speed of zstd compression.
-  configs += [ "//products/build/config:no_profile" ]
+  configs += [ "//vision/build/config:no_profile" ]
 }
 
 # LINT.ThenChange(BUILD.bazel)
@@ -237,9 +237,9 @@ config("internal.config") {
 
   # Suppress warnings the zstd code doesn't comply with.
   configs = [
-    "//products/build/config:Wno-conversion",
-    "//products/build/config:Wno-unused-but-set-variable",
-    "//products/build/config:Wno-bitwise-instead-of-logical",
+    "//vision/build/config:Wno-conversion",
+    "//vision/build/config:Wno-unused-but-set-variable",
+    "//vision/build/config:Wno-bitwise-instead-of-logical",
   ]
 
   cflags = [ "-Wno-implicit-fallthrough" ]
@@ -349,8 +349,8 @@ if (!is_kernel) {
 
     configs += [
       ":internal.config",
-      "//products/build/config:Wno-call-graph-section-no-prototype",
-      "//products/build/config:Wno-strict-prototypes",
+      "//vision/build/config:Wno-call-graph-section-no-prototype",
+      "//vision/build/config:Wno-strict-prototypes",
     ]
     deps = [ ":zstd" ]
   }

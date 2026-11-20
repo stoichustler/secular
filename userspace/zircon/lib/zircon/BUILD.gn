@@ -2,9 +2,9 @@
 # Use of this source code is governed by a BSD-style license that can be
 # found in the LICENSE file.
 
-import("//products/build/sdk/sdk_noop_atom.gni")
-import("//products/build/toolchain/ifs_shared_library.gni")
-import("//products/build/toolchain/toolchain_environment.gni")
+import("//vision/build/sdk/sdk_noop_atom.gni")
+import("//vision/build/toolchain/ifs_shared_library.gni")
+import("//vision/build/toolchain/toolchain_environment.gni")
 import("libzircon.gni")
 
 # LINT.IfChange

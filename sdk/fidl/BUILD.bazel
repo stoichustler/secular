@@ -2,7 +2,7 @@
 # Use of this source code is governed by a BSD-style license that can be
 # found in the LICENSE file.
 
-load("//products/build/bazel/rules/idk:idk_molecule.bzl", "idk_molecule")
+load("//vision/build/bazel/rules/idk:idk_molecule.bzl", "idk_molecule")
 
 # The lists of FIDL libraries with categories.
 # Targets must be included if and only if the `fidl()` target specifies:
@@ -38,7 +38,7 @@ idk_molecule(
     testonly = True,
     allowed_in_configurations = "once",
     target_compatible_with = ["@platforms//os:fuchsia"],
-    visibility = ["//products/build/fidl:__pkg__"],
+    visibility = ["//vision/build/fidl:__pkg__"],
     # The dependency must be on the "_idk" targets because they depend on the
     # compatibility test targets.
     deps = (
@@ -70,7 +70,7 @@ filegroup(
         ":all_fidl_libraries_with_categories_idk",
     ],
     visibility = [
-        "//products/build/bazel/rules/tests:__subpackages__",
-        "//products/build/fidl:__pkg__",
+        "//vision/build/bazel/rules/tests:__subpackages__",
+        "//vision/build/fidl:__pkg__",
     ],
 )

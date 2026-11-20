@@ -11,7 +11,7 @@
 # For more details, see the extensive TECHNICAL NOTE in the comments at
 # the end of this file.
 
-import("//products/build/toolchain/zircon/clang.gni")
+import("//vision/build/toolchain/zircon/clang.gni")
 
 # The C library's own GN target label, without a toolchain
 sysroot_libc_label = "//sdk/lib/c"
@@ -42,7 +42,7 @@ _select_exclude_toolchain_tags = [
 # START OF CODE TO KEEP IN SYNC WITH BUILDCONFIG.gn
 #
 # IMPORTANT: Always keep the code below in sync with the computations
-# performed by variant_target() within //products/build/config/BUILDCONFIG.gn.
+# performed by variant_target() within //vision/build/config/BUILDCONFIG.gn.
 #
 # LINT.IfChange(variant_selection)
 
@@ -111,7 +111,7 @@ if (select_variant_canonical != []) {
   }
 }
 
-# LINT.ThenChange(//products/build/config/BUILDCONFIG.gn:variant_selection)
+# LINT.ThenChange(//vision/build/config/BUILDCONFIG.gn:variant_selection)
 #
 # END OF CODE TO KEEP IN SYNC WITH BUILDCONFIG.gn!
 # ==================================================================

@@ -2,12 +2,12 @@
 # Use of this source code is governed by a BSD-style license that can be
 # found in the LICENSE file.
 
-import("//products/build/components/fuchsia_component.gni")
-import("//products/build/components/fuchsia_package.gni")
-import("//products/build/components/fuchsia_test.gni")
-import("//products/build/components/fuchsia_test_package.gni")
-import("//products/build/components/fuchsia_unittest_component.gni")
-import("//products/build/rust/rustc_binary.gni")
+import("//vision/build/components/fuchsia_component.gni")
+import("//vision/build/components/fuchsia_package.gni")
+import("//vision/build/components/fuchsia_test.gni")
+import("//vision/build/components/fuchsia_test_package.gni")
+import("//vision/build/components/fuchsia_unittest_component.gni")
+import("//vision/build/rust/rustc_binary.gni")
 import("//userspace/secular/bin/tee/manager/ta_manager_config.gni")
 
 rustc_binary("manager") {
@@ -33,7 +33,7 @@ rustc_binary("manager") {
 
   test_deps = [ "//userspace/secular/bin/tee/lib/tee_properties" ]
 
-  configs += [ "//products/build/config/rust/lints:deny_unused_results" ]
+  configs += [ "//vision/build/config/rust/lints:deny_unused_results" ]
 
   with_unit_tests = true
 }

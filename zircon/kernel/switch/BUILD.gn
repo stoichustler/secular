@@ -4,12 +4,12 @@
 # license that can be found in the LICENSE file or at
 # https://opensource.org/licenses/MIT
 
-import("//products/build/config/clang/clang_prefix.gni")
-import("//products/build/config/compiler_config.gni")
-import("//products/build/rust/config.gni")
-import("//products/build/toolchain/rbe.gni")
-import("//products/build/toolchain/variant.gni")
-import("//products/build/zircon/zircon_cpu.gni")
+import("//vision/build/config/clang/clang_prefix.gni")
+import("//vision/build/config/compiler_config.gni")
+import("//vision/build/rust/config.gni")
+import("//vision/build/toolchain/rbe.gni")
+import("//vision/build/toolchain/variant.gni")
+import("//vision/build/zircon/zircon_cpu.gni")
 import("//zircon/kernel/kernel_rust_mod.gni")
 import("//zircon/kernel/lib/console/config.gni")
 import("//zircon/kernel/lib/crashlog/params.gni")
@@ -30,7 +30,7 @@ declare_args() {
   # **NOTE: _For experimental use only._** This gives a list of
   # compiler_config() labels to include first in the kernel's compilation
   # configuration / Rust custom target definition.
-  experimental_kernel_abi = [ "//products/build/config:cpu_baseline" ]
+  experimental_kernel_abi = [ "//vision/build/config:cpu_baseline" ]
 }
 
 # For any standalone static binary.
@@ -61,7 +61,7 @@ compiler_config("standalone") {
   }
 
   configs = [
-    "//products/build/config:no_exceptions",
+    "//vision/build/config:no_exceptions",
     ":debug-only-unwind-tables",
     ":kernel-heap-alignment",
   ]
@@ -237,15 +237,15 @@ variant("kernel_config") {
     ":kernel_memory_profiler",
 
     # This enables warnings that can then be moderated by later configs.
-    "//products/build/config/rust/lints:clippy_warn_all",
+    "//vision/build/config/rust/lints:clippy_warn_all",
     ":warnings",
 
     "//zircon/kernel/arch/$zircon_cpu:kernel",
-    "//products/build/config:no-finite-loops",
-    "//products/build/config:zero-call-used-regs",
+    "//vision/build/config:no-finite-loops",
+    "//vision/build/config:zero-call-used-regs",
 
     # include/lib/counters.h and kernel.ld depend on -fdata-sections.
-    "//products/build/config/zircon:data_sections",
+    "//vision/build/config/zircon:data_sections",
 
     # Provides checks for maximum supported kernel sizes.
     ":kernel_image_max_size",
@@ -262,7 +262,7 @@ variant("kernel_config") {
   # TODO(mcgrathr): Consider either removing this so there's a
   # no-frame-pointers option, or removing the kernel's support for
   # !WITH_FRAME_POINTERS if it will never be used.
-  configs += [ "//products/build/config:frame_pointers" ]
+  configs += [ "//vision/build/config:frame_pointers" ]
 
   defines = kernel_defines + kernel_extra_defines
   defines += [
@@ -541,8 +541,8 @@ compiler_config("kernel_executable.config") {
   }
 
   configs = [
-    "//products/build/config/zircon:static-pie-compile",
-    "//products/build/config/zircon:static-pie-link",
+    "//vision/build/config/zircon:static-pie-compile",
+    "//vision/build/config/zircon:static-pie-link",
   ]
 }
 

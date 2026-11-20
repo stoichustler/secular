@@ -28,7 +28,7 @@ require_arch() {
 # synthesize from this repo's HEAD.
 ensure_jiri_generated_commit_info() {
   local root="$1"
-  local dir="$root/products/build/info/jiri_generated"
+  local dir="$root/vision/build/info/jiri_generated"
   local hash stamp path contents
   mkdir -p "$dir"
   export GIT_CONFIG_GLOBAL=/dev/null

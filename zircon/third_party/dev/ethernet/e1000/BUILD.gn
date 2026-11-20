@@ -2,8 +2,8 @@
 # Use of this source code is governed by a BSD-style license that can be
 # found in the LICENSE file.
 
-import("//products/build/bind/bind.gni")
-import("//products/build/drivers.gni")
+import("//vision/build/bind/bind.gni")
+import("//vision/build/drivers.gni")
 
 bind_library("fuchsia.intel.e1000") {
   source = "fuchsia.intel.e1000.bind"
@@ -47,8 +47,8 @@ source_set("e1000_third_party") {
   ]
   deps = [ ":e1000_osdep" ]
   configs += [
-    "//products/build/config:Wno-conversion",
-    "//products/build/config:Wno-implicit-fallthrough",
+    "//vision/build/config:Wno-conversion",
+    "//vision/build/config:Wno-implicit-fallthrough",
   ]
 }
 
@@ -84,8 +84,8 @@ foreach(variant, e1000_variants) {
                            ])
     output_name = "e1000"
     configs += [
-      "//products/build/config:all_source",
-      "//products/build/config/fuchsia:enable_zircon_asserts",
+      "//vision/build/config:all_source",
+      "//vision/build/config/fuchsia:enable_zircon_asserts",
     ]
     sources = [
       "fuchsia.cc",

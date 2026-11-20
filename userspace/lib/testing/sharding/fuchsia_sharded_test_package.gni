@@ -2,8 +2,8 @@
 # Use of this source code is governed by a BSD-style license that can be
 # found in the LICENSE file.
 
-import("//products/build/components.gni")
-import("//products/build/dist/generated_resource.gni")
+import("//vision/build/components.gni")
+import("//vision/build/dist/generated_resource.gni")
 import(
     "//userspace/lib/testing/expectation/fuchsia_test_component_with_expectations.gni")
 

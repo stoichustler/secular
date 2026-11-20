@@ -2,9 +2,9 @@
 # Use of this source code is governed by a BSD-style license that can be found
 # in the LICENSE file.
 
-import("//products/build/components.gni")
-import("//products/build/rust/rustc_library.gni")
-import("//products/build/rust/rustc_test.gni")
+import("//vision/build/components.gni")
+import("//vision/build/rust/rustc_library.gni")
+import("//vision/build/rust/rustc_test.gni")
 
 common_sources = [ "src/lib.rs" ]
 common_deps = [
@@ -33,7 +33,7 @@ rustc_test("logging_rust_cpp_bridge_test") {
            "//userspace/lib/fuchsia",
            "//third_party/rust_crates:futures",
          ]
-  configs += [ "//products/build/config/fuchsia:dynamic_cpp_standard_library" ]
+  configs += [ "//vision/build/config/fuchsia:dynamic_cpp_standard_library" ]
 }
 
 source_set("cpp_syslog_test_wrapper") {

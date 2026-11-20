@@ -2,10 +2,10 @@
 # Use of this source code is governed by a BSD-style license that can be
 # found in the LICENSE file.
 
-import("//products/build/packages/package_metadata.gni")
-import("//products/build/python/python_binary.gni")
-import("//products/build/python/python_host_test.gni")
-import("//products/build/testing/host_test.gni")
+import("//vision/build/packages/package_metadata.gni")
+import("//vision/build/python/python_binary.gni")
+import("//vision/build/python/python_host_test.gni")
+import("//vision/build/testing/host_test.gni")
 
 python_binary("bin") {
   testonly = true
@@ -53,7 +53,7 @@ host_test("fail_validate_without_config") {
     ":bin",
     ":test_configc",
     ":test_data",
-    "//products/build/python:interpreter",
+    "//vision/build/python:interpreter",
     package_label,
   ]
 }

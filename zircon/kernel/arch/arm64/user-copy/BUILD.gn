@@ -4,11 +4,11 @@
 # license that can be found in the LICENSE file or at
 # https://opensource.org/licenses/MIT
 
-import("//products/build/components.gni")
-import("//products/build/components/fuchsia_package.gni")
-import("//products/build/components/fuchsia_test_package.gni")
-import("//products/build/components/fuchsia_unittest_component.gni")
-import("//products/build/test.gni")
+import("//vision/build/components.gni")
+import("//vision/build/components/fuchsia_package.gni")
+import("//vision/build/components/fuchsia_test_package.gni")
+import("//vision/build/components/fuchsia_unittest_component.gni")
+import("//vision/build/test.gni")
 
 source_set("user-copy-asm") {
   visibility = [ ":*" ]

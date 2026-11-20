@@ -3,7 +3,7 @@
 # found in the LICENSE file.
 
 load("@io_bazel_rules_go//go:def.bzl", "go_library")
-load("//products/build/bazel/platforms:constraints.bzl", "HOST_OS_CONSTRAINTS")
+load("//vision/build/bazel/platforms:constraints.bzl", "HOST_OS_CONSTRAINTS")
 load("//tools/fidl/lib/fidlgentest:fidlgentest_go_test.bzl", "fidlgentest_go_test")
 
 package(

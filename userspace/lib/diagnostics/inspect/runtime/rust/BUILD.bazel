@@ -3,7 +3,7 @@
 # found in the LICENSE file.
 
 load("@fuchsia_build_info//:args.bzl", "current_build_target_api_level")
-load("//products/build/bazel/rules/rust:rustc_library.bzl", "rustc_library")
+load("//vision/build/bazel/rules/rust:rustc_library.bzl", "rustc_library")
 
 package(default_applicable_licenses = ["//:license"])
 
@@ -26,7 +26,7 @@ rustc_library(
     ],
     crate_name = "inspect_runtime",
     edition = "2024",
-    lint_config = "//products/build/config/rust/lints:clippy_warn_all",
+    lint_config = "//vision/build/config/rust/lints:clippy_warn_all",
     visibility = [
         "//userspace/lib/diagnostics/inspect/rust/testing:__pkg__",
         "//userspace/sys/pkg/bin/system-update-configurator:__pkg__",

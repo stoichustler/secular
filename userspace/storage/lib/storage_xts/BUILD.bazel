@@ -2,12 +2,12 @@
 # Use of this source code is governed by a BSD-style license that can be
 # found in the LICENSE file.
 
-load("//products/build/bazel/config/derived:compilation_modes.bzl", "is_debug")
-load("//products/build/bazel/rules/rust:defs.bzl", "rustc_library")
+load("//vision/build/bazel/config/derived:compilation_modes.bzl", "is_debug")
+load("//vision/build/bazel/rules/rust:defs.bzl", "rustc_library")
 
 package(default_applicable_licenses = ["//:license"])
 
-# @bazel2gn:raw_attribute:if (!is_debug) { configs -= [ "//products/build/config:default_optimize" ] configs += [ "//products/build/config:optimize_speed", "//products/build/config/lto:lto-if-compatible" ] }
+# @bazel2gn:raw_attribute:if (!is_debug) { configs -= [ "//vision/build/config:default_optimize" ] configs += [ "//vision/build/config:optimize_speed", "//vision/build/config/lto:lto-if-compatible" ] }
 rustc_library(
     name = "storage_xts",
     srcs = ["src/lib.rs"],

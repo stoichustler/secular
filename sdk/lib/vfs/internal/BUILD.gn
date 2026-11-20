@@ -2,7 +2,7 @@
 # Use of this source code is governed by a BSD-style license that can be
 # found in the LICENSE file.
 
-import("//products/build/cpp/sdk_shared_library.gni")
+import("//vision/build/cpp/sdk_shared_library.gni")
 
 # **WARNING**: The purpose of this library is to provide a stable API to the
 # in-tree C++ VFS, and is not intended for general use. The only clients of this
@@ -58,7 +58,7 @@ sdk_shared_library("vfs_internal") {
   # visibility list.
   visibility = [
     ":*",
-    "//products/build/sdk:partner_idk_versioned_shared_libraries",
+    "//vision/build/sdk:partner_idk_versioned_shared_libraries",
     "//sdk:core_cc_prebuilt_libraries",
     "//sdk/lib/vfs/cpp:*",
 

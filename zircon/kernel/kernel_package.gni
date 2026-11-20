@@ -4,7 +4,7 @@
 # license that can be found in the LICENSE file or at
 # https://opensource.org/licenses/MIT
 
-import("//products/build/zbi/zbi_input.gni")
+import("//vision/build/zbi/zbi_input.gni")
 
 # Defines a kernel package, a directory namespace within a STORAGE_KERNEL ZBI
 # item in the BOOTFS format, for a dependent zbi() target. This namespace -

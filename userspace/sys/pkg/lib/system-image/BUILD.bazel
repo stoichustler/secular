@@ -2,7 +2,7 @@
 # Use of this source code is governed by a BSD-style license that can be
 # found in the LICENSE file.
 
-load("//products/build/bazel/rules/rust:rustc_library.bzl", "rustc_library")
+load("//vision/build/bazel/rules/rust:rustc_library.bzl", "rustc_library")
 
 package(default_applicable_licenses = ["//:license"])
 
@@ -23,7 +23,7 @@ rustc_library(
         "src/system_image.rs",
     ],
     edition = "2024",
-    lint_config = "//products/build/config/rust/lints:clippy_warn_all",
+    lint_config = "//vision/build/config/rust/lints:clippy_warn_all",
     visibility = [
         "//userspace/sys/component_manager:__pkg__",
         "//userspace/sys/pkg:__subpackages__",

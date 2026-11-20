@@ -7,7 +7,7 @@ declare_args() {
   # LINT.IfChange
   sdk_id = "27.99991231.0.1"
 
-  # LINT.ThenChange(//products/build/bazel/BUILD.gn)
+  # LINT.ThenChange(//vision/build/bazel/BUILD.gn)
 
   # Whether to cross-compile SDK tools for all supported host toolchains,
   # rather than just the current host toolchains.

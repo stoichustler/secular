@@ -2,9 +2,9 @@
 # Use of this source code is governed by a BSD-style license that can be
 # found in the LICENSE file.
 
-load("//products/build/bazel/platforms:constraints.bzl", "HOST_OS_CONSTRAINTS")
-load("//products/build/bazel/rules/idk:idk_host_tool.bzl", "idk_rustc_binary_host_tool")
-load("//products/build/bazel/rules/rust:defs.bzl", "rustc_library")
+load("//vision/build/bazel/platforms:constraints.bzl", "HOST_OS_CONSTRAINTS")
+load("//vision/build/bazel/rules/idk:idk_host_tool.bzl", "idk_rustc_binary_host_tool")
+load("//vision/build/bazel/rules/rust:defs.bzl", "rustc_library")
 
 package(default_applicable_licenses = ["//:license"])
 
@@ -57,9 +57,9 @@ idk_rustc_binary_host_tool(
     idk_name = "cmc",
     target_compatible_with = HOST_OS_CONSTRAINTS,
     visibility = [
-        "//products/build/bazel/rules/assembly:__pkg__",
-        "//products/build/bazel/rules/components:__pkg__",
-        "//products/build/bazel/rules/packages:__pkg__",
+        "//vision/build/bazel/rules/assembly:__pkg__",
+        "//vision/build/bazel/rules/components:__pkg__",
+        "//vision/build/bazel/rules/packages:__pkg__",
     ],
     deps = [
         ":cmc_lib",

@@ -2,7 +2,7 @@
 # Use of this source code is governed by a BSD-style license that can be
 # found in the LICENSE file.
 
-import("//products/build/rust/rustc_binary.gni")
+import("//vision/build/rust/rustc_binary.gni")
 
 rustc_test("runner_bin") {
   name = "runner_bin"

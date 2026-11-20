@@ -4,10 +4,10 @@
 # license that can be found in the LICENSE file or at
 # https://opensource.org/licenses/MIT
 
-import("//products/build/dist/distribution_manifest.gni")
-import("//products/build/zircon/c_utils.gni")
-import("//products/build/zircon/hermetic_code_blob.gni")
-import("//products/build/zircon/zircon_cpu.gni")
+import("//vision/build/dist/distribution_manifest.gni")
+import("//vision/build/zircon/c_utils.gni")
+import("//vision/build/zircon/hermetic_code_blob.gni")
+import("//vision/build/zircon/zircon_cpu.gni")
 
 ## This file provides the templates needed to extract code-patching directives
 ## stored in a special ELF section, and needed to specify code patching

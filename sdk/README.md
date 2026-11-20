@@ -42,5 +42,5 @@ appropriate [API rubrics](/docs/development/api/README.md).
 Within the Fuchsia build, all FIDL libraries which are included in the SDK
 are listed in the `sdk_fidl_json.json` file.
 
-See [`//products/build/fidl:sdk_fidl`](/build/fidl/BUILD.gn) and
+See [`//vision/build/fidl:sdk_fidl`](/build/fidl/BUILD.gn) and
 [fidl.gni](/build/fidl/fidl.gni) for further details.

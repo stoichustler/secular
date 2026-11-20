@@ -2,8 +2,8 @@
 # Use of this source code is governed by a BSD-style license that can be
 # found in the LICENSE file.
 
-import("//products/build/test.gni")
-import("//products/build/testing/bootfs_test.gni")
+import("//vision/build/test.gni")
+import("//vision/build/testing/bootfs_test.gni")
 
 group("tests") {
   testonly = true
@@ -17,7 +17,7 @@ group("tests") {
 test("zxtest") {
   output_name = "zxtest-test"
   if (is_fuchsia) {
-    fdio_config = [ "//products/build/config/fuchsia:fdio_config" ]
+    fdio_config = [ "//vision/build/config/fuchsia:fdio_config" ]
     if (configs + fdio_config - fdio_config != configs) {
       configs -= fdio_config
     }

@@ -3,7 +3,7 @@
 # found in the LICENSE file.
 
 load("@platforms//host:constraints.bzl", "HOST_CONSTRAINTS")
-load("//products/build/bazel/rules/host:defs.bzl", "go_binary_host_tool")
+load("//vision/build/bazel/rules/host:defs.bzl", "go_binary_host_tool")
 
 package(default_applicable_licenses = ["//:license"])
 
@@ -12,7 +12,7 @@ go_binary_host_tool(
     srcs = ["main.go"],
     target_compatible_with = HOST_CONSTRAINTS,
     visibility = [
-        "//products/build/bazel/rules/fidl:__subpackages__",
+        "//vision/build/bazel/rules/fidl:__subpackages__",
     ],
     deps = [
         "//tools/fidl/lib/fidlgen",

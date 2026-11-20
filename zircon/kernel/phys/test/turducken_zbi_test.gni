@@ -4,7 +4,7 @@
 # license that can be found in the LICENSE file or at
 # https://opensource.org/licenses/MIT
 
-import("//products/build/zbi/zbi_input.gni")
+import("//vision/build/zbi/zbi_input.gni")
 import("//zircon/kernel/phys/test/phys_zbi_test.gni")
 
 # Define a Turducken ZBI test.

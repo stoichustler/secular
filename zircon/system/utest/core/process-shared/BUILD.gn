@@ -3,7 +3,7 @@
 # found in the LICENSE file.
 
 source_set("process-shared") {
-  configs += [ "//products/build/config:all_source" ]
+  configs += [ "//vision/build/config:all_source" ]
 
   testonly = true
   sources = [ "process-shared.cc" ]

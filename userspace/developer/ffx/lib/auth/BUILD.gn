@@ -4,8 +4,8 @@
 
 assert(is_host, "auth is for use with the host toolchain only")
 
-import("//products/build/rust/rustc_library.gni")
-import("//products/build/rust/rustc_test.gni")
+import("//vision/build/rust/rustc_library.gni")
+import("//vision/build/rust/rustc_test.gni")
 
 rustc_library("auth") {
   name = "auth"

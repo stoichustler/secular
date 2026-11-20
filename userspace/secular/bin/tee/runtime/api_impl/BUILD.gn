@@ -2,9 +2,9 @@
 # Use of this source code is governed by a BSD-style license that can be
 # found in the LICENSE file.
 
-import("//products/build/components/fuchsia_unittest_package.gni")
-import("//products/build/config/sanitizers/sanitizer_default_options.gni")
-import("//products/build/rust/rustc_library.gni")
+import("//vision/build/components/fuchsia_unittest_package.gni")
+import("//vision/build/config/sanitizers/sanitizer_default_options.gni")
+import("//vision/build/rust/rustc_library.gni")
 
 # Allocations made through the TEE Internal Core API's TEE_Malloc() and
 # TEE_Realloc() routines should be initialized to all zero. We implement these
@@ -70,7 +70,7 @@ rustc_library("api_impl") {
     "//third_party/rust_crates:thiserror",
   ]
   public_configs = [ ":export_scudo_dynamic_options" ]
-  configs += [ "//products/build/config/rust/lints:deny_unused_results" ]
+  configs += [ "//vision/build/config/rust/lints:deny_unused_results" ]
   with_unit_tests = true
   test_deps = [ "//userspace/lib/fuchsia" ]
 }

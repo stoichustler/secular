@@ -2,7 +2,7 @@
 # Use of this source code is governed by a BSD-style license that can be
 # found in the LICENSE file.
 
-import("//products/build/rust/rustc_binary.gni")
+import("//vision/build/rust/rustc_binary.gni")
 
 if (is_host) {
   rustc_binary("bin") {
@@ -16,7 +16,7 @@ if (is_host) {
       "//third_party/rust_crates:serde_json5",
     ]
     sources = [ "src/main.rs" ]
-    configs += [ "//products/build/config/rust/lints:deny_unused_results" ]
+    configs += [ "//vision/build/config/rust/lints:deny_unused_results" ]
     test_deps = [
       "//third_party/rust_crates:pathdiff",
       "//third_party/rust_crates:pretty_assertions",

@@ -2,9 +2,9 @@
 # Use of this source code is governed by a BSD-style license that can be
 # found in the LICENSE file.
 
-import("//products/build/host.gni")
-import("//products/build/python/python_binary.gni")
-import("//products/build/python/python_library.gni")
+import("//vision/build/host.gni")
+import("//vision/build/python/python_binary.gni")
+import("//vision/build/python/python_library.gni")
 
 assert(is_host)
 

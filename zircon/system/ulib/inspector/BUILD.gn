@@ -2,8 +2,8 @@
 # Use of this source code is governed by a BSD-style license that can be
 # found in the LICENSE file.
 
-import("//products/build/assembly/bootfs_files_for_assembly.gni")
-import("//products/build/zircon/zx_library.gni")
+import("//vision/build/assembly/bootfs_files_for_assembly.gni")
+import("//vision/build/zircon/zx_library.gni")
 
 group("tests") {
   testonly = true
@@ -27,14 +27,14 @@ zx_library("inspector") {
     "//zircon/system/ulib/fbl",
     "//zircon/system/ulib/pretty",
   ]
-  configs += [ "//products/build/config/fuchsia:static_cpp_standard_library" ]
+  configs += [ "//vision/build/config/fuchsia:static_cpp_standard_library" ]
 
   # Compile this with frame pointers so that if we crash
   # the simplistic unwinder will work.
-  if (configs + [ "//products/build/config:default_frame_pointers" ] -
-      [ "//products/build/config:default_frame_pointers" ] != configs) {
-    configs -= [ "//products/build/config:default_frame_pointers" ]
-    configs += [ "//products/build/config:frame_pointers" ]
+  if (configs + [ "//vision/build/config:default_frame_pointers" ] -
+      [ "//vision/build/config:default_frame_pointers" ] != configs) {
+    configs -= [ "//vision/build/config:default_frame_pointers" ]
+    configs += [ "//vision/build/config:frame_pointers" ]
   }
 }
 

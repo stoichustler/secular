@@ -4,7 +4,7 @@
 # license that can be found in the LICENSE file or at
 # https://opensource.org/licenses/MIT
 
-import("//products/build/toolchain/toolchain_environment.gni")
+import("//vision/build/toolchain/toolchain_environment.gni")
 
 is_efi = toolchain_environment == "kernel.efi"
 

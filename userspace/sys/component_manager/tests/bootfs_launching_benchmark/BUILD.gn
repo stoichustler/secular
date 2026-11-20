@@ -2,16 +2,16 @@
 # Use of this source code is governed by a BSD-style license that can be
 # found in the LICENSE file.
 
-import("//products/build/assembly/assembled_system.gni")
-import("//products/build/assembly/board_configuration.gni")
-import("//products/build/assembly/bootfs_files_for_assembly.gni")
-import("//products/build/assembly/product_assembly_configuration.gni")
-import("//products/build/component/config.gni")
-import("//products/build/components/fuchsia_package.gni")
-import("//products/build/rust/rustc_binary.gni")
-import("//products/build/testing/host_test_data.gni")
-import("//products/build/testing/perf/test.gni")
-import("//products/build/zircon/tools.gni")
+import("//vision/build/assembly/assembled_system.gni")
+import("//vision/build/assembly/board_configuration.gni")
+import("//vision/build/assembly/bootfs_files_for_assembly.gni")
+import("//vision/build/assembly/product_assembly_configuration.gni")
+import("//vision/build/component/config.gni")
+import("//vision/build/components/fuchsia_package.gni")
+import("//vision/build/rust/rustc_binary.gni")
+import("//vision/build/testing/host_test_data.gni")
+import("//vision/build/testing/perf/test.gni")
+import("//vision/build/zircon/tools.gni")
 
 rustc_binary("bootfs_launching_benchmark") {
   name = "bootfs-launching-benchmark"
@@ -86,7 +86,7 @@ if (current_toolchain == default_toolchain) {
   board_configuration("board_config") {
     name = "test"
     version = "fake_version"
-    partitions_config = "//products/boards/partitions:default"
+    partitions_config = "//vision/boards/partitions:default"
   }
 
   img_name = "bootfs_launching_benchmark_test_zbi"

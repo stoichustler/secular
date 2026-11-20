@@ -6,7 +6,7 @@ import("//userspace/lib/llvm/llvm_library.gni")
 
 # These are the host libraries that support debugging tools like zxdb. These are
 # kept in lock step for all host platforms. When updating these, the pinned git
-# revision in //products/manifests/toolchain should be updated to a new git SHA, and then
+# revision in //vision/manifests/toolchain should be updated to a new git SHA, and then
 # this file updated accordingly with new dependency graph changes, and finally
 # with updating the source code that uses these libraries to account for any API
 # changes. This can all be done in a single CL, there is usually no need for

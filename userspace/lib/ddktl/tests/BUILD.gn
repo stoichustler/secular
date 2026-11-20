@@ -2,10 +2,10 @@
 # Use of this source code is governed by a BSD-style license that can be
 # found in the LICENSE file.
 
-import("//products/build/bind/bind.gni")
-import("//products/build/components.gni")
-import("//products/build/drivers.gni")
-import("//products/build/test.gni")
+import("//vision/build/bind/bind.gni")
+import("//vision/build/components.gni")
+import("//vision/build/drivers.gni")
+import("//vision/build/test.gni")
 
 bind_library("testlib_bind") {
   source = "tests.bind"
@@ -26,7 +26,7 @@ group("drivers") {
 }
 
 test("ddktl-test") {
-  configs += [ "//products/build/config/fuchsia:enable_zircon_asserts" ]
+  configs += [ "//vision/build/config/fuchsia:enable_zircon_asserts" ]
   sources = [
     "composite-node-spec-tests.cc",
     "device-tests.cc",

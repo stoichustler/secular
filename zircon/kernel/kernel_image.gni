@@ -4,7 +4,7 @@
 # license that can be found in the LICENSE file or at
 # https://opensource.org/licenses/MIT
 
-import("//products/build/zbi/zbi.gni")
+import("//vision/build/zbi/zbi.gni")
 
 # Defines a kernel image, i.e., a (bootable) ZBI containing a KERNEL item.
 #

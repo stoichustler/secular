@@ -2,10 +2,10 @@
 # Use of this source code is governed by a BSD-style license that can be
 # found in the LICENSE file.
 
-import("//products/build/dist/resource.gni")
-import("//products/build/fuzz.gni")
-import("//products/build/test.gni")
-import("//products/build/testing/bootfs_test.gni")
+import("//vision/build/dist/resource.gni")
+import("//vision/build/fuzz.gni")
+import("//vision/build/test.gni")
+import("//vision/build/testing/bootfs_test.gni")
 
 group("tests") {
   testonly = true
@@ -18,7 +18,7 @@ group("tests") {
 test("trace-reader-test") {
   output_name = "trace-reader-test-test"
   if (is_fuchsia) {
-    fdio_config = [ "//products/build/config/fuchsia:fdio_config" ]
+    fdio_config = [ "//vision/build/config/fuchsia:fdio_config" ]
     if (configs + fdio_config - fdio_config != configs) {
       configs -= fdio_config
     }

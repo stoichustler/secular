@@ -2,5 +2,5 @@
 # Use of this source code is governed by a BSD-style license that can be
 # found in the LICENSE file.
 
-import("//products/build/icu/third_party_icu_headers.gni")
+import("//vision/build/icu/third_party_icu_headers.gni")
 # TODO(fmil): Remove this indirection.

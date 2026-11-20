@@ -15,8 +15,8 @@ graph including buildbot targets. For example:
 
 ```sh
 fx set core.x64 --debug \
-    --with-host //products/bundles/buildbot/host \
-    --with //products/bundles/buildbot/core \
+    --with-host //vision/bundles/buildbot/host \
+    --with //vision/bundles/buildbot/core \
     --with //vendor/google/bundles/buildbot/core
 ```
 
@@ -25,4 +25,4 @@ specific tests. Check infra logs and builder config if that happens.
 
 Depending on the breadth of your change's impact, it may be worthwhile to
 expand the list of buildbot bundles. Take a look at the subdirectories of
-`//products/bundles/buildbot` and `//vendor/google/bundles/buildbot` for options.
+`//vision/bundles/buildbot` and `//vendor/google/bundles/buildbot` for options.

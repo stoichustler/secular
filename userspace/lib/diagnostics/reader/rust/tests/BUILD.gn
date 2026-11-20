@@ -2,8 +2,8 @@
 # Use of this source code is governed by a BSD-style license that can be
 # found in the LICENSE file.
 
-import("//products/build/components.gni")
-import("//products/build/rust/rustc_test.gni")
+import("//vision/build/components.gni")
+import("//vision/build/rust/rustc_test.gni")
 
 rustc_test("integration_tests_bin") {
   name = "archive_reader_integration_test"
@@ -19,7 +19,7 @@ rustc_test("integration_tests_bin") {
 
   sources = [ "src/lib.rs" ]
 
-  configs += [ "//products/build/config/rust/lints:clippy_warn_all" ]
+  configs += [ "//vision/build/config/rust/lints:clippy_warn_all" ]
 }
 
 fuchsia_component("archive_reader_integration_test") {

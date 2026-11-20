@@ -2,9 +2,9 @@
 # Use of this source code is governed by a BSD-style license that can be
 # found in the LICENSE file.
 
-import("//products/build/components.gni")
-import("//products/build/test.gni")
-import("//products/build/testing/bootfs_test.gni")
+import("//vision/build/components.gni")
+import("//vision/build/test.gni")
+import("//vision/build/testing/bootfs_test.gni")
 
 group("test") {
   testonly = true
@@ -13,7 +13,7 @@ group("test") {
 
 executable("elf-search-test-helper") {
   if (is_fuchsia) {
-    fdio_config = [ "//products/build/config/fuchsia:fdio_config" ]
+    fdio_config = [ "//vision/build/config/fuchsia:fdio_config" ]
     if (configs + fdio_config - fdio_config != configs) {
       configs -= fdio_config
     }
@@ -24,7 +24,7 @@ executable("elf-search-test-helper") {
 
 test("elf-search") {
   if (is_fuchsia) {
-    fdio_config = [ "//products/build/config/fuchsia:fdio_config" ]
+    fdio_config = [ "//vision/build/config/fuchsia:fdio_config" ]
     if (configs + fdio_config - fdio_config != configs) {
       configs -= fdio_config
     }

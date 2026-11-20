@@ -33,7 +33,7 @@ group("allow_long_names") {
     "//userspace/devices/bin/driver_manager/*",
     "//userspace/devices/bin/driver_manager_rust/*",
     "//userspace/sys/bootstrap/*",
-    "//products/secular:*",
+    "//vision/secular:*",
     "//tools/cmc:*",
   ]
 }

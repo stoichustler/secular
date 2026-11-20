@@ -11,5 +11,5 @@ exports_files(
         "meta/power-framework.shard.cml",
         "meta/sag.shard.cml",
     ],
-    visibility = ["//products/bundles/assembly:__subpackages__"],
+    visibility = ["//vision/bundles/assembly:__subpackages__"],
 )

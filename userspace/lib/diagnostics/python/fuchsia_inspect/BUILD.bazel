@@ -3,8 +3,8 @@
 # found in the LICENSE file.
 
 load("@rules_python//python:defs.bzl", "py_library")
-load("//products/build/bazel/platforms:constraints.bzl", "HOST_OS_CONSTRAINTS")
-load("//products/build/bazel/rules/host_tests:host_py_test.bzl", "host_py_test")
+load("//vision/build/bazel/platforms:constraints.bzl", "HOST_OS_CONSTRAINTS")
+load("//vision/build/bazel/rules/host_tests:host_py_test.bzl", "host_py_test")
 
 package(default_applicable_licenses = ["//:license"])
 

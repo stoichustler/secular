@@ -2,8 +2,8 @@
 # Use of this source code is governed by a BSD-style license that can be
 # found in the LICENSE file.
 
-import("//products/build/components.gni")
-import("//products/build/test.gni")
+import("//vision/build/components.gni")
+import("//vision/build/test.gni")
 
 group("tests") {
   testonly = true
@@ -70,8 +70,8 @@ test("standalone") {
   disable_syslog_backend = true
 
   deps = [ "//sdk/lib/zxio:standalone" ]
-  configs -= [ "//products/build/config/fuchsia:fdio_config" ]
-  configs += [ "//products/build/config/fuchsia:no_cpp_standard_library" ]
+  configs -= [ "//vision/build/config/fuchsia:fdio_config" ]
+  configs += [ "//vision/build/config/fuchsia:no_cpp_standard_library" ]
 }
 
 rustc_test("zxio_rust_test") {

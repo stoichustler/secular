@@ -4,14 +4,14 @@
 # license that can be found in the LICENSE file or at
 # https://opensource.org/licenses/MIT
 
-import("//products/build/config/zircon/standard.gni")
-import("//products/build/dist/generated_resource.gni")
-import("//products/build/git/git_revisions.gni")
-import("//products/build/zbi/kernel_cmdline.gni")
-import("//products/build/zircon/zircon_cpu.gni")
+import("//vision/build/config/zircon/standard.gni")
+import("//vision/build/dist/generated_resource.gni")
+import("//vision/build/git/git_revisions.gni")
+import("//vision/build/zbi/kernel_cmdline.gni")
+import("//vision/build/zircon/zircon_cpu.gni")
 import("params.gni")
 if (!secular_boot_build) {
-  import("//products/build/testing/boot_tests/kernel_zbi_test.gni")
+  import("//vision/build/testing/boot_tests/kernel_zbi_test.gni")
   import("kernel_shell_script.gni")
 }
 

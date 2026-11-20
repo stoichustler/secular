@@ -5,7 +5,7 @@
 # Generates FFX subcommand with a plugin commands
 #
 
-import("//products/build/python/python_action.gni")
+import("//vision/build/python/python_action.gni")
 
 template("command") {
   output_name = target_name

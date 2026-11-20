@@ -2,8 +2,8 @@
 # Use of this source code is governed by a BSD-style license that can be
 # found in the LICENSE file.
 
-import("//products/build/test.gni")
-import("//products/build/testing/bootfs_test.gni")
+import("//vision/build/test.gni")
+import("//vision/build/testing/bootfs_test.gni")
 
 test("time") {
   output_dir = "$root_out_dir/zircon-migrated"

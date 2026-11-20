@@ -2,9 +2,9 @@
 # Use of this source code is governed by a BSD-style license that can be
 # found in the LICENSE file.
 
-import("//products/build/components.gni")
-import("//products/build/host.gni")
-import("//products/build/rust/rustc_library.gni")
+import("//vision/build/components.gni")
+import("//vision/build/host.gni")
+import("//vision/build/rust/rustc_library.gni")
 
 rustc_library("testing") {
   edition = "2024"

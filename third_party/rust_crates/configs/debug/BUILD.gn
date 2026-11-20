@@ -9,6 +9,6 @@ visibility = [ "//third_party/rust_crates/*" ]
 
 config("optimize_speed") {
   if (is_debug) {
-    configs = [ "//products/build/config:optimize_speed" ]
+    configs = [ "//vision/build/config:optimize_speed" ]
   }
 }

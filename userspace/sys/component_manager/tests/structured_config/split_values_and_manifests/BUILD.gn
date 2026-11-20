@@ -5,7 +5,7 @@
 # This module ensures that these build templates work for components defined in
 # other files.
 
-import("//products/build/components.gni")
+import("//vision/build/components.gni")
 
 group("tests") {
   testonly = true

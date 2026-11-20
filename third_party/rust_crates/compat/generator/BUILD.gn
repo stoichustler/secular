@@ -7,7 +7,7 @@
 # More advanced usages of might require more sophisticated
 # build rules
 
-import("//products/build/rust/rustc_link_attribute.gni")
+import("//vision/build/rust/rustc_link_attribute.gni")
 
 generator_crate = "../../vendor/generator-0.7.5"
 

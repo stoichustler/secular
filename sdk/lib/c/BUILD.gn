@@ -2,17 +2,17 @@
 # Use of this source code is governed by a BSD-style license that can be
 # found in the LICENSE file.
 
-import("//products/build/assembly/bootfs_files_for_assembly.gni")
-import("//products/build/components.gni")
-import("//products/build/config/compiler_config.gni")
-import("//products/build/config/linker.gni")
-import("//products/build/config/sysroot.gni")
-import("//products/build/config/zircon/standard.gni")
-import("//products/build/cpp/verify_public_symbols.gni")
-import("//products/build/test.gni")
-import("//products/build/toolchain/ifs_shared_library.gni")
-import("//products/build/zircon/c_utils.gni")
-import("//products/build/zircon/migrated_targets.gni")
+import("//vision/build/assembly/bootfs_files_for_assembly.gni")
+import("//vision/build/components.gni")
+import("//vision/build/config/compiler_config.gni")
+import("//vision/build/config/linker.gni")
+import("//vision/build/config/sysroot.gni")
+import("//vision/build/config/zircon/standard.gni")
+import("//vision/build/cpp/verify_public_symbols.gni")
+import("//vision/build/test.gni")
+import("//vision/build/toolchain/ifs_shared_library.gni")
+import("//vision/build/zircon/c_utils.gni")
+import("//vision/build/zircon/migrated_targets.gni")
 import("libc.gni")
 import("libc_toolchain.gni")
 
@@ -135,7 +135,7 @@ config("llvm-libc.config") {
     ]
   }
 
-  configs = [ "//products/build/config:Wmissing-declarations" ]
+  configs = [ "//vision/build/config:Wmissing-declarations" ]
 }
 
 # This is needed when compiling libc-related code for use in unit tests.
@@ -187,7 +187,7 @@ config("llvm-libc-export.config") {
     # instrumentation we avoid it adding noise to the fuzzing coverage.
     # TODO(https://fxbug.dev/25073): Once a cleaner solution is found, remove
     # this.
-    configs += [ "//products/build/config/zircon:no_fuzzer" ]
+    configs += [ "//vision/build/config/zircon:no_fuzzer" ]
   }
 }
 
@@ -249,7 +249,7 @@ config("gtest.config") {
 }
 
 if (current_toolchain == default_toolchain) {
-  import("//products/build/toolchain/zircon/zircon_toolchain_suite.gni")
+  import("//vision/build/toolchain/zircon/zircon_toolchain_suite.gni")
 
   # This introduces a new toolchain suite to mimic the Zircon "user"
   # toolchain. However, it will only be used to build the C library, so
@@ -284,11 +284,11 @@ if (current_toolchain == default_toolchain) {
 } else if (toolchain_variant.base == "//sdk/lib/c:user.libc_$target_cpu") {
   config("libc_config") {
     configs = [
-      "//products/build/config/zircon:user",
-      "//products/build/config/zircon:user-link",
-      "//products/build/config:shared_library_config",
-      "//products/build/config:symbol_no_undefined",
-      "//products/build/config/zircon:static-libc++",
+      "//vision/build/config/zircon:user",
+      "//vision/build/config/zircon:user-link",
+      "//vision/build/config:shared_library_config",
+      "//vision/build/config:symbol_no_undefined",
+      "//vision/build/config/zircon:static-libc++",
     ]
 
     # TODO(https://fxbug.dev/42055641): Ensure all of libc uses libcalls into the hwasan
@@ -369,7 +369,7 @@ if (current_toolchain == libc_toolchain) {
 
     visibility = [
       ":*",
-      "//products/secular:*",
+      "//vision/secular:*",
     ]
 
     # As a special case, the C library must not be compiled with the default
@@ -462,7 +462,7 @@ if (current_toolchain == libc_toolchain) {
     ldflags = [ "-Wl,-soname=libc.so" ]
     install_name = "libc.so"
 
-    public_configs = [ "//products/build/config/zircon:nolibc" ]
+    public_configs = [ "//vision/build/config/zircon:nolibc" ]
 
     deps = [
       ":components",
@@ -481,7 +481,7 @@ if (current_toolchain == libc_toolchain) {
     }
 
     # TODO(https://fxbug.dev/483475945): Work around RBE linking bug.
-    configs += [ "//products/build/config/rbe:remote_link_scandeps_workaround" ]
+    configs += [ "//vision/build/config/rbe:remote_link_scandeps_workaround" ]
   }
 
   # TODO(https://fxbug.dev/342469121): Test targets using :new-libc can do so
@@ -606,7 +606,7 @@ libc_test("weak-tests") {
 group("libc") {
   visibility = [
     ":*",
-    "//products/secular:*",
+    "//vision/secular:*",
     "//zircon/public/sysroot/*",
     "//zircon/public/sysroot_sdk/*",
   ]
@@ -618,7 +618,7 @@ group("libc") {
 }
 
 group("libc_fshost") {
-  visibility = [ "//products/bundles/assembly/*" ]
+  visibility = [ "//vision/bundles/assembly/*" ]
 
   # This has to be public_deps so that the shared_library() target's output
   # files can be input files of the setup and packaging targets that depend on
@@ -646,8 +646,8 @@ if (toolchain_environment != "user.libc") {
     complete_static_lib = true
     output_name = "c"
     public_configs = [
-      "//products/build/config/zircon:user-executable",
-      "//products/build/config/fuchsia:static_cpp_standard_library",
+      "//vision/build/config/zircon:user-executable",
+      "//vision/build/config/fuchsia:static_cpp_standard_library",
     ]
     public_deps = [ ":rust-static-libc" ]
     deps = [
@@ -663,7 +663,7 @@ if (toolchain_environment != "user.libc") {
 
     # TODO(https://fxbug.dev/435557561): Work around RBE linking bugs handling
     # the maze of linker scripts that come with static libc.
-    public_configs += [ "//products/build/config/rbe:remote_link_scandeps_workaround" ]
+    public_configs += [ "//vision/build/config/rbe:remote_link_scandeps_workaround" ]
   }
 }
 
@@ -676,7 +676,7 @@ if (is_fuchsia && !is_kernel) {
     visibility = [ ":static" ]
     public_configs = [
       ":rust-static-libc.config",
-      "//products/build/config/fuchsia:static_rust_standard_library",
+      "//vision/build/config/fuchsia:static_rust_standard_library",
     ]
     public_deps = [ ":rust-static-linker" ]
   }

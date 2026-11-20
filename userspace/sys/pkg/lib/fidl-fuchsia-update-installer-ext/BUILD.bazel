@@ -2,8 +2,8 @@
 # Use of this source code is governed by a BSD-style license that can be
 # found in the LICENSE file.
 
-load("//products/build/bazel/rules/rust:defs.bzl", "rustc_library", "rustc_test")
-load("//products/build/bazel/rules/testing:fx_unittest_package.bzl", "fx_unittest_package")
+load("//vision/build/bazel/rules/rust:defs.bzl", "rustc_library", "rustc_test")
+load("//vision/build/bazel/rules/testing:fx_unittest_package.bzl", "fx_unittest_package")
 
 package(default_applicable_licenses = ["//:license"])
 
@@ -15,7 +15,7 @@ rustc_library(
         "src/state.rs",
     ],
     edition = "2024",
-    lint_config = "//products/build/config/rust/lints:clippy_warn_all",
+    lint_config = "//vision/build/config/rust/lints:clippy_warn_all",
     proc_macro_deps = ["//third_party/rust_crates/vendor:proptest-derive"],
     visibility = [
         "//userspace/developer/ffx/plugins/target/update:__pkg__",
@@ -49,7 +49,7 @@ rustc_test(
     name = "fidl_fuchsia_update_installer_ext_lib_test",
     crate = ":fidl-fuchsia-update-installer-ext",
     edition = "2024",
-    lint_config = "//products/build/config/rust/lints:clippy_warn_all",
+    lint_config = "//vision/build/config/rust/lints:clippy_warn_all",
     visibility = ["//visibility:private"],
     deps = [
         "//userspace/lib/diagnostics/testing/diagnostics-assertions/rust:diagnostics-assertions",

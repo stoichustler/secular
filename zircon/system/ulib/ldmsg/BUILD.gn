@@ -2,7 +2,7 @@
 # Use of this source code is governed by a BSD-style license that can be
 # found in the LICENSE file.
 
-import("//products/build/zircon/migrated_targets.gni")
+import("//vision/build/zircon/migrated_targets.gni")
 
 zx_library("ldmsg") {
   sdk = "static"
@@ -25,15 +25,15 @@ zx_library("ldmsg") {
     # This library is linked into libc, which is used by libfuzzer.
     # Don't instrument it to avoid getting noise in code coverage.
     # TODO(https://fxbug.dev/42099340): Once a cleaner solution is found, remove this.
-    "//products/build/config/zircon:no_fuzzer",
+    "//vision/build/config/zircon:no_fuzzer",
   ]
 
   # This code is called by the dynamic linker in early startup before
   # fancy stacks have been set up.  So it can't rely on safe-stack or
   # shadow-call-stack ABIs.
-  configs += [ "//products/build/config:no-compiler-abi" ]
-  configs -= [ "//products/build/config:no-compiler-abi" ]
-  configs += [ "//products/build/config:no-compiler-abi" ]
+  configs += [ "//vision/build/config:no-compiler-abi" ]
+  configs -= [ "//vision/build/config:no-compiler-abi" ]
+  configs += [ "//vision/build/config:no-compiler-abi" ]
 }
 
 group("tests") {

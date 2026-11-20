@@ -4,7 +4,7 @@
 
 executable("mkfs-msdosfs") {
   if (is_fuchsia) {
-    fdio_config = [ "//products/build/config/fuchsia:fdio_config" ]
+    fdio_config = [ "//vision/build/config/fuchsia:fdio_config" ]
     if (configs + fdio_config - fdio_config != configs) {
       configs -= fdio_config
     }
@@ -25,5 +25,5 @@ executable("mkfs-msdosfs") {
   }
 
   # TODO(https://fxbug.dev/42136089): delete the below and fix compiler warnings
-  configs += [ "//products/build/config:Wno-conversion" ]
+  configs += [ "//vision/build/config:Wno-conversion" ]
 }

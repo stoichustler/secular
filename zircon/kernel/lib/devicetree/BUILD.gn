@@ -4,8 +4,8 @@
 # license that can be found in the LICENSE file or at
 # https://opensource.org/licenses/MIT
 
-import("//products/build/cpp/library_headers.gni")
-import("//products/build/zircon/zx_library.gni")
+import("//vision/build/cpp/library_headers.gni")
+import("//vision/build/zircon/zx_library.gni")
 
 # TODO: This is redundantly used below until the SDK integration can be fixed.
 devicetree_headers = [

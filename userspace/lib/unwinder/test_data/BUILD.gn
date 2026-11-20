@@ -3,7 +3,7 @@
 # found in the LICENSE file.
 
 # This binary is only intended to be built with the aarch32 toolchain.
-assert(current_toolchain == "//products/build/toolchain:linux_arm-shared")
+assert(current_toolchain == "//vision/build/toolchain:linux_arm-shared")
 
 # Use this target to regenerate libunwind_info_test_data.so.
 shared_library("unwind_info_test_data") {

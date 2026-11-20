@@ -9,7 +9,7 @@ and the basic component/driver framework. It boots on
 
 - Bringup programs live under `userspace/secular/`.
 
-- Boards, GN templates, bundles, integration, and third-party manifests live under `products/`.
+- Boards, GN templates, bundles, integration, and third-party manifests live under `vision/`.
 
 The compile toolchain lives in a separate SDK. Do not copy it into this
 tree.
@@ -35,7 +35,7 @@ make kick KICK_ARGS='--dry-run'
 make kick KICK_ARGS='-s 2' QEMU_ARGS='-d guest_errors'
 ```
 
-Refer to [reference](products/reference).
+Refer to [reference](vision/reference).
 
 Build outputs are written under `out/secular-boot-arm64/`, including
 `secular.zbi`, the QEMU boot-shim, and `artifacts.env`.

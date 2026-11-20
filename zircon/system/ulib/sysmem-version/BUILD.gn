@@ -2,7 +2,7 @@
 # Use of this source code is governed by a BSD-style license that can be
 # found in the LICENSE file.
 
-import("//products/build/zircon/zx_library.gni")
+import("//vision/build/zircon/zx_library.gni")
 
 zx_library("sysmem-version") {
   sdk = "source"
@@ -22,7 +22,7 @@ zx_library("sysmem-version") {
 
   # TODO(https://fxbug.dev/42176699): This target uses mutable tables which are deprecated,
   # rather than builders.
-  configs += [ "//products/build/cpp:fidl-wire-deprecated-mutable-tables" ]
+  configs += [ "//vision/build/cpp:fidl-wire-deprecated-mutable-tables" ]
 }
 
 group("tests") {

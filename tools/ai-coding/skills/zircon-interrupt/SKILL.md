@@ -2,13 +2,13 @@
 name: zircon-interrupt
 description: >
   Use when changing GICv3, IRQ handlers, page faults, exception vectors, guest vGIC on the Secular console image. Read the map
-  in products/reference/zircon/interrupt.md before editing.
+  in vision/reference/zircon/interrupt.md before editing.
 ---
 
 # zircon-interrupt
 
 Before changing this area, read
-[`products/reference/zircon/interrupt.md`](../../../../products/reference/zircon/interrupt.md).
+[`vision/reference/zircon/interrupt.md`](../../../../vision/reference/zircon/interrupt.md).
 
 That file is written as a Secular skill: **When to use**, numbered
 sections, box-drawing diagrams, **Anti-patterns**, and a first-pass
@@ -26,4 +26,4 @@ checklist.
 
 ## Related
 
-* Other maps: [`products/reference/zircon/README.md`](../../../../products/reference/zircon/README.md)
+* Other maps: [`vision/reference/zircon/README.md`](../../../../vision/reference/zircon/README.md)

@@ -2,11 +2,11 @@
 # Use of this source code is governed by a BSD-style license that can be
 # found in the LICENSE file.
 
-import("//products/build/host.gni")
-import("//products/build/rust/rustc_binary.gni")
-import("//products/build/rust/rustc_library.gni")
-import("//products/build/rust/rustc_test.gni")
-import("//products/build/test.gni")
+import("//vision/build/host.gni")
+import("//vision/build/rust/rustc_binary.gni")
+import("//vision/build/rust/rustc_library.gni")
+import("//vision/build/rust/rustc_test.gni")
+import("//vision/build/test.gni")
 
 group("triage") {
   testonly = true
@@ -109,7 +109,7 @@ rustc_library("triage_app_lib") {
     "src/lib.rs",
   ]
 
-  configs += [ "//products/build/config/rust/lints:clippy_warn_all" ]
+  configs += [ "//vision/build/config/rust/lints:clippy_warn_all" ]
 }
 
 rustc_test("triage_lib_test") {
@@ -137,7 +137,7 @@ rustc_test("triage_lib_test") {
     "src/test/integration.rs",
   ]
 
-  configs += [ "//products/build/config/rust/lints:clippy_warn_all" ]
+  configs += [ "//vision/build/config/rust/lints:clippy_warn_all" ]
 }
 
 rustc_binary("triage_bin") {
@@ -159,7 +159,7 @@ rustc_binary("triage_bin") {
     ]
   }
 
-  configs += [ "//products/build/config/rust/lints:clippy_warn_all" ]
+  configs += [ "//vision/build/config/rust/lints:clippy_warn_all" ]
 }
 
 install_host_tools("install") {

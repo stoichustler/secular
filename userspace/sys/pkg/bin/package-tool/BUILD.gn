@@ -2,9 +2,9 @@
 # Use of this source code is governed by a BSD-style license that can be
 # found in the LICENSE file.
 
-import("//products/build/bazel/bazel_inputs.gni")
-import("//products/build/host.gni")
-import("//products/build/rust/rustc_binary.gni")
+import("//vision/build/bazel/bazel_inputs.gni")
+import("//vision/build/host.gni")
+import("//vision/build/rust/rustc_binary.gni")
 
 if (is_host) {
   rustc_binary("package-tool") {
@@ -19,7 +19,7 @@ if (is_host) {
     ]
 
     sources = [ "src/main.rs" ]
-    configs += [ "//products/build/config/rust/lints:clippy_warn_all" ]
+    configs += [ "//vision/build/config/rust/lints:clippy_warn_all" ]
 
     # Avoid instrumenting this target as it has a large negative impact on
     # performance.

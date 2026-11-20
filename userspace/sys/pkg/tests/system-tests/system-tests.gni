@@ -2,7 +2,7 @@
 # Use of this source code is governed by a BSD-style license that can be
 # found in the LICENSE file.
 
-import("//products/build/go/go_test.gni")
+import("//vision/build/go/go_test.gni")
 
 if (is_host) {
   # Add this to go_test()'s environments to disable a test in infra
@@ -86,7 +86,7 @@ _environment_service_account =
 #
 #   environments
 #   - Required: What environments this test should target.
-#   - Type: see //products/build/testing/test_spec.gni for more details. Note that
+#   - Type: see //vision/build/testing/test_spec.gni for more details. Note that
 #     any label and service_account in each environment is ignored.
 #
 #   timeout
@@ -443,7 +443,7 @@ template("system_test_upgrade_suite") {
 #
 #   environments
 #   - Required: What environments this test should target.
-#   - Type: see //products/build/testing/test_spec.gni for more details. Note that
+#   - Type: see //vision/build/testing/test_spec.gni for more details. Note that
 #     any label and service_account in each environment is ignored.
 #
 #   timeout
@@ -610,7 +610,7 @@ template("system_test_reboot_suite") {
 #
 #   environments
 #   - Required: What environments this test should target.
-#   - Type: see //products/build/testing/test_spec.gni for more details. Note that
+#   - Type: see //vision/build/testing/test_spec.gni for more details. Note that
 #     any label and service_account in each environment is ignored.
 #
 #   timeout

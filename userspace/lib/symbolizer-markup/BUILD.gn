@@ -2,8 +2,8 @@
 # Use of this source code is governed by a BSD-style license that can be
 # found in the LICENSE file.
 
-import("//products/build/cpp/library_headers.gni")
-import("//products/build/test.gni")
+import("//vision/build/cpp/library_headers.gni")
+import("//vision/build/test.gni")
 
 library_headers("headers") {
   headers = [

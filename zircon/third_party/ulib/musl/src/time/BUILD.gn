@@ -46,11 +46,11 @@ source_set("time") {
     "//zircon/third_party/ulib/musl:musl_internal",
   ]
 
-  configs -= [ "//products/build/config:symbol_visibility_hidden" ]
+  configs -= [ "//vision/build/config:symbol_visibility_hidden" ]
 
   # TODO(https://fxbug.dev/42136088): delete the below and fix compiler warnings
-  configs += [ "//products/build/config:Wno-unused-function" ]
+  configs += [ "//vision/build/config:Wno-unused-function" ]
 
   # TODO(https://fxbug.dev/42136089): delete the below and fix compiler warnings
-  configs += [ "//products/build/config:Wno-conversion" ]
+  configs += [ "//vision/build/config:Wno-conversion" ]
 }

@@ -2,10 +2,10 @@
 # Use of this source code is governed by a BSD-style license that can be
 # found in the LICENSE file.
 
-import("//products/build/components/fuchsia_test.gni")
-import("//products/build/components/fuchsia_test_component.gni")
-import("//products/build/components/fuchsia_test_package.gni")
-import("//products/build/rust/rustc_test.gni")
+import("//vision/build/components/fuchsia_test.gni")
+import("//vision/build/components/fuchsia_test_component.gni")
+import("//vision/build/components/fuchsia_test_package.gni")
+import("//vision/build/rust/rustc_test.gni")
 import("//userspace/secular/bin/tee/manager/ta_manager_config.gni")
 
 # This sets up a hermetic test package containing a test TA manager along with a
@@ -40,7 +40,7 @@ template("ta_manager_config_test") {
     if (defined(invoker.test_sources)) {
       sources += invoker.test_sources
     }
-    configs += [ "//products/build/config/rust/lints:deny_unused_results" ]
+    configs += [ "//vision/build/config/rust/lints:deny_unused_results" ]
     deps = [
       "//userspace/lib/fuchsia",
       "//userspace/lib/fuchsia-component",

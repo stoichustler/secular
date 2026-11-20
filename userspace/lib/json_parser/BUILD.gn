@@ -6,7 +6,7 @@
 # This is a transitional target and will be removed soon.
 # Bug: 36759
 
-import("//products/build/testing/cc_test_executable.gni")
+import("//vision/build/testing/cc_test_executable.gni")
 
 group("json") {
   public_deps = [ ":json_parser" ]
@@ -50,8 +50,8 @@ cc_test_executable("json_parser_unittests_bin") {
 }
 
 if (is_fuchsia) {
-  import("//products/build/components.gni")
-  import("//products/build/testing/environments.gni")
+  import("//vision/build/components.gni")
+  import("//vision/build/testing/environments.gni")
 
   fuchsia_unittest_package("json_parser_unittests") {
     manifest = "meta/json_parser_unittests.cml"

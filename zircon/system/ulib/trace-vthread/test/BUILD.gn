@@ -2,8 +2,8 @@
 # Use of this source code is governed by a BSD-style license that can be
 # found in the LICENSE file.
 
-import("//products/build/components.gni")
-import("//products/build/test.gni")
+import("//vision/build/components.gni")
+import("//vision/build/test.gni")
 
 group("test") {
   testonly = true
@@ -41,7 +41,7 @@ source_set("test-common") {
 test("trace-vthread-test") {
   output_name = "trace-vthread-test-test"
   if (is_fuchsia) {
-    fdio_config = [ "//products/build/config/fuchsia:fdio_config" ]
+    fdio_config = [ "//vision/build/config/fuchsia:fdio_config" ]
     if (configs + fdio_config - fdio_config != configs) {
       configs -= fdio_config
     }
@@ -56,7 +56,7 @@ test("trace-vthread-test") {
 test("trace-vthread-with-static-engine-test") {
   output_name = "trace-vthread-with-static-engine-test-test"
   if (is_fuchsia) {
-    fdio_config = [ "//products/build/config/fuchsia:fdio_config" ]
+    fdio_config = [ "//vision/build/config/fuchsia:fdio_config" ]
     if (configs + fdio_config - fdio_config != configs) {
       configs -= fdio_config
     }

@@ -5,9 +5,9 @@
 """Defines the zircon library for the current configuration."""
 
 load("@rules_cc//cc:defs.bzl", "cc_library")
-load("//products/build/bazel/platforms:constraints.bzl", "HOST_OS_CONSTRAINTS")
-load("//products/build/bazel/rules/cc:shared_library.bzl", "cc_link_stub_from_ifs_file")
-load("//products/build/bazel/rules/idk:idk_atom.bzl", "idk_noop_atom")
+load("//vision/build/bazel/platforms:constraints.bzl", "HOST_OS_CONSTRAINTS")
+load("//vision/build/bazel/rules/cc:shared_library.bzl", "cc_link_stub_from_ifs_file")
+load("//vision/build/bazel/rules/idk:idk_atom.bzl", "idk_noop_atom")
 
 package(default_applicable_licenses = ["//:license"])
 

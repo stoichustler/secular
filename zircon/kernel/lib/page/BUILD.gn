@@ -4,8 +4,8 @@
 # license that can be found in the LICENSE file or at
 # https://opensource.org/licenses/MIT
 
-import("//products/build/cpp/library_headers.gni")
-import("//products/build/rust/rustc_library.gni")
+import("//vision/build/cpp/library_headers.gni")
+import("//vision/build/rust/rustc_library.gni")
 
 # Conventional names for paging configurations, as codified in
 # <lib/arch/$zircon_cpu/paging-traits.h>.

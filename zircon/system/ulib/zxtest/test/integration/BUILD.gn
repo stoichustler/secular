@@ -2,8 +2,8 @@
 # Use of this source code is governed by a BSD-style license that can be
 # found in the LICENSE file.
 
-import("//products/build/components.gni")
-import("//products/build/test.gni")
+import("//vision/build/components.gni")
+import("//vision/build/test.gni")
 
 group("tests") {
   testonly = true
@@ -27,7 +27,7 @@ if (is_host) {
 test("zxtest-integration") {
   output_name = "zxtest-integration-test"
   if (is_fuchsia) {
-    fdio_config = [ "//products/build/config/fuchsia:fdio_config" ]
+    fdio_config = [ "//vision/build/config/fuchsia:fdio_config" ]
     if (configs + fdio_config - fdio_config != configs) {
       configs -= fdio_config
     }
@@ -58,7 +58,7 @@ test("zxtest-integration") {
 test("zxtest-integration-streams") {
   output_name = "zxtest-integration-streams-test"
   if (is_fuchsia) {
-    fdio_config = [ "//products/build/config/fuchsia:fdio_config" ]
+    fdio_config = [ "//vision/build/config/fuchsia:fdio_config" ]
     if (configs + fdio_config - fdio_config != configs) {
       configs -= fdio_config
     }

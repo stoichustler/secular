@@ -2,8 +2,8 @@
 # Use of this source code is governed by a BSD-style license that can be
 # found in the LICENSE file.
 
-import("//products/build/components.gni")
-import("//products/build/test.gni")
+import("//vision/build/components.gni")
+import("//vision/build/test.gni")
 
 fuchsia_unittest_component("fdio-gtest-component") {
   deps = [ ":fdio-gtest" ]
@@ -58,7 +58,7 @@ group("tests") {
 }
 
 test("fdio-test") {
-  configs += [ "//products/build/config:all_source" ]
+  configs += [ "//vision/build/config:all_source" ]
 
   # FDIO tests that can run on host as well as target.
   sources = [
@@ -140,7 +140,7 @@ test("cleanpath-tests") {
 }
 
 test("fdio-gtest") {
-  configs += [ "//products/build/config:all_source" ]
+  configs += [ "//vision/build/config:all_source" ]
 
   sources = [
     "opath.cc",
@@ -155,7 +155,7 @@ test("fdio-gtest") {
   ]
 
   # TODO(https://fxbug.dev/42085293): delete the below and fix compiler warnings
-  configs += [ "//products/build/config:Wno-vla-cxx-extension" ]
+  configs += [ "//vision/build/config:Wno-vla-cxx-extension" ]
 
   if (is_fuchsia) {
     sources += [ "fdio_socketpair.cc" ]

@@ -2,7 +2,7 @@
 # Use of this source code is governed by a BSD-style license that can be
 # found in the LICENSE file.
 
-import("//products/build/zircon/migrated_targets.gni")
+import("//vision/build/zircon/migrated_targets.gni")
 import("//sdk/lib/c/libc.gni")
 
 group("string") {
@@ -51,7 +51,7 @@ source_set("compiler") {
     # compile with default hidden visibility.  The functions aren't annotated
     # for export so that they can be compiled in non-libc contexts where their
     # definitions need to have hidden visibility for hermetic linking.
-    configs -= [ "//products/build/config:symbol_visibility_hidden" ]
+    configs -= [ "//vision/build/config:symbol_visibility_hidden" ]
   } else {
     # When not compiling for libc, the C functions get the default hidden
     # visibility like all other code.  But the assembly sources need -DHIDDEN
@@ -89,7 +89,7 @@ source_set("stdmem") {
   }
 
   if (zircon_toolchain != false) {
-    configs -= [ "//products/build/config:symbol_visibility_hidden" ]
+    configs -= [ "//vision/build/config:symbol_visibility_hidden" ]
   } else {
     defines = [ "HIDDEN=1" ]
   }
@@ -112,13 +112,13 @@ source_set("extmem") {
   }
 
   if (zircon_toolchain != false) {
-    configs -= [ "//products/build/config:symbol_visibility_hidden" ]
+    configs -= [ "//vision/build/config:symbol_visibility_hidden" ]
   } else {
     defines = [ "HIDDEN=1" ]
   }
 
   # TODO(https://fxbug.dev/42136089): delete the below and fix compiler warnings
-  configs += [ "//products/build/config:Wno-conversion" ]
+  configs += [ "//vision/build/config:Wno-conversion" ]
 }
 
 source_set("minimal_str") {
@@ -140,7 +140,7 @@ source_set("minimal_str") {
   }
 
   if (zircon_toolchain != false) {
-    configs -= [ "//products/build/config:symbol_visibility_hidden" ]
+    configs -= [ "//vision/build/config:symbol_visibility_hidden" ]
   } else {
     defines = [ "HIDDEN=1" ]
   }
@@ -183,13 +183,13 @@ source_set("stdstr") {
   }
 
   if (zircon_toolchain != false) {
-    configs -= [ "//products/build/config:symbol_visibility_hidden" ]
+    configs -= [ "//vision/build/config:symbol_visibility_hidden" ]
   } else {
     defines = [ "HIDDEN=1" ]
   }
 
   # TODO(https://fxbug.dev/42136089): delete the below and fix compiler warnings
-  configs += [ "//products/build/config:Wno-conversion" ]
+  configs += [ "//vision/build/config:Wno-conversion" ]
 }
 
 source_set("strerror_r") {
@@ -201,7 +201,7 @@ source_set("strerror_r") {
   deps = [ "//zircon/third_party/ulib/musl:musl_internal" ]
   sources = [ "strerror_r.c" ]
   if (zircon_toolchain != false) {
-    configs -= [ "//products/build/config:symbol_visibility_hidden" ]
+    configs -= [ "//vision/build/config:symbol_visibility_hidden" ]
   }
 }
 
@@ -214,7 +214,7 @@ source_set("strsignal") {
   deps = [ "//zircon/third_party/ulib/musl:musl_internal" ]
   sources = [ "strsignal.c" ]
   if (zircon_toolchain != false) {
-    configs -= [ "//products/build/config:symbol_visibility_hidden" ]
+    configs -= [ "//vision/build/config:symbol_visibility_hidden" ]
   }
 }
 
@@ -227,7 +227,7 @@ source_set("strverscmp") {
   deps = [ "//zircon/third_party/ulib/musl:musl_internal" ]
   sources = [ "strverscmp.c" ]
   if (zircon_toolchain != false) {
-    configs -= [ "//products/build/config:symbol_visibility_hidden" ]
+    configs -= [ "//vision/build/config:symbol_visibility_hidden" ]
   }
 }
 
@@ -264,7 +264,7 @@ source_set("extstr") {
   }
 
   if (zircon_toolchain != false) {
-    configs -= [ "//products/build/config:symbol_visibility_hidden" ]
+    configs -= [ "//vision/build/config:symbol_visibility_hidden" ]
   } else {
     defines = [ "HIDDEN=1" ]
   }
@@ -284,7 +284,7 @@ source_set("bsd") {
   ]
 
   if (zircon_toolchain != false) {
-    configs -= [ "//products/build/config:symbol_visibility_hidden" ]
+    configs -= [ "//vision/build/config:symbol_visibility_hidden" ]
   } else {
     defines = [ "HIDDEN=1" ]
   }

@@ -5,7 +5,7 @@
 # GN-only Secular image: put the zircon CLI tools in /boot/bin.
 # zxsh is packed separately as /boot/bin/sh.
 group("bootfs_binaries") {
-  visibility = [ "//products/secular:*" ]
+  visibility = [ "//vision/secular:*" ]
   deps = [
     "hwstress:bootfs_binaries",
     "kcounter:bootfs_binaries",

@@ -2,7 +2,7 @@
 # Use of this source code is governed by a BSD-style license that can be
 # found in the LICENSE file.
 
-load("//products/build/bazel/rules/rust:rustc_test.bzl", "rustc_test")
+load("//vision/build/bazel/rules/rust:rustc_test.bzl", "rustc_test")
 
 package(default_applicable_licenses = ["//:license"])
 
@@ -17,7 +17,7 @@ rustc_test(
     srcs = ["src/lib.rs"],
     crate_name = "pkgctl_integration_test",
     edition = "2024",
-    lint_config = "//products/build/config/rust/lints:clippy_warn_all",
+    lint_config = "//vision/build/config/rust/lints:clippy_warn_all",
     deps = [
         "//sdk/fidl/fuchsia.io:fuchsia.io_rust",
         "//sdk/fidl/fuchsia.net.http:fuchsia.net.http_rust",

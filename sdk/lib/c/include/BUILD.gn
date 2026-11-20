@@ -2,10 +2,10 @@
 # Use of this source code is governed by a BSD-style license that can be
 # found in the LICENSE file.
 
-import("//products/build/python/python_action.gni")
-import("//products/build/python/python_binary.gni")
-import("//products/build/python/python_library.gni")
-import("//products/build/testing/golden_files.gni")
+import("//vision/build/python/python_action.gni")
+import("//vision/build/python/python_binary.gni")
+import("//vision/build/python/python_library.gni")
+import("//vision/build/testing/golden_files.gni")
 import("../libc.gni")
 import("libc_headers.gni")
 
@@ -377,7 +377,7 @@ if (current_toolchain == default_toolchain) {
 basic_source_set("headers") {
   visibility = [
     "../*",
-    "//products/build/config/zircon:user_deps",
+    "//vision/build/config/zircon:user_deps",
     "//userspace/secular/bin/userboot/*",
     "//zircon/system/ulib/ldmsg/*",
     "//zircon/system/utest/core/threads/*",
@@ -573,7 +573,7 @@ foreach(version, header_test_stdc) {
       deps += [ ":headers" ]
       configs = [
         ":test.$prefix$version",
-        "//products/build/config:Wsystem-headers",
+        "//vision/build/config:Wsystem-headers",
       ]
     }
 
@@ -621,15 +621,15 @@ foreach(version, header_test_stdcxx) {
         configs = [ ":test.$prefix++$version" ]
         if (libcxx == "") {
           # Don't use the libc++ headers.
-          configs += [ "//products/build/config:no-libc++-include" ]
-          remove_configs = [ "//products/build/config:libc++-include" ]
+          configs += [ "//vision/build/config:no-libc++-include" ]
+          remove_configs = [ "//vision/build/config:libc++-include" ]
 
           # The libc++ headers are not warning-clean, and instead rely on the
           # system-headers exemption from warnings.  This is an unfortunate and
           # counterproductive choice by the libc++ maintainers and it should be
           # changed, but it is unlikely to change soon.  If it ever does
           # change, then this should be added unconditionally.
-          configs += [ "//products/build/config:Wsystem-headers" ]
+          configs += [ "//vision/build/config:Wsystem-headers" ]
         }
       }
     }

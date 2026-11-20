@@ -4,11 +4,11 @@
 # license that can be found in the LICENSE file or at
 # https://opensource.org/licenses/MIT
 
-import("//products/build/toolchain/ifs_extract.gni")
-import("//products/build/toolchain/toolchain_environment.gni")
-import("//products/build/toolchain/zircon/user_basic_redirect.gni")
-import("//products/build/zircon/c_utils.gni")
-import("//products/build/zircon/zircon_cpu.gni")
+import("//vision/build/toolchain/ifs_extract.gni")
+import("//vision/build/toolchain/toolchain_environment.gni")
+import("//vision/build/toolchain/zircon/user_basic_redirect.gni")
+import("//vision/build/zircon/c_utils.gni")
+import("//vision/build/zircon/zircon_cpu.gni")
 
 # A max ELF page size for the vDSO, which is free to be strictly larger than
 # that of the kernel or userspace binaries.
@@ -49,7 +49,7 @@ if (toolchain_environment == "user.basic") {
 
     ldflags = [ "-Wl,-soname=libzircon.so" ]
 
-    configs += [ "//products/build/config/zircon:rodso" ]
+    configs += [ "//vision/build/config/zircon:rodso" ]
 
     exclude_toolchain_tags = [
       # The vDSO can use only the basic machine ABI.
@@ -128,7 +128,7 @@ if (toolchain_environment == "user.basic") {
     }
 
     # workaround for b/349448459 to remote-link successfully
-    configs += [ "//products/build/config/rbe:remote_link_scandeps_workaround" ]
+    configs += [ "//vision/build/config/rbe:remote_link_scandeps_workaround" ]
   }
 
   source_set("data") {
@@ -193,7 +193,7 @@ if (toolchain_environment == "user.basic") {
 
   toolchain_utils_action("verify-segments") {
     visibility = [ ":*" ]
-    script = "//products/build/toolchain/verify-undefined-symbols.py"
+    script = "//vision/build/toolchain/verify-undefined-symbols.py"
     utils = [ "llvm-readelf" ]
     deps = [ ":libzircon.rsp" ]
     sources = get_target_outputs(deps[0])

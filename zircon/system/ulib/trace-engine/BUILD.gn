@@ -2,8 +2,8 @@
 # Use of this source code is governed by a BSD-style license that can be
 # found in the LICENSE file.
 
-import("//products/build/cpp/sdk_source_set.gni")
-import("//products/build/zircon/zx_library.gni")
+import("//vision/build/cpp/sdk_source_set.gni")
+import("//vision/build/zircon/zx_library.gni")
 
 trace_engine_headers = [
   # keep-sorted: begin

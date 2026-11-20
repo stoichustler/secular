@@ -4,8 +4,8 @@
 # license that can be found in the LICENSE file or at
 # https://opensource.org/licenses/MIT
 
-import("//products/build/rust/build.gni")
-import("//products/build/rust/rustc_library.gni")
+import("//vision/build/rust/build.gni")
+import("//vision/build/rust/rustc_library.gni")
 import("kernel_test_deps.gni")
 
 # Define a Rust crate meant specifically to go into the kernel.

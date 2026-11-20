@@ -2,14 +2,14 @@
 # Use of this source code is governed by a BSD-style license that can be
 # found in the LICENSE file.
 
-import("//products/build/components.gni")
-import("//products/build/rust/rustc_binary.gni")
+import("//vision/build/components.gni")
+import("//vision/build/rust/rustc_binary.gni")
 
 rustc_binary("bin") {
   output_name = "thermal-sensor-manager-cli"
   edition = "2024"
 
-  configs += [ "//products/build/config/rust:bootfs" ]
+  configs += [ "//vision/build/config/rust:bootfs" ]
 
   sources = [ "src/main.rs" ]
 

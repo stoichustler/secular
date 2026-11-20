@@ -4,14 +4,14 @@
 # license that can be found in the LICENSE file or at
 # https://opensource.org/licenses/MIT
 
-import("//products/build/config/compiler_config.gni")
-import("//products/build/config/zircon/standard.gni")
-import("//products/build/cpp/library_headers.gni")
-import("//products/build/info/info.gni")
-import("//products/build/toolchain/toolchain_environment.gni")
-import("//products/build/toolchain/zircon/zircon_toolchain_suite.gni")
-import("//products/build/zbi/kernel_cmdline.gni")
-import("//products/build/zircon/zircon_cpu.gni")
+import("//vision/build/config/compiler_config.gni")
+import("//vision/build/config/zircon/standard.gni")
+import("//vision/build/cpp/library_headers.gni")
+import("//vision/build/info/info.gni")
+import("//vision/build/toolchain/toolchain_environment.gni")
+import("//vision/build/toolchain/zircon/zircon_toolchain_suite.gni")
+import("//vision/build/zbi/kernel_cmdline.gni")
+import("//vision/build/zircon/zircon_cpu.gni")
 import("//zircon/kernel/kernel_package.gni")
 import("//zircon/kernel/params.gni")
 import("kernel_elf_binary.gni")
@@ -52,7 +52,7 @@ if (current_toolchain == default_toolchain) {
         # Always enable frame pointers. This works because frame_pointers
         # is added as part of :phys_config below.
         remove_common_configs =
-            [ "//products/build/config:default_frame_pointers" ]
+            [ "//vision/build/config:default_frame_pointers" ]
 
         exclude_variant_tags = [
           # There is no GCC toolchain for phys, only Clang.
@@ -84,20 +84,20 @@ if (current_toolchain == default_toolchain) {
       "//zircon/kernel/arch/$zircon_cpu:abi",
       ":defines",
 
-      "//products/build/config:no-finite-loops",
+      "//vision/build/config:no-finite-loops",
 
       # Don't emit extra code making static initializers thread-safe (we don't
       # have threads or any of the corresponding library support.)
-      "//products/build/config/zircon:no_threadsafe_statics",
+      "//vision/build/config/zircon:no_threadsafe_statics",
 
       # All physmem code is inherently sensitive and in a position for
       # any bug to be unusually dangerous.  So compile with minimal
       # undefined behavior checking in all builds, regardless of variant.
-      "//products/build/config/zircon/instrumentation:ubsan-trap",
+      "//vision/build/config/zircon/instrumentation:ubsan-trap",
     ]
 
     # Always enable frame pointers.
-    configs += [ "//products/build/config:frame_pointers" ]
+    configs += [ "//vision/build/config:frame_pointers" ]
   }
 }
 

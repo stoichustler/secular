@@ -2,7 +2,7 @@
 # Use of this source code is governed by a BSD-style license that can be
 # found in the LICENSE file.
 
-import("//products/build/compiled_action.gni")
+import("//vision/build/compiled_action.gni")
 
 # Executes an ffx command as an action during the build.
 #

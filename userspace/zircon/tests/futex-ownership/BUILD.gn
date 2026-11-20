@@ -2,20 +2,20 @@
 # Use of this source code is governed by a BSD-style license that can be
 # found in the LICENSE file.
 
-import("//products/build/components/fuchsia_unittest_package.gni")
-import("//products/build/test.gni")
-import("//products/build/testing/bootfs_test.gni")
+import("//vision/build/components/fuchsia_unittest_package.gni")
+import("//vision/build/test.gni")
+import("//vision/build/testing/bootfs_test.gni")
 
 group("tests") {
   testonly = true
 
   # Note: Tests specified using `bootfs_test` are included via
-  # //products/bringup_with_tests and not this target.
+  # //vision/bringup_with_tests and not this target.
   deps = [ ":futex-ownership-test" ]
 }
 
 test("futex-ownership") {
-  configs += [ "//products/build/config:all_source" ]
+  configs += [ "//vision/build/config:all_source" ]
   sources = [
     "bad-handle.cc",
     "ownership.cc",

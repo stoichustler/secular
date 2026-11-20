@@ -2,10 +2,10 @@
 # Use of this source code is governed by a BSD-style license that can be
 # found in the LICENSE file.
 
-import("//products/build/config/clang/clang_cpu.gni")
-import("//products/build/config/sanitizers/sanitizer_runtime_symbols.gni")
-import("//products/build/toolchain/hermetic_source_set.gni")
-import("//products/build/toolchain/zircon/user_basic_redirect.gni")
+import("//vision/build/config/clang/clang_cpu.gni")
+import("//vision/build/config/sanitizers/sanitizer_runtime_symbols.gni")
+import("//vision/build/toolchain/hermetic_source_set.gni")
+import("//vision/build/toolchain/zircon/user_basic_redirect.gni")
 import("//userspace/zircon/lib/zircon/libzircon.gni")
 
 # Source directory for Fucshia libc.

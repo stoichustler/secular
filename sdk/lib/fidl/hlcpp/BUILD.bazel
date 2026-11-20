@@ -2,13 +2,13 @@
 # Use of this source code is governed by a BSD-style license that can be
 # found in the LICENSE file.
 
-load("//products/build/bazel/rules/idk:idk_cc_source_library.bzl", "idk_cc_source_library")
+load("//vision/build/bazel/rules/idk:idk_cc_source_library.bzl", "idk_cc_source_library")
 
 # Limit visibility for the HLCPP bindings libraries.
 # This is primarily locations where libraries with `enable_hlcpp = True` are defined.
 # @bazel2gn:transformer=visibility
 hlcpp_bindings_libraries_visibility = [
-    "//products/build/sdk:__pkg__",
+    "//vision/build/sdk:__pkg__",
     "//examples/components/routing/fidl:__pkg__",
     "//examples/components/services/fidl:__pkg__",
     "//examples/diagnostics/inspect/codelab/fidl:__pkg__",
@@ -157,7 +157,7 @@ idk_cc_source_library(
         # this must be specified. Also, in Bazel, the IDK paths are automatically
         # added to the atom sub-target's visibility, but they are not in GN.
         # Overwrite a superfluous private visibility with the paths necessary in GN.
-        "//visibility:private",  # @bazel2gn:raw_overwrite:":*", "//products/build/sdk:*"
+        "//visibility:private",  # @bazel2gn:raw_overwrite:":*", "//vision/build/sdk:*"
     ],
     deps = [
         ":hlcpp_base",

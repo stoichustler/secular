@@ -3,8 +3,8 @@
 # found in the LICENSE file.
 
 load("@rules_cc//cc:defs.bzl", "cc_library")
-load("//products/build/bazel/platforms:constraints.bzl", "HOST_OS_CONSTRAINTS")
-load("//products/build/bazel/rules/idk:idk_atom.bzl", "idk_noop_atom")
+load("//vision/build/bazel/platforms:constraints.bzl", "HOST_OS_CONSTRAINTS")
+load("//vision/build/bazel/rules/idk:idk_atom.bzl", "idk_noop_atom")
 
 package(default_applicable_licenses = ["//:license"])
 

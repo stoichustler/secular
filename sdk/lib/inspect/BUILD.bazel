@@ -11,7 +11,7 @@ exports_files(
         "use.shard.cml",
     ],
     visibility = [
-        "//products/bundles/assembly:__subpackages__",
+        "//vision/bundles/assembly:__subpackages__",
         "//userspace/security/lib/scrutiny/tests/route_verification:__pkg__",
         "//userspace/sys/pkg/bin/omaha-client:__pkg__",
         "//userspace/sys/pkg/bin/pkg-cache:__pkg__",

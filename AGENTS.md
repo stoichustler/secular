@@ -28,7 +28,7 @@ compile toolchain into this repository.
    source tree, and never vendor clang/gn/ninja/rustc/qemu here.
 4. **Third-party sources.** Empty `third_party/*/src` directories are
    Fuchsia git submodules. Fill them from the remotes and revisions in
-   `products/manifests/third_party/all` (see `tools/secular-boot/fetch-third-party.sh`).
+   `vision/manifests/third_party/all` (see `tools/secular-boot/fetch-third-party.sh`).
    Do **not** copy third_party trees from smos or any other sibling
    checkout: those BUILD.gn files import `//release/...` and the sources
    are a different snapshot.
@@ -98,7 +98,7 @@ not source.
 - User-facing entry is **Makefile**. Do not add in-tree `prebuilt/`,
   Cargo/CMake/Android.bp, or a second toolchain tree.
 - GN/Ninja remain the compiler graph. New GN args that point at the SDK
-  belong in `products/build/config/secular_sdk.gni` and `out/*/args.gn`.
+  belong in `vision/build/config/secular_sdk.gni` and `out/*/args.gn`.
 - Build artifacts go under `out/secular-boot-<arch>/`:
   `secular.zbi`, `linux-arm64-boot-shim.bin`, `artifacts.env`, logs.
 - After implementation, `make build` must compile. After boot-path
@@ -118,12 +118,12 @@ not source.
 | `userspace/sys/` | component_manager and bootstrap framework |
 | `userspace/devices/` | QEMU/console drivers |
 | `userspace/zircon/bin/zxsh` | Interactive shell |
-| `products/secular/` | Bringup-class product and ZBI |
-| `products/boards/` | qemu-arm64 board |
-| `products/build/` | GN templates; SDK path remapping |
-| `products/bundles/` | Assembly / bringup bundles |
-| `products/integration/` | Platform milestone pin (`MILESTONE`) |
-| `products/manifests/` | Third-party pin manifests |
+| `vision/secular/` | Bringup-class product and ZBI |
+| `vision/boards/` | qemu-arm64 board |
+| `vision/build/` | GN templates; SDK path remapping |
+| `vision/bundles/` | Assembly / bringup bundles |
+| `vision/integration/` | Platform milestone pin (`MILESTONE`) |
+| `vision/manifests/` | Third-party pin manifests |
 | `tools/secular-boot/` | configure / build / run / verify |
 | `tools/ai-coding/` | Project-only Grok/Codex skills, rules, and agent defs |
 

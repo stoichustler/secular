@@ -2,7 +2,7 @@
 # Use of this source code is governed by a BSD-style license that can be
 # found in the LICENSE file.
 
-load("//products/build/bazel/rules/rust:rustc_library.bzl", "rustc_library")
+load("//vision/build/bazel/rules/rust:rustc_library.bzl", "rustc_library")
 
 package(default_applicable_licenses = ["//:license"])
 
@@ -18,7 +18,7 @@ rustc_library(
     crate_name = "libasync",
     edition = "2024",
     link_deps = ["//sdk/lib/async"],
-    lint_config = "//products/build/config/rust/lints:clippy_warn_all",
+    lint_config = "//vision/build/config/rust/lints:clippy_warn_all",
     version = "0.1.0",
     visibility = [
         "//sdk/lib/async:__subpackages__",

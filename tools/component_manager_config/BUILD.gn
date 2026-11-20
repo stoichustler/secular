@@ -2,8 +2,8 @@
 # Use of this source code is governed by a BSD-style license that can be
 # found in the LICENSE file.
 
-import("//products/build/host.gni")
-import("//products/build/rust/rustc_binary.gni")
+import("//vision/build/host.gni")
+import("//vision/build/rust/rustc_binary.gni")
 
 group("component_manager_config") {
   testonly = true

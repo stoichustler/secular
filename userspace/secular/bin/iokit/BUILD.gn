@@ -2,14 +2,14 @@
 # Use of this source code is governed by a BSD-style license that can be
 # found in the LICENSE file.
 
-import("//products/build/rust/rustc_binary.gni")
+import("//vision/build/rust/rustc_binary.gni")
 
 rustc_binary("bootstat") {
   output_name = "bootstat"
   edition = "2024"
   source_root = "src/bootstat.rs"
   sources = [ "src/bootstat.rs" ]
-  configs += [ "//products/build/config/rust:bootfs" ]
+  configs += [ "//vision/build/config/rust:bootfs" ]
   if (is_fuchsia) {
     deps = [ "//sdk/rust/zx-sys" ]
   }
@@ -21,7 +21,7 @@ rustc_binary("cat") {
   edition = "2024"
   source_root = "src/cat.rs"
   sources = [ "src/cat.rs" ]
-  configs += [ "//products/build/config/rust:bootfs" ]
+  configs += [ "//vision/build/config/rust:bootfs" ]
   with_unit_tests = true
 }
 
@@ -30,7 +30,7 @@ rustc_binary("clear") {
   edition = "2024"
   source_root = "src/clear.rs"
   sources = [ "src/clear.rs" ]
-  configs += [ "//products/build/config/rust:bootfs" ]
+  configs += [ "//vision/build/config/rust:bootfs" ]
   with_unit_tests = true
 }
 
@@ -39,7 +39,7 @@ rustc_binary("cope") {
   edition = "2024"
   source_root = "src/cope.rs"
   sources = [ "src/cope.rs" ]
-  configs += [ "//products/build/config/rust:bootfs" ]
+  configs += [ "//vision/build/config/rust:bootfs" ]
   deps = [ "//third_party/rust_crates:libc" ]
   if (is_fuchsia) {
     deps += [
@@ -56,7 +56,7 @@ rustc_binary("elfdump") {
   edition = "2024"
   source_root = "src/elfdump.rs"
   sources = [ "src/elfdump.rs" ]
-  configs += [ "//products/build/config/rust:bootfs" ]
+  configs += [ "//vision/build/config/rust:bootfs" ]
   with_unit_tests = true
 }
 
@@ -65,7 +65,7 @@ rustc_binary("hexdump") {
   edition = "2024"
   source_root = "src/hexdump.rs"
   sources = [ "src/hexdump.rs" ]
-  configs += [ "//products/build/config/rust:bootfs" ]
+  configs += [ "//vision/build/config/rust:bootfs" ]
   with_unit_tests = true
 }
 
@@ -74,7 +74,7 @@ rustc_binary("cpustat") {
   edition = "2024"
   source_root = "src/cpustat.rs"
   sources = [ "src/cpustat.rs" ]
-  configs += [ "//products/build/config/rust:bootfs" ]
+  configs += [ "//vision/build/config/rust:bootfs" ]
   if (is_fuchsia) {
     deps = [
       "//sdk/fidl/fuchsia.kernel:fuchsia.kernel_rust",
@@ -92,7 +92,7 @@ rustc_binary("kdmips") {
   edition = "2024"
   source_root = "src/kdmips.rs"
   sources = [ "src/kdmips.rs" ]
-  configs += [ "//products/build/config/rust:bootfs" ]
+  configs += [ "//vision/build/config/rust:bootfs" ]
   with_unit_tests = true
 }
 
@@ -101,7 +101,7 @@ rustc_binary("fxtdump") {
   edition = "2024"
   source_root = "src/fxtdump.rs"
   sources = [ "src/fxtdump.rs" ]
-  configs += [ "//products/build/config/rust:bootfs" ]
+  configs += [ "//vision/build/config/rust:bootfs" ]
   with_unit_tests = true
 }
 
@@ -110,7 +110,7 @@ rustc_binary("lktee") {
   edition = "2024"
   source_root = "src/lktee.rs"
   sources = [ "src/lktee.rs" ]
-  configs += [ "//products/build/config/rust:bootfs" ]
+  configs += [ "//vision/build/config/rust:bootfs" ]
   if (is_fuchsia) {
     deps = [
       "//sdk/fidl/fuchsia.kernel:fuchsia.kernel_rust",
@@ -128,7 +128,7 @@ rustc_binary("runman") {
   edition = "2024"
   source_root = "src/runman.rs"
   sources = [ "src/runman.rs" ]
-  configs += [ "//products/build/config/rust:bootfs" ]
+  configs += [ "//vision/build/config/rust:bootfs" ]
   with_unit_tests = true
 }
 
@@ -137,7 +137,7 @@ rustc_binary("delay") {
   edition = "2024"
   source_root = "src/delay.rs"
   sources = [ "src/delay.rs" ]
-  configs += [ "//products/build/config/rust:bootfs" ]
+  configs += [ "//vision/build/config/rust:bootfs" ]
   with_unit_tests = true
 }
 
@@ -146,7 +146,7 @@ rustc_binary("tree") {
   edition = "2024"
   source_root = "src/tree.rs"
   sources = [ "src/tree.rs" ]
-  configs += [ "//products/build/config/rust:bootfs" ]
+  configs += [ "//vision/build/config/rust:bootfs" ]
   with_unit_tests = true
 }
 

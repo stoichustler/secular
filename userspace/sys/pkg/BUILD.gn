@@ -92,5 +92,5 @@ group("recovery") {
 
 group("pkgfs-disable-executability-restrictions") {
   public_deps = [ "bin/pkg-cache:disable-executability-restrictions" ]
-  deps = [ "//products/build/validate:non_production_tag" ]
+  deps = [ "//vision/build/validate:non_production_tag" ]
 }

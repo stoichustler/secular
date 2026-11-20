@@ -3,11 +3,11 @@
 # found in the LICENSE file.
 
 load("@fuchsia_rules_common//build_flags:build_flags.bzl", "build_flags")
-load("//products/build/bazel/platforms:constraints.bzl", "HOST_OS_CONSTRAINTS")
-load("//products/build/bazel/rules/cc:fx_cc_library.bzl", "fx_cc_library")
-load("//products/build/bazel/rules/host_tests:host_rustc_test.bzl", "host_rustc_test")
-load("//products/build/bazel/rules/rust:rustc_library.bzl", "rustc_library")
-load("//products/build/bazel/rules/rust:rustc_library_group.bzl", "rustc_library_group")
+load("//vision/build/bazel/platforms:constraints.bzl", "HOST_OS_CONSTRAINTS")
+load("//vision/build/bazel/rules/cc:fx_cc_library.bzl", "fx_cc_library")
+load("//vision/build/bazel/rules/host_tests:host_rustc_test.bzl", "host_rustc_test")
+load("//vision/build/bazel/rules/rust:rustc_library.bzl", "rustc_library")
+load("//vision/build/bazel/rules/rust:rustc_library_group.bzl", "rustc_library_group")
 
 package(default_applicable_licenses = ["//:license"])
 

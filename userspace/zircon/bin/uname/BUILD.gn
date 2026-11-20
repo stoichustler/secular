@@ -2,7 +2,7 @@
 # Use of this source code is governed by a BSD-style license that can be
 # found in the LICENSE file.
 
-import("//products/build/components.gni")
+import("//vision/build/components.gni")
 
 executable("bin") {
   output_name = "uname"
@@ -19,7 +19,7 @@ fuchsia_package("uname") {
 # GN-only Secular image: put the tool in /boot/bin.
 group("bootfs_binaries") {
   visibility = [
-    "//products/secular:*",
+    "//vision/secular:*",
     "//userspace/zircon/bin:*",
   ]
   deps = [ ":bin" ]

@@ -2,8 +2,8 @@
 # Use of this source code is governed by a BSD-style license that can be
 # found in the LICENSE file.
 
-import("//products/build/components.gni")
-import("//products/build/rust/rustc_library.gni")
+import("//vision/build/components.gni")
+import("//vision/build/rust/rustc_library.gni")
 
 template("log_command_lib") {
   rustc_library(target_name) {
@@ -53,7 +53,7 @@ template("log_command_lib") {
       "src/log_socket_stream.rs",
     ]
 
-    configs += [ "//products/build/config/rust/lints:clippy_warn_all" ]
+    configs += [ "//vision/build/config/rust/lints:clippy_warn_all" ]
 
     features = []
     if (defined(invoker.features)) {

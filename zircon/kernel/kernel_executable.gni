@@ -4,10 +4,10 @@
 # license that can be found in the LICENSE file or at
 # https://opensource.org/licenses/MIT
 
-import("//products/build/config/current_target_tuple.gni")
-import("//products/build/rust/config.gni")
-import("//products/build/toolchain/toolchain_environment.gni")
-import("//products/build/zircon/c_utils.gni")
+import("//vision/build/config/current_target_tuple.gni")
+import("//vision/build/rust/config.gni")
+import("//vision/build/toolchain/toolchain_environment.gni")
+import("//vision/build/zircon/c_utils.gni")
 import("//zircon/kernel/kernel_rust_mod.gni")
 import("//zircon/kernel/params.gni")
 import("//zircon/kernel/phys/kernel_elf_binary.gni")
@@ -143,7 +143,7 @@ template("kernel_executable") {
       "-Cmetadata=clippy",
     ]
 
-    script = "//products/build/rust/clippy_wrapper.py"
+    script = "//vision/build/rust/clippy_wrapper.py"
     outputs = [ "$target_gen_dir/$clippy_target" ]
     args = [ "--output=" + rebase_path(outputs[0], root_build_dir) ]
 

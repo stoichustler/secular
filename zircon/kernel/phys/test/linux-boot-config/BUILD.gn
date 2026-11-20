@@ -4,10 +4,10 @@
 # license that can be found in the LICENSE file or at
 # https://opensource.org/licenses/MIT
 
-import("//products/build/python/python_action.gni")
-import("//products/build/python/python_binary.gni")
-import("//products/build/zbi/zbi.gni")
-import("//products/build/zbi/zbi_input.gni")
+import("//vision/build/python/python_action.gni")
+import("//vision/build/python/python_binary.gni")
+import("//vision/build/zbi/zbi.gni")
+import("//vision/build/zbi/zbi_input.gni")
 import("//zircon/kernel/phys/boot-shim/devicetree.gni")
 import("//zircon/kernel/phys/devicetree_boot_test.gni")
 import("//zircon/kernel/phys/zbi_executable.gni")

@@ -2,7 +2,7 @@
 # Use of this source code is governed by a BSD-style license that can be
 # found in the LICENSE file.
 
-import("//products/build/dist/renamed_binary.gni")
+import("//vision/build/dist/renamed_binary.gni")
 
 # Defines a renamed binary based on grand_swd_binary.
 #

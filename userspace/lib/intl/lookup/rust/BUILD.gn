@@ -2,11 +2,11 @@
 # Use of this source code is governed by a BSD-style license that can be
 # found in the LICENSE file.
 
-import("//products/build/components.gni")
-import("//products/build/icu/icu_rustc_staticlib.gni")
-import("//products/build/intl/intl_strings.gni")
-import("//products/build/rust/rustc_staticlib.gni")
-import("//products/build/testing/environments.gni")
+import("//vision/build/components.gni")
+import("//vision/build/icu/icu_rustc_staticlib.gni")
+import("//vision/build/intl/intl_strings.gni")
+import("//vision/build/rust/rustc_staticlib.gni")
+import("//vision/build/testing/environments.gni")
 import("//userspace/lib/icu/third_party_icu_headers.gni")
 
 group("rust") {

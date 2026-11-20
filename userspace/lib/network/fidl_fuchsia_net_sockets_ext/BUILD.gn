@@ -2,8 +2,8 @@
 # Use of this source code is governed by a BSD-style license that can be
 # found in the LICENSE file.
 
-import("//products/build/components.gni")
-import("//products/build/rust/rustc_library.gni")
+import("//vision/build/components.gni")
+import("//vision/build/rust/rustc_library.gni")
 
 rustc_library("fidl_fuchsia_net_sockets_ext") {
   with_unit_tests = true
@@ -31,7 +31,7 @@ rustc_library("fidl_fuchsia_net_sockets_ext") {
     "//third_party/rust_crates:test-case",
   ]
   sources = [ "src/lib.rs" ]
-  configs += [ "//products/build/config/rust/lints:deny_unused_results" ]
+  configs += [ "//vision/build/config/rust/lints:deny_unused_results" ]
 }
 
 fuchsia_unittest_package("fidl-fuchsia-net-sockets-ext-tests") {

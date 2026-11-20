@@ -2,7 +2,7 @@
 # Use of this source code is governed by a BSD-style license that can be
 # found in the LICENSE file.
 
-import("//products/build/rust/rustc_library.gni")
+import("//vision/build/rust/rustc_library.gni")
 
 group("rust") {
   public_deps = [ ":dynfidl" ]
@@ -15,8 +15,8 @@ rustc_library("dynfidl") {
 }
 
 if (!secular_boot_build) {
-  import("//products/build/components.gni")
-  import("//products/build/rust/rustc_test.gni")
+  import("//vision/build/components.gni")
+  import("//vision/build/rust/rustc_test.gni")
   import("//userspace/tests/fidl/conformance_suite/gidl-conformance-suite.gni")
   import("//tools/fidl/gidl/gidl.gni")
 

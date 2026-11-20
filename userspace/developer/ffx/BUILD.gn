@@ -5,8 +5,8 @@
 # Slim ffx leftovers required by package-tool / assembly host libraries.
 # Plugins, frontends, and the ffx binary are not part of Secular.
 
-import("//products/build/host.gni")
-import("//products/build/tools/json_merge/json_merge.gni")
+import("//vision/build/host.gni")
+import("//vision/build/tools/json_merge/json_merge.gni")
 
 group("ffx") {
   testonly = true

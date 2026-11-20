@@ -2,17 +2,17 @@
 # Use of this source code is governed by a BSD-style license that can be
 # found in the LICENSE file.
 
-load("//products/build/bazel/rules/host_tests:host_rustc_test.bzl", "wrap_host_rust_test")
-load("//products/build/bazel/rules/rust:rustc_library.bzl", "rustc_library")
-load("//products/build/bazel/rules/rust:rustc_test.bzl", "rustc_test")
-load("//products/build/bazel/rules/testing:fx_unittest_package.bzl", "fx_unittest_package")
+load("//vision/build/bazel/rules/host_tests:host_rustc_test.bzl", "wrap_host_rust_test")
+load("//vision/build/bazel/rules/rust:rustc_library.bzl", "rustc_library")
+load("//vision/build/bazel/rules/rust:rustc_test.bzl", "rustc_test")
+load("//vision/build/bazel/rules/testing:fx_unittest_package.bzl", "fx_unittest_package")
 
 package(default_applicable_licenses = ["//:license"])
 
 rustc_library(
     name = "fidl_fuchsia_net_ndp_ext",
     srcs = ["src/lib.rs"],
-    build_flags = ["//products/build/config/rust/lints:deny_unused_results"],
+    build_flags = ["//vision/build/config/rust/lints:deny_unused_results"],
     edition = "2024",
     proc_macro_deps = [
         "//third_party/rust_crates/vendor:derivative",
@@ -38,7 +38,7 @@ rustc_library(
 # @bazel2gn:skip
 rustc_test(
     name = "fidl_fuchsia_net_ndp_ext_test",
-    build_flags = ["//products/build/config/rust/lints:deny_unused_results"],
+    build_flags = ["//vision/build/config/rust/lints:deny_unused_results"],
     crate = ":fidl_fuchsia_net_ndp_ext",
     edition = "2024",
     deps = [

@@ -2,15 +2,15 @@
 # Use of this source code is governed by a BSD-style license that can be
 # found in the LICENSE file.
 
-import("//products/build/components.gni")
-import("//products/build/test.gni")
-import("//products/build/testing/bootfs_test.gni")
+import("//vision/build/components.gni")
+import("//vision/build/test.gni")
+import("//vision/build/testing/bootfs_test.gni")
 
 # To run this test, either
 #   * add debugger-test-pkg to your universe and run `fx test` (preferred).
 #   * add debugger-bootfs-test to dev_bootfs_labels and run `fx shell /boot/test/debugger-test`.
 test("debugger-test") {
-  configs += [ "//products/build/config:all_source" ]
+  configs += [ "//vision/build/config:all_source" ]
   sources = [
     "crash-and-recover.cc",
     "crash-and-recover.h",

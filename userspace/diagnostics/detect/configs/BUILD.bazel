@@ -9,5 +9,5 @@ exports_files(
         "enable-filing.json",
         "cobalt-detect.triage",
     ],
-    visibility = ["//products/bundles/assembly:__subpackages__"],
+    visibility = ["//vision/bundles/assembly:__subpackages__"],
 )

@@ -87,7 +87,7 @@ Add these lines to the `local/BUILD.gn` file (after creating it, if it does not
 exist yet, see
 [docs/development/build/assembly_developer_overrides.md](../../../../docs/development/build/assembly_developer_overrides.md)):
 ```
-import("//products/build/assembly/developer_overrides.gni")
+import("//vision/build/assembly/developer_overrides.gni")
 
 assembly_developer_overrides("heapdump_everywhere") {
   platform = {

@@ -2,7 +2,7 @@
 # Use of this source code is governed by a BSD-style license that can be
 # found in the LICENSE file.
 
-import("//products/build/rust/rustc_library.gni")
+import("//vision/build/rust/rustc_library.gni")
 
 group("rust") {
   public_deps = [ ":zx-libc" ]
@@ -20,7 +20,7 @@ rustc_library("zx-libc") {
   ]
   deps = [ "//sdk/rust/zx" ]
 
-  configs -= [ "//products/build/config/rust:no_features" ]  # bazel2gn can't generate
+  configs -= [ "//vision/build/config/rust:no_features" ]  # bazel2gn can't generate
   rustflags = [ "-Zallow_features=c_size_t" ]
 }
 # LINT.ThenChange(BUILD.bazel)

@@ -2,9 +2,9 @@
 # Use of this source code is governed by a BSD-style license that can be
 # found in the LICENSE file.
 
-load("//products/build/bazel/rules/rust:rustc_library.bzl", "rustc_library")
-load("//products/build/bazel/rules/rust:rustc_test.bzl", "rustc_test")
-load("//products/build/bazel/rules/testing:fx_unittest_package.bzl", "fx_unittest_package")
+load("//vision/build/bazel/rules/rust:rustc_library.bzl", "rustc_library")
+load("//vision/build/bazel/rules/rust:rustc_test.bzl", "rustc_test")
+load("//vision/build/bazel/rules/testing:fx_unittest_package.bzl", "fx_unittest_package")
 
 package(default_applicable_licenses = ["//:license"])
 
@@ -13,7 +13,7 @@ rustc_library(
     srcs = ["src/lib.rs"],
     crate_name = "mock_space",
     edition = "2024",
-    lint_config = "//products/build/config/rust/lints:clippy_warn_all",
+    lint_config = "//vision/build/config/rust/lints:clippy_warn_all",
     visibility = ["//userspace/sys/pkg/tests/system-update-checker:__pkg__"],
     deps = [
         "//sdk/fidl/fuchsia.pkg.garbagecollector:fuchsia.pkg.garbagecollector_rust",
@@ -29,7 +29,7 @@ rustc_test(
     name = "mock-space_test",
     crate = ":mock-space",
     edition = "2024",
-    lint_config = "//products/build/config/rust/lints:clippy_warn_all",
+    lint_config = "//vision/build/config/rust/lints:clippy_warn_all",
     visibility = ["//visibility:private"],
     deps = [
         "//userspace/lib/fuchsia",

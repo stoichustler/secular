@@ -2,7 +2,7 @@
 # Use of this source code is governed by a BSD-style license that can be
 # found in the LICENSE file.
 
-import("//products/build/config/zircon/standard.gni")
+import("//vision/build/config/zircon/standard.gni")
 
 test_module_cpus = standard_fuchsia_cpus + [ "arm" ]
 
@@ -31,7 +31,7 @@ source_set("standalone-elf-load") {
   data_deps = []
   foreach(cpu, test_module_cpus) {
     data_deps +=
-        [ ":standalone-elf-load-test-module(//products/build/toolchain:linux_$cpu)" ]
+        [ ":standalone-elf-load-test-module(//vision/build/toolchain:linux_$cpu)" ]
   }
 }
 
@@ -51,7 +51,7 @@ loadable_module("standalone-elf-load-test-module") {
   if (is_linux) {
     # The normal default includes `-static-libstdc++`, which links examine even
     # under `-nostdlib` only to warn that it goes unused with `-nostdlib`.
-    configs -= [ "//products/build/config/linux:implicit-host-libs" ]
+    configs -= [ "//vision/build/config/linux:implicit-host-libs" ]
   }
   ldflags = [
     "-Wl,-e,TestStart",

@@ -9,5 +9,5 @@ exports_files(
         "meta/metrics-logger-standalone.core_shard.cml",
         "meta/metrics-logger.core_shard.cml",
     ],
-    visibility = ["//products/bundles/assembly:__subpackages__"],
+    visibility = ["//vision/bundles/assembly:__subpackages__"],
 )

@@ -2,8 +2,8 @@
 # Use of this source code is governed by a BSD-style license that can be
 # found in the LICENSE file.
 
-import("//products/build/components.gni")
-import("//products/build/rust/rustc_library.gni")
+import("//vision/build/components.gni")
+import("//vision/build/rust/rustc_library.gni")
 
 template("fidl_fuchsia_net_routes_ext_lib") {
   rustc_library(target_name) {
@@ -42,7 +42,7 @@ template("fidl_fuchsia_net_routes_ext_lib") {
       "src/testutil.rs",
     ]
 
-    configs += [ "//products/build/config/rust/lints:deny_unused_results" ]
+    configs += [ "//vision/build/config/rust/lints:deny_unused_results" ]
   }
 }
 

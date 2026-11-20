@@ -7,7 +7,7 @@ load(
     "fuchsia_cc_library",
     "fuchsia_fidl_library",
 )
-load("//products/build/bazel/rules/fidl:fidl_library.bzl", "fidl_library")
+load("//vision/build/bazel/rules/fidl:fidl_library.bzl", "fidl_library")
 
 package(default_applicable_licenses = ["//:license"])
 
@@ -50,7 +50,7 @@ fuchsia_fidl_library(
     tags = ["manual"],
     target_compatible_with = [
         "@platforms//os:fuchsia",
-        "//products/build/bazel/platforms:fuchsia_artifacts_build_with_sdk_rules",
+        "//vision/build/bazel/platforms:fuchsia_artifacts_build_with_sdk_rules",
     ],
     visibility = ["//visibility:private"],
     deps = ["@fuchsia_sdk//fidl/fuchsia.io"],

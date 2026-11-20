@@ -4,10 +4,10 @@
 
 assert(current_toolchain == default_toolchain)
 
-import("//products/build/config/fuchsia/target_api_level.gni")
-import("//products/build/sdk/idk_subbuilds.gni")
-import("//products/build/sdk/sdk_collection.gni")
-import("//products/build/sdk/sdk_molecule.gni")
+import("//vision/build/config/fuchsia/target_api_level.gni")
+import("//vision/build/sdk/idk_subbuilds.gni")
+import("//vision/build/sdk/sdk_collection.gni")
+import("//vision/build/sdk/sdk_molecule.gni")
 
 # Template defining the targets used to build the  IDK.
 # When the target name is "fuchsia", all atoms will be built. Otherwise,
@@ -196,7 +196,7 @@ template("generate_idk_targets") {
       # Note that the variants (prefixes) do NOT share an output directory
       # because this would require plumbing through a stamp file override and,
       # more significantly, require adding complexity to support
-      # //products/build/scripts/ninjatrace2json.py.
+      # //vision/build/scripts/ninjatrace2json.py.
       # This should be okay since it should be rare that both variants are
       # built.
       idk_subbuilds(subbuilds_target_name) {

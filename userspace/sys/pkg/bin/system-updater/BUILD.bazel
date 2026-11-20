@@ -2,16 +2,16 @@
 # Use of this source code is governed by a BSD-style license that can be
 # found in the LICENSE file.
 
-load("//products/build/bazel/rules:compiled_action.bzl", "compiled_action")
+load("//vision/build/bazel/rules:compiled_action.bzl", "compiled_action")
 load(
-    "//products/build/bazel/rules/components:fx_component.bzl",
+    "//vision/build/bazel/rules/components:fx_component.bzl",
     "fx_component_manifest",
 )
 load(
-    "//products/build/bazel/rules/components:structured_config.bzl",
+    "//vision/build/bazel/rules/components:structured_config.bzl",
     "fuchsia_structured_config_rust_lib",
 )
-load("//products/build/bazel/rules/rust:rustc_binary.bzl", "rustc_binary")
+load("//vision/build/bazel/rules/rust:rustc_binary.bzl", "rustc_binary")
 
 package(default_applicable_licenses = ["//:license"])
 
@@ -20,7 +20,7 @@ exports_files(
         "meta/system_updater.core_shard.cml",
         "meta/system_updater.system_update_shard.cml",
     ],
-    visibility = ["//products/bundles/assembly:__subpackages__"],
+    visibility = ["//vision/bundles/assembly:__subpackages__"],
 )
 
 # The GN build uses `generate_epoch("epoch.json")` defined above the bazel2gn
@@ -67,7 +67,7 @@ rustc_binary(
         ":epoch.json",
     ],  # @bazel2gn:raw_overwrite:[ ":epoch.json" ]
     edition = "2024",
-    lint_config = "//products/build/config/rust/lints:clippy_warn_all",
+    lint_config = "//vision/build/config/rust/lints:clippy_warn_all",
     proc_macro_deps = [
         "//userspace/lib/include_str_from_working_dir",
     ],

@@ -3,15 +3,15 @@
 # found in the LICENSE file.
 
 load(
-    "//products/build/bazel/rules/components:fx_component.bzl",
+    "//vision/build/bazel/rules/components:fx_component.bzl",
     "fx_component",
     "fx_component_manifest",
 )
 load(
-    "//products/build/bazel/rules/packages:fx_packaged_binary.bzl",
+    "//vision/build/bazel/rules/packages:fx_packaged_binary.bzl",
     "fx_packaged_binary",
 )
-load("//products/build/bazel/rules/rust:rustc_binary.bzl", "rustc_binary")
+load("//vision/build/bazel/rules/rust:rustc_binary.bzl", "rustc_binary")
 
 package(default_applicable_licenses = ["//:license"])
 

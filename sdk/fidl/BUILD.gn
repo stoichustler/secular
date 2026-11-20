@@ -2,9 +2,9 @@
 # Use of this source code is governed by a BSD-style license that can be
 # found in the LICENSE file.
 
-import("//products/build/fidl/toolchain.gni")
-import("//products/build/sdk/sdk_collection.gni")
-import("//products/build/sdk/sdk_molecule.gni")
+import("//vision/build/fidl/toolchain.gni")
+import("//vision/build/sdk/sdk_collection.gni")
+import("//vision/build/sdk/sdk_molecule.gni")
 import("fidl_category_lists.gni")
 
 # How Category Compatibility Checking Works.
@@ -38,7 +38,7 @@ import("fidl_category_lists.gni")
 # real IDK collection (see https://fxbug.dev/42070088). To address this gap,
 # there is a collection specifically to provide coverage for all FIDL libraries
 # in an SDK category, ":fidl_category_check_collection".
-# LINT.ThenChange(//products/build/sdk/generate_prebuild_idk/idk_generator.py:fidl_category_checks)
+# LINT.ThenChange(//vision/build/sdk/generate_prebuild_idk/idk_generator.py:fidl_category_checks)
 # LINT.IfChange(ensure_compatibility_checks)
 # "//:default" depends on ":compatibility_tests", which depends on this
 # collection, ensuring the category compatibility checks are performed for all
@@ -69,7 +69,7 @@ _partner_idk_unstable_fidl_libraries_targets_list =
 sdk_molecule("fidl") {
   visibility = [
     ":*",
-    "//products/build/fidl:sdk_fidl",
+    "//vision/build/fidl:sdk_fidl",
     "//sdk:*",
     "//vendor/*",
   ]

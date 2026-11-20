@@ -2,9 +2,9 @@
 # Use of this source code is governed by a BSD-style license that can be
 # found in the LICENSE file.
 
-load("//products/build/bazel/rules/host_tests:host_rustc_test.bzl", "host_rustc_test")
-load("//products/build/bazel/rules/rust:defs.bzl", "rustc_library", "rustc_test")
-load("//products/build/bazel/rules/testing:fx_unittest_package.bzl", "fx_unittest_package")
+load("//vision/build/bazel/rules/host_tests:host_rustc_test.bzl", "host_rustc_test")
+load("//vision/build/bazel/rules/rust:defs.bzl", "rustc_library", "rustc_test")
+load("//vision/build/bazel/rules/testing:fx_unittest_package.bzl", "fx_unittest_package")
 
 package(default_applicable_licenses = ["//:license"])
 
@@ -12,7 +12,7 @@ rustc_library(
     name = "mock-installer",
     srcs = ["src/lib.rs"],
     edition = "2024",
-    lint_config = "//products/build/config/rust/lints:clippy_warn_all",
+    lint_config = "//vision/build/config/rust/lints:clippy_warn_all",
     visibility = [
         "//userspace/sys/pkg/tests/omaha-client:__pkg__",
         "//userspace/sys/pkg/tests/system-update-checker:__pkg__",
@@ -36,7 +36,7 @@ rustc_library(
     srcs = ["src/lib.rs"],
     crate_features = ["fdomain"],
     edition = "2024",
-    lint_config = "//products/build/config/rust/lints:clippy_warn_all",
+    lint_config = "//vision/build/config/rust/lints:clippy_warn_all",
     visibility = ["//userspace/developer/ffx/plugins/target/update:__pkg__"],
     deps = [
         "//userspace/lib/fdomain/client",
@@ -55,7 +55,7 @@ rustc_test(
     name = "mock_installer_lib_test",
     crate = ":mock-installer",
     edition = "2024",
-    lint_config = "//products/build/config/rust/lints:clippy_warn_all",
+    lint_config = "//vision/build/config/rust/lints:clippy_warn_all",
     visibility = ["//visibility:private"],
     deps = [
         "//sdk/fidl/fuchsia.pkg:fuchsia.pkg_rust_flex",
@@ -70,7 +70,7 @@ host_rustc_test(
     crate = ":mock-installer_fdomain",
     crate_features = ["fdomain"],
     edition = "2024",
-    lint_config = "//products/build/config/rust/lints:clippy_warn_all",
+    lint_config = "//vision/build/config/rust/lints:clippy_warn_all",
     deps = [
         "//sdk/fidl/fuchsia.pkg:fuchsia.pkg_rust_fdomain_flex",
         "//userspace/lib/fdomain/local",

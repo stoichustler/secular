@@ -1,8 +1,8 @@
 # Copyright 2016 The Fuchsia Authors. All rights reserved.
 # Use of this source code is governed by a BSD-style license that can be
 # found in the LICENSE file.
-import("//products/build/icu/icu_source_set.gni")
-import("//products/build/icu/third_party_icu_headers.gni")
+import("//vision/build/icu/icu_source_set.gni")
+import("//vision/build/icu/third_party_icu_headers.gni")
 
 third_party_icu_headers("icu_headers") {
   icu_assembly = true

@@ -2,9 +2,9 @@
 # Use of this source code is governed by a BSD-style license that can be
 # found in the LICENSE file.
 
-import("//products/build/cpp/library_headers.gni")
-import("//products/build/cpp/sdk_source_set.gni")
-import("//products/build/toolchain/toolchain_environment.gni")
+import("//vision/build/cpp/library_headers.gni")
+import("//vision/build/cpp/sdk_source_set.gni")
+import("//vision/build/toolchain/toolchain_environment.gni")
 
 library_headers("headers") {
   headers = [

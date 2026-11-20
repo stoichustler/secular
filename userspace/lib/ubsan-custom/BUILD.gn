@@ -24,7 +24,7 @@ config("ubsan") {
   }
 
   # The ubsan variant adds rtti, but that is not used by the kernel variant.
-  configs = [ "//products/build/config:no_rtti" ]
+  configs = [ "//vision/build/config:no_rtti" ]
 }
 
 # This disables all those, and can be appended to a configs list that has the

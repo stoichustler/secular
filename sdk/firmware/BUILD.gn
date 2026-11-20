@@ -2,10 +2,10 @@
 # Use of this source code is governed by a BSD-style license that can be
 # found in the LICENSE file.
 
-import("//products/build/sdk/idk.gni")
-import("//products/build/sdk/idk_archive.gni")
-import("//products/build/sdk/sdk_collection.gni")
-import("//products/build/sdk/sdk_final_manifest_golden.gni")
+import("//vision/build/sdk/idk.gni")
+import("//vision/build/sdk/idk_archive.gni")
+import("//vision/build/sdk/sdk_collection.gni")
+import("//vision/build/sdk/sdk_final_manifest_golden.gni")
 
 visibility = [ ":*" ]
 

@@ -88,7 +88,7 @@ The **framework can boot ARM64 Linux and RTOS guests** from the guest package
 | virtio-net / GPU / audio | No | Not needed for a serial Linux console |
 
 `vmm launch vmid=0` starts the Zephyr RTOS guest. `vmm launch vmid=1` starts
-Linux 7.3.1 with minifs (`products/prebuilt/linux/`). Config:
+Linux 7.3.1 with minifs (`vision/prebuilt/linux/`). Config:
 
 ```json
 {
@@ -113,7 +113,7 @@ How the ZBI gets a VMM and how zxsh finds `GuestManager`.
 
 | File | What to take away |
 | --- | --- |
-| `products/secular/BUILD.gn` | BOOTFS packages: `guest_manager`, `vmm_launcher`, `/boot/bin/vmm` |
+| `vision/secular/BUILD.gn` | BOOTFS packages: `guest_manager`, `vmm_launcher`, `/boot/bin/vmm` |
 | `userspace/hypervisor/meta/hypervisor.bootstrap_shard.cml` | Eager `guest-manager`, lazy `vmm_launcher`; offer `GuestManager` to `console-launcher` |
 | `userspace/hypervisor/bin/guest_manager/meta/guest_manager.cml` | Static children `vmm` and `guest_pkg`; use `GuestLifecycle` from `#vmm` |
 | `userspace/hypervisor/bin/vmm/meta/vmm.cml` | `GuestLifecycle` + virtio collections (console/block/rng/balloon/vsock/mem) |

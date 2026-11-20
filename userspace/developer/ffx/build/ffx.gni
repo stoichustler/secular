@@ -2,8 +2,8 @@
 # Use of this source code is governed by a BSD-style license that can be
 # found in the LICENSE file.
 
-import("//products/build/rust/rustc_binary.gni")
-import("//products/build/toolchain/concurrent_jobs.gni")
+import("//vision/build/rust/rustc_binary.gni")
+import("//vision/build/toolchain/concurrent_jobs.gni")
 import("//userspace/developer/ffx/lib/version/build/ffx_apply_version.gni")
 import("ffx_plugin.gni")
 
@@ -51,12 +51,12 @@ template("ffx") {
       forward_variables_from(_concurrent_jobs.vars, "*")
 
       # Use up to 16 threads for codegen
-      configs += [ "//products/build/config/rust:codegen_units_16" ]
+      configs += [ "//vision/build/config/rust:codegen_units_16" ]
 
       if (is_debug) {
         # Disable lto for debug builds, as the additional codegen units imply
         # the use of thin-local lto
-        configs += [ "//products/build/config/lto:no-lto" ]
+        configs += [ "//vision/build/config/lto:no-lto" ]
       } else {
         # Use thin lto (instead of implied thin-local), to run (thin) lto across
         # the entire set of dependency crates, to minimize final binary size
@@ -64,8 +64,8 @@ template("ffx") {
         # using codegen_units=1)
         # Add thinlto config.
         configs += [
-          "//products/build/config/lto:thinlto-if-compatible",
-          "//products/build/config/lto:lto-rust-linker-plugin",
+          "//vision/build/config/lto:thinlto-if-compatible",
+          "//vision/build/config/lto:lto-rust-linker-plugin",
         ]
       }
     }

@@ -4,7 +4,7 @@
 # license that can be found in the LICENSE file or at
 # https://opensource.org/licenses/MIT
 
-import("//products/build/config/compiler.gni")
+import("//vision/build/config/compiler.gni")
 
 # See //zircon/kernel/phys/BUILD.gn:kernel.phys.
 
@@ -17,8 +17,8 @@ phys_configs = [
 
   # Compile as a position-independent executable. The code will apply its own
   # fixups during initialization.
-  "//products/build/config/zircon:static-pie-compile",
-  "//products/build/config/zircon:static-pie-link",
+  "//vision/build/config/zircon:static-pie-compile",
+  "//vision/build/config/zircon:static-pie-link",
 ]
 
 phys_tags = [
@@ -33,6 +33,6 @@ phys_zbi_configs = [ "//zircon/kernel/phys:load-pic" ]
 if (optimize != "none" && optimize != "coverage" && optimize != "profile" &&
     optimize != "sanitizer") {
   # All phys executables should be small enough for the tiny code model.
-  phys_configs += [ "//products/build/config/zircon:tiny" ]
+  phys_configs += [ "//vision/build/config/zircon:tiny" ]
   phys_tags += [ "tiny" ]
 }

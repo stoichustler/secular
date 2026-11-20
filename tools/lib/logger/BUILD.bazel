@@ -3,8 +3,8 @@
 # found in the LICENSE file.
 
 load("@io_bazel_rules_go//go:def.bzl", "go_library")
-load("//products/build/bazel/platforms:constraints.bzl", "HOST_OS_CONSTRAINTS")
-load("//products/build/bazel/rules/host_tests:host_go_test.bzl", "host_go_test")
+load("//vision/build/bazel/platforms:constraints.bzl", "HOST_OS_CONSTRAINTS")
+load("//vision/build/bazel/rules/host_tests:host_go_test.bzl", "host_go_test")
 
 package(default_applicable_licenses = ["//:license"])
 
@@ -16,7 +16,7 @@ go_library(
     importpath = "go.fuchsia.dev/fuchsia/tools/lib/logger",
     target_compatible_with = HOST_OS_CONSTRAINTS,
     visibility = [
-        "//products/build/tools:__subpackages__",
+        "//vision/build/tools:__subpackages__",
         "//userspace/firmware:__subpackages__",
         "//userspace/sys:__subpackages__",
         "//userspace/testing/host-target-testing:__subpackages__",

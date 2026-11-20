@@ -2,7 +2,7 @@
 # Use of this source code is governed by a BSD-style license that can be
 # found in the LICENSE file.
 
-import("//products/build/config/zircon/levels.gni")
+import("//vision/build/config/zircon/levels.gni")
 import("../libc.gni")
 
 if (zircon_toolchain != false) {
@@ -18,7 +18,7 @@ if (zircon_toolchain != false) {
       "ubsan-stubs.cc",
     ]
 
-    configs = [ "//products/build/config:Wno-missing-declarations" ]
+    configs = [ "//vision/build/config:Wno-missing-declarations" ]
 
     libc_deps = [
       ":backtrace",
@@ -58,7 +58,7 @@ if (zircon_toolchain != false) {
   libc_source_set("sancov-stubs") {
     visibility = [ ":*" ]
     sources = [ "sancov-stubs.cc" ]
-    configs = [ "//products/build/config/sanitizers:no_sanitizers" ]
+    configs = [ "//vision/build/config/sanitizers:no_sanitizers" ]
   }
 }
 
@@ -87,14 +87,14 @@ libc_source_set("backtrace") {
 
   # Always compile with frame pointers so that BacktraceByFramePointer reliably
   # has one for its own caller's frame to show up in the backtrace.
-  remove_configs = [ "//products/build/config:default_frame_pointers" ]
-  configs = [ "//products/build/config:frame_pointers" ]
+  remove_configs = [ "//vision/build/config:default_frame_pointers" ]
+  configs = [ "//vision/build/config:frame_pointers" ]
 }
 
 libc_test("unittests") {
   sources = [ "backtrace-tests.cc" ]
-  remove_configs = [ "//products/build/config:default_frame_pointers" ]
-  configs = [ "//products/build/config:frame_pointers" ]
+  remove_configs = [ "//vision/build/config:default_frame_pointers" ]
+  configs = [ "//vision/build/config:frame_pointers" ]
   deps = [
     ":backtrace.testonly",
     "//sdk/lib/ld/testing:ld-abi-testing",

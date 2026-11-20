@@ -9,5 +9,5 @@ exports_files(
         "meta/kernel_debug_broker_user.bootstrap_shard.cml",
         "meta/kernel_debug_broker_userdebug.bootstrap_shard.cml",
     ],
-    visibility = ["//products/bundles/assembly:__subpackages__"],
+    visibility = ["//vision/bundles/assembly:__subpackages__"],
 )

@@ -8,5 +8,5 @@ exports_files(
     [
         "bootfs_config.json5",
     ],
-    visibility = ["//products/bundles/assembly:__subpackages__"],
+    visibility = ["//vision/bundles/assembly:__subpackages__"],
 )

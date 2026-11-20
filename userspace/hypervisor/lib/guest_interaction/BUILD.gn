@@ -2,9 +2,9 @@
 # Use of this source code is governed by a BSD-style license that can be
 # found in the LICENSE file.
 
-import("//products/build/components.gni")
-import("//products/build/fidl/fidl.gni")
-import("//products/build/testing/cc_test_executable.gni")
+import("//vision/build/components.gni")
+import("//vision/build/fidl/fidl.gni")
+import("//vision/build/testing/cc_test_executable.gni")
 import("//userspace/hypervisor/buildtools/linux_paths.gni")
 import("//userspace/hypervisor/buildtools/romfs_image.gni")
 import("//third_party/protobuf/proto_library.gni")
@@ -223,7 +223,7 @@ source_set("guest_interaction_client") {
   ]
 
   # Enables thrd_create_with_name in <threads.h>.
-  public_configs = [ "//products/build/config:all_source" ]
+  public_configs = [ "//vision/build/config:all_source" ]
 }
 
 cc_test_executable("server_daemon_test") {
@@ -243,7 +243,7 @@ cc_test_executable("server_daemon_test") {
   ]
 
   # Enables thrd_create_with_name in <threads.h>.
-  configs += [ "//products/build/config:all_source" ]
+  configs += [ "//vision/build/config:all_source" ]
 }
 
 fidl("fuchsia.virtualization.guest.interaction") {

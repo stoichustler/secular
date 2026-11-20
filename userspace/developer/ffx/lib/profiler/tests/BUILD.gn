@@ -2,10 +2,10 @@
 # Use of this source code is governed by a BSD-style license that can be
 # found in the LICENSE file.
 
-import("//products/build/assembly/test_product_bundle.gni")
-import("//products/build/components.gni")
-import("//products/build/rust/rustc_binary.gni")
-import("//products/build/testing/symbols_dir_test_data.gni")
+import("//vision/build/assembly/test_product_bundle.gni")
+import("//vision/build/components.gni")
+import("//vision/build/rust/rustc_binary.gni")
+import("//vision/build/testing/symbols_dir_test_data.gni")
 import("//userspace/developer/ffx/lib/e2e_emu/ffx_e2e_test.gni")
 
 if (is_host) {

@@ -5,12 +5,12 @@
 # This file directs GN to all the other key files.
 
 # The location of the build configuration file.
-buildconfig = "//products/build/config/BUILDCONFIG.gn"
+buildconfig = "//vision/build/config/BUILDCONFIG.gn"
 
 # The secondary source root is a parallel directory tree where GN build files
 # are placed when they can not be placed directly in the source tree, e.g. for
 # third party source trees.
-secondary_source = "//products/build/secondary/"
+secondary_source = "//vision/build/secondary/"
 
 # https://fxbug.dev/363930634: set this to true once all actions in the build have been fixed,
 # of if we decide to create depfile parent directories in Ninja.
@@ -41,13 +41,13 @@ no_check_targets = [ "//third_party/*" ]
 # Use of `exec_script()` is discouraged for performance reasons.
 # See: https://fuchsia.dev/fuchsia-src/development/build/gn_concepts/templates#exec-script
 exec_script_whitelist = [
-  "//products/build/config/fuchsia/platform_version.gni",
-  "//products/build/config/clang/clang_toolchain_info.gni",
-  "//products/build/icu/build_config.gni",
-  "//products/build/toolchain/default_concurrent_jobs.gni",
-  "//products/build/toolchain/zircon/zircon_toolchain.gni",
-  "//products/build/git/git_revisions.gni",
-  "//products/build/config/userspace_include_alias.gni",
+  "//vision/build/config/fuchsia/platform_version.gni",
+  "//vision/build/config/clang/clang_toolchain_info.gni",
+  "//vision/build/icu/build_config.gni",
+  "//vision/build/toolchain/default_concurrent_jobs.gni",
+  "//vision/build/toolchain/zircon/zircon_toolchain.gni",
+  "//vision/build/git/git_revisions.gni",
+  "//vision/build/config/userspace_include_alias.gni",
 ]
 
 check_system_includes = true

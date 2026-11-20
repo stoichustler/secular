@@ -2,7 +2,7 @@
 # Use of this source code is governed by a BSD-style license that can be
 # found in the LICENSE file.
 
-import("//products/build/config/clang/clang_cpu.gni")
+import("//vision/build/config/clang/clang_cpu.gni")
 
 source_set("ldso") {
   deps = [
@@ -37,13 +37,13 @@ source_set("ldso") {
     defines = [ "DYNLINK_LDSVC_CONFIG=\"$ldsvc_config\"" ]
   }
 
-  configs -= [ "//products/build/config:symbol_visibility_hidden" ]
+  configs -= [ "//vision/build/config:symbol_visibility_hidden" ]
 
   # TODO(https://fxbug.dev/42136088): delete the below and fix compiler warnings
-  configs += [ "//products/build/config:Wno-unused-function" ]
+  configs += [ "//vision/build/config:Wno-unused-function" ]
 
   # TODO(https://fxbug.dev/42136089): delete the below and fix compiler warnings
-  configs += [ "//products/build/config:Wno-conversion" ]
+  configs += [ "//vision/build/config:Wno-conversion" ]
 
   # TODO(https://fxbug.dev/327630180): Temporarily disable vector extension for
   # riscv on dynlink.c. Under asan-ubsan instrumentation, the dynamic loader
@@ -55,16 +55,16 @@ source_set("ldso") {
   if (current_cpu == "riscv64" &&
       toolchain_variant.tags + [ "instrumented" ] - [ "instrumented" ] !=
       toolchain_variant.tags) {
-    configs += [ "//products/build/config/riscv64:no-vector" ]
+    configs += [ "//vision/build/config/riscv64:no-vector" ]
 
     # The stack-malloc code generation winds up using _more_ stack itself too.
-    configs += [ "//products/build/config/sanitizers:asan-use-after-return-never" ]
+    configs += [ "//vision/build/config/sanitizers:asan-use-after-return-never" ]
   }
 }
 
 source_set("dlstart") {
   visibility = [ ":*" ]
   sources = [ "dlstart.c" ]
-  configs += [ "//products/build/config/sanitizers:no_sanitizers" ]
+  configs += [ "//vision/build/config/sanitizers:no_sanitizers" ]
   deps = [ "//zircon/third_party/ulib/musl:musl_internal" ]
 }

@@ -2,8 +2,8 @@
 # Use of this source code is governed by a BSD-style license that can be
 # found in the LICENSE file.
 
-import("//products/build/config/sanitizers/sanitizer_default_options.gni")
-import("//products/build/rust/rustc_library.gni")
+import("//vision/build/config/sanitizers/sanitizer_default_options.gni")
+import("//vision/build/rust/rustc_library.gni")
 
 assert(is_host, "ffx_symbolize is for use with the host toolchain only")
 

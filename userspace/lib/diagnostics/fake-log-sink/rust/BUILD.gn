@@ -2,9 +2,9 @@
 # Use of this source code is governed by a BSD-style license that can be
 # found in the LICENSE file.
 
-import("//products/build/components/fuchsia_unittest_package.gni")
-import("//products/build/rust/rustc_library.gni")
-import("//products/build/rust/rustc_staticlib.gni")
+import("//vision/build/components/fuchsia_unittest_package.gni")
+import("//vision/build/rust/rustc_library.gni")
+import("//vision/build/rust/rustc_staticlib.gni")
 
 _sources = [ "src/lib.rs" ]
 _deps = [
@@ -34,7 +34,7 @@ rustc_library("rust") {
     "//third_party/rust_crates:log",
   ]
 
-  configs += [ "//products/build/config/rust/lints:clippy_warn_all" ]
+  configs += [ "//vision/build/config/rust/lints:clippy_warn_all" ]
 }
 
 rustc_staticlib("rust_ffi") {

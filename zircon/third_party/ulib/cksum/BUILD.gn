@@ -2,7 +2,7 @@
 # Use of this source code is governed by a BSD-style license that can be
 # found in the LICENSE file.
 
-import("//products/build/zircon/migrated_targets.gni")
+import("//vision/build/zircon/migrated_targets.gni")
 
 zx_library("cksum") {
   sdk = "source"
@@ -24,7 +24,7 @@ zx_library("cksum") {
 
   # TODO(https://fxbug.dev/42136089): delete the below and fix compiler warnings
   configs += [
-    "//products/build/config:Wno-call-graph-section-no-prototype",
-    "//products/build/config:Wno-conversion",
+    "//vision/build/config:Wno-call-graph-section-no-prototype",
+    "//vision/build/config:Wno-conversion",
   ]
 }

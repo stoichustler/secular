@@ -16,7 +16,7 @@ type VersionInfo = table {
     /// UTC timestamp of the HEAD commit in seconds.
     2: commit_timestamp uint64;
 
-    /// The build version, pulled from //products/build/info.
+    /// The build version, pulled from //vision/build/info.
     3: build_version string:MAX_BUILD_VERSION_LENGTH;
 
     /// The ABI revision denotes the semantics of the Fuchsia System Interface

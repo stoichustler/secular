@@ -2,7 +2,7 @@
 # Use of this source code is governed by a BSD-style license that can be
 # found in the LICENSE file.
 
-load("//products/build/bazel/rules/rust:defs.bzl", "rustc_library")
+load("//vision/build/bazel/rules/rust:defs.bzl", "rustc_library")
 
 package(default_applicable_licenses = ["//:license"])
 
@@ -10,7 +10,7 @@ rustc_library(
     name = "proptest-support",
     testonly = True,
     srcs = ["src/lib.rs"],
-    build_flags = ["//products/build/config/rust/lints:deny_unused_results"],
+    build_flags = ["//vision/build/config/rust/lints:deny_unused_results"],
     edition = "2024",
     visibility = [
         "//userspace/connectivity/network/netlink:__pkg__",

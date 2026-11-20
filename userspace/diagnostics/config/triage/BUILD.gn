@@ -2,7 +2,7 @@
 # Use of this source code is governed by a BSD-style license that can be
 # found in the LICENSE file.
 
-import("//products/build/assembly/config_data_for_assembly.gni")
+import("//vision/build/assembly/config_data_for_assembly.gni")
 import("//userspace/diagnostics/triage/build/triage_config_test.gni")
 
 # The list of triage configuration files in the current directory that

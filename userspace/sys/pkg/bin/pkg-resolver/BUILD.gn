@@ -2,9 +2,9 @@
 # Use of this source code is governed by a BSD-style license that can be
 # found in the LICENSE file.
 
-import("//products/build/components.gni")
-import("//products/build/rust/rustc_library.gni")
-import("//products/build/testing/environments.gni")
+import("//vision/build/components.gni")
+import("//vision/build/rust/rustc_library.gni")
+import("//vision/build/testing/environments.gni")
 import("//userspace/sys/pkg/bin/grand-swd-binary/gsb.gni")
 
 # `pkg-resolver` is conceptually a binary, but it built as a lib here so it can
@@ -121,7 +121,7 @@ rustc_library("lib") {
     ":*",
     "//userspace/sys/pkg/bin/grand-swd-binary:*",
   ]
-  configs += [ "//products/build/config/rust/lints:clippy_warn_all" ]
+  configs += [ "//vision/build/config/rust/lints:clippy_warn_all" ]
 }
 
 grand_swd_binary("bin") {

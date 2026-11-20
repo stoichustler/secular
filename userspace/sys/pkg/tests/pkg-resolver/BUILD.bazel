@@ -8,7 +8,7 @@ load(
     "resource",
 )
 load(
-    "//products/build/bazel/rules/components:fx_component.bzl",
+    "//vision/build/bazel/rules/components:fx_component.bzl",
     "fx_component_manifest",
 )
 

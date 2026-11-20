@@ -2,7 +2,7 @@
 # Use of this source code is governed by a BSD-style license that can be
 # found in the LICENSE file.
 
-load("//products/build/bazel/rules/idk:idk_cc_source_library.bzl", "idk_cc_source_library")
+load("//vision/build/bazel/rules/idk:idk_cc_source_library.bzl", "idk_cc_source_library")
 
 wavl_tree_headers = [
     "include/lib/fidl/cpp/wire/internal/intrusive_container/node_utils.h",
@@ -152,7 +152,7 @@ idk_cc_source_library(
     # In Bazel, the library must be visible to the package containing the symbolic macro.
     # In GN, the library must be visible to any path that defines a `fidl()` target.
     visibility = [
-        "//products/build/bazel/rules/fidl:__subpackages__",
+        "//vision/build/bazel/rules/fidl:__subpackages__",
         "//sdk/lib/driver/runtime:__pkg__",
         "//sdk/lib/fidl/cpp:__subpackages__",
         "//sdk/lib/fidl_driver:__pkg__",

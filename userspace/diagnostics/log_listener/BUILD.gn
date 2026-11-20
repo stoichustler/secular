@@ -2,10 +2,10 @@
 # Use of this source code is governed by a BSD-style license that can be
 # found in the LICENSE file.
 
-import("//products/build/components.gni")
-import("//products/build/dist/renamed_binary.gni")
-import("//products/build/rust/rustc_binary.gni")
-import("//products/build/testing/cc_test_executable.gni")
+import("//vision/build/components.gni")
+import("//vision/build/dist/renamed_binary.gni")
+import("//vision/build/rust/rustc_binary.gni")
+import("//vision/build/testing/cc_test_executable.gni")
 
 declare_args() {
   # Controls how many bytes of space on disk are used to persist device logs.
@@ -35,7 +35,7 @@ rustc_binary("bin") {
   ]
 
   sources = [ "src/main.rs" ]
-  configs += [ "//products/build/config/rust/lints:clippy_warn_all" ]
+  configs += [ "//vision/build/config/rust/lints:clippy_warn_all" ]
 }
 
 renamed_binary("log_bin") {
@@ -50,7 +50,7 @@ fuchsia_package("log_listener_shell_pkg") {
   deps = [
     ":bin",
     ":log_bin",
-    "//products/build/validate:non_production_tag",
+    "//vision/build/validate:non_production_tag",
   ]
 }
 

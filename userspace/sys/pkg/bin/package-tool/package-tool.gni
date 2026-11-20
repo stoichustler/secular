@@ -2,9 +2,9 @@
 # Use of this source code is governed by a BSD-style license that can be
 # found in the LICENSE file.
 
-import("//products/build/compiled_action.gni")
-import("//products/build/images/args.gni")
-import("//products/build/packages/package_metadata.gni")
+import("//vision/build/compiled_action.gni")
+import("//vision/build/images/args.gni")
+import("//vision/build/packages/package_metadata.gni")
 
 # Extract a package from an archive.
 #
@@ -320,7 +320,7 @@ template("package_tool_archive_create") {
   # LINT.IfChange
   archive_out = "${target_out_dir}/${archive_name}.far"
 
-  # LINT.ThenChange(//products/build/packages/exported_fuchsia_package_archive.gni)
+  # LINT.ThenChange(//vision/build/packages/exported_fuchsia_package_archive.gni)
 
   archive_depfile = "${archive_out}.d"
 

@@ -13,7 +13,7 @@ import fuchsia_base_test
 # LINT.IfChange
 import test_data
 
-# LINT.ThenChange(//products/build/testing/perf/test.gni)
+# LINT.ThenChange(//vision/build/testing/perf/test.gni)
 from host_driven import run_test_component
 from mobly import test_runner
 from perf_publish import publish

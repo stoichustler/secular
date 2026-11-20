@@ -2,9 +2,9 @@
 # Use of this source code is governed by a BSD-style license that can be
 # found in the LICENSE file.
 
-load("//products/build/bazel/rules/rust:rustc_library.bzl", "rustc_library")
-load("//products/build/bazel/rules/rust:rustc_test.bzl", "rustc_test")
-load("//products/build/bazel/rules/testing:fx_unittest_package.bzl", "fx_unittest_package")
+load("//vision/build/bazel/rules/rust:rustc_library.bzl", "rustc_library")
+load("//vision/build/bazel/rules/rust:rustc_test.bzl", "rustc_test")
+load("//vision/build/bazel/rules/testing:fx_unittest_package.bzl", "fx_unittest_package")
 
 package(default_applicable_licenses = ["//:license"])
 
@@ -19,7 +19,7 @@ rustc_library(
     crate_name = "pkgctl",
     crate_root = "src/main.rs",
     edition = "2024",
-    lint_config = "//products/build/config/rust/lints:clippy_warn_all",
+    lint_config = "//vision/build/config/rust/lints:clippy_warn_all",
     visibility = ["//userspace/sys/pkg/bin/multi-universal-tool:__pkg__"],
     deps = [
         "//sdk/fidl/fuchsia.pkg:fuchsia.pkg_rust",
@@ -46,7 +46,7 @@ rustc_test(
     name = "lib_test",
     crate = ":lib",
     edition = "2024",
-    lint_config = "//products/build/config/rust/lints:clippy_warn_all",
+    lint_config = "//vision/build/config/rust/lints:clippy_warn_all",
     visibility = ["//visibility:private"],
     deps = [
         "//third_party/rust_crates/vendor:assert_matches",

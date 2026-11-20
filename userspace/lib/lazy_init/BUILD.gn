@@ -2,10 +2,10 @@
 # Use of this source code is governed by a BSD-style license that can be
 # found in the LICENSE file.
 
-import("//products/build/components.gni")
-import("//products/build/cpp/library_headers.gni")
-import("//products/build/rust/rustc_library.gni")
-import("//products/build/test.gni")
+import("//vision/build/components.gni")
+import("//vision/build/cpp/library_headers.gni")
+import("//vision/build/rust/rustc_library.gni")
+import("//vision/build/test.gni")
 
 library_headers("headers") {
   headers = [
@@ -42,7 +42,7 @@ group("tests") {
 
 test("lazy-init-test") {
   if (is_fuchsia) {
-    fdio_config = [ "//products/build/config/fuchsia:fdio_config" ]
+    fdio_config = [ "//vision/build/config/fuchsia:fdio_config" ]
     if (configs + fdio_config - fdio_config != configs) {
       configs -= fdio_config
     }
@@ -65,7 +65,7 @@ test("lazy-init-test") {
       "//zircon/system/ulib/zx",
     ]
   }
-  configs += [ "//products/build/config/fuchsia:static_cpp_standard_library" ]
+  configs += [ "//vision/build/config/fuchsia:static_cpp_standard_library" ]
 }
 
 fuchsia_unittest_package("lazy-init-test-pkg") {

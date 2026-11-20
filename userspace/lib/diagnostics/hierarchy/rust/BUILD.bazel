@@ -2,7 +2,7 @@
 # Use of this source code is governed by a BSD-style license that can be
 # found in the LICENSE file.
 
-load("//products/build/bazel/rules/rust:defs.bzl", "rustc_library")
+load("//vision/build/bazel/rules/rust:defs.bzl", "rustc_library")
 
 package(default_applicable_licenses = ["//:license"])
 
@@ -16,11 +16,11 @@ rustc_library(
         "src/serialization/serialize.rs",
     ],
     crate_features = select({
-        "//products/build/bazel/platforms:is_host_os": ["json_schema"],
+        "//vision/build/bazel/platforms:is_host_os": ["json_schema"],
         "//conditions:default": [],
     }),
     edition = "2024",
-    lint_config = "//products/build/config/rust/lints:clippy_warn_all",
+    lint_config = "//vision/build/config/rust/lints:clippy_warn_all",
     proc_macro_deps = [
         "//third_party/rust_crates/vendor:num-derive",
         "//third_party/rust_crates/vendor:paste",
@@ -32,7 +32,7 @@ rustc_library(
         "//third_party/rust_crates/vendor:test-case",
     ] + select({
         # Contains a one-line check for a schema.
-        "//products/build/bazel/platforms:is_host_os": ["//userspace/developer/ffx/lib/writer:lib"],
+        "//vision/build/bazel/platforms:is_host_os": ["//userspace/developer/ffx/lib/writer:lib"],
         "//conditions:default": [],
     }),
     version = "0.1.0",
@@ -48,7 +48,7 @@ rustc_library(
         "//third_party/rust_crates/vendor:serde",
         "//third_party/rust_crates/vendor:thiserror",
     ] + select({
-        "//products/build/bazel/platforms:is_host_os": ["//third_party/rust_crates/vendor:schemars"],
+        "//vision/build/bazel/platforms:is_host_os": ["//third_party/rust_crates/vendor:schemars"],
         "//conditions:default": [],
     }),
 )

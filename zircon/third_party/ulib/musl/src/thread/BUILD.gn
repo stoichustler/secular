@@ -30,11 +30,11 @@ source_set("thread") {
     "tss_set.c",
   ]
 
-  configs -= [ "//products/build/config:symbol_visibility_hidden" ]
+  configs -= [ "//vision/build/config:symbol_visibility_hidden" ]
 }
 
 source_set("tls_get_addr") {
   sources = [ "__tls_get_addr.c" ]
   deps = [ "//zircon/third_party/ulib/musl:musl_internal" ]
-  configs -= [ "//products/build/config:symbol_visibility_hidden" ]
+  configs -= [ "//vision/build/config:symbol_visibility_hidden" ]
 }

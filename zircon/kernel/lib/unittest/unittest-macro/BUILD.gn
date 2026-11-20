@@ -4,7 +4,7 @@
 # license that can be found in the LICENSE file or at
 # https://opensource.org/licenses/MIT
 
-import("//products/build/rust/rustc_macro.gni")
+import("//vision/build/rust/rustc_macro.gni")
 
 rustc_macro("unittest-macro") {
   edition = "2024"

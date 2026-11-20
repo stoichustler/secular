@@ -2,8 +2,8 @@
 # Use of this source code is governed by a BSD-style license that can be
 # found in the LICENSE file.
 
-load("//products/build/bazel/rules/cc:fx_cc_library.bzl", "fx_cc_library")
-load("//products/build/bazel/rules/host_tests:host_cc_test.bzl", "host_cc_test")
+load("//vision/build/bazel/rules/cc:fx_cc_library.bzl", "fx_cc_library")
+load("//vision/build/bazel/rules/host_tests:host_cc_test.bzl", "host_cc_test")
 
 package(default_applicable_licenses = ["//:license"])
 

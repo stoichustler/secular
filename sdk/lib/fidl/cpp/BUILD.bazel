@@ -2,7 +2,7 @@
 # Use of this source code is governed by a BSD-style license that can be
 # found in the LICENSE file.
 
-load("//products/build/bazel/rules/idk:idk_cc_source_library.bzl", "idk_cc_source_library")
+load("//vision/build/bazel/rules/idk:idk_cc_source_library.bzl", "idk_cc_source_library")
 
 package(default_applicable_licenses = ["//:license"])
 
@@ -38,7 +38,7 @@ idk_cc_source_library(
     # In Bazel, the library must be visible to the package containing the symbolic macro.
     # In GN, the library must be visible to any path that defines a `fidl()` target.
     visibility = [
-        "//products/build/bazel/rules/fidl:__subpackages__",
+        "//vision/build/bazel/rules/fidl:__subpackages__",
         "//sdk/lib/fidl_driver:__pkg__",
     ],  # @bazel2gn:raw_overwrite:[ "//*" ]
     deps = [
@@ -80,7 +80,7 @@ idk_cc_source_library(
     # In Bazel, the library must be visible to the package containing the symbolic macro.
     # In GN, the library must be visible to any path that defines a `fidl()` target.
     visibility = [
-        "//products/build/bazel/rules/fidl:__subpackages__",
+        "//vision/build/bazel/rules/fidl:__subpackages__",
         "//sdk/lib/fidl_driver:__pkg__",
     ],  # @bazel2gn:raw_overwrite:[ "//*" ]
     deps = [
@@ -102,7 +102,7 @@ idk_cc_source_library(
     # In Bazel, the library must be visible to the package containing the symbolic macro.
     # In GN, the library must be visible to any path that defines a `fidl()` target.
     visibility = [
-        "//products/build/bazel/rules/fidl:__subpackages__",
+        "//vision/build/bazel/rules/fidl:__subpackages__",
     ],  # @bazel2gn:raw_overwrite:[ "//*" ]
     deps = [":cpp_base"],
 )
@@ -119,7 +119,7 @@ idk_cc_source_library(
     # In Bazel, the library must be visible to the package containing the symbolic macro.
     # In GN, the library must be visible to any path that defines a `fidl()` target.
     visibility = [
-        "//products/build/bazel/rules/fidl:__subpackages__",
+        "//vision/build/bazel/rules/fidl:__subpackages__",
         "//sdk/lib/fidl_driver:__pkg__",
     ],  # @bazel2gn:raw_overwrite:[ "//*" ]
     deps = [":cpp_base"],

@@ -9,8 +9,8 @@
 # See https://fxbug.dev/42111634.                   #
 ##########################################
 
-import("//products/build/bazel/bazel_host_tool.gni")
-import("//products/build/sdk/sdk_host_tool.gni")
+import("//vision/build/bazel/bazel_host_tool.gni")
+import("//vision/build/sdk/sdk_host_tool.gni")
 
 sdk_host_tool("merkleroot_sdk") {
   category = "partner"

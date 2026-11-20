@@ -2,7 +2,7 @@
 # Use of this source code is governed by a BSD-style license that can be
 # found in the LICENSE file.
 
-import("//products/build/zircon/migrated_targets.gni")
+import("//vision/build/zircon/migrated_targets.gni")
 
 # LINT.IfChange
 zx_library("tftp") {
@@ -36,7 +36,7 @@ zx_library("tftp") {
   }
 
   # TODO(https://fxbug.dev/42136089): delete the below and fix compiler warnings
-  configs += [ "//products/build/config:Wno-conversion" ]
+  configs += [ "//vision/build/config:Wno-conversion" ]
 }
 
 # LINT.ThenChange(BUILD.bazel)

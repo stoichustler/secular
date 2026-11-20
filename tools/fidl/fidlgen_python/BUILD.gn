@@ -2,9 +2,9 @@
 # Use of this source code is governed by a BSD-style license that can be
 # found in the LICENSE file.
 
-import("//products/build/bazel/bazel_host_tool.gni")
-import("//products/build/python/python_binary.gni")
-import("//products/build/testing/golden_files.gni")
+import("//vision/build/bazel/bazel_host_tool.gni")
+import("//vision/build/python/python_binary.gni")
+import("//vision/build/testing/golden_files.gni")
 import("//tools/fidl/fidlc/testdata/info.gni")
 
 # TODO(https://fxbug.dev/308723467): In other fidlgen_* implementations, there is an associated

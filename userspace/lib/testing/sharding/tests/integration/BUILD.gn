@@ -2,8 +2,8 @@
 # Use of this source code is governed by a BSD-style license that can be
 # found in the LICENSE file.
 
-import("//products/build/components.gni")
-import("//products/build/rust/rustc_test.gni")
+import("//vision/build/components.gni")
+import("//vision/build/rust/rustc_test.gni")
 
 group("tests") {
   testonly = true
@@ -13,7 +13,7 @@ group("tests") {
 rustc_test("sharding_integration_test") {
   edition = "2024"
   testonly = true
-  configs += [ "//products/build/config/rust/lints:deny_unused_results" ]
+  configs += [ "//vision/build/config/rust/lints:deny_unused_results" ]
   sources = [ "src/lib.rs" ]
   deps = [
     "//sdk/fidl/fuchsia.test.manager:fuchsia.test.manager_rust",

@@ -2,9 +2,9 @@
 # Use of this source code is governed by a BSD-style license that can be
 # found in the LICENSE file.
 
-import("//products/build/compiled_action.gni")
-import("//products/build/rust/rustc_binary.gni")
-import("//products/build/rust/rustc_library.gni")
+import("//vision/build/compiled_action.gni")
+import("//vision/build/rust/rustc_binary.gni")
+import("//vision/build/rust/rustc_library.gni")
 
 rustc_library("unicode_blocks") {
   edition = "2024"

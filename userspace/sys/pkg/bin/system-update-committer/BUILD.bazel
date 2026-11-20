@@ -3,14 +3,14 @@
 # found in the LICENSE file.
 
 load(
-    "//products/build/bazel/rules/components:fx_component.bzl",
+    "//vision/build/bazel/rules/components:fx_component.bzl",
     "fx_component_manifest",
 )
 load(
-    "//products/build/bazel/rules/components:structured_config.bzl",
+    "//vision/build/bazel/rules/components:structured_config.bzl",
     "fuchsia_structured_config_rust_lib",
 )
-load("//products/build/bazel/rules/rust:rustc_library.bzl", "rustc_library")
+load("//vision/build/bazel/rules/rust:rustc_library.bzl", "rustc_library")
 
 package(default_applicable_licenses = ["//:license"])
 
@@ -33,7 +33,7 @@ rustc_library(
     crate_name = "system_update_committer",
     crate_root = "src/main.rs",
     edition = "2024",
-    lint_config = "//products/build/config/rust/lints:clippy_warn_all",
+    lint_config = "//vision/build/config/rust/lints:clippy_warn_all",
     visibility = ["//userspace/sys/pkg/bin/grand-swd-binary:__pkg__"],
     deps = [
         ":system_update_committer_config",

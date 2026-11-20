@@ -7,7 +7,7 @@
 import os
 import sys
 
-# Add //products/build/rust to Python path so bindgen import works.
+# Add //vision/build/rust to Python path so bindgen import works.
 FUCHSIA_DIR = os.environ.get(
     "FUCHSIA_DIR",
     os.path.join(os.path.dirname(__file__), "..", "..", "..", ".."),

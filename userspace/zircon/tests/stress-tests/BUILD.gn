@@ -2,7 +2,7 @@
 # Use of this source code is governed by a BSD-style license that can be
 # found in the LICENSE file.
 
-import("//products/build/components.gni")
+import("//vision/build/components.gni")
 
 fuchsia_test_component("vm-stress-test") {
   manifest = "meta/vm-stress-test.cml"

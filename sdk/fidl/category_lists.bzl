@@ -8,7 +8,7 @@ For information on categories, see
 https://fuchsia.dev/fuchsia-src/contribute/sdk/categories.
 """
 
-visibility(["//products/build/bazel/rules/idk/private"])
+visibility(["//vision/build/bazel/rules/idk/private"])
 
 # Stable FIDL libraries in the partner category.
 # All are included in the IDK.

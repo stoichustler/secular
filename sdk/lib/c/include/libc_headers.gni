@@ -235,7 +235,7 @@ libc_headers = {
   sysroot_entries = []
 
   # This lists the extra files that are read directly by
-  # //products/build/bazel/fuchsia_idk/generate_repository.py
+  # //vision/build/bazel/fuchsia_idk/generate_repository.py
   idk_generate_inputs = []
 
   _all_generated_headers = []

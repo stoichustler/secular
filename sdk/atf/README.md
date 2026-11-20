@@ -12,7 +12,7 @@ The product stays:
 zircon kernel + linux-arm64-boot-shim + BOOTFS + serial console + zxsh
 ```
 
-Read [`bootstrap.md`](../../products/reference/zircon/bootstrap.md) for
+Read [`bootstrap.md`](../../vision/reference/zircon/bootstrap.md) for
 EL2 shim → `zxsh`, [`sdk/lk/README.md`](../lk/README.md) for Trusty and
 lkboot, [`userspace/secular/bin/README.md`](../../userspace/secular/bin/README.md)
 for NS probes into S-EL1. This note stops when BL31 has `ERET`ed to
@@ -111,7 +111,7 @@ resident firmware image changes here.
          │
          ▼
  lkboot → linux-arm64-boot-shim → secular.zbi
-   (see products/reference/zircon/bootstrap.md)
+   (see vision/reference/zircon/bootstrap.md)
 ```
 
 | Node | EL | Security | Who runs |
@@ -203,7 +203,7 @@ S-EL0 TAs are later. This product's BL32 is the TEE OS only.
 `ARM_LINUX_KERNEL_AS_BL33=1`, so the NS entry uses the Linux arm64
 protocol (`x0` = DTB). lkboot stays at EL2 (VHE) and chain-loads the
 shim. From there the path is
-[`bootstrap.md`](../../products/reference/zircon/bootstrap.md).
+[`bootstrap.md`](../../vision/reference/zircon/bootstrap.md).
 
 ## Physical layout
 

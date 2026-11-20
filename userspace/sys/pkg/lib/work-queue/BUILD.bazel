@@ -2,12 +2,12 @@
 # Use of this source code is governed by a BSD-style license that can be
 # found in the LICENSE file.
 
-load("//products/build/bazel/rules/host_tests:host_rustc_test.bzl", "wrap_host_rust_test")
-load("//products/build/bazel/rules/packages:fx_package.bzl", "fx_package")
-load("//products/build/bazel/rules/rust:rustc_library.bzl", "rustc_library")
-load("//products/build/bazel/rules/rust:rustc_test.bzl", "rustc_test")
-load("//products/build/bazel/rules/testing:fx_test.bzl", "fx_test")
-load("//products/build/bazel/rules/testing:fx_unittest_component.bzl", "fx_unittest_component")
+load("//vision/build/bazel/rules/host_tests:host_rustc_test.bzl", "wrap_host_rust_test")
+load("//vision/build/bazel/rules/packages:fx_package.bzl", "fx_package")
+load("//vision/build/bazel/rules/rust:rustc_library.bzl", "rustc_library")
+load("//vision/build/bazel/rules/rust:rustc_test.bzl", "rustc_test")
+load("//vision/build/bazel/rules/testing:fx_test.bzl", "fx_test")
+load("//vision/build/bazel/rules/testing:fx_unittest_component.bzl", "fx_unittest_component")
 
 package(default_applicable_licenses = ["//:license"])
 
@@ -19,7 +19,7 @@ rustc_library(
     ],
     crate_name = "work_queue",
     edition = "2024",
-    lint_config = "//products/build/config/rust/lints:clippy_warn_all",
+    lint_config = "//vision/build/config/rust/lints:clippy_warn_all",
     visibility = [
         "//userspace/sys/pkg/bin/pkg-cache:__pkg__",
         "//userspace/sys/pkg/bin/pkg-resolver:__pkg__",
@@ -40,7 +40,7 @@ rustc_test(
     name = "work-queue_test",
     crate = ":work-queue",
     edition = "2024",
-    lint_config = "//products/build/config/rust/lints:clippy_warn_all",
+    lint_config = "//vision/build/config/rust/lints:clippy_warn_all",
     deps = [
         "//userspace/lib/diagnostics/testing/diagnostics-assertions/rust:diagnostics-assertions",
         "//userspace/lib/fuchsia",

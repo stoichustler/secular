@@ -22,11 +22,11 @@ if (is_kernel) {
     deps = [ ":kernel-tests" ]
   }
 } else {
-  import("//products/build/components.gni")
-  import("//products/build/cpp/cpp_fuzzer.gni")
-  import("//products/build/dist/resource.gni")
-  import("//products/build/fuzz.gni")
-  import("//products/build/test.gni")
+  import("//vision/build/components.gni")
+  import("//vision/build/cpp/cpp_fuzzer.gni")
+  import("//vision/build/dist/resource.gni")
+  import("//vision/build/fuzz.gni")
+  import("//vision/build/test.gni")
 
   group("tests") {
     testonly = true

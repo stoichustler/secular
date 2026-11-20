@@ -2,8 +2,8 @@
 # Use of this source code is governed by a BSD-style license that can be
 # found in the LICENSE file.
 
-import("//products/build/components/fuchsia_unittest_package.gni")
-import("//products/build/testing/cc_test_executable.gni")
+import("//vision/build/components/fuchsia_unittest_package.gni")
+import("//vision/build/testing/cc_test_executable.gni")
 import("//userspace/secular/lib/restricted-machine/loadable.gni")
 
 cc_test_executable("fasttime-unittests") {
@@ -19,10 +19,10 @@ cc_test_executable("fasttime-unittests") {
     "//zircon/system/ulib/fzl",
     "//zircon/system/ulib/zx",
   ]
-  data_deps = [ "loadable(//products/build/toolchain:linux_$current_cpu)" ]
+  data_deps = [ "loadable(//vision/build/toolchain:linux_$current_cpu)" ]
   if (additional_restricted_cpu != "") {
     data_deps +=
-        [ "loadable(//products/build/toolchain:linux_$additional_restricted_cpu)" ]
+        [ "loadable(//vision/build/toolchain:linux_$additional_restricted_cpu)" ]
   }
 }
 

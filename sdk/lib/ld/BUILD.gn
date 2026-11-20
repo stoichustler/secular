@@ -2,13 +2,13 @@
 # Use of this source code is governed by a BSD-style license that can be
 # found in the LICENSE file.
 
-import("//products/build/cpp/library_headers.gni")
-import("//products/build/cpp/verify_public_symbols.gni")
-import("//products/build/toolchain/generated_ifs_file.gni")
-import("//products/build/toolchain/ifs_extract.gni")
-import("//products/build/toolchain/ifs_shared_library.gni")
-import("//products/build/toolchain/toolchain_environment.gni")
-import("//products/build/toolchain/zircon/user_basic_redirect.gni")
+import("//vision/build/cpp/library_headers.gni")
+import("//vision/build/cpp/verify_public_symbols.gni")
+import("//vision/build/toolchain/generated_ifs_file.gni")
+import("//vision/build/toolchain/ifs_extract.gni")
+import("//vision/build/toolchain/ifs_shared_library.gni")
+import("//vision/build/toolchain/toolchain_environment.gni")
+import("//vision/build/toolchain/zircon/user_basic_redirect.gni")
 import("distribution_manifest_prefix.gni")
 import("testing/test_elf_object.gni")
 
@@ -321,7 +321,7 @@ loadable_module("ld-stub") {
   configs += [ ":abi-soname" ]
 
   if (is_linux) {
-    configs -= [ "//products/build/config/linux:implicit-host-libs" ]
+    configs -= [ "//vision/build/config/linux:implicit-host-libs" ]
   }
 
   # This should in fact have no dependencies of any kind, since it contains
@@ -418,7 +418,7 @@ static_library("standalone") {
     deps += [ ":linux-syscalls" ]
   }
 
-  public_configs = [ "//products/build/config:standalone" ]
+  public_configs = [ "//vision/build/config:standalone" ]
 }
 
 source_set("posix.headers") {
@@ -508,7 +508,7 @@ shared_library("ld-startup") {
     ]
 
     # There is no way to get the data out anyway.
-    configs += [ "//products/build/config:no_profile" ]
+    configs += [ "//vision/build/config:no_profile" ]
   }
 
   output_path = "$root_out_dir/lib$target_name.so"

@@ -4,7 +4,7 @@
 
 source_set("futex") {
   testonly = true
-  configs += [ "//products/build/config:all_source" ]
+  configs += [ "//vision/build/config:all_source" ]
   sources = [ "futex.cc" ]
   deps = [
     "//zircon/system/ulib/fbl",

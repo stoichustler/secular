@@ -4,7 +4,7 @@
 
 load("@io_bazel_rules_go//go:def.bzl", "go_library")
 load("@platforms//host:constraints.bzl", "HOST_CONSTRAINTS")
-load("//products/build/bazel/rules/host:defs.bzl", "go_binary_host_tool")
+load("//vision/build/bazel/rules/host:defs.bzl", "go_binary_host_tool")
 
 package(default_applicable_licenses = ["//:license"])
 
@@ -26,5 +26,5 @@ go_binary_host_tool(
     name = "fidl_api_diff",
     embed = [":gopkg"],
     target_compatible_with = HOST_CONSTRAINTS,
-    visibility = ["//products/build/bazel/rules/fidl:__subpackages__"],
+    visibility = ["//vision/build/bazel/rules/fidl:__subpackages__"],
 )

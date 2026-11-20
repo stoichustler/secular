@@ -2,7 +2,7 @@
 # Use of this source code is governed by a BSD-style license that can be
 # found in the LICENSE file.
 
-import("//products/build/rust/rustc_library.gni")
+import("//vision/build/rust/rustc_library.gni")
 
 rustc_library("utils") {
   testonly = true
@@ -19,5 +19,5 @@ rustc_library("utils") {
   visibility = [ "//userspace/diagnostics/validator/logs/*" ]
 
   sources = [ "src/lib.rs" ]
-  configs += [ "//products/build/config/rust/lints:clippy_warn_all" ]
+  configs += [ "//vision/build/config/rust/lints:clippy_warn_all" ]
 }

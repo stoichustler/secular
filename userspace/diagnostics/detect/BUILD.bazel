@@ -11,5 +11,5 @@ exports_files(
         "meta/detect_userdebug.root_shard.cml",
         "meta/detect.realm_shard.cml",
     ],
-    visibility = ["//products/bundles/assembly:__subpackages__"],
+    visibility = ["//vision/bundles/assembly:__subpackages__"],
 )

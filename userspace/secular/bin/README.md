@@ -12,9 +12,9 @@ The product stays:
 zircon kernel + linux-arm64-boot-shim + BOOTFS + serial console + zxsh
 ```
 
-Read [`bootstrap.md`](../../../products/reference/zircon/bootstrap.md) for
-ATF → shim → `zxsh`, [`ipc.md`](../../../products/reference/zircon/ipc.md)
-for handles / VMOs, [`cpu.md`](../../../products/reference/zircon/cpu.md)
+Read [`bootstrap.md`](../../../vision/reference/zircon/bootstrap.md) for
+ATF → shim → `zxsh`, [`ipc.md`](../../../vision/reference/zircon/ipc.md)
+for handles / VMOs, [`cpu.md`](../../../vision/reference/zircon/cpu.md)
 for affinity. LK Trusty / lkboot is [`sdk/lk/README.md`](../../../sdk/lk/README.md).
 GlobalPlatform TAs hosted **inside** Zircon are [`tee/README.md`](tee/README.md);
 they are a different TEE.

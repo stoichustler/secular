@@ -2,13 +2,13 @@
 # Use of this source code is governed by a BSD-style license that can be
 # found in the LICENSE file.
 
-import("//products/build/host.gni")
-import("//products/build/rust/rustc_library.gni")
-import("//products/build/testing/host_test_data.gni")
+import("//vision/build/host.gni")
+import("//vision/build/rust/rustc_library.gni")
+import("//vision/build/testing/host_test_data.gni")
 
 assert(is_host, "Assembly libraries are host-only")
 
-platform_artifacts_label = "//products/bundles/assembly:platform($target_toolchain)"
+platform_artifacts_label = "//vision/bundles/assembly:platform($target_toolchain)"
 platform_artifacts_dir =
     get_label_info(platform_artifacts_label, "target_out_dir") + "/" +
     get_label_info(platform_artifacts_label, "name") + "/platform_artifacts"
@@ -28,7 +28,7 @@ rustc_library("product_bundle") {
   version = "0.1.0"
   with_unit_tests = false
   deps = [
-    "//products/build/sdk/meta:rust",
+    "//vision/build/sdk/meta:rust",
     "//userspace/developer/lib/credentials:lib",
     "//userspace/lib/assembly/assembled_system",
     "//userspace/lib/assembly/container",
@@ -77,7 +77,7 @@ rustc_test("product_bundle_test") {
   data_deps = [ ":platform_artifacts_data" ]
   configs += [ ":platform_artifacts_config" ]
   deps = [
-    "//products/build/sdk/meta:rust",
+    "//vision/build/sdk/meta:rust",
     "//userspace/developer/ffx/lib/pkg:empty-repo-keys",
     "//userspace/developer/ffx/lib/pkg:empty-repo-metadata",
     "//userspace/developer/lib/credentials:lib",
@@ -128,7 +128,7 @@ rustc_test("product_bundle_test") {
   ]
   test_vars = {
     inputs = [
-      "//products/build/sdk/meta/test_data/virtual_device.json",
+      "//vision/build/sdk/meta/test_data/virtual_device.json",
       "test_data/17.20240101.0.1/product_bundle.json",
       "test_data/19.20240401.0.1/product_bundle.json",
       "test_data/22.20240701.0.1/product_bundle.json",

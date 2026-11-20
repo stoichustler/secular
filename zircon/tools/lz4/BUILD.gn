@@ -19,7 +19,7 @@ executable("lz4") {
   include_dirs = [ lz4_lib ]
 
   configs += [
-    "//products/build/config:Wno-conversion",
-    "//products/build/config:Wno-implicit-fallthrough",
+    "//vision/build/config:Wno-conversion",
+    "//vision/build/config:Wno-implicit-fallthrough",
   ]
 }

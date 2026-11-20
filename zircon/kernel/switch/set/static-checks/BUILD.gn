@@ -4,7 +4,7 @@
 # license that can be found in the LICENSE file or at
 # https://opensource.org/licenses/MIT
 
-import("//products/build/rust/rust_auxiliary_args.gni")
+import("//vision/build/rust/rust_auxiliary_args.gni")
 import("//zircon/kernel/kernel_switchset.gni")
 
 # This switchset exists only to do builds sufficient to run static checks.

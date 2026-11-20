@@ -2,7 +2,7 @@
 # Use of this source code is governed by a BSD-style license that can be
 # found in the LICENSE file.
 
-import("//products/build/fidl/toolchain.gni")
+import("//vision/build/fidl/toolchain.gni")
 import("//sdk/categories/compatibility.gni")
 
 visibility = []
@@ -97,7 +97,7 @@ if (is_host || is_fidl_toolchain) {
 
       # The FIDL compatibility tests compile all FIDL libraries in an SDK category
       # for each API level supported by the platform, so allow those targets too.
-      import("//products/build/config/fuchsia/platform_version.gni")
+      import("//vision/build/config/fuchsia/platform_version.gni")
       foreach(target, ffx_subtool_fidl_partner_unstable_allowlist) {
         foreach(level, platform_version.runtime_supported_api_levels) {
           visibility += [ "${target}_compile_${level}_fidlc" ]

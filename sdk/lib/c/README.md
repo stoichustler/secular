@@ -99,7 +99,7 @@ to date within a few minutes of new changes landing upstream on GitHub.
 
 The [llvm-libc-github], [scudo-github], and [gwp_asan-github] subtrees are
 used via Fuchsia's `//third_party` as described above, each pinned in the
-[`jiri` manifest](/products/manifests/third_party/all) to the latest revision.
+[`jiri` manifest](/vision/manifests/third_party/all) to the latest revision.
 
 Each of these has an auto-roller that runs in Fuchsia's [LUCI] infrastructure
 both periodically, and soon after any time there is a new commit in a tracked
@@ -154,7 +154,7 @@ upstream, but break the Fuchsia build.  This happens for a number of reasons:
    Fuchsia's infrastructure so the auto-roller is the first user to notice.
  * Insufficient test coverage upstream altogether.  There aren't so many bots.
  * Different compiler versions on upstream bots than the builds pinned in
-   Fuchsia's [//products/manifests/toolchain](/manifests/toolchain).
+   Fuchsia's [//vision/manifests/toolchain](/manifests/toolchain).
  * Looser warning settings in LLVM Cmake build than in the Fuchsia build.
  * Upstream changes interact with Fuchsia-specific code not visible upstream.
 
@@ -194,7 +194,7 @@ that a "roll" is nothing more than a normal [fuchsia.git] commit, always
 tested, reviewed (except when by auto-rollers), and landed via [Gerrit].
 
 A maintainer can do those commits as well as the auto-roller.  This can be done
-by hand edits in [the XML file](/products/manifests/third_party/all) or via the
+by hand edits in [the XML file](/vision/manifests/third_party/all) or via the
 command-line `jiri edit` tool.  It has to be invoked with some idiosyncratic
 details from the manifest.  The [`manual-roll.sh` script](manual-roll.sh) helps
 with this.

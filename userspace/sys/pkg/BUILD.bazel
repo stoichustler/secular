@@ -9,5 +9,5 @@ exports_files(
         "meta/system-update-realm.cml",
         "meta/no_update_checker.system_update_shard.cml",
     ],
-    visibility = ["//products/bundles/assembly:__subpackages__"],
+    visibility = ["//vision/bundles/assembly:__subpackages__"],
 )

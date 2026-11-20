@@ -48,7 +48,7 @@ template("cm") {
     cmc_merge("${target_name}_merge") {
       if (is_profile) {
         sources = [
-          "//products/build/config/profile/instrumentation_data.cml",
+          "//vision/build/config/profile/instrumentation_data.cml",
           invoker.manifest,
         ]
       } else {
@@ -74,7 +74,7 @@ template("cm") {
     input_manifest = merged[0]
   }
 
-  # LINT.ThenChange(//products/build/bazel/rules/components/fx_component.bzl:debugdata_merge)
+  # LINT.ThenChange(//vision/build/bazel/rules/components/fx_component.bzl:debugdata_merge)
 
   cmc(target_name) {
     forward_variables_from(invoker,

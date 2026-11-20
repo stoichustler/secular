@@ -2,7 +2,7 @@
 # Use of this source code is governed by a BSD-style license that can be
 # found in the LICENSE file.
 
-import("//products/build/python/python_action.gni")
+import("//vision/build/python/python_action.gni")
 import("//tools/cmc/build/cmc.gni")
 
 # Declares that any components that are dependent on this target (directly or

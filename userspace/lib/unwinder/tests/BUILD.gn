@@ -22,7 +22,7 @@ source_set("cfi_only") {
 
   sources = [ "cfi_only.cc" ]
 
-  configs += [ "//products/build/config:no-shadow-call-stack" ]
+  configs += [ "//vision/build/config:no-shadow-call-stack" ]
 
   # Some build variants explicitly require frame pointers. E.g., ASan build
   # requires frame pointer and/or shadow call stack for fast unwinding. See
@@ -32,10 +32,10 @@ source_set("cfi_only") {
   # Only default_frame_pointers is in the config list, the unwind tables and
   # shadow call stacks are enabled implicitly in the compiler on appropriate
   # platforms.
-  if (configs + [ "//products/build/config:default_frame_pointers" ] -
-      [ "//products/build/config:default_frame_pointers" ] != configs) {
-    configs -= [ "//products/build/config:default_frame_pointers" ]
-    configs += [ "//products/build/config:no_frame_pointers" ]
+  if (configs + [ "//vision/build/config:default_frame_pointers" ] -
+      [ "//vision/build/config:default_frame_pointers" ] != configs) {
+    configs -= [ "//vision/build/config:default_frame_pointers" ]
+    configs += [ "//vision/build/config:no_frame_pointers" ]
   }
 }
 
@@ -46,10 +46,10 @@ source_set("scs_only") {
 
   configs += [ ":no_unwind_tables" ]
 
-  if (configs + [ "//products/build/config:default_frame_pointers" ] -
-      [ "//products/build/config:default_frame_pointers" ] != configs) {
-    configs -= [ "//products/build/config:default_frame_pointers" ]
-    configs += [ "//products/build/config:no_frame_pointers" ]
+  if (configs + [ "//vision/build/config:default_frame_pointers" ] -
+      [ "//vision/build/config:default_frame_pointers" ] != configs) {
+    configs -= [ "//vision/build/config:default_frame_pointers" ]
+    configs += [ "//vision/build/config:no_frame_pointers" ]
   }
 }
 
@@ -60,13 +60,13 @@ source_set("fp_only") {
 
   configs += [
     ":no_unwind_tables",
-    "//products/build/config:no-shadow-call-stack",
+    "//vision/build/config:no-shadow-call-stack",
   ]
 
-  if (configs + [ "//products/build/config:default_frame_pointers" ] -
-      [ "//products/build/config:default_frame_pointers" ] != configs) {
-    configs -= [ "//products/build/config:default_frame_pointers" ]
-    configs += [ "//products/build/config:frame_pointers" ]
+  if (configs + [ "//vision/build/config:default_frame_pointers" ] -
+      [ "//vision/build/config:default_frame_pointers" ] != configs) {
+    configs -= [ "//vision/build/config:default_frame_pointers" ]
+    configs += [ "//vision/build/config:frame_pointers" ]
   }
 }
 

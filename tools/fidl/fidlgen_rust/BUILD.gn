@@ -2,13 +2,13 @@
 # Use of this source code is governed by a BSD-style license that can be
 # found in the LICENSE file.
 
-import("//products/build/bazel/bazel_host_tool.gni")
-import("//products/build/fidl/toolchain.gni")
-import("//products/build/go/go_binary.gni")
-import("//products/build/go/go_library.gni")
-import("//products/build/host.gni")
-import("//products/build/rust/fidl_rust.gni")
-import("//products/build/testing/golden_files.gni")
+import("//vision/build/bazel/bazel_host_tool.gni")
+import("//vision/build/fidl/toolchain.gni")
+import("//vision/build/go/go_binary.gni")
+import("//vision/build/go/go_library.gni")
+import("//vision/build/host.gni")
+import("//vision/build/rust/fidl_rust.gni")
+import("//vision/build/testing/golden_files.gni")
 import("//tools/fidl/fidlc/testdata/info.gni")
 
 if (is_host) {

@@ -2,7 +2,7 @@
 # Use of this source code is governed by a BSD-style license that can be
 # found in the LICENSE file.
 
-import("//products/build/components/fuchsia_unittest_package.gni")
+import("//vision/build/components/fuchsia_unittest_package.gni")
 
 group("tests") {
   testonly = true
@@ -100,7 +100,7 @@ device_test("virtio_balloon_device_tests") {
   sources = [ "virtio_balloon_test.cc" ]
   manifest = "meta/virtio_balloon_device_tests.cml"
   device_components = [ "//userspace/hypervisor/bin/vmm/device/virtio_balloon:virtio_balloon_component" ]
-  configs = [ "//products/build/config:all_source" ]
+  configs = [ "//vision/build/config:all_source" ]
 
   deps = [
     ":test_with_device",
@@ -308,7 +308,7 @@ device_test("virtio_mem_device_tests") {
   manifest = "meta/virtio_mem_device_tests.cml"
   device_components =
       [ "//userspace/hypervisor/bin/vmm/device/virtio_mem:virtio_mem_component" ]
-  configs = [ "//products/build/config:all_source" ]
+  configs = [ "//vision/build/config:all_source" ]
 
   deps = [
     ":test_with_device",

@@ -2,7 +2,7 @@
 # Use of this source code is governed by a BSD-style license that can be
 # found in the LICENSE file.
 
-load("//products/build/bazel/rules/rust:defs.bzl", "rustc_library", "rustc_test")
+load("//vision/build/bazel/rules/rust:defs.bzl", "rustc_library", "rustc_test")
 
 package(default_applicable_licenses = ["//:license"])
 
@@ -49,7 +49,7 @@ rustc_library(
     name = "fuchsia-inspect-contrib",
     srcs = LIB_SRCS,
     edition = "2024",
-    lint_config = "//products/build/config/rust/lints:clippy_warn_all",
+    lint_config = "//vision/build/config/rust/lints:clippy_warn_all",
     proc_macro_deps = LIB_PROC_MACRO_DEPS,
     version = "0.1.0",
     # Used widely across the repository (sdk/lib, connectivity, devices, diagnostics, performance, power, session, starnix, sys, vendor).
@@ -64,7 +64,7 @@ rustc_test(
     name = "fuchsia-inspect-contrib_test",
     srcs = LIB_SRCS,
     edition = "2024",
-    lint_config = "//products/build/config/rust/lints:clippy_warn_all",
+    lint_config = "//vision/build/config/rust/lints:clippy_warn_all",
     proc_macro_deps = LIB_PROC_MACRO_DEPS + [
         "//third_party/rust_crates/vendor:strum_macros",
     ],

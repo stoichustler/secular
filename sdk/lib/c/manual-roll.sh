@@ -9,7 +9,7 @@ readonly LIBC_DIR="$(dirname "$0")"
 cd "$LIBC_DIR/../../.."         # Fuchsia // source root.
 
 readonly FX=scripts/fx
-readonly MANIFEST_FILE=products/manifests/third_party/all
+readonly MANIFEST_FILE=vision/manifests/third_party/all
 
 if [ $# -gt 0 ] && [ "$1" = --dry-run ]; then
   shift

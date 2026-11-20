@@ -2,9 +2,9 @@
 # Use of this source code is governed by a BSD-style license that can be
 # found in the LICENSE file.
 
-import("//products/build/rust/rustc_library.gni")
-import("//products/build/testing/boot_tests/boot_test.gni")
-import("//products/build/testing/boot_tests/kernel_zbi_test.gni")
+import("//vision/build/rust/rustc_library.gni")
+import("//vision/build/testing/boot_tests/boot_test.gni")
+import("//vision/build/testing/boot_tests/kernel_zbi_test.gni")
 import("//userspace/secular/bin/userboot/tests/rust_zbi_test_executable.gni")
 import("//zircon/kernel/params.gni")
 

@@ -2,8 +2,8 @@
 # Use of this source code is governed by a BSD-style license that can be
 # found in the LICENSE file.
 
-import("//products/build/components.gni")
-import("//products/build/test.gni")
+import("//vision/build/components.gni")
+import("//vision/build/test.gni")
 
 group("tests") {
   testonly = true
@@ -53,7 +53,7 @@ rustc_library("driver_symbols_rust") {
 
   non_rust_deps = [ ":driver_symbols" ]
 
-  public_configs = [ "//products/build/config/fuchsia:dynamic_cpp_standard_library" ]
+  public_configs = [ "//vision/build/config/fuchsia:dynamic_cpp_standard_library" ]
 
   sources = [
     "src/bindings.rs",

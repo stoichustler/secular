@@ -2,8 +2,8 @@
 # Use of this source code is governed by a BSD-style license that can be
 # found in the LICENSE file.
 
-import("//products/build/host.gni")
-import("//products/build/icu/third_party_icu_headers.gni")
+import("//vision/build/host.gni")
+import("//vision/build/icu/third_party_icu_headers.gni")
 
 if (is_host) {
   third_party_icu_headers("icu_headers") {
@@ -37,7 +37,7 @@ if (is_host) {
     ]
     configs += [
       # TODO(https://fxbug.dev/42136089): delete the below and fix compiler warnings
-      "//products/build/config:Wno-conversion",
+      "//vision/build/config:Wno-conversion",
     ]
   }
 }

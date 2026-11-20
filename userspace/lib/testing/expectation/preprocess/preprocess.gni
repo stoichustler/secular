@@ -2,8 +2,8 @@
 # Use of this source code is governed by a BSD-style license that can be
 # found in the LICENSE file.
 
-import("//products/build/compiled_action.gni")
-import("//products/build/dist/resource.gni")
+import("//vision/build/compiled_action.gni")
+import("//vision/build/dist/resource.gni")
 
 # Preprocesses an expectations JSON5 file in order to
 # resolve `include`s and check that the file is valid, and

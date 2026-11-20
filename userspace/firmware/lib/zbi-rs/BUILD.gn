@@ -2,9 +2,9 @@
 # Use of this source code is governed by a BSD-style license that can be
 # found in the LICENSE file.
 
-import("//products/build/components.gni")
-import("//products/build/rust/rustc_library.gni")
-import("//products/build/rust/rustc_test.gni")
+import("//vision/build/components.gni")
+import("//vision/build/rust/rustc_library.gni")
+import("//vision/build/rust/rustc_test.gni")
 
 zbi_lib_sources = [
   "src/lib.rs",
@@ -25,7 +25,7 @@ rustc_library("zbi-rs") {
 
   sources = zbi_lib_sources
 
-  configs += [ "//products/build/config/rust/lints:deny_unused_results" ]
+  configs += [ "//vision/build/config/rust/lints:deny_unused_results" ]
 }
 
 # This is just for unit tests to have different name Since `with_unit_tests =
@@ -46,7 +46,7 @@ rustc_test("zbi-rs-test") {
 
   sources = zbi_lib_sources
 
-  configs += [ "//products/build/config/rust/lints:deny_unused_results" ]
+  configs += [ "//vision/build/config/rust/lints:deny_unused_results" ]
 }
 
 fuchsia_unittest_package("zbi-rs-lib-unit-tests") {

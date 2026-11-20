@@ -2,8 +2,8 @@
 # Use of this source code is governed by a BSD-style license that can be
 # found in the LICENSE file.
 
-load("//products/build/bazel/platforms:constraints.bzl", "HOST_OS_CONSTRAINTS")
-load("//products/build/bazel/rules/host_tests:host_rustc_test.bzl", "host_rustc_test")
+load("//vision/build/bazel/platforms:constraints.bzl", "HOST_OS_CONSTRAINTS")
+load("//vision/build/bazel/rules/host_tests:host_rustc_test.bzl", "host_rustc_test")
 
 package(default_applicable_licenses = ["//:license"])
 

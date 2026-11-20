@@ -5,7 +5,7 @@
 # This library contains declarations of operations supported by Scudo on
 # Fuchsia.
 
-import("//products/build/rust/rustc_library.gni")
+import("//vision/build/rust/rustc_library.gni")
 
 source_set("scudo") {
   public = [ "mallopt.h" ]

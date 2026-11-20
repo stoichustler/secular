@@ -2,9 +2,9 @@
 # Use of this source code is governed by a BSD-style license that can be
 # found in the LICENSE file.
 
-import("//products/build/components.gni")
-import("//products/build/fidl/fidl.gni")
-import("//products/build/test.gni")
+import("//vision/build/components.gni")
+import("//vision/build/fidl/fidl.gni")
+import("//vision/build/test.gni")
 import("//userspace/tests/fidl/conformance_suite/gidl-conformance-suite.gni")
 import("//tools/fidl/gidl/gidl.gni")
 
@@ -80,7 +80,7 @@ test("fidl_llcpp_manual_conformance_tests_bin") {
 
   # TODO(https://fxbug.dev/42176699): This target uses mutable tables which are deprecated,
   # rather than builders.
-  configs += [ "//products/build/cpp:fidl-wire-deprecated-mutable-tables" ]
+  configs += [ "//vision/build/cpp:fidl-wire-deprecated-mutable-tables" ]
 }
 
 fuchsia_unittest_package("fidl_llcpp_manual_conformance_tests") {
@@ -96,7 +96,7 @@ test("fidl_llcpp_request_response_tests_bin") {
   ]
 
   # TODO(https://fxbug.dev/42136089): delete the below and fix compiler warnings
-  configs += [ "//products/build/config:Wno-conversion" ]
+  configs += [ "//vision/build/config:Wno-conversion" ]
 }
 
 fuchsia_unittest_package("fidl_llcpp_request_response_tests") {
@@ -115,5 +115,5 @@ source_set("conformance_utils") {
   ]
 
   # TODO(https://fxbug.dev/42136089): delete the below and fix compiler warnings
-  configs += [ "//products/build/config:Wno-conversion" ]
+  configs += [ "//vision/build/config:Wno-conversion" ]
 }

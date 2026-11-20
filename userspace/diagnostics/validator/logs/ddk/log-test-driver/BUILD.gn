@@ -2,11 +2,11 @@
 # Use of this source code is governed by a BSD-style license that can be
 # found in the LICENSE file.
 
-import("//products/build/bind/bind.gni")
-import("//products/build/components.gni")
-import("//products/build/drivers.gni")
-import("//products/build/fidl/fidl.gni")
-import("//products/build/test.gni")
+import("//vision/build/bind/bind.gni")
+import("//vision/build/components.gni")
+import("//vision/build/drivers.gni")
+import("//vision/build/fidl/fidl.gni")
+import("//vision/build/test.gni")
 
 fuchsia_driver_dml("log-test-driver_dml") {
   dml = "meta/log-test-driver.dml"
@@ -26,7 +26,7 @@ driver_bind_rules("log-test-driver-bind") {
 
 source_set("common") {
   testonly = true
-  configs += [ "//products/build/config:all_source" ]
+  configs += [ "//vision/build/config:all_source" ]
   sources = [ "log-tester.cc" ]
   public_deps = [
     ":log-test-driver-bind",

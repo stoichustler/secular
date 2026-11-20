@@ -4,7 +4,7 @@
 # license that can be found in the LICENSE file or at
 # https://opensource.org/licenses/MIT
 
-import("//products/build/cpp/library_headers.gni")
+import("//vision/build/cpp/library_headers.gni")
 
 library_headers("headers") {
   headers = [ "lib/linux-boot-config/linux-boot-config.h" ]
@@ -28,7 +28,7 @@ static_library("linux-boot-config") {
 }
 
 if (!is_kernel) {
-  import("//products/build/test.gni")
+  import("//vision/build/test.gni")
 
   group("tests") {
     testonly = true

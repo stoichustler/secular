@@ -2,8 +2,8 @@
 # Use of this source code is governed by a BSD-style license that can be
 # found in the LICENSE file.
 
-import("//products/build/components.gni")
-import("//products/build/test.gni")
+import("//vision/build/components.gni")
+import("//vision/build/test.gni")
 
 group("tests") {
   testonly = true
@@ -37,7 +37,7 @@ test("fit-promise-tests") {
     "//sdk/lib/fit-promise",
     "//zircon/system/ulib/zxtest",
   ]
-  configs += [ "//products/build/config:test_exercising_sdk_headers" ]
+  configs += [ "//vision/build/config:test_exercising_sdk_headers" ]
   if (is_fuchsia) {
     deps += [ "//sdk/lib/fdio" ]
   }

@@ -4,8 +4,8 @@
 # license that can be found in the LICENSE file or at
 # https://opensource.org/licenses/MIT
 
-import("//products/build/rust/rustc_fuzzer.gni")
-import("//products/build/rust/rustc_library.gni")
+import("//vision/build/rust/rustc_fuzzer.gni")
+import("//vision/build/rust/rustc_library.gni")
 
 rustc_library("acpi_lite") {
   name = "acpi_lite"

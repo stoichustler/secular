@@ -2,10 +2,10 @@
 # Use of this source code is governed by a BSD-style license that can be
 # found in the LICENSE file.
 
-import("//products/build/components.gni")
-import("//products/build/config/profile/config.gni")
-import("//products/build/cpp/library_headers.gni")
-import("//products/build/test.gni")
+import("//vision/build/components.gni")
+import("//vision/build/config/profile/config.gni")
+import("//vision/build/cpp/library_headers.gni")
+import("//vision/build/test.gni")
 
 if (toolchain_variant.tags + [ "llvm-profdata" ] - [ "llvm-profdata" ] !=
     toolchain_variant.tags) {
@@ -47,8 +47,8 @@ template("profdata_library") {
       # __llvm_profile_raw_version symbol in the source with the
       # compiler-generated COMDAT definition in the same translation unit.
       _profile_configs = [
-        "//products/build/config/profile:coverage",
-        "//products/build/config/profile",
+        "//vision/build/config/profile:coverage",
+        "//vision/build/config/profile",
       ]
       configs += _profile_configs
       configs -= _profile_configs
@@ -110,10 +110,10 @@ source_set("coverage-example") {
   # incompatible. These flags both use the backend instrumentation pass, but
   # the LLVM IR intrinsics are emitted at different stages and their
   # combination is not supported.
-  configs += [ "//products/build/config/profile" ]
-  configs -= [ "//products/build/config/profile" ]
-  configs += [ "//products/build/config/profile:profile-use" ]
-  configs -= [ "//products/build/config/profile:profile-use" ]
+  configs += [ "//vision/build/config/profile" ]
+  configs -= [ "//vision/build/config/profile" ]
+  configs += [ "//vision/build/config/profile:profile-use" ]
+  configs -= [ "//vision/build/config/profile:profile-use" ]
 }
 
 config("coverage-example.dir") {
@@ -188,14 +188,14 @@ test("llvm-profdata-unittests") {
 
   # Make sure the LinkTimeDeadFunction is really dead at link time.
   configs += [
-    "//products/build/config:default_linker_gc",
-    "//products/build/config:linker_gc",
+    "//vision/build/config:default_linker_gc",
+    "//vision/build/config:linker_gc",
   ]
   configs -= [
-    "//products/build/config:default_linker_gc",
-    "//products/build/config:linker_gc",
+    "//vision/build/config:default_linker_gc",
+    "//vision/build/config:linker_gc",
   ]
-  configs += [ "//products/build/config:linker_gc" ]
+  configs += [ "//vision/build/config:linker_gc" ]
 }
 
 fuchsia_unittest_package("llvm-profdata-tests") {

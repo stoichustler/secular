@@ -2,9 +2,9 @@
 # Use of this source code is governed by a BSD-style license that can be
 # found in the LICENSE file.
 
-import("//products/build/components.gni")
-import("//products/build/dist/resource.gni")
-import("//products/build/testing/cc_test_executable.gni")
+import("//vision/build/components.gni")
+import("//vision/build/dist/resource.gni")
+import("//vision/build/testing/cc_test_executable.gni")
 
 group("packages") {
   deps = [ ":guest_manager" ]
@@ -63,7 +63,7 @@ resource("rtos_cfg") {
 }
 
 resource("secular_zephyr_bin") {
-  sources = [ "//products/prebuilt/rtos/zephyr.bin" ]
+  sources = [ "//vision/prebuilt/rtos/zephyr.bin" ]
   outputs = [ "data/zephyr.bin" ]
 }
 
@@ -73,12 +73,12 @@ resource("secular_linux_cfg") {
 }
 
 resource("secular_linux_image") {
-  sources = [ "//products/prebuilt/linux/Image" ]
+  sources = [ "//vision/prebuilt/linux/Image" ]
   outputs = [ "data/Image" ]
 }
 
 resource("secular_linux_minifs") {
-  sources = [ "//products/prebuilt/linux/minifs.cpio" ]
+  sources = [ "//vision/prebuilt/linux/minifs.cpio" ]
   outputs = [ "data/minifs.cpio" ]
 }
 

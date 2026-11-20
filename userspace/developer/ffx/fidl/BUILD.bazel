@@ -2,7 +2,7 @@
 # Use of this source code is governed by a BSD-style license that can be
 # found in the LICENSE file.
 
-load("//products/build/bazel/rules/fidl:fidl_library.bzl", "fidl_library")
+load("//vision/build/bazel/rules/fidl:fidl_library.bzl", "fidl_library")
 
 package(default_applicable_licenses = ["//:license"])
 
@@ -14,7 +14,7 @@ fidl_library(
         "target.fidl",
     ],
     visibility = [
-        "//products/build/sdk/meta:__pkg__",
+        "//vision/build/sdk/meta:__pkg__",
         "//userspace/developer/ffx:__subpackages__",
         "//userspace/developer/fuchsia-controller:__subpackages__",
         "//userspace/sys/pkg/lib:__subpackages__",

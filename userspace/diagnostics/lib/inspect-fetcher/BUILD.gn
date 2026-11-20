@@ -2,8 +2,8 @@
 # Use of this source code is governed by a BSD-style license that can be
 # found in the LICENSE file.
 
-import("//products/build/components.gni")
-import("//products/build/rust/rustc_library.gni")
+import("//vision/build/components.gni")
+import("//vision/build/rust/rustc_library.gni")
 
 rustc_library("inspect-fetcher") {
   version = "0.1.0"
@@ -28,7 +28,7 @@ rustc_library("inspect-fetcher") {
 
   sources = [ "src/lib.rs" ]
 
-  configs += [ "//products/build/config/rust/lints:clippy_warn_all" ]
+  configs += [ "//vision/build/config/rust/lints:clippy_warn_all" ]
 }
 
 fuchsia_unittest_package("inspect-fetcher-test") {

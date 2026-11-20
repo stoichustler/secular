@@ -2,8 +2,8 @@
 # Use of this source code is governed by a BSD-style license that can be
 # found in the LICENSE file.
 
-load("//products/build/bazel/rules/host_tests:host_rustc_test.bzl", "host_rustc_test")
-load("//products/build/bazel/rules/rust:rustc_library.bzl", "rustc_library")
+load("//vision/build/bazel/rules/host_tests:host_rustc_test.bzl", "host_rustc_test")
+load("//vision/build/bazel/rules/rust:rustc_library.bzl", "rustc_library")
 
 package(default_applicable_licenses = ["//:license"])
 
@@ -22,7 +22,7 @@ rustc_library(
     crate_name = "fuchsia_hyper_test_support",
     edition = "2024",
     # @bazel2gn:skip
-    lint_config = "//products/build/config/rust/lints:clippy_warn_default",
+    lint_config = "//vision/build/config/rust/lints:clippy_warn_default",
     visibility = ["//userspace:__subpackages__"],
     deps = [
         "//userspace/lib/fuchsia-async",

@@ -2,10 +2,10 @@
 # Use of this source code is governed by a BSD-style license that can be
 # found in the LICENSE file.
 
-import("//products/build/bazel/export_fuchsia_package_to_bazel.gni")
-import("//products/build/components.gni")
-import("//products/build/cpp/sdk_source_set.gni")
-import("//products/build/drivers.gni")
+import("//vision/build/bazel/export_fuchsia_package_to_bazel.gni")
+import("//vision/build/components.gni")
+import("//vision/build/cpp/sdk_source_set.gni")
+import("//vision/build/drivers.gni")
 import("//tools/cmc/build/expect_includes.gni")
 
 # WARNING: Prefer to use the realm-builder variants, unless you have a very

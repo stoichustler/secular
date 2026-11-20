@@ -51,7 +51,7 @@ use std::sync::mpsc::{Sender, Receiver, channel};
 
 You can build the host-specific version of your library by adding the host
 toolchain to the end of the target label (e.g.
-`//userspace/lib/foo(//products/build/toolchain:host_x64)`).
+`//userspace/lib/foo(//vision/build/toolchain:host_x64)`).
 
 ### Step 2: Make a duplicate version of your target
 
@@ -87,7 +87,7 @@ config("loom") {
   # The loom crate documentation recommends compiling with optimizations since
   # the number of iterations can be large enough to make tests unreasonably slow
   # otherwise.
-  configs = [ "//products/build/config:optimize_moderate" ]
+  configs = [ "//vision/build/config:optimize_moderate" ]
 }
 ```
 

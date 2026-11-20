@@ -2,10 +2,10 @@
 # Use of this source code is governed by a BSD-style license that can be
 # found in the LICENSE file.
 
-import("//products/build/components.gni")
-import("//products/build/devicetree/devicetree.gni")
-import("//products/build/devicetree/devicetree_visitor.gni")
-import("//products/build/test.gni")
+import("//vision/build/components.gni")
+import("//vision/build/devicetree/devicetree.gni")
+import("//vision/build/devicetree/devicetree_visitor.gni")
+import("//vision/build/test.gni")
 
 group("tests") {
   deps = [ ":mailbox-visitor-test" ]

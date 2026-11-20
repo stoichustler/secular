@@ -2,12 +2,12 @@
 # Use of this source code is governed by a BSD-style license that can be
 # found in the LICENSE file.
 
-import("//products/build/compiled_action.gni")
-import("//products/build/config/fuchsia/platform_version.gni")
-import("//products/build/host.gni")
-import("//products/build/rust/rustc_binary.gni")
-import("//products/build/rust/rustc_test.gni")
-import("//products/build/testing/host_test_data.gni")
+import("//vision/build/compiled_action.gni")
+import("//vision/build/config/fuchsia/platform_version.gni")
+import("//vision/build/host.gni")
+import("//vision/build/rust/rustc_binary.gni")
+import("//vision/build/rust/rustc_test.gni")
+import("//vision/build/testing/host_test_data.gni")
 
 declare_args() {
   # Enforce ABI compatibility checks for stable API levels.

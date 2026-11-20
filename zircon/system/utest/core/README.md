@@ -16,7 +16,7 @@ any userspace device manager, device drivers, io plumbing, etc.
 ### Example usage
 
 ```sh
-fx set bringup.x64 --with-test //products/bundles/boot_tests  # or any product or board.
+fx set bringup.x64 --with-test //vision/bundles/boot_tests  # or any product or board.
 fx build
 fx core-tests [--gtest_filter=FILTER] [--gtest_repeat=REPEAT] [--kernel=KERNEL_IMAGE_TYPE]
 ```
@@ -42,7 +42,7 @@ mode.  See `unified_only` in BUILD.gn for a list of such tests.
 ### Example usage
 
 ```sh
-fx set bringup.x64 --with-base //products/bundles/bringup:tests
+fx set bringup.x64 --with-base //vision/bundles/bringup:tests
 fx build
 fx qemu
 ```

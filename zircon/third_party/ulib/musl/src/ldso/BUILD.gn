@@ -2,7 +2,7 @@
 # Use of this source code is governed by a BSD-style license that can be
 # found in the LICENSE file.
 
-import("//products/build/config/clang/clang_cpu.gni")
+import("//vision/build/config/clang/clang_cpu.gni")
 
 source_set("ldso") {
   sources = [
@@ -12,7 +12,7 @@ source_set("ldso") {
     "dlinfo.c",
   ]
 
-  configs -= [ "//products/build/config:symbol_visibility_hidden" ]
+  configs -= [ "//vision/build/config:symbol_visibility_hidden" ]
 
   deps = [
     "//sdk/lib/ld:tlsdesc",

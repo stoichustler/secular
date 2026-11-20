@@ -2,7 +2,7 @@
 # Use of this source code is governed by a BSD-style license that can be
 # found in the LICENSE file.
 
-import("//products/build/assembly/bootfs_files_for_assembly.gni")
+import("//vision/build/assembly/bootfs_files_for_assembly.gni")
 
 source_set("cmdline") {
   visibility = [
@@ -15,7 +15,7 @@ source_set("cmdline") {
 executable("kcounter") {
   visibility = [ ":*" ]
   if (is_fuchsia) {
-    fdio_config = [ "//products/build/config/fuchsia:fdio_config" ]
+    fdio_config = [ "//vision/build/config/fuchsia:fdio_config" ]
     if (configs + fdio_config - fdio_config != configs) {
       configs -= fdio_config
     }
@@ -38,7 +38,7 @@ bootfs_files_for_assembly("bootfs") {
 # GN-only Secular image: put the tool in /boot/bin.
 group("bootfs_binaries") {
   visibility = [
-    "//products/secular:*",
+    "//vision/secular:*",
     "//userspace/zircon/bin:*",
   ]
   deps = [ ":kcounter" ]

@@ -2,7 +2,7 @@
 # Use of this source code is governed by a BSD-style license that can be
 # found in the LICENSE file.
 
-import("//products/build/zircon/c_utils.gni")
+import("//vision/build/zircon/c_utils.gni")
 
 build_version_bin = get_label_info(
                         "//userspace/developer/ffx/lib/version/build:build-version.bin($default_toolchain)",

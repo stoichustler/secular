@@ -21,7 +21,7 @@ cc_library(
         "-Wno-conversion",
     ],
     defines = select({
-        "//products/build/bazel/platforms:is_host_os": ["TFTP_HOSTLIB"],
+        "//vision/build/bazel/platforms:is_host_os": ["TFTP_HOSTLIB"],
         "@platforms//os:fuchsia": ["TFTP_USERLIB"],
     }),
     implementation_deps = select({

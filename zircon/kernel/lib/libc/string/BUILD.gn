@@ -4,8 +4,8 @@
 # license that can be found in the LICENSE file or at
 # https://opensource.org/licenses/MIT
 
-import("//products/build/toolchain/toolchain_environment.gni")
-import("//products/build/zircon/zircon_cpu.gni")
+import("//vision/build/toolchain/toolchain_environment.gni")
+import("//vision/build/zircon/zircon_cpu.gni")
 
 group("string") {
   deps = [ "//sdk/lib/c/string:kernel" ]

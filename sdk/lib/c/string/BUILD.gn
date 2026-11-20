@@ -2,8 +2,8 @@
 # Use of this source code is governed by a BSD-style license that can be
 # found in the LICENSE file.
 
-import("//products/build/toolchain/rbe.gni")
-import("//products/build/toolchain/toolchain_environment.gni")
+import("//vision/build/toolchain/rbe.gni")
+import("//vision/build/toolchain/toolchain_environment.gni")
 import("../libc.gni")
 
 llvm_libc_group("string") {
@@ -80,8 +80,8 @@ kernel_unsanitized_remove_configs = []
 if (is_kernel && toolchain_variant.tags + [ "uses-shadow" ] -
                  [ "uses-shadow" ] != toolchain_variant.tags) {
   kernel_unsanitized_remove_configs = [
-    "//products/build/config/sanitizers:asan",
-    "//products/build/config/sanitizers:hwasan",
+    "//vision/build/config/sanitizers:asan",
+    "//vision/build/config/sanitizers:hwasan",
   ]
 }
 

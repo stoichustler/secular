@@ -10,5 +10,5 @@ exports_files(
         "meta/page_refaults.core_shard.cml",
         "meta/page_refaults.root_shard.cml",
     ],
-    visibility = ["//products/bundles/assembly:__subpackages__"],
+    visibility = ["//vision/bundles/assembly:__subpackages__"],
 )

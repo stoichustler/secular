@@ -2,10 +2,10 @@
 # Use of this source code is governed by a BSD-style license that can be
 # found in the LICENSE file.
 
-import("//products/build/components.gni")
-import("//products/build/dist/resource.gni")
-import("//products/build/test.gni")
-import("//products/build/testing/host_test_data.gni")
+import("//vision/build/components.gni")
+import("//vision/build/dist/resource.gni")
+import("//vision/build/test.gni")
+import("//vision/build/testing/host_test_data.gni")
 
 if (is_host) {
   _example_board_target = "//sdk/lib/driver/devicetree/examples/example-board:example-board($default_toolchain)"

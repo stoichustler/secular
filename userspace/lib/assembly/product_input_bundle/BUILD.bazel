@@ -2,9 +2,9 @@
 # Use of this source code is governed by a BSD-style license that can be
 # found in the LICENSE file.
 
-load("//products/build/bazel/platforms:constraints.bzl", "HOST_OS_CONSTRAINTS")
-load("//products/build/bazel/rules/host_tests:host_rustc_test.bzl", "host_rustc_test")
-load("//products/build/bazel/rules/rust:rustc_library.bzl", "rustc_library")
+load("//vision/build/bazel/platforms:constraints.bzl", "HOST_OS_CONSTRAINTS")
+load("//vision/build/bazel/rules/host_tests:host_rustc_test.bzl", "host_rustc_test")
+load("//vision/build/bazel/rules/rust:rustc_library.bzl", "rustc_library")
 
 package(default_applicable_licenses = ["//:license"])
 
@@ -18,7 +18,7 @@ rustc_library(
     target_compatible_with = HOST_OS_CONSTRAINTS,
     version = "0.1.0",
     visibility = [
-        "//products/build/assembly/tools:__subpackages__",
+        "//vision/build/assembly/tools:__subpackages__",
         "//userspace/lib/assembly:__subpackages__",
     ],
     deps = [

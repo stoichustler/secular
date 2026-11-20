@@ -2,9 +2,9 @@
 # Use of this source code is governed by a BSD-style license that can be
 # found in the LICENSE file.
 
-load("//products/build/bazel/rules/fidl:fidl_library.bzl", "fidl_library")
-load("//products/build/bazel/rules/rust:rustc_binary.bzl", "rustc_binary")
-load("//products/build/bazel/rules/rust:rustc_test.bzl", "rustc_test")
+load("//vision/build/bazel/rules/fidl:fidl_library.bzl", "fidl_library")
+load("//vision/build/bazel/rules/rust:rustc_binary.bzl", "rustc_binary")
+load("//vision/build/bazel/rules/rust:rustc_test.bzl", "rustc_test")
 
 package(default_applicable_licenses = ["//:license"])
 

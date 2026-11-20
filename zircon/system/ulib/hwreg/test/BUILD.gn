@@ -2,8 +2,8 @@
 # Use of this source code is governed by a BSD-style license that can be
 # found in the LICENSE file.
 
-import("//products/build/components.gni")
-import("//products/build/test.gni")
+import("//vision/build/components.gni")
+import("//vision/build/test.gni")
 
 test("libhwreg-test") {
   sources = [
@@ -23,7 +23,7 @@ group("tests") {
   testonly = true
 
   # NOTE: The other tests in this file are zbi tests which are
-  # included from //products/bringup_with_tests. The list below
+  # included from //vision/bringup_with_tests. The list below
   # should instead be reachable from //userspace:tests.
   deps = [
     ":libhwreg-test($host_toolchain)",

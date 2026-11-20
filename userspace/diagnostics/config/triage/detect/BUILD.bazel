@@ -17,5 +17,5 @@ exports_files(
         "omaha-client-detect.triage",
         "mali-detect.triage",
     ],
-    visibility = ["//products/bundles/assembly:__subpackages__"],
+    visibility = ["//vision/bundles/assembly:__subpackages__"],
 )

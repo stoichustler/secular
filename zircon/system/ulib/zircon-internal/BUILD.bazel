@@ -3,7 +3,7 @@
 # found in the LICENSE file.
 
 load("@rules_cc//cc:defs.bzl", "cc_library")
-load("//products/build/bazel/rules/cc:fx_cc_library_headers.bzl", "fx_cc_library_headers")
+load("//vision/build/bazel/rules/cc:fx_cc_library_headers.bzl", "fx_cc_library_headers")
 
 package(default_applicable_licenses = ["//:license"])
 

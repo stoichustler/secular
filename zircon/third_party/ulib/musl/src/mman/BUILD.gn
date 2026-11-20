@@ -22,5 +22,5 @@ source_set("mman") {
     "shm_open.c",
   ]
 
-  configs -= [ "//products/build/config:symbol_visibility_hidden" ]
+  configs -= [ "//vision/build/config:symbol_visibility_hidden" ]
 }

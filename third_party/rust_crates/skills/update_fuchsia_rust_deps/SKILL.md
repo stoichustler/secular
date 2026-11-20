@@ -55,7 +55,7 @@ After `fx clippy --all` passes cleanly, run a full build to verify non-Rust targ
 Some host-only components (such as `partitions_config`) may not be part of the default target-toolchain build graph:
 1.  **Build with Host Toolchain**: Explicitly specify the host toolchain label:
     ```bash
-    ./scripts/fx build "//userspace/lib/assembly/partitions_config:partitions_config(//products/build/toolchain:host_x64)"
+    ./scripts/fx build "//userspace/lib/assembly/partitions_config:partitions_config(//vision/build/toolchain:host_x64)"
     ```
 
 ---

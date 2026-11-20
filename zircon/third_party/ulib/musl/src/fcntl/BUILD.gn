@@ -6,5 +6,5 @@ source_set("fcntl") {
   deps = [ "//zircon/third_party/ulib/musl:musl_internal" ]
   sources = [ "creat.c" ]
 
-  configs -= [ "//products/build/config:symbol_visibility_hidden" ]
+  configs -= [ "//vision/build/config:symbol_visibility_hidden" ]
 }

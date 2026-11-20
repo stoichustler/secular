@@ -2,10 +2,10 @@
 # Use of this source code is governed by a BSD-style license that can be
 # found in the LICENSE file.
 
-import("//products/build/assembly/assembled_system.gni")
-import("//products/build/assembly/product_assembly_configuration.gni")
-import("//products/build/assembly/product_bundle.gni")
-import("//products/build/rust/rustc_library.gni")
+import("//vision/build/assembly/assembled_system.gni")
+import("//vision/build/assembly/product_assembly_configuration.gni")
+import("//vision/build/assembly/product_bundle.gni")
+import("//vision/build/rust/rustc_library.gni")
 import("//userspace/sys/pkg/repositories/devhost/devhost.gni")
 
 # A template for end-to-end testing of ffx tools using `e2e_emu` library.
@@ -150,11 +150,11 @@ template("ffx_e2e_product_bundle") {
 
     # Always use the emulator boards, regardless of global board config.
     if (target_cpu == "x64") {
-      _board_label = "//products/boards/x64"
+      _board_label = "//vision/boards/x64"
     } else if (target_cpu == "arm64") {
-      _board_label = "//products/boards/arm64"
+      _board_label = "//vision/boards/arm64"
     } else if (target_cpu == "riscv64") {
-      _board_label = "//products/boards/riscv64"
+      _board_label = "//vision/boards/riscv64"
     } else {
       assert(false, "unsupported target architecture $target_cpu")
     }

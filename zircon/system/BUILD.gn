@@ -2,8 +2,8 @@
 # Use of this source code is governed by a BSD-style license that can be
 # found in the LICENSE file.
 
-import("//products/build/config/fuchsia/platform_version.gni")
-import("//products/build/config/fuchsia/target_api_level.gni")
+import("//vision/build/config/fuchsia/platform_version.gni")
+import("//vision/build/config/fuchsia/target_api_level.gni")
 
 # This target exist solely to ensure that the test file builds without error. It
 # is never actually linked into anything or included in the IDK. To improve test

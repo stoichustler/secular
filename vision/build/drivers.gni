@@ -1,0 +1,13 @@
+# Copyright 2021 The Fuchsia Authors. All rights reserved.
+# Use of this source code is governed by a BSD-style license that can be
+# found in the LICENSE file.
+
+import("//vision/build/bind/bind.gni")
+
+import("//vision/build/drivers/dml.gni")
+
+# Entry point for all general purpose GN templates for building
+# Fuchsia drivers.
+import("//vision/build/drivers/fuchsia_driver.gni")
+import("//vision/build/drivers/fuchsia_driver_component.gni")
+import("//vision/build/drivers/fuchsia_driver_package.gni")

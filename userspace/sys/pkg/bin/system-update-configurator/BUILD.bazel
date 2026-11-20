@@ -2,10 +2,10 @@
 # Use of this source code is governed by a BSD-style license that can be
 # found in the LICENSE file.
 
-load("//products/build/bazel/rules/rust:rustc_library.bzl", "rustc_library")
-load("//products/build/bazel/rules/rust:rustc_test.bzl", "rustc_test")
+load("//vision/build/bazel/rules/rust:rustc_library.bzl", "rustc_library")
+load("//vision/build/bazel/rules/rust:rustc_test.bzl", "rustc_test")
 load(
-    "//products/build/bazel/rules/testing:fx_unittest_package.bzl",
+    "//vision/build/bazel/rules/testing:fx_unittest_package.bzl",
     "fx_unittest_package",
 )
 
@@ -16,7 +16,7 @@ exports_files(
         "meta/core-shard.cml",
         "meta/system-update-shard.cml",
     ],
-    visibility = ["//products/bundles/assembly:__subpackages__"],
+    visibility = ["//vision/bundles/assembly:__subpackages__"],
 )
 
 # `system-update-configurator` is conceptually a binary, but it built as a lib
@@ -39,7 +39,7 @@ rustc_library(
     link_deps = [
         "//userspace/security/lib/tee/tee-client-api:tee-client-api-static",  # @bazel2gn:path_overwrite://userspace/security/lib/tee/tee-client-api
     ],
-    lint_config = "//products/build/config/rust/lints:clippy_warn_all",
+    lint_config = "//vision/build/config/rust/lints:clippy_warn_all",
     proc_macro_deps = [
         "//third_party/rust_crates/vendor:async-trait",
     ],
@@ -64,7 +64,7 @@ rustc_test(
     name = "lib_test",
     crate = ":lib",
     edition = "2024",
-    lint_config = "//products/build/config/rust/lints:clippy_warn_all",
+    lint_config = "//vision/build/config/rust/lints:clippy_warn_all",
     visibility = ["//visibility:private"],
     deps = [
         "//userspace/lib/diagnostics/testing/diagnostics-assertions/rust:diagnostics-assertions",

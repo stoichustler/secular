@@ -2,7 +2,7 @@
 # Use of this source code is governed by a BSD-style license that can be
 # found in the LICENSE file.
 
-import("//products/build/dist/resource.gni")
+import("//vision/build/dist/resource.gni")
 import("BUILD.generated.gni")
 import("BUILD.generated_tests.gni")
 
@@ -82,14 +82,14 @@ foreach(lib_type, lib_types) {
     }
     if (is_fuchsia) {
       # TODO(https://fxbug.dev/42138737): profile instrumentation significantly affects performance.
-      configs += [ "//products/build/config:no_profile" ]
+      configs += [ "//vision/build/config:no_profile" ]
 
       # boringssl should always be optimized for speed because otherwise
       # performance is significantly worse, impacting pave and boot times on
       # debug builds. See
       # https://fxbug.dev/42133086.
-      configs -= [ "//products/build/config:default_optimize" ]
-      configs += [ "//products/build/config:optimize_speed" ]
+      configs -= [ "//vision/build/config:default_optimize" ]
+      configs += [ "//vision/build/config:optimize_speed" ]
 
       # sysrand() uses Zircon system call.
       deps = [ "//userspace/zircon/lib/zircon" ]
@@ -125,8 +125,8 @@ foreach(lib_type, lib_types) {
       # boringssl should always be optimized for speed because otherwise
       # performance is significantly
       # worse, impacting pave and boot times on debug builds (https://fxbug.dev/42133086)
-      configs -= [ "//products/build/config:default_optimize" ]
-      configs += [ "//products/build/config:optimize_speed" ]
+      configs -= [ "//vision/build/config:default_optimize" ]
+      configs += [ "//vision/build/config:optimize_speed" ]
     }
   }
 
@@ -149,11 +149,11 @@ foreach(lib_name, lib_names) {
 # LINT.ThenChange(BUILD.bazel:lib_aliases)
 
 if (!is_kernel) {
-  import("//products/build/fuzz.gni")
-  import("//products/build/test.gni")
+  import("//vision/build/fuzz.gni")
+  import("//vision/build/test.gni")
 
   if (is_fuchsia) {
-    import("//products/build/components.gni")
+    import("//vision/build/components.gni")
   }
 
   source_set("crypto_unsafe") {
@@ -205,7 +205,7 @@ if (!is_kernel) {
     ]
 
     # TODO(https://fxbug.dev/42180987): workaround for the toolchain issue.
-    deps += [ "//products/build/config/fuchsia:uses-outline-atomics-fxbug98632" ]
+    deps += [ "//vision/build/config/fuchsia:uses-outline-atomics-fxbug98632" ]
   }
 
   ##############
@@ -409,7 +409,7 @@ if (!is_kernel) {
       configs += [ ":fuzz_config" ]
 
       # TODO(https://fxbug.dev/407045587): Remove after boringssl no longer uses is_pod.
-      configs += [ "//products/build/config:Wno-deprecated-declarations" ]
+      configs += [ "//vision/build/config:Wno-deprecated-declarations" ]
 
       deps = [
         ":crypto_unsafe",
@@ -503,10 +503,10 @@ config("internal_config") {
   }
   configs = [
     ":boringssl_config",
-    "//products/build/config:shared_library_config",
+    "//vision/build/config:shared_library_config",
   ]
   if (is_fuchsia) {
-    configs += [ "//products/build/config/fuchsia:static_cpp_standard_library" ]
+    configs += [ "//vision/build/config/fuchsia:static_cpp_standard_library" ]
   }
 }
 

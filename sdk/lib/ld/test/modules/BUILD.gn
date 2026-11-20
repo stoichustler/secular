@@ -2,13 +2,13 @@
 # Use of this source code is governed by a BSD-style license that can be
 # found in the LICENSE file.
 
-import("//products/build/config/lto/config.gni")
-import("//products/build/dist/distribution_manifest_copy.gni")
-import("//products/build/dist/resource.gni")
-import("//products/build/testing/host_test_data.gni")
-import("//products/build/toolchain/generated_ifs_file.gni")
-import("//products/build/toolchain/ifs_shared_library.gni")
-import("//products/build/toolchain/toolchain_environment.gni")
+import("//vision/build/config/lto/config.gni")
+import("//vision/build/dist/distribution_manifest_copy.gni")
+import("//vision/build/dist/resource.gni")
+import("//vision/build/testing/host_test_data.gni")
+import("//vision/build/toolchain/generated_ifs_file.gni")
+import("//vision/build/toolchain/ifs_shared_library.gni")
+import("//vision/build/toolchain/toolchain_environment.gni")
 import("//sdk/lib/c/libc_toolchain.gni")
 import("//sdk/lib/ld/distribution_manifest_prefix.gni")
 import("//sdk/lib/ld/testing/test_elf_object.gni")
@@ -352,8 +352,8 @@ template("_test_link") {
     deps += [ ":test-module.deps" ]
 
     if (is_linux) {
-      configs += [ "//products/build/config/linux:implicit-host-libs" ]
-      configs -= [ "//products/build/config/linux:implicit-host-libs" ]
+      configs += [ "//vision/build/config/linux:implicit-host-libs" ]
+      configs -= [ "//vision/build/config/linux:implicit-host-libs" ]
     }
     configs += [ ":nostdlibs" ]
 
@@ -570,7 +570,7 @@ foreach(in_process,
     public_deps = [ "//sdk/lib/ld:standalone" ]
     public_configs = [
       ":semantic-interposition",
-      "//products/build/config:frame_pointers",
+      "//vision/build/config:frame_pointers",
     ]
     sources = [ "ensure-test-thread-pointer.cc" ]
     deps = [
@@ -840,7 +840,7 @@ test_executable("tls-exec-only") {
   ]
 
   # workaround for b/349448459 to remote-link successfully
-  configs = [ "//products/build/config/rbe:remote_link_scandeps_workaround" ]
+  configs = [ "//vision/build/config/rbe:remote_link_scandeps_workaround" ]
 }
 
 test_executable("tls-shlib-only") {
@@ -857,7 +857,7 @@ test_executable("tls-shlib-only") {
 test_shared_library("tls-dep") {
   public = [ "tls-dep.h" ]
   sources = [ "tls-dep.cc" ]
-  configs = [ "//products/build/config:no-tlsdesc" ]
+  configs = [ "//vision/build/config:no-tlsdesc" ]
   deps = [
     "//sdk/lib/ld:static-tls-get-addr",
     "//zircon/system/public",
@@ -865,8 +865,8 @@ test_shared_library("tls-dep") {
 
   # TODO(https://fxbug.dev/442036680): LTO insists on using IE accesses here. Remove this
   # when the LLVM bug gets fixed and the fixed toolchain rolled into Fuchsia.
-  remove_configs = [ "//products/build/config/lto" ]
-  configs += [ "//products/build/config/lto:no-lto" ]
+  remove_configs = [ "//vision/build/config/lto" ]
+  configs += [ "//vision/build/config/lto:no-lto" ]
 }
 
 # This is the same as tls-dep, but without the dep on static-tls-get-addr, so
@@ -875,12 +875,12 @@ test_shared_library("tls-dep") {
 test_loadable_module("tls-dep-module") {
   public = [ "tls-dep.h" ]
   sources = [ "tls-dep.cc" ]
-  configs = [ "//products/build/config:no-tlsdesc" ]
+  configs = [ "//vision/build/config:no-tlsdesc" ]
   deps = [ "//zircon/system/public" ]
 
   # We need to allow undefined symbols, since __tls_get_addr will not be defined
   # by this module or any link-time dependency, but will be supplied by libc.
-  remove_configs = [ "//products/build/config:symbol_no_undefined" ]
+  remove_configs = [ "//vision/build/config:symbol_no_undefined" ]
 }
 
 # This is the same as tls-dep but using TLSDESC, with no __tls_get_addr.
@@ -892,7 +892,7 @@ test_shared_library("tls-desc-dep") {
 
   public = [ "tls-dep.h" ]
   sources = [ "tls-dep.cc" ]
-  configs = [ "//products/build/config:tlsdesc" ]
+  configs = [ "//vision/build/config:tlsdesc" ]
   deps = [ "//zircon/system/public" ]
 }
 
@@ -900,19 +900,19 @@ test_shared_library("tls-desc-dep") {
 test_loadable_module("tls-desc-dep-module") {
   public = [ "tls-dep.h" ]
   sources = [ "tls-dep.cc" ]
-  configs = [ "//products/build/config:tlsdesc" ]
+  configs = [ "//vision/build/config:tlsdesc" ]
   deps = [ "//zircon/system/public" ]
 }
 
 test_loadable_module("tls-initial-dep-module") {
   public = [ "tls-initial-dep.h" ]
   sources = [ "tls-initial-dep.cc" ]
-  configs = [ "//products/build/config:no-tlsdesc" ]
+  configs = [ "//vision/build/config:no-tlsdesc" ]
   deps = [ "//zircon/system/public" ]
 
   # We need to allow undefined symbols, since __tls_get_addr will not be defined
   # by this module or any link-time dependency, but will be supplied by libc.
-  remove_configs = [ "//products/build/config:symbol_no_undefined" ]
+  remove_configs = [ "//vision/build/config:symbol_no_undefined" ]
 }
 
 # This is the same as tls-initial-dep-module but using TLSDESC, with no
@@ -920,7 +920,7 @@ test_loadable_module("tls-initial-dep-module") {
 test_loadable_module("tls-desc-initial-dep-module") {
   public = [ "tls-initial-dep.h" ]
   sources = [ "tls-initial-dep.cc" ]
-  configs = [ "//products/build/config:tlsdesc" ]
+  configs = [ "//vision/build/config:tlsdesc" ]
   deps = [ "//zircon/system/public" ]
 }
 
@@ -932,11 +932,11 @@ test_loadable_module("tls-ld-dep-module") {
   ]
   deps = [ "//zircon/system/public" ]
 
-  configs = [ "//products/build/config:no-tlsdesc" ]
+  configs = [ "//vision/build/config:no-tlsdesc" ]
 
   # We need to allow undefined symbols, since __tls_get_addr will not be defined
   # by this module or any link-time dependency, but will be supplied by libc.
-  remove_configs = [ "//products/build/config:symbol_no_undefined" ]
+  remove_configs = [ "//vision/build/config:symbol_no_undefined" ]
 }
 
 # This is the same as tls-dep-ld-module but using TLSDESC, with no
@@ -947,7 +947,7 @@ test_loadable_module("tls-desc-ld-dep-module") {
     "tls-ld-dep-symbol.cc",
     "tls-ld-dep.cc",
   ]
-  configs = [ "//products/build/config:tlsdesc" ]
+  configs = [ "//vision/build/config:tlsdesc" ]
   deps = [ "//zircon/system/public" ]
 }
 
@@ -1004,7 +1004,7 @@ test_shared_library("tls-ie-dep") {
 test_executable("tls-gd") {
   can_be_in_process = true
   sources = [ "tls-gd.cc" ]
-  configs = [ "//products/build/config:no-tlsdesc" ]
+  configs = [ "//vision/build/config:no-tlsdesc" ]
   deps = [
     ":tls-dep",
     "../..",
@@ -1015,7 +1015,7 @@ test_executable("tls-gd") {
 test_executable("tls-desc") {
   can_be_in_process = true
   sources = [ "tls-gd.cc" ]
-  configs = [ "//products/build/config:tlsdesc" ]
+  configs = [ "//vision/build/config:tlsdesc" ]
   deps = [
     ":tls-desc-dep",
     "../..",
@@ -1025,7 +1025,7 @@ test_executable("tls-desc") {
 test_executable("tls-ld") {
   can_be_in_process = true
   sources = [ "tls-ld.cc" ]
-  configs = [ "//products/build/config:no-tlsdesc" ]
+  configs = [ "//vision/build/config:no-tlsdesc" ]
   deps = [
     ":tls-ld-dep",
     "../..",
@@ -1038,15 +1038,15 @@ test_shared_library("tls-ld-dep") {
     "tls-ld-dep-symbol.cc",
     "tls-ld-dep.cc",
   ]
-  configs = [ "//products/build/config:no-tlsdesc" ]
+  configs = [ "//vision/build/config:no-tlsdesc" ]
   deps = [
     "//sdk/lib/ld:static-tls-get-addr",
     "//zircon/system/public",
   ]
 
   # Don't build this module with LTO, so that the TLS access stays unoptimized.
-  remove_configs = [ "//products/build/config/lto" ]
-  configs += [ "//products/build/config/lto:no-lto" ]
+  remove_configs = [ "//vision/build/config/lto" ]
+  configs += [ "//vision/build/config/lto:no-lto" ]
 }
 
 test_executable("fixed-load-address") {
@@ -1054,7 +1054,7 @@ test_executable("fixed-load-address") {
   deps = [ "//userspace/lib/elfldltl" ]
 
   # workaround for b/349448459 to remote-link successfully
-  configs = [ "//products/build/config/rbe:remote_link_scandeps_workaround" ]
+  configs = [ "//vision/build/config/rbe:remote_link_scandeps_workaround" ]
 }
 
 test_executable("second-session") {
@@ -1976,20 +1976,20 @@ test_shared_library("static-tls-var") {
   sources = [ "static-tls-var.cc" ]
 
   # workaround for b/349448459 to remote-link successfully
-  configs = [ "//products/build/config/rbe:remote_link_scandeps_workaround" ]
+  configs = [ "//vision/build/config/rbe:remote_link_scandeps_workaround" ]
 }
 
 # This resolves a static TLS symbol with tls-desc.
 test_loadable_module("static-tls-desc-module") {
   sources = [ "static-tls-desc-module.cc" ]
-  configs = [ "//products/build/config:tlsdesc" ]
+  configs = [ "//vision/build/config:tlsdesc" ]
   deps = [ ":static-tls-var" ]
 }
 
 # This is the same as :static-tls-desc-module, except it uses __tls_get_addr.
 test_loadable_module("static-tls-module") {
   sources = [ "static-tls-module.cc" ]
-  configs = [ "//products/build/config:no-tlsdesc" ]
+  configs = [ "//vision/build/config:no-tlsdesc" ]
 
   deps = [
     ":static-tls-var",
@@ -1998,10 +1998,10 @@ test_loadable_module("static-tls-module") {
 
   # We need to allow undefined symbols, since __tls_get_addr will not be defined
   # by this module or any link-time dependency, but will be supplied by libc.
-  remove_configs = [ "//products/build/config:symbol_no_undefined" ]
+  remove_configs = [ "//vision/build/config:symbol_no_undefined" ]
 
   # workaround for b/349448459 to remote-link successfully
-  configs += [ "//products/build/config/rbe:remote_link_scandeps_workaround" ]
+  configs += [ "//vision/build/config/rbe:remote_link_scandeps_workaround" ]
 }
 
 source_set("mock-tls-get-addr") {
@@ -2025,13 +2025,13 @@ test_loadable_module("tls-get-addr-global-dynamic-reloc") {
 
   # TODO(https://fxbug.dev/442036680): LTO insists on using IE accesses here. Remove this
   # when the LLVM bug gets fixed and the fixed toolchain rolled into Fuchsia.
-  remove_configs = [ "//products/build/config/lto" ]
-  configs = [ "//products/build/config/lto:no-lto" ]
+  remove_configs = [ "//vision/build/config/lto" ]
+  configs = [ "//vision/build/config/lto:no-lto" ]
 
-  configs += [ "//products/build/config:no-tlsdesc" ]
+  configs += [ "//vision/build/config:no-tlsdesc" ]
 
   # workaround for b/349448459 to remote-link successfully
-  configs += [ "//products/build/config/rbe:remote_link_scandeps_workaround" ]
+  configs += [ "//vision/build/config/rbe:remote_link_scandeps_workaround" ]
 }
 
 test_loadable_module("tls-get-addr-local-dynamic-reloc") {
@@ -2045,14 +2045,14 @@ test_loadable_module("tls-get-addr-local-dynamic-reloc") {
     "//zircon/system/public",
   ]
 
-  configs = [ "//products/build/config:no-tlsdesc" ]
+  configs = [ "//vision/build/config:no-tlsdesc" ]
 
   # Don't build this module with LTO, so that the TLS access stays unoptimized.
-  remove_configs = [ "//products/build/config/lto" ]
-  configs += [ "//products/build/config/lto:no-lto" ]
+  remove_configs = [ "//vision/build/config/lto" ]
+  configs += [ "//vision/build/config/lto:no-lto" ]
 
   # workaround for b/349448459 to remote-link successfully
-  configs += [ "//products/build/config/rbe:remote_link_scandeps_workaround" ]
+  configs += [ "//vision/build/config/rbe:remote_link_scandeps_workaround" ]
 }
 
 test_executable("llvm-profdata") {
@@ -2064,7 +2064,7 @@ test_executable("llvm-profdata") {
   ]
 
   # workaround for b/349448459 to remote-link successfully
-  configs = [ "//products/build/config/rbe:remote_link_scandeps_workaround" ]
+  configs = [ "//vision/build/config/rbe:remote_link_scandeps_workaround" ]
 }
 
 test_executable("backtrace") {
@@ -2166,11 +2166,11 @@ template("libc_test_executable") {
 
     deps += [ "//sdk/lib/c:new-libc-test" ]
     configs += [
-      "//products/build/config/zircon:user-executable",
-      "//products/build/config/fuchsia:no_cpp_standard_library",
+      "//vision/build/config/zircon:user-executable",
+      "//vision/build/config/fuchsia:no_cpp_standard_library",
     ]
     remove_configs += [
-      "//products/build/config/fuchsia:fdio_config",
+      "//vision/build/config/fuchsia:fdio_config",
 
       # Remove it so that it's not _before_ user-executable, which passes
       # --no-dynamic-linker.  The deps to //sdk/lib/ld:startup will reach this
@@ -2182,7 +2182,7 @@ template("libc_test_executable") {
     exclude_toolchain_tags = [ "uses-shadow" ]
 
     # TODO(https://fxbug.dev/483475945): Work around RBE linking bug.
-    configs += [ "//products/build/config/rbe:remote_link_scandeps_workaround" ]
+    configs += [ "//vision/build/config/rbe:remote_link_scandeps_workaround" ]
   }
 }
 
@@ -2198,7 +2198,7 @@ libc_test_executable("libc-hello-world") {
 libc_test_executable("libcxx-hello-world") {
   sources = [ "libcxx-hello-world.cc" ]
   remove_configs = [
-    "//products/build/config/fuchsia:no_cpp_standard_library",
+    "//vision/build/config/fuchsia:no_cpp_standard_library",
     ":nostdlibs",
   ]
   deps = [ "//sdk/lib/fdio" ]

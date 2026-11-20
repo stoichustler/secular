@@ -11,7 +11,7 @@ import subprocess
 import sys
 from pathlib import Path
 
-# Add //products/build/rust to Python path so the bindgen import works.
+# Add //vision/build/rust to Python path so the bindgen import works.
 FUCHSIA_DIR = Path(__file__).parent.parent.parent.parent.parent
 sys.path.append(str(FUCHSIA_DIR / "build" / "rust"))
 

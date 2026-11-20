@@ -13,7 +13,7 @@ set -eu
 
 script_dir="$(cd "${BASH_SOURCE[0]%/*}" && pwd)"
 root="$(cd "$script_dir/../.." && pwd)"
-manifest="$root/products/manifests/third_party/all"
+manifest="$root/vision/manifests/third_party/all"
 
 die() {
   printf 'error: %s\n' "$*" >&2

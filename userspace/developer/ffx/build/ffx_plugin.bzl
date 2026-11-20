@@ -5,8 +5,8 @@
 """Defines the ffx_plugin macro for building ffx plugins."""
 
 load("@platforms//host:constraints.bzl", "HOST_CONSTRAINTS")
-load("//products/build/bazel/rules/rust:rustc_library.bzl", "rustc_library")
-load("//products/build/tools/json_merge:json_merge.bzl", "json_merge")
+load("//vision/build/bazel/rules/rust:rustc_library.bzl", "rustc_library")
+load("//vision/build/tools/json_merge:json_merge.bzl", "json_merge")
 
 def _ffx_generate_cmd_impl(ctx):
     out_file = ctx.actions.declare_file(ctx.attr.output_name)

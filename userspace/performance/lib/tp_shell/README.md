@@ -42,7 +42,7 @@ To use this library in your Python tool or library, add the target dependency `/
 
 ### Example: For a Python Library
 ```gn
-import("//products/build/python/python_library.gni")
+import("//vision/build/python/python_library.gni")
 
 python_library("my_perf_library") {
   source_root = "."
@@ -59,7 +59,7 @@ python_library("my_perf_library") {
 
 ### Example: For a Python Binary / CLI Tool
 ```gn
-import("//products/build/python/python_binary.gni")
+import("//vision/build/python/python_binary.gni")
 
 python_binary("my_perf_tool") {
   main_source = "bin/main.py"

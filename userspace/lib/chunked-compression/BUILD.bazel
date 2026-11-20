@@ -4,7 +4,7 @@
 
 load("@platforms//host:constraints.bzl", "HOST_CONSTRAINTS")
 load("@rules_cc//cc:defs.bzl", "cc_library")
-load("//products/build/bazel/rules/host:defs.bzl", "cc_binary_host_tool")
+load("//vision/build/bazel/rules/host:defs.bzl", "cc_binary_host_tool")
 
 package(default_applicable_licenses = ["//:license"])
 

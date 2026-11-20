@@ -3,8 +3,8 @@
 # found in the LICENSE file.
 
 load("@rules_cc//cc:cc_library.bzl", "cc_library")
-load("//products/build/bazel/rules/cc:fx_cc_binary.bzl", "fx_cc_binary")
-load("//products/build/bazel/rules/testing:fx_unittest_package.bzl", "fx_unittest_package")
+load("//vision/build/bazel/rules/cc:fx_cc_binary.bzl", "fx_cc_binary")
+load("//vision/build/bazel/rules/testing:fx_unittest_package.bzl", "fx_unittest_package")
 
 package(default_applicable_licenses = ["//:license"])
 
@@ -38,6 +38,6 @@ fx_cc_binary(
 
 fx_unittest_package(
     name = "predicates-lib-test",
-    environments = ["//products/build/testing/environments:emu_env"],
+    environments = ["//vision/build/testing/environments:emu_env"],
     unit_tests = [":predicates-lib-unittests"],
 )

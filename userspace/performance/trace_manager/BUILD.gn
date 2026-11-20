@@ -2,7 +2,7 @@
 # Use of this source code is governed by a BSD-style license that can be
 # found in the LICENSE file.
 
-import("//products/build/components.gni")
+import("//vision/build/components.gni")
 
 source_set("lib") {
   sources = [
@@ -103,8 +103,8 @@ fuchsia_package_with_single_component("trace_manager") {
   ]
   visibility = [
     ":*",
-    "//products/bundles/assembly/*",
-    "//products/bundles/assembly_input_groups/*",
+    "//vision/bundles/assembly/*",
+    "//vision/bundles/assembly_input_groups/*",
   ]
 }
 

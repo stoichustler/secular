@@ -4,7 +4,7 @@
 
 """Lists of targets included in the Fuchsia IDK."""
 
-visibility(["//products/build/bazel/rules/idk/private"])
+visibility(["//vision/build/bazel/rules/idk/private"])
 
 STABLE_CC_SOURCE_LIBRARY_ATOMS = [
     # buildifier: keep sorted

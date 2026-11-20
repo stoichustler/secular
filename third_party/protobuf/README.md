@@ -5,7 +5,7 @@ Fuchsia pin and roll notes: [README.fuchsia](README.fuchsia).
 Secular uses the C++ runtime, `protoc`, and Python helpers under
 `src/src/`, `src/upb/`, and `src/python/`. Language runtimes and extra
 compatibility trees were removed from this checkout. They are not in
-`//products/build/secondary/third_party/protobuf/BUILD.gn`.
+`//vision/build/secondary/third_party/protobuf/BUILD.gn`.
 
 ## Removed trees
 

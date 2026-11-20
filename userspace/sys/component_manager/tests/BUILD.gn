@@ -4,7 +4,7 @@
 
 assert(is_fuchsia, "component manager is for the Fuchsia toolchain only")
 
-import("//products/build/rust/rustc_binary.gni")
+import("//vision/build/rust/rustc_binary.gni")
 
 group("non_hermetic_tests") {
   testonly = true

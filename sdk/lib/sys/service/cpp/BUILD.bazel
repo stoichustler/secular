@@ -2,7 +2,7 @@
 # Use of this source code is governed by a BSD-style license that can be
 # found in the LICENSE file.
 
-load("//products/build/bazel/rules/idk:idk_cc_source_library.bzl", "idk_cc_source_library")
+load("//vision/build/bazel/rules/idk:idk_cc_source_library.bzl", "idk_cc_source_library")
 
 package(default_applicable_licenses = ["//:license"])
 
@@ -31,7 +31,7 @@ idk_cc_source_library(
     stable = True,
     target_compatible_with = ["@platforms//os:fuchsia"],
     visibility = [
-        "//products/build/sdk:__pkg__",
+        "//vision/build/sdk:__pkg__",
         "//sdk/lib/driver/power/cpp:__pkg__",
         "//sdk/lib/sys/cpp:__pkg__",
         "//userspace/devices/bus/drivers/platform/test/power-integration-test:__pkg__",

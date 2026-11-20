@@ -2,10 +2,10 @@
 # Use of this source code is governed by a BSD-style license that can be
 # found in the LICENSE file.
 
-import("//products/build/host.gni")
-import("//products/build/rust/rustc_binary.gni")
-import("//products/build/sdk/sdk_atom.gni")
-import("//products/build/testing/host_test_data.gni")
+import("//vision/build/host.gni")
+import("//vision/build/rust/rustc_binary.gni")
+import("//vision/build/sdk/sdk_atom.gni")
+import("//vision/build/testing/host_test_data.gni")
 import("//sdk/categories/compatibility.gni")
 import("//userspace/developer/ffx/build/ffx_action.gni")
 import("//userspace/developer/ffx/config.gni")
@@ -28,7 +28,7 @@ import("//userspace/developer/ffx/lib/version/build/ffx_apply_version.gni")
 #
 #   sdk_area (optional; only allowed if `sdk_category` is set))
 #     [string] The API area responsible for maintaining this library.
-#     See //products/build/sdk/sdk_atom.gni.
+#     See //vision/build/sdk/sdk_atom.gni.
 #
 #   sdk_deps (optional; only allowed if `sdk_category` is set))
 #      Dependencies for inclusion in the sdk. See `sdk_atom` for more

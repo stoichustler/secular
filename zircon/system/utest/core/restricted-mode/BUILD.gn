@@ -30,14 +30,14 @@ source_set("restricted-mode") {
   # 2. The restricted-blob is also built in the ARM32 build environment
   #    when building for ARM64 (see below), and the Fuchsia build
   #    environments do not support ARM32.
-  data_deps = [ "restricted-blob(//products/build/toolchain:linux_$current_cpu)" ]
+  data_deps = [ "restricted-blob(//vision/build/toolchain:linux_$current_cpu)" ]
 
   # Presently, only arm64 offers a 32-bit restricted mode.
   # https://fxbug.dev/382971270 enable lower mem allocations when under asan
   if (current_cpu == "arm64") {
     data_deps +=
-        [ "restricted-blob:restricted-blob(//products/build/toolchain:linux_arm)" ]
-    data_deps += [ "restricted-blob:boundary(//products/build/toolchain:linux_arm)" ]
-    data_deps += [ "restricted-blob:thumb(//products/build/toolchain:linux_arm)" ]
+        [ "restricted-blob:restricted-blob(//vision/build/toolchain:linux_arm)" ]
+    data_deps += [ "restricted-blob:boundary(//vision/build/toolchain:linux_arm)" ]
+    data_deps += [ "restricted-blob:thumb(//vision/build/toolchain:linux_arm)" ]
   }
 }

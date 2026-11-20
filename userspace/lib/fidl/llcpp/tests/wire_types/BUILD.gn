@@ -2,8 +2,8 @@
 # Use of this source code is governed by a BSD-style license that can be
 # found in the LICENSE file.
 
-import("//products/build/components.gni")
-import("//products/build/test.gni")
+import("//vision/build/components.gni")
+import("//vision/build/test.gni")
 
 group("wire_types") {
   testonly = true
@@ -43,7 +43,7 @@ test("fidl_llcpp_wire_type_api_tests_bin") {
     deps += [ "//userspace/lib/fidl/llcpp/tests:types_test_utils" ]
 
     # TODO(https://fxbug.dev/42136089): delete the below and fix compiler warnings
-    configs += [ "//products/build/config:Wno-conversion" ]
+    configs += [ "//vision/build/config:Wno-conversion" ]
   }
 }
 

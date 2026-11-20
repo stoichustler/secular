@@ -2,7 +2,7 @@
 # Use of this source code is governed by a BSD-style license that can be
 # found in the LICENSE file.
 
-import("//products/build/cpp/library_headers.gni")
+import("//vision/build/cpp/library_headers.gni")
 
 config("config") {
   include_dirs = [ "include" ]
@@ -42,7 +42,7 @@ source_set("fxt") {
 }
 
 if (!is_kernel) {
-  import("//products/build/components.gni")
+  import("//vision/build/components.gni")
 
   executable("fxt_tests_app") {
     testonly = true

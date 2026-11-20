@@ -2,17 +2,17 @@
 # Use of this source code is governed by a BSD-style license that can be
 # found in the LICENSE file.
 
-load("//products/build/bazel/platforms:constraints.bzl", "HOST_OS_CONSTRAINTS")
-load("//products/build/bazel/rules/rust:rustc_proc_macro.bzl", "rustc_proc_macro")
-load("//products/build/bazel/rules/rust:rustc_test.bzl", "rustc_test")
-load("//products/build/bazel/rules/testing:fx_unittest_package.bzl", "fx_unittest_package")
+load("//vision/build/bazel/platforms:constraints.bzl", "HOST_OS_CONSTRAINTS")
+load("//vision/build/bazel/rules/rust:rustc_proc_macro.bzl", "rustc_proc_macro")
+load("//vision/build/bazel/rules/rust:rustc_test.bzl", "rustc_test")
+load("//vision/build/bazel/rules/testing:fx_unittest_package.bzl", "fx_unittest_package")
 
 package(default_applicable_licenses = ["//:license"])
 
 rustc_proc_macro(
     name = "fixture",
     srcs = ["src/lib.rs"],
-    build_flags = ["//products/build/config/rust/lints:deny_unused_results"],
+    build_flags = ["//vision/build/config/rust/lints:deny_unused_results"],
     edition = "2024",
     # @bazel2gn:skip
     target_compatible_with = HOST_OS_CONSTRAINTS,
@@ -35,7 +35,7 @@ rustc_proc_macro(
 rustc_test(
     name = "fixture-tests",
     srcs = ["src/tests.rs"],
-    build_flags = ["//products/build/config/rust/lints:deny_unused_results"],
+    build_flags = ["//vision/build/config/rust/lints:deny_unused_results"],
     edition = "2024",
     proc_macro_deps = [":fixture"],
     deps = [

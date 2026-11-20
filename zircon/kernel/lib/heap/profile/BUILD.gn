@@ -4,7 +4,7 @@
 # license that can be found in the LICENSE file or at
 # https://opensource.org/licenses/MIT
 
-import("//products/build/cpp/library_headers.gni")
+import("//vision/build/cpp/library_headers.gni")
 
 library_headers("headers") {
   headers = [ "lib/heap_profile.h" ]
@@ -22,7 +22,7 @@ library_headers("headers") {
 source_set("profile") {
   public_deps = [ ":headers" ]
   if (is_host) {
-    configs += [ "//products/build/config/fuchsia:enable_zircon_asserts" ]
+    configs += [ "//vision/build/config/fuchsia:enable_zircon_asserts" ]
   }
 }
 

@@ -2,9 +2,9 @@
 # Use of this source code is governed by a BSD-style license that can be
 # found in the LICENSE file.
 
-import("//products/build/host.gni")
-import("//products/build/rust/rustc_library.gni")
-import("//products/build/testing/host_test_data.gni")
+import("//vision/build/host.gni")
+import("//vision/build/rust/rustc_library.gni")
+import("//vision/build/testing/host_test_data.gni")
 
 if (is_host) {
   relative_root_out_dir = rebase_path(root_out_dir, root_build_dir)
@@ -60,7 +60,7 @@ if (is_host) {
       "src/repo_publish.rs",
     ]
 
-    configs += [ "//products/build/config/rust/lints:clippy_warn_all" ]
+    configs += [ "//vision/build/config/rust/lints:clippy_warn_all" ]
     rustenv = [ "ROOT_OUT_DIR=$relative_root_out_dir" ]
   }
 

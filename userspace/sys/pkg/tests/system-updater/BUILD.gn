@@ -2,8 +2,8 @@
 # Use of this source code is governed by a BSD-style license that can be
 # found in the LICENSE file.
 
-import("//products/build/components.gni")
-import("//products/build/rust/rustc_test.gni")
+import("//vision/build/components.gni")
+import("//vision/build/rust/rustc_test.gni")
 
 rustc_test("driver") {
   name = "system_updater_test"
@@ -82,7 +82,7 @@ rustc_test("driver") {
     "src/writes_firmware.rs",
     "src/writes_images.rs",
   ]
-  configs += [ "//products/build/config/rust/lints:clippy_warn_all" ]
+  configs += [ "//vision/build/config/rust/lints:clippy_warn_all" ]
 }
 
 fuchsia_component("system-updater-test") {

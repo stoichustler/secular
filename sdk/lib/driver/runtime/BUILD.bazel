@@ -2,8 +2,8 @@
 # Use of this source code is governed by a BSD-style license that can be
 # found in the LICENSE file.
 
-load("//products/build/bazel/rules/cc:fx_cc_library.bzl", "fx_cc_library")
-load("//products/build/bazel/rules/idk:idk_cc_source_library.bzl", "idk_cc_source_library")
+load("//vision/build/bazel/rules/cc:fx_cc_library.bzl", "fx_cc_library")
+load("//vision/build/bazel/rules/idk:idk_cc_source_library.bzl", "idk_cc_source_library")
 
 package(default_applicable_licenses = ["//:license"])
 
@@ -30,7 +30,7 @@ idk_cc_source_library(
     public_configs = [":include"],
     stable = True,
     visibility = [
-        "//products/build/sdk:__pkg__",
+        "//vision/build/sdk:__pkg__",
         "//sdk/lib/driver/runtime/rust/fdf_sys:__pkg__",
         "//sdk/lib/driver/symbols:__pkg__",
         "//sdk/lib/fidl_driver:__pkg__",
@@ -69,7 +69,7 @@ idk_cc_source_library(
     public_configs = [":include"],
     stable = True,
     visibility = [
-        "//products/build/sdk:__pkg__",
+        "//vision/build/sdk:__pkg__",
         "//examples/drivers:__subpackages__",
         "//sdk/lib/driver:__subpackages__",
         "//sdk/lib/fidl_driver:__pkg__",
@@ -99,7 +99,7 @@ idk_cc_source_library(
     public_configs = [":include"],
     stable = True,
     visibility = [
-        "//products/build/sdk:__pkg__",
+        "//vision/build/sdk:__pkg__",
         "//sdk/lib/driver/runtime:__subpackages__",
         "//userspace/devices/bin/driver_runtime:__subpackages__",
         "//userspace/devices/tee/drivers/optee:__pkg__",
@@ -128,7 +128,7 @@ idk_cc_source_library(
     public_configs = [":include"],
     stable = True,
     visibility = [
-        "//products/build/sdk:__pkg__",
+        "//vision/build/sdk:__pkg__",
         "//sdk/lib/driver/runtime/testing/cpp:__pkg__",
         "//sdk/lib/driver/testing/cpp:__pkg__",
         "//userspace/connectivity:__subpackages__",
@@ -154,7 +154,7 @@ idk_cc_source_library(
     public_configs = [":include"],
     stable = True,
     visibility = [
-        "//products/build/sdk:__pkg__",
+        "//vision/build/sdk:__pkg__",
         "//sdk/lib/driver/runtime:__subpackages__",
         "//sdk/lib/driver/testing:__subpackages__",
         "//sdk/lib/fidl_driver/tests/transport:__subpackages__",

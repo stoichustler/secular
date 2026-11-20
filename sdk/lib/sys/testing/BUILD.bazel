@@ -2,7 +2,7 @@
 # Use of this source code is governed by a BSD-style license that can be
 # found in the LICENSE file.
 
-load("//products/build/bazel/aspects:runner.bzl", "fx_runner_shard")
+load("//vision/build/bazel/aspects:runner.bzl", "fx_runner_shard")
 
 package(default_applicable_licenses = ["//:license"])
 
@@ -12,9 +12,9 @@ exports_files(
         "elf_test_runner.shard.cml",
     ],
     visibility = [
-        "//products/build/bazel/rules/components:__pkg__",
-        "//products/build/bazel/rules/packages/tests:__pkg__",
-        "//products/build/bazel/rules/testing:__pkg__",
+        "//vision/build/bazel/rules/components:__pkg__",
+        "//vision/build/bazel/rules/packages/tests:__pkg__",
+        "//vision/build/bazel/rules/testing:__pkg__",
         "//userspace:__subpackages__",
     ],
 )

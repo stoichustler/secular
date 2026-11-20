@@ -2,7 +2,7 @@
 # Use of this source code is governed by a BSD-style license that can be
 # found in the LICENSE file.
 
-load("//products/build/bazel/rules/host:defs.bzl", "cc_binary_host_tool")
+load("//vision/build/bazel/rules/host:defs.bzl", "cc_binary_host_tool")
 
 package(
     default_applicable_licenses = ["//:license"],
@@ -17,11 +17,11 @@ cc_binary_host_tool(
 genrule(
     name = "gen_version_info_txt",
     srcs = [
-        "//products/build/info:latest_commit_hash",
-        "//products/build/info:minimum_utc_stamp",
+        "//vision/build/info:latest_commit_hash",
+        "//vision/build/info:minimum_utc_stamp",
     ],
     outs = ["ffx_version_info.txt"],
-    cmd = "$(location gn_write_version_info.sh) $@ $(location //products/build/info:latest_commit_hash) $(location //products/build/info:minimum_utc_stamp)",
+    cmd = "$(location gn_write_version_info.sh) $@ $(location //vision/build/info:latest_commit_hash) $(location //vision/build/info:minimum_utc_stamp)",
     tools = ["gn_write_version_info.sh"],
 )
 
@@ -35,7 +35,7 @@ genrule(
 
 genrule(
     name = "build_version_bin",
-    srcs = ["//products/build/info:version"],
+    srcs = ["//vision/build/info:version"],
     outs = ["build_version.bin"],
     cmd = "$(location :truncate) $< $@ 64",
     tools = [":truncate"],

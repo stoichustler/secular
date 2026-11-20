@@ -2,11 +2,11 @@
 # Use of this source code is governed by a BSD-style license that can be
 # found in the LICENSE file.
 
-import("//products/build/components.gni")
-import("//products/build/dist/component_manifest_resources.gni")
-import("//products/build/test.gni")
-import("//products/build/testing/bootfs_test.gni")
-import("//products/build/testing/cc_test_executable.gni")
+import("//vision/build/components.gni")
+import("//vision/build/dist/component_manifest_resources.gni")
+import("//vision/build/test.gni")
+import("//vision/build/testing/bootfs_test.gni")
+import("//vision/build/testing/cc_test_executable.gni")
 
 group("tests") {
   testonly = true
@@ -73,7 +73,7 @@ executable("bin") {
   ]
 
   # TODO(https://fxbug.dev/42085293): delete the below and fix compiler warnings
-  configs += [ "//products/build/config:Wno-vla-cxx-extension" ]
+  configs += [ "//vision/build/config:Wno-vla-cxx-extension" ]
 }
 
 fuchsia_component_manifest("manifest") {

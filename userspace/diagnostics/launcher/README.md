@@ -33,7 +33,7 @@ empty struct with `#[derive(FromArgs, Debug, PartialEq)]`.)
 `pub async fn main(args: CommandLine) -> Result<(), Error>`
     1. Remove the `#[fuchsia::main]` or similar lines.
     1. Remove syslog initialization; Launcher does that.
-1. In BUILD.gn, `import("//products/build/rust/rustc_library.gni")`, change
+1. In BUILD.gn, `import("//vision/build/rust/rustc_library.gni")`, change
 `rustc_bin` to `rustc_lib`, and replace `main.rs` with `lib.rs` in `sources`.
 1. In the .cml for unit tests, change `_bin_test` to `_lib_test`.
 

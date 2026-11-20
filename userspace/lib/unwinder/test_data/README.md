@@ -7,7 +7,7 @@ source file is changed.
 
 ## Building a new binary
 
-  1. Add `//userspace/lib/unwinder/test_data:unwind_info_test_data(//products/build/toolchain:linux_arm-shared)` to
+  1. Add `//userspace/lib/unwinder/test_data:unwind_info_test_data(//vision/build/toolchain:linux_arm-shared)` to
      the build graph. The easiest way to do this is to have the test binary in
      `//userspace/lib/unwinder:unwinder_tests_bin` dep on that target. The toolchain argument is important
      because the binary is specifically meant to be generated with the aarch32 toolchain and

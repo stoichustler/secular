@@ -2,7 +2,7 @@
 # Use of this source code is governed by a BSD-style license that can be
 # found in the LICENSE file.
 
-import("//products/build/zircon/c_utils.gni")
+import("//vision/build/zircon/c_utils.gni")
 import("../libc.gni")
 
 libc_source_set("startup") {
@@ -364,7 +364,7 @@ libc_source_set("processargs-get-handles") {
     "//zircon/system/ulib/zircon-internal",
   ]
 
-  configs = [ "//products/build/config:Wno-vla-cxx-extension" ]
+  configs = [ "//vision/build/config:Wno-vla-cxx-extension" ]
 }
 
 # This is used in the second half of __libc_start_main, with the full ABI.

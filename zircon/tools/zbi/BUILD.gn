@@ -2,11 +2,11 @@
 # Use of this source code is governed by a BSD-style license that can be
 # found in the LICENSE file.
 
-import("//products/build/bazel/bazel_inputs.gni")
-import("//products/build/go/go_binary.gni")
-import("//products/build/sdk/sdk_host_tool.gni")
-import("//products/build/zbi/zbi.gni")
-import("//products/build/zbi/zbi_input.gni")
+import("//vision/build/bazel/bazel_inputs.gni")
+import("//vision/build/go/go_binary.gni")
+import("//vision/build/sdk/sdk_host_tool.gni")
+import("//vision/build/zbi/zbi.gni")
+import("//vision/build/zbi/zbi_input.gni")
 import("zbi_item.gni")
 
 executable("zbi") {

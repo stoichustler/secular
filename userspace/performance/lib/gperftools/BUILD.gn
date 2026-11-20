@@ -14,7 +14,7 @@ config("headers_config") {
     gperftools_src_root,
     "include",
   ]
-  configs = [ "//products/build/config:Wno-extra-semi" ]
+  configs = [ "//vision/build/config:Wno-extra-semi" ]
 }
 
 source_set("profiler_headers") {
@@ -68,10 +68,10 @@ source_set("profiler_lib") {
   ]
 
   # gpertools sources do not build with Wconversion.
-  configs += [ "//products/build/config:Wno-conversion" ]
+  configs += [ "//vision/build/config:Wno-conversion" ]
 
   # TODO(https://fxbug.dev/42085293): delete the below and fix compiler warnings
-  configs += [ "//products/build/config:Wno-vla-cxx-extension" ]
+  configs += [ "//vision/build/config:Wno-vla-cxx-extension" ]
 
   cflags = [ "-Wno-extra-semi" ]
 }

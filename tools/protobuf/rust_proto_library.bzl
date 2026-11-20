@@ -9,7 +9,7 @@ This is the Bazel equivalent of the GN `rust_proto_library()` template in
 template.
 """
 
-load("//products/build/bazel/rules/rust:defs.bzl", "rustc_library")
+load("//vision/build/bazel/rules/rust:defs.bzl", "rustc_library")
 
 def _include_dir_to_exec_path(include_dir):
     """Converts a source-absolute GN-style directory to an execroot path."""

@@ -4,8 +4,8 @@
 # license that can be found in the LICENSE file or at
 # https://opensource.org/licenses/MIT
 
-import("//products/build/cpp/library_headers.gni")
-import("//products/build/toolchain/toolchain_environment.gni")
+import("//vision/build/cpp/library_headers.gni")
+import("//vision/build/toolchain/toolchain_environment.gni")
 
 # Generic parts of acpi_lite.
 static_library("acpi_lite") {
@@ -61,9 +61,9 @@ group("boot_tests") {
 }
 
 if (!is_kernel) {
-  import("//products/build/components.gni")
-  import("//products/build/fuzz.gni")
-  import("//products/build/test.gni")
+  import("//vision/build/components.gni")
+  import("//vision/build/fuzz.gni")
+  import("//vision/build/test.gni")
 
   fuchsia_fuzzer_component("acpi-lite-fuzztest-rust-component") {
     component_name = "acpi_lite_fuzztest_rust"

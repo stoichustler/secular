@@ -4,9 +4,9 @@
 # license that can be found in the LICENSE file or at
 # https://opensource.org/licenses/MIT
 
-import("//products/build/components.gni")
-import("//products/build/devicetree/devicetree.gni")
-import("//products/build/testing/host_test_data.gni")
+import("//vision/build/components.gni")
+import("//vision/build/devicetree/devicetree.gni")
+import("//vision/build/testing/host_test_data.gni")
 
 # Real device produced device tree binary format files. These files are the
 # blobs obtained from such devices. Reconstructed 'dts' files live along the

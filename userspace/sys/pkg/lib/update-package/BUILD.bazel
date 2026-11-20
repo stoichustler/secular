@@ -3,19 +3,19 @@
 # found in the LICENSE file.
 
 load(
-    "//products/build/bazel/rules/components:fx_component.bzl",
+    "//vision/build/bazel/rules/components:fx_component.bzl",
     "fx_component_manifest",
     "fx_test_component",
 )
-load("//products/build/bazel/rules/host_tests:host_rustc_test.bzl", "wrap_host_rust_test")
-load("//products/build/bazel/rules/packages:fx_package.bzl", "fx_package")
+load("//vision/build/bazel/rules/host_tests:host_rustc_test.bzl", "wrap_host_rust_test")
+load("//vision/build/bazel/rules/packages:fx_package.bzl", "fx_package")
 load(
-    "//products/build/bazel/rules/packages:fx_packaged_binary.bzl",
+    "//vision/build/bazel/rules/packages:fx_packaged_binary.bzl",
     "fx_packaged_binary",
 )
-load("//products/build/bazel/rules/rust:rustc_library.bzl", "rustc_library")
-load("//products/build/bazel/rules/rust:rustc_test.bzl", "rustc_test")
-load("//products/build/bazel/rules/testing:fx_test.bzl", "fx_test")
+load("//vision/build/bazel/rules/rust:rustc_library.bzl", "rustc_library")
+load("//vision/build/bazel/rules/rust:rustc_test.bzl", "rustc_test")
+load("//vision/build/bazel/rules/testing:fx_test.bzl", "fx_test")
 load("//tools/protobuf:rust_proto_library.bzl", "rust_proto_library")
 
 package(default_applicable_licenses = ["//:license"])
@@ -49,7 +49,7 @@ rustc_library(
     }),
     compile_data = ["//userspace/sys/pkg/bin/system-updater/keys:manifest_dev_key.pem"],
     edition = "2024",
-    lint_config = "//products/build/config/rust/lints:clippy_warn_all",
+    lint_config = "//vision/build/config/rust/lints:clippy_warn_all",
     proc_macro_deps = ["//userspace/lib/include_bytes_from_working_dir"],
     # The key is read at compile time relative to the compiler's working
     # directory: the execroot in Bazel, the build directory in GN.
@@ -95,7 +95,7 @@ rustc_test(
     name = "update-package_test",
     crate = ":update-package",
     edition = "2024",
-    lint_config = "//products/build/config/rust/lints:clippy_warn_all",
+    lint_config = "//vision/build/config/rust/lints:clippy_warn_all",
     deps = [
         "//userspace/lib/fuchsia",
         "//third_party/rust_crates/vendor:assert_matches",

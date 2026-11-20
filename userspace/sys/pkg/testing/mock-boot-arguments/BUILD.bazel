@@ -2,8 +2,8 @@
 # Use of this source code is governed by a BSD-style license that can be
 # found in the LICENSE file.
 
-load("//products/build/bazel/rules/rust:defs.bzl", "rustc_library", "rustc_test")
-load("//products/build/bazel/rules/testing:fx_unittest_package.bzl", "fx_unittest_package")
+load("//vision/build/bazel/rules/rust:defs.bzl", "rustc_library", "rustc_test")
+load("//vision/build/bazel/rules/testing:fx_unittest_package.bzl", "fx_unittest_package")
 
 package(default_applicable_licenses = ["//:license"])
 
@@ -12,7 +12,7 @@ rustc_library(
     srcs = ["src/lib.rs"],
     crate_name = "mock_boot_arguments",
     edition = "2024",
-    lint_config = "//products/build/config/rust/lints:clippy_warn_all",
+    lint_config = "//vision/build/config/rust/lints:clippy_warn_all",
     visibility = ["//userspace/recovery/system:__pkg__"],
     deps = [
         "//sdk/fidl/fuchsia.boot:fuchsia.boot_rust",
@@ -26,7 +26,7 @@ rustc_test(
     name = "lib_test",
     crate = ":lib",
     edition = "2024",
-    lint_config = "//products/build/config/rust/lints:clippy_warn_all",
+    lint_config = "//vision/build/config/rust/lints:clippy_warn_all",
     visibility = ["//visibility:private"],
     deps = [
         "//userspace/lib/fidl/rust/fidl",

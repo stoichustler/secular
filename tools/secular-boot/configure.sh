@@ -54,8 +54,8 @@ mkdir -p "$out_dir"
 args_tmp="$(mktemp "$out_dir/.args.gn.XXXXXX")"
 trap 'rm -f "$args_tmp"' EXIT
 cat >"$args_tmp" <<EOF
-import("//products/boards/qemu-arm64.gni")
-import("//products/secular.gni")
+import("//vision/boards/qemu-arm64.gni")
+import("//vision/secular.gni")
 
 secular_sdk_root = "$escaped_sdk_root"
 secular_prebuilt_root = "$escaped_prebuilt"

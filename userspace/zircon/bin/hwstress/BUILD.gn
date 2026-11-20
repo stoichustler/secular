@@ -2,7 +2,7 @@
 # Use of this source code is governed by a BSD-style license that can be
 # found in the LICENSE file.
 
-import("//products/build/components.gni")
+import("//vision/build/components.gni")
 
 source_set("lib") {
   sources = [
@@ -46,7 +46,7 @@ source_set("lib") {
   # We want to optimize as much as possible for speed, under the assumption
   # that this will also optimize for generating code that will maximise the
   # amount of stress placed on the system (e.g., more heat for CPU tests).
-  configs += [ "//products/build/config:optimize_speed" ]
+  configs += [ "//vision/build/config:optimize_speed" ]
 }
 
 executable("bin") {
@@ -60,7 +60,7 @@ executable("bin") {
 # GN-only Secular image: put the tool in /boot/bin.
 group("bootfs_binaries") {
   visibility = [
-    "//products/secular:*",
+    "//vision/secular:*",
     "//userspace/zircon/bin:*",
   ]
   deps = [ ":bin" ]

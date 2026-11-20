@@ -16,8 +16,8 @@ build_arch() {
   local out_rel="out/secular-boot-$arch"
   local out_dir="$root/$out_rel"
   local -a targets=(
-    "products/secular:secular"
-    "products/secular:boot_shim"
+    "vision/secular:secular"
+    "vision/secular:boot_shim"
   )
 
   ensure_jiri_generated_commit_info "$root"

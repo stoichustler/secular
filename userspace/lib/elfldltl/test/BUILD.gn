@@ -2,14 +2,14 @@
 # Use of this source code is governed by a BSD-style license that can be
 # found in the LICENSE file.
 
-import("//products/build/components/fuchsia_unittest_package.gni")
-import("//products/build/cpp/cpp_fuzzer.gni")
-import("//products/build/cpp/library_headers.gni")
-import("//products/build/fuzz.gni")
-import("//products/build/test.gni")
-import("//products/build/testing/boot_tests/zbi_test.gni")
-import("//products/build/testing/host_test_data.gni")
-import("//products/build/toolchain/zircon/user_basic_redirect.gni")
+import("//vision/build/components/fuchsia_unittest_package.gni")
+import("//vision/build/cpp/cpp_fuzzer.gni")
+import("//vision/build/cpp/library_headers.gni")
+import("//vision/build/fuzz.gni")
+import("//vision/build/test.gni")
+import("//vision/build/testing/boot_tests/zbi_test.gni")
+import("//vision/build/testing/host_test_data.gni")
+import("//vision/build/toolchain/zircon/user_basic_redirect.gni")
 
 test("elfldltl-unittests") {
   sources = [
@@ -105,14 +105,14 @@ if (current_os == "linux") {
 
   static_library("linux-static-pie") {
     sources = [ "linux-static-pie.cc" ]
-    configs -= [ "//products/build/config/linux:implicit-host-libs" ]
+    configs -= [ "//vision/build/config/linux:implicit-host-libs" ]
     configs += [ ":linux-static-pie.config" ]
     deps = [ ".." ]
   }
 
   if (current_toolchain == host_toolchain) {
     host_test("linux-static-pie-test") {
-      deps = [ ":linux-static-pie-test(//products/build/toolchain:linux_$host_cpu)" ]
+      deps = [ ":linux-static-pie-test(//vision/build/toolchain:linux_$host_cpu)" ]
       binary_path = get_label_info(deps[0], "root_out_dir") + "/" +
                     get_label_info(deps[0], "name")
     }
@@ -122,8 +122,8 @@ if (current_os == "linux") {
 
       sources = [ "linux-static-pie-test.cc" ]
       configs -= [
-        "//products/build/config/linux:default-pie",
-        "//products/build/config/linux:implicit-host-libs",
+        "//vision/build/config/linux:default-pie",
+        "//vision/build/config/linux:implicit-host-libs",
       ]
       configs += [ ":linux-static-pie.config" ]
       cflags = [ "-fPIE" ]
@@ -248,13 +248,13 @@ template("loader_test_lib") {
     exclude_toolchain_tags = [ "instrumented" ]
 
     if (is_linux) {
-      configs -= [ "//products/build/config/linux:implicit-host-libs" ]
-      configs += [ "//products/build/config/zircon:nolibc" ]
+      configs -= [ "//vision/build/config/linux:implicit-host-libs" ]
+      configs += [ "//vision/build/config/zircon:nolibc" ]
     }
     if (is_fuchsia) {
       # These shared objects aren't necessarily static pie's, this config
       # disables sanitizers and other default libraries from being linked in.
-      configs += [ "//products/build/config/fuchsia:static-pie-config" ]
+      configs += [ "//vision/build/config/fuchsia:static-pie-config" ]
     }
   }
 }

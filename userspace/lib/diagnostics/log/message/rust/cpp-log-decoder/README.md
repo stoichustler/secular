@@ -48,7 +48,7 @@ for the build target
 
 As of this writing, this is done in the following way.
 
-1. Using `fx args`, add `//products/build/rust:cargo_toml_gen` to `host_labels`.
+1. Using `fx args`, add `//vision/build/rust:cargo_toml_gen` to `host_labels`.
 
 2. Using `fx args`, add `//userspace/lib/diagnostics/log/message/rust/cpp-log-decoder:staticlib`
    to `build_only_labels`.
@@ -57,11 +57,11 @@ As of this writing, this is done in the following way.
    manifest:
 
 ```
-fx args # then append "//products/build/rust:cargo_toml_gen" to `host_labels`
+fx args # then append "//vision/build/rust:cargo_toml_gen" to `host_labels`
 fx args # then append "//userspace/diagnostics/lib/cpp-log-decoder:staticlib"
         # to `build_only_labels`
 
-fx build //products/build/rust:cargo_toml_gen
+fx build //vision/build/rust:cargo_toml_gen
 fx gen-cargo //userspace/lib/diagnostics/log/message/rust/cpp-log-decoder:_log_decoder_c_bindings_rustc_static.actual
 fx gen-cargo //userspace/lib/diagnostics/log/message/rust:lib.actual
 ```

@@ -4,8 +4,8 @@
 # license that can be found in the LICENSE file or at
 # https://opensource.org/licenses/MIT
 
-import("//products/build/zircon/migrated_targets.gni")
-import("//products/build/zircon/zircon_cpu.gni")
+import("//vision/build/zircon/migrated_targets.gni")
+import("//vision/build/zircon/zircon_cpu.gni")
 import("//zircon/kernel/kernel_rust_mod.gni")
 import("//zircon/kernel/params.gni")
 

@@ -29,5 +29,5 @@ source_set("misc") {
     "wordexp.c",
   ]
 
-  configs -= [ "//products/build/config:symbol_visibility_hidden" ]
+  configs -= [ "//vision/build/config:symbol_visibility_hidden" ]
 }

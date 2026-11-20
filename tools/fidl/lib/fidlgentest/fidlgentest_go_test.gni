@@ -2,8 +2,8 @@
 # Use of this source code is governed by a BSD-style license that can be
 # found in the LICENSE file.
 
-import("//products/build/go/go_test.gni")
-import("//products/build/testing/host_test_data.gni")
+import("//vision/build/go/go_test.gni")
+import("//vision/build/testing/host_test_data.gni")
 
 # Declares a Go test that uses the fidlgentest library.
 #

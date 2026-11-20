@@ -2,9 +2,9 @@
 # Use of this source code is governed by a BSD-style license that can be
 # found in the LICENSE file.
 
-import("//products/build/components.gni")
-import("//products/build/components/fuchsia_unittest_package.gni")
-import("//products/build/testing/cc_test_executable.gni")
+import("//vision/build/components.gni")
+import("//vision/build/components/fuchsia_unittest_package.gni")
+import("//vision/build/testing/cc_test_executable.gni")
 
 group("tests") {
   testonly = true
@@ -53,7 +53,7 @@ source_set("lib") {
     "virtio_queue.cc",
     "virtio_queue.h",
   ]
-  configs += [ "//products/build/config:all_source" ]
+  configs += [ "//vision/build/config:all_source" ]
   public_deps = [
     "//sdk/fidl/fuchsia.virtualization.hardware:fuchsia.virtualization.hardware_hlcpp",
     "//sdk/lib/async:async-cpp",

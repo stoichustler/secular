@@ -2,7 +2,7 @@
 # Use of this source code is governed by a BSD-style license that can be
 # found in the LICENSE file.
 
-import("//products/build/assembly/bootfs_files_for_assembly.gni")
+import("//vision/build/assembly/bootfs_files_for_assembly.gni")
 
 executable("kstress") {
   visibility = [
@@ -10,10 +10,10 @@ executable("kstress") {
     "//userspace/zircon/tests/stress-tests:*",
   ]
   if (is_fuchsia) {
-    configs += [ "//products/build/config:all_source" ]
+    configs += [ "//vision/build/config:all_source" ]
   }
   if (is_fuchsia) {
-    fdio_config = [ "//products/build/config/fuchsia:fdio_config" ]
+    fdio_config = [ "//vision/build/config/fuchsia:fdio_config" ]
     if (configs + fdio_config - fdio_config != configs) {
       configs -= fdio_config
     }

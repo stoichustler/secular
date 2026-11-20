@@ -27,7 +27,7 @@ import("toolchain.gni")
 #   * emulator_support_aib
 #     - Optional: If true, will generate an `emulator_support_aib_input` metadata entry and barrier
 #       making this image findable as a QEMU Kernel by `assembled_system`.
-#       See `//products/build/assembly/assembled_system.gni` "Metadata Protocol" for more details.
+#       See `//vision/build/assembly/assembled_system.gni` "Metadata Protocol" for more details.
 #     - Type: boolean
 #     - Default: false
 #

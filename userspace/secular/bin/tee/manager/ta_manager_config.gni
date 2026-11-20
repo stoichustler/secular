@@ -2,9 +2,9 @@
 # Use of this source code is governed by a BSD-style license that can be
 # found in the LICENSE file.
 
-import("//products/build/components/fuchsia_component.gni")
-import("//products/build/components/fuchsia_package.gni")
-import("//products/build/dist/resource.gni")
+import("//vision/build/components/fuchsia_component.gni")
+import("//vision/build/components/fuchsia_package.gni")
+import("//vision/build/dist/resource.gni")
 
 # Creates a component and package containing configuration data for the TA
 # manager. Produces a package named "${target_name}" with a configuration

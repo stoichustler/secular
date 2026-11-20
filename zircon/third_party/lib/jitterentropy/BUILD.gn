@@ -2,8 +2,8 @@
 # Use of this source code is governed by a BSD-style license that can be
 # found in the LICENSE file.
 
-import("//products/build/cpp/library_headers.gni")
-import("//products/build/zircon/zircon_cpu.gni")
+import("//vision/build/cpp/library_headers.gni")
+import("//vision/build/zircon/zircon_cpu.gni")
 
 library_headers("headers") {
   headers = [ "lib/jitterentropy/jitterentropy.h" ]
@@ -25,12 +25,12 @@ static_library("jitterentropy") {
   # levels. If there is a significant difference in entropy quality,
   # replace the relevant C code by assembly code to protect against future
   # compiler changes.
-  configs -= [ "//products/build/config:default_optimize" ]
+  configs -= [ "//vision/build/config:default_optimize" ]
   configs += [
     ":config",
-    "//products/build/config:optimize_none",
+    "//vision/build/config:optimize_none",
   ]
-  configs += [ "//products/build/config:Wno-conversion" ]
+  configs += [ "//vision/build/config:Wno-conversion" ]
 }
 
 config("config") {

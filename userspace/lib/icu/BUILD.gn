@@ -3,12 +3,12 @@
 # found in the LICENSE file.
 
 # This import must be here before "version.gni" below.
-import("//products/build/icu/config.gni")  # icu_root, icu_flavor_major_versions,
+import("//vision/build/icu/config.gni")  # icu_root, icu_flavor_major_versions,
                                   # icu_flavor_major_version_placeholder
 
-import("//products/build/dist/resource.gni")
-import("//products/build/icu/icu_group.gni")
-import("//products/build/icu/icu_resource.gni")
+import("//vision/build/dist/resource.gni")
+import("//vision/build/icu/icu_group.gni")
+import("//vision/build/icu/icu_resource.gni")
 
 import("${icu_root}/version.gni")
 

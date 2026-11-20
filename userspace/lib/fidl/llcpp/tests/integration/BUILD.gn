@@ -2,9 +2,9 @@
 # Use of this source code is governed by a BSD-style license that can be
 # found in the LICENSE file.
 
-import("//products/build/components.gni")
-import("//products/build/fidl/fidl.gni")
-import("//products/build/test.gni")
+import("//vision/build/components.gni")
+import("//vision/build/fidl/fidl.gni")
+import("//vision/build/test.gni")
 
 group("integration") {
   testonly = true
@@ -147,7 +147,7 @@ test("fidl_llcpp_flexible_tests_bin") {
   ]
 
   # TODO(https://fxbug.dev/42136089): delete the below and fix compiler warnings
-  configs += [ "//products/build/config:Wno-conversion" ]
+  configs += [ "//vision/build/config:Wno-conversion" ]
 }
 
 fuchsia_unittest_package("fidl_llcpp_flexible_tests") {

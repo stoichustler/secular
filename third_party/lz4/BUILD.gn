@@ -2,8 +2,8 @@
 # Use of this source code is governed by a BSD-style license that can be
 # found in the LICENSE file.
 
-import("//products/build/cpp/library_headers.gni")
-import("//products/build/zircon/migrated_targets.gni")
+import("//vision/build/cpp/library_headers.gni")
+import("//vision/build/zircon/migrated_targets.gni")
 
 library_headers("headers") {
   headers = [
@@ -45,12 +45,12 @@ static_library("lz4") {
     "LZ4_FAST_DEC_LOOP=1",
   ]
 
-  configs -= [ "//products/build/config:default_optimize" ]
+  configs -= [ "//vision/build/config:default_optimize" ]
   configs += [
-    "//products/build/config:optimize_speed",
-    "//products/build/config:Wno-implicit-fallthrough",
-    "//products/build/config:Wno-missing-declarations",
-    "//products/build/config:Wno-missing-prototypes",
+    "//vision/build/config:optimize_speed",
+    "//vision/build/config:Wno-implicit-fallthrough",
+    "//vision/build/config:Wno-missing-declarations",
+    "//vision/build/config:Wno-missing-prototypes",
   ]
 }
 

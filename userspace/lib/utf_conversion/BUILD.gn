@@ -15,9 +15,9 @@ static_library("utf_conversion") {
 }
 
 if (!is_kernel) {
-  import("//products/build/components.gni")
-  import("//products/build/fuzz.gni")
-  import("//products/build/test.gni")
+  import("//vision/build/components.gni")
+  import("//vision/build/fuzz.gni")
+  import("//vision/build/test.gni")
 
   test("utf_conversion_test") {
     sources = [ "utf_conversion_test.cc" ]

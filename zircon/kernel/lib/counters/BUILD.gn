@@ -4,10 +4,10 @@
 # license that can be found in the LICENSE file or at
 # https://opensource.org/licenses/MIT
 
-import("//products/build/config/current_target_tuple.gni")
-import("//products/build/config/sysroot.gni")
-import("//products/build/cpp/library_headers.gni")
-import("//products/build/rust/rustc_library.gni")
+import("//vision/build/config/current_target_tuple.gni")
+import("//vision/build/config/sysroot.gni")
+import("//vision/build/cpp/library_headers.gni")
+import("//vision/build/rust/rustc_library.gni")
 import("//zircon/kernel/kernel_bindgen_crate.gni")
 import("//zircon/kernel/kernel_rust_mod.gni")
 

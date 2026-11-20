@@ -2,15 +2,15 @@
 # Use of this source code is governed by a BSD-style license that can be
 # found in the LICENSE file.
 
-import("//products/build/components/fuchsia_unittest_package.gni")
-import("//products/build/config/zircon/levels.gni")
-import("//products/build/test.gni")
-import("//products/build/testing/boot_tests/kernel_zbi_test.gni")
-import("//products/build/testing/boot_tests/zbi_test_executable.gni")
-import("//products/build/testing/bootfs_test.gni")
-import("//products/build/testing/environments.gni")
-import("//products/build/toolchain/concurrent_jobs.gni")
-import("//products/build/toolchain/rbe.gni")
+import("//vision/build/components/fuchsia_unittest_package.gni")
+import("//vision/build/config/zircon/levels.gni")
+import("//vision/build/test.gni")
+import("//vision/build/testing/boot_tests/kernel_zbi_test.gni")
+import("//vision/build/testing/boot_tests/zbi_test_executable.gni")
+import("//vision/build/testing/bootfs_test.gni")
+import("//vision/build/testing/environments.gni")
+import("//vision/build/toolchain/concurrent_jobs.gni")
+import("//vision/build/toolchain/rbe.gni")
 import("//zircon/kernel/params.gni")
 
 # Each subdirectory just provides an eponymous source_set().

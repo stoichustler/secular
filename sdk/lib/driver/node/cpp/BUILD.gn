@@ -2,7 +2,7 @@
 # Use of this source code is governed by a BSD-style license that can be
 # found in the LICENSE file.
 
-import("//products/build/cpp/sdk_source_set.gni")
+import("//vision/build/cpp/sdk_source_set.gni")
 
 # This library is only available in API level 18 and up.
 sdk_source_set("cpp") {

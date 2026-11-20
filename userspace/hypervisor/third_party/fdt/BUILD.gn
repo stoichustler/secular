@@ -28,7 +28,7 @@ source_set("fdt") {
     "libfdt_internal.h",
   ]
   public_configs = [ ":fdt_config" ]
-  configs += [ "//products/build/config:Wno-conversion" ]
-  configs += [ "//products/build/config:Wno-extra-semi" ]
+  configs += [ "//vision/build/config:Wno-conversion" ]
+  configs += [ "//vision/build/config:Wno-extra-semi" ]
   configs += [ ":warnings" ]
 }

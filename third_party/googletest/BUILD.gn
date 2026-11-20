@@ -3,7 +3,7 @@
 # found in the LICENSE file.
 
 if (is_fuchsia) {
-  import("//products/build/fuchsia/sdk.gni")
+  import("//vision/build/fuchsia/sdk.gni")
 }
 
 config("gtest_private_config") {
@@ -17,8 +17,8 @@ config("gtest_config") {
   # Silence undefined macro warnings in gtest-port.h when -Wundef flag is used
   # (e.g. in Pigweed libraries).
   configs = [
-    "//products/build/config:Wno-undef",
-    "//products/build/config:Wno-character-conversion",
+    "//vision/build/config:Wno-undef",
+    "//vision/build/config:Wno-character-conversion",
   ]
 }
 
@@ -87,8 +87,8 @@ static_library("gtest_no_testonly") {
   configs += [ ":gtest_private_config" ]
 
   # Avoid failure when subtracting if not already present.
-  configs += [ "//products/build/config:no_rtti" ]
-  configs -= [ "//products/build/config:no_rtti" ]
+  configs += [ "//vision/build/config:no_rtti" ]
+  configs -= [ "//vision/build/config:no_rtti" ]
 
   if (is_fuchsia) {
     if (using_fuchsia_sdk) {

@@ -2,7 +2,7 @@
 # Use of this source code is governed by a BSD-style license that can be
 # found in the LICENSE file.
 
-import("//products/build/zircon/zx_library.gni")
+import("//vision/build/zircon/zx_library.gni")
 
 zx_library("test-utils") {
   testonly = true
@@ -21,5 +21,5 @@ zx_library("test-utils") {
   ]
 
   # TODO(https://fxbug.dev/42085293): delete the below and fix compiler warnings
-  configs += [ "//products/build/config:Wno-vla-cxx-extension" ]
+  configs += [ "//vision/build/config:Wno-vla-cxx-extension" ]
 }

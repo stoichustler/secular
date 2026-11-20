@@ -2,9 +2,9 @@
 # Use of this source code is governed by a BSD-style license that can be
 # found in the LICENSE file.
 
-import("//products/build/components.gni")
-import("//products/build/rust/rustc_binary.gni")
-import("//products/build/rust/rustc_library.gni")
+import("//vision/build/components.gni")
+import("//vision/build/rust/rustc_binary.gni")
+import("//vision/build/rust/rustc_library.gni")
 
 rustc_library("tcp-stream-ext") {
   name = "tcp_stream_ext"
@@ -22,7 +22,7 @@ rustc_library("tcp-stream-ext") {
 
   sources = [ "src/lib.rs" ]
 
-  configs += [ "//products/build/config/rust/lints:deny_unused_results" ]
+  configs += [ "//vision/build/config/rust/lints:deny_unused_results" ]
 }
 
 rustc_test("stub-netstack-test") {
@@ -42,7 +42,7 @@ rustc_test("stub-netstack-test") {
 
   sources = [ "src/stub_netstack_test.rs" ]
 
-  configs += [ "//products/build/config/rust/lints:deny_unused_results" ]
+  configs += [ "//vision/build/config/rust/lints:deny_unused_results" ]
 }
 
 fuchsia_unittest_component("stub-netstack-test-component") {

@@ -2,7 +2,7 @@
 # Use of this source code is governed by a BSD-style license that can be
 # found in the LICENSE file.
 
-import("//products/build/cpp/sdk_source_set.gni")
+import("//vision/build/cpp/sdk_source_set.gni")
 
 group("cpp") {
   public_deps = [
@@ -10,7 +10,7 @@ group("cpp") {
 
     # TODO(https://fxbug.dev/340905704): suppress container-overflow detection
     # due to false-positive with libc++ header code.
-    "//products/build/config/sanitizers:suppress-asan-container-overflow",
+    "//vision/build/config/sanitizers:suppress-asan-container-overflow",
     "//userspace/lib/fuchsia-component-test:includes",
     "//userspace/lib/fuchsia-component-test/realm_builder_server:realm_builder_server_component",
   ]

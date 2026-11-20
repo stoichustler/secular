@@ -2,9 +2,9 @@
 # Use of this source code is governed by a BSD-style license that can be
 # found in the LICENSE file.
 
-import("//products/build/components.gni")
-import("//products/build/test.gni")
-import("//products/build/zircon/zx_library.gni")
+import("//vision/build/components.gni")
+import("//vision/build/test.gni")
+import("//vision/build/zircon/zx_library.gni")
 
 #  ________  _________  ________  ________
 # |\   ____\|\___   ___\\   __  \|\   __  \
@@ -19,7 +19,7 @@ import("//products/build/zircon/zx_library.gni")
 # C++ libraries should now be using `//sdk/lib/syslog/cpp` instead.
 syslog_visibility_allowlist = [
   ":*",
-  "//products/build/sdk:partner_idk_versioned_shared_libraries",
+  "//vision/build/sdk:partner_idk_versioned_shared_libraries",
 ]
 
 syslog_headers = [

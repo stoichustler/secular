@@ -4,9 +4,9 @@
 
 """Defines the ffx_tool macro for building ffx subtools."""
 
-load("//products/build/bazel/platforms:constraints.bzl", "HOST_OS_CONSTRAINTS")
-load("//products/build/bazel/rules/host:defs.bzl", "rustc_binary_host_tool")
-load("//products/build/bazel/rules/host_tests:host_test_data.bzl", "host_test_data_files")
+load("//vision/build/bazel/platforms:constraints.bzl", "HOST_OS_CONSTRAINTS")
+load("//vision/build/bazel/rules/host:defs.bzl", "rustc_binary_host_tool")
+load("//vision/build/bazel/rules/host_tests:host_test_data.bzl", "host_test_data_files")
 load("//userspace/developer/ffx/lib/version/build:ffx_apply_version.bzl", "ffx_apply_version")
 
 def _ffx_tool_metadata_impl(ctx):

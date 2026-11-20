@@ -2,12 +2,12 @@
 # Use of this source code is governed by a BSD-style license that can be
 # found in the LICENSE file.
 
-import("//products/build/components.gni")
-import("//products/build/test.gni")
+import("//vision/build/components.gni")
+import("//vision/build/test.gni")
 
 test("uart-unittests") {
   if (is_fuchsia) {
-    fdio_config = [ "//products/build/config/fuchsia:fdio_config" ]
+    fdio_config = [ "//vision/build/config/fuchsia:fdio_config" ]
     if (configs + fdio_config - fdio_config != configs) {
       configs -= fdio_config
     }
@@ -47,7 +47,7 @@ group("tests") {
 
   # Note uart-unittests-bootfs-test is not listed here because bootfs_test()
   # deps are only allowed in bringup, but the host test is included in other
-  # configurations.  So //products/bringup_with_tests lists the bootfs_test()
+  # configurations.  So //vision/bringup_with_tests lists the bootfs_test()
   # target directly.  Maybe one day bringup with bootfs packages will get done
   # properly and the distinction between including a test in bringup and
   # including a test in another configuration will not impose these kludges.

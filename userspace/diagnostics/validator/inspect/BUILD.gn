@@ -2,8 +2,8 @@
 # Use of this source code is governed by a BSD-style license that can be
 # found in the LICENSE file.
 
-import("//products/build/bazel/export_fuchsia_package_to_bazel.gni")
-import("//products/build/components.gni")
+import("//vision/build/bazel/export_fuchsia_package_to_bazel.gni")
+import("//vision/build/components.gni")
 
 group("tests") {
   testonly = true
@@ -61,7 +61,7 @@ rustc_library("inspect_validator") {
     "//third_party/rust_crates:num-derive",
   ]
 
-  configs += [ "//products/build/config/rust/lints:clippy_warn_all" ]
+  configs += [ "//vision/build/config/rust/lints:clippy_warn_all" ]
 }
 
 # Unit tests for validator_bin (not the validation tests themselves)
@@ -82,7 +82,7 @@ rustc_test("validator_bin") {
     "//userspace/lib/fuchsia",
   ]
 
-  configs += [ "//products/build/config/rust/lints:clippy_warn_all" ]
+  configs += [ "//vision/build/config/rust/lints:clippy_warn_all" ]
 }
 
 # The parent component of #validator_component and #puppet. Provides the

@@ -2,8 +2,8 @@
 # Use of this source code is governed by a BSD-style license that can be
 # found in the LICENSE file.
 
-import("//products/build/fidl/fidl.gni")
-import("//products/build/test.gni")
+import("//vision/build/fidl/fidl.gni")
+import("//vision/build/test.gni")
 import("//tools/fidl/measure-tape/measure_tape.gni")
 
 test("hlcpp-tests") {

@@ -2,12 +2,12 @@
 # Use of this source code is governed by a BSD-style license that can be
 # found in the LICENSE file.
 
-import("//products/build/components/fuchsia_component.gni")
-import("//products/build/components/fuchsia_package.gni")
-import("//products/build/components/fuchsia_test.gni")
-import("//products/build/components/fuchsia_test_package.gni")
-import("//products/build/components/fuchsia_unittest_component.gni")
-import("//products/build/rust/rustc_binary.gni")
+import("//vision/build/components/fuchsia_component.gni")
+import("//vision/build/components/fuchsia_package.gni")
+import("//vision/build/components/fuchsia_test.gni")
+import("//vision/build/components/fuchsia_test_package.gni")
+import("//vision/build/components/fuchsia_unittest_component.gni")
+import("//vision/build/rust/rustc_binary.gni")
 
 rustc_binary("runtime") {
   edition = "2024"
@@ -39,7 +39,7 @@ rustc_binary("runtime") {
   # implements. These are exported for the TA to resolve when loaded.
   inputs = [ "ta_runtime_exposed_symbols.sym" ]
   link_args = [ "--dynamic-list=" + rebase_path(inputs[0], root_build_dir) ]
-  configs += [ "//products/build/config/rust/lints:deny_unused_results" ]
+  configs += [ "//vision/build/config/rust/lints:deny_unused_results" ]
 }
 
 fuchsia_component("runtime-component") {

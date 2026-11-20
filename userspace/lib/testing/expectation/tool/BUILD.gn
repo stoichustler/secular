@@ -2,8 +2,8 @@
 # Use of this source code is governed by a BSD-style license that can be
 # found in the LICENSE file.
 
-import("//products/build/bazel/bazel_host_tool.gni")
-import("//products/build/rust/rustc_test.gni")
+import("//vision/build/bazel/bazel_host_tool.gni")
+import("//vision/build/rust/rustc_test.gni")
 
 assert(is_host, "bazel_host_tool() can only be called in a host toolchain.")
 
@@ -26,7 +26,7 @@ rustc_test("bin_test") {
     "//third_party/rust_crates:glob",
     "//third_party/rust_crates:serde_json5",
   ]
-  configs += [ "//products/build/config/rust/lints:deny_unused_results" ]
+  configs += [ "//vision/build/config/rust/lints:deny_unused_results" ]
 }
 
 group("tests") {

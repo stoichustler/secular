@@ -2,8 +2,8 @@
 # Use of this source code is governed by a BSD-style license that can be
 # found in the LICENSE file.
 
-import("//products/build/components.gni")
-import("//products/build/rust/rustc_library.gni")
+import("//vision/build/components.gni")
+import("//vision/build/rust/rustc_library.gni")
 
 # Library containing core logic for sampler,
 # library launched by generic diagnostics Launcher
@@ -65,7 +65,7 @@ rustc_library("lib") {
     "testing/realm-factory/configs/test_config_2.json",
   ]
 
-  configs += [ "//products/build/config/rust/lints:clippy_warn_all" ]
+  configs += [ "//vision/build/config/rust/lints:clippy_warn_all" ]
 }
 
 # Test package for the unit test from the

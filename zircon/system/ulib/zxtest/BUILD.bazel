@@ -2,7 +2,7 @@
 # Use of this source code is governed by a BSD-style license that can be
 # found in the LICENSE file.
 
-load("//products/build/bazel/rules/cc:fx_cc_library.bzl", "fx_cc_library")
+load("//vision/build/bazel/rules/cc:fx_cc_library.bzl", "fx_cc_library")
 
 package(default_applicable_licenses = ["//:license"])
 
@@ -86,7 +86,7 @@ fx_cc_library(
     includes = ["include"],
     public_configs = [
         ":prod_config",
-        "//products/build/config:Wno-vla-cxx-extension",
+        "//vision/build/config:Wno-vla-cxx-extension",
     ],
     # Used by tests across the tree.
     visibility = ["//:__subpackages__"],
@@ -107,7 +107,7 @@ fx_cc_library(
     public_configs = [
         ":prod_config",
         ":zxtest_enable_streamable_assertions",
-        "//products/build/config:Wno-vla-cxx-extension",
+        "//vision/build/config:Wno-vla-cxx-extension",
     ],
     # Used by tests across the tree.
     visibility = ["//:__subpackages__"],

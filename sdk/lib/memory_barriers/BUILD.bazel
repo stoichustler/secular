@@ -2,7 +2,7 @@
 # Use of this source code is governed by a BSD-style license that can be
 # found in the LICENSE file.
 
-load("//products/build/bazel/rules/idk:idk_cc_source_library.bzl", "idk_cc_source_library")
+load("//vision/build/bazel/rules/idk:idk_cc_source_library.bzl", "idk_cc_source_library")
 
 package(default_applicable_licenses = ["//:license"])
 
@@ -21,11 +21,11 @@ idk_cc_source_library(
         "//vendor/amlogic/drivers:__subpackages__",
 
         # TODO(https://fxbug.dev/330709069): Remove these once the bots and targets are removed.
-        "//products/build/sdk:__subpackages__",
+        "//vision/build/sdk:__subpackages__",
 
         # TODO(https://fxbug.dev/428229472): Once Bazel-defined atoms are used
         # in the production build path, remove this atom from the IDK macro
         # tests and remove the following line.
-        "//products/build/bazel/bazel_idk/tests:__subpackages__",
+        "//vision/build/bazel/bazel_idk/tests:__subpackages__",
     ],
 )

@@ -4,10 +4,10 @@
 # license that can be found in the LICENSE file or at
 # https://opensource.org/licenses/MIT
 
-import("//products/build/dist/distribution_manifest.gni")
-import("//products/build/dist/distribution_manifest_copy.gni")
-import("//products/build/rust/config.gni")
-import("//products/build/toolchain/toolchain_environment.gni")
+import("//vision/build/dist/distribution_manifest.gni")
+import("//vision/build/dist/distribution_manifest_copy.gni")
+import("//vision/build/rust/config.gni")
+import("//vision/build/toolchain/toolchain_environment.gni")
 
 # This file implements the Rust custom target support for the kernel.  There
 # are two components of this: populating the JSON spec; populating the sysroot.
@@ -81,11 +81,11 @@ custom_target_relpath = "lib/rustlib/$custom_target"
 # These are configs that might be in the toolchain / variant's default list but
 # must be disabled for building the empty pseudo-crates.
 rust_instrumentation_configs = [
-  "//products/build/config/profile:coverage",
+  "//vision/build/config/profile:coverage",
 
   # TODO(https://fxbug.dev/414673148): Remove when coverage-rust is removed.
-  "//products/build/config/profile:coverage-rust",
-  "//products/build/config/profile:profile-rust",
+  "//vision/build/config/profile:coverage-rust",
+  "//vision/build/config/profile:profile-rust",
 ]
 
 stages = [
@@ -141,7 +141,7 @@ stages = [
         # file. The magic placeholder file tells the machinery that it just has
         # to use rustc parsing of `mod` et al to discover all the source files
         # used.
-        rust_sources = [ "//products/build/rust/__SKIP_ENFORCEMENT__.rs" ]
+        rust_sources = [ "//vision/build/rust/__SKIP_ENFORCEMENT__.rs" ]
       },
     ]
     remove_configs = []
@@ -256,7 +256,7 @@ foreach(stage, stages) {
     }
   }
 
-  # This avoids the //products/build/rust template layers for these very special cases.
+  # This avoids the //vision/build/rust template layers for these very special cases.
   # As this is only upstream code, none of the analysis targets or other extra
   # support those templates provide is useful here.  The implicit deps injected
   # by just the rust_library() wrapper template layer from BUILDCONFIG.gn, into
@@ -277,7 +277,7 @@ foreach(stage, stages) {
       # This is the default in GN's actual logic, but it only gets into the
       # GN-produced 'project.json' file if it's explicit in the target scope,
       # and generate_cargo.py needs to find it there (see
-      # //products/build/rust/BUILD.gn).
+      # //vision/build/rust/BUILD.gn).
       output_name = target_name
 
       rustenv = [ "RUSTC_BOOTSTRAP=$target_name" ]

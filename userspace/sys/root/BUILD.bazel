@@ -6,5 +6,5 @@ package(default_applicable_licenses = ["//:license"])
 
 exports_files(
     ["root.cml"],
-    visibility = ["//products/bundles/assembly:__subpackages__"],
+    visibility = ["//vision/bundles/assembly:__subpackages__"],
 )

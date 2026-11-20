@@ -2,16 +2,16 @@
 # Use of this source code is governed by a BSD-style license that can be
 # found in the LICENSE file.
 
-import("//products/build/components.gni")
-import("//products/build/rust/rustc_binary.gni")
-import("//products/build/rust/rustc_library.gni")
-import("//products/build/rust/rustc_test.gni")
+import("//vision/build/components.gni")
+import("//vision/build/rust/rustc_binary.gni")
+import("//vision/build/rust/rustc_library.gni")
+import("//vision/build/rust/rustc_test.gni")
 import("//userspace/power/cpu-manager/node_config/node_config.gni")
 
 rustc_library("node_config") {
   name = "cpu_manager_node_config"
   edition = "2024"
-  configs += [ "//products/build/config/rust:bootfs" ]
+  configs += [ "//vision/build/config/rust:bootfs" ]
   source_root = "src/node_config.rs"
   sources = [ "src/node_config.rs" ]
   deps = [
@@ -94,7 +94,7 @@ rustc_binary("bin") {
   name = "cpu_manager"
   edition = "2024"
   with_unit_tests = true
-  configs += [ "//products/build/config/rust:bootfs" ]
+  configs += [ "//vision/build/config/rust:bootfs" ]
   deps = cpu_manager_deps
   sources = cpu_manager_sources
   test_deps = [
@@ -111,7 +111,7 @@ rustc_binary("bin_with_fake_time") {
   name = "cpu_manager_fake_time"
   edition = "2024"
   with_unit_tests = true
-  configs += [ "//products/build/config/rust:bootfs" ]
+  configs += [ "//vision/build/config/rust:bootfs" ]
   deps = cpu_manager_deps + [ ":fake_syscalls_for_integration" ]
   sources = cpu_manager_sources
   non_rust_deps = [ "//userspace/lib/fake-clock/lib" ]

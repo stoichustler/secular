@@ -2,12 +2,12 @@
 # Use of this source code is governed by a BSD-style license that can be
 # found in the LICENSE file.
 
-import("//products/build/cpp/library_headers.gni")
+import("//vision/build/cpp/library_headers.gni")
 
 source_set("pager") {
   testonly = true
 
-  configs += [ "//products/build/config:all_source" ]
+  configs += [ "//vision/build/config:all_source" ]
 
   sources = [
     "pager.cc",
@@ -39,7 +39,7 @@ library_headers("userpager_headers") {
 source_set("userpager") {
   testonly = true
 
-  configs += [ "//products/build/config:all_source" ]
+  configs += [ "//vision/build/config:all_source" ]
 
   sources = [
     "test_thread.cc",

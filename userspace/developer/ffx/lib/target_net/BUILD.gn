@@ -2,7 +2,7 @@
 # Use of this source code is governed by a BSD-style license that can be
 # found in the LICENSE file.
 
-import("//products/build/rust/rustc_library.gni")
+import("//vision/build/rust/rustc_library.gni")
 
 assert(is_host, "only host is supported")
 
@@ -35,7 +35,7 @@ rustc_library("lib") {
     "src/socket_provider.rs",
   ]
 
-  configs += [ "//products/build/config/rust/lints:deny_unused_results" ]
+  configs += [ "//vision/build/config/rust/lints:deny_unused_results" ]
 }
 
 rustc_library("testutil") {
@@ -82,7 +82,7 @@ rustc_library("testutil") {
     "//third_party/rust_crates:test-case",
   ]
 
-  configs += [ "//products/build/config/rust/lints:deny_unused_results" ]
+  configs += [ "//vision/build/config/rust/lints:deny_unused_results" ]
 }
 
 group("target_net") {

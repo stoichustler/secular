@@ -3,8 +3,8 @@
 # found in the LICENSE file.
 
 load("@rules_cc//cc:defs.bzl", "cc_binary")
-load("//products/build/bazel/platforms:constraints.bzl", "HOST_OS_CONSTRAINTS")
-load("//products/build/tools/bazel2gn/bazel_rules:defs.bzl", "install_host_tools")
+load("//vision/build/bazel/platforms:constraints.bzl", "HOST_OS_CONSTRAINTS")
+load("//vision/build/tools/bazel2gn/bazel_rules:defs.bzl", "install_host_tools")
 
 package(default_applicable_licenses = ["//:license"])
 
@@ -13,7 +13,7 @@ cc_binary(
     name = "bin",
     srcs = ["main.cc"],
     visibility = [
-        "//products/build/packages:__pkg__",
+        "//vision/build/packages:__pkg__",
         "//sdk:__pkg__",
         "//userspace/sys/pkg/tests/far:__pkg__",
     ],
@@ -29,7 +29,7 @@ install_host_tools(
     target_compatible_with = HOST_OS_CONSTRAINTS,
     tool_output_names = ["far"],
     visibility = [
-        "//products/bundles/tools:__pkg__",
+        "//vision/bundles/tools:__pkg__",
         "//sdk/bundles:__pkg__",
     ],
 )

@@ -3,7 +3,7 @@
 # found in the LICENSE file.
 
 load("@rules_license//rules:license.bzl", "license")
-load("//products/build/bazel/rules/cc:fx_cc_library.bzl", "fx_cc_library")
+load("//vision/build/bazel/rules/cc:fx_cc_library.bzl", "fx_cc_library")
 
 package(default_applicable_licenses = [":license"])
 
@@ -39,17 +39,17 @@ fx_cc_library(
         "src/lib/lz4.h",
         "src/lib/lz4frame.h",
     ],
-    # Flags of the GN configs "//products/build/config:optimize_speed",
-    # "//products/build/config:Wno-implicit-fallthrough",
-    # "//products/build/config:Wno-missing-declarations" and
-    # "//products/build/config:Wno-missing-prototypes".
+    # Flags of the GN configs "//vision/build/config:optimize_speed",
+    # "//vision/build/config:Wno-implicit-fallthrough",
+    # "//vision/build/config:Wno-missing-declarations" and
+    # "//vision/build/config:Wno-missing-prototypes".
     copts = [
         "-O3",
         "-Wno-implicit-fallthrough",
         "-Wno-missing-prototypes",
         "-Wno-missing-variable-declarations",
     ],
-    # Like GN removing "//products/build/config:default_optimize", also drop the
+    # Like GN removing "//vision/build/config:default_optimize", also drop the
     # size-tuned ML inliner of optimized builds, which "-O3" does not undo.
     features = ["-ml_inliner"],
     includes = ["include"],

@@ -4,10 +4,10 @@
 # license that can be found in the LICENSE file or at
 # https://opensource.org/licenses/MIT
 
-import("//products/build/config/compiler_config.gni")
-import("//products/build/config/riscv64/riscv64.gni")
-import("//products/build/cpp/library_headers.gni")
-import("//products/build/toolchain/toolchain_environment.gni")
+import("//vision/build/config/compiler_config.gni")
+import("//vision/build/config/riscv64/riscv64.gni")
+import("//vision/build/cpp/library_headers.gni")
+import("//vision/build/toolchain/toolchain_environment.gni")
 import("//zircon/kernel/kernel_bindgen_crate.gni")
 import("//zircon/kernel/kernel_rust_mod.gni")
 import("//zircon/kernel/params.gni")

@@ -2,7 +2,7 @@
 # Use of this source code is governed by a BSD-style license that can be
 # found in the LICENSE file.
 
-import("//products/build/ninja_implicit_inputs/ninja_implicit_inputs.gni")
+import("//vision/build/ninja_implicit_inputs/ninja_implicit_inputs.gni")
 
 # The <zircon/assert.h> header and the associated __zx_panic() function
 # its macros invoke at runtime are a special case in the Fuchsia build:
@@ -14,7 +14,7 @@ import("//products/build/ninja_implicit_inputs/ninja_implicit_inputs.gni")
 #
 # - For Zircon toolchains, //sdk/lib/zircon-assert is added to the
 #   default include search path, providing the header
-#   (see //products/build/config/zircon:default_include_dirs) and the
+#   (see //vision/build/config/zircon:default_include_dirs) and the
 #   implementation of __zx_panic() is provided by either
 #   //zircon/kernel/phy/panic.cc, for kernel toolchains,
 #   or by 'as_libc_source_set' defined below for the C library toolchain.
@@ -42,7 +42,7 @@ import("//products/build/ninja_implicit_inputs/ninja_implicit_inputs.gni")
 # on //sdk/lib/zircon-assert as well to remove the symlink.
 
 if (is_fuchsia) {
-  import("//products/build/sdk/sdk_noop_atom.gni")
+  import("//vision/build/sdk/sdk_noop_atom.gni")
 
   # The header is provided by the sysroot, and the implementation
   # by the C library, an empty group is adequate.
@@ -51,7 +51,7 @@ if (is_fuchsia) {
     public_deps = [ ":headers" ]
 
     metadata = {
-      # Used by //products/build/ninja_implicit_inputs:manifest. This is a special
+      # Used by //vision/build/ninja_implicit_inputs:manifest. This is a special
       # way to tell that both headers belong to the current target.
       ninja_implicit_cxx_headers = [
         {
@@ -90,12 +90,12 @@ if (is_fuchsia) {
       # This library is linked into libc, which is used by libfuzzer.
       # Don't instrument it to avoid getting noise in code coverage.
       # TODO(https://fxbug.dev/42099340): Once a cleaner solution is found, remove this.
-      configs += [ "//products/build/config/zircon:no_fuzzer" ]
+      configs += [ "//vision/build/config/zircon:no_fuzzer" ]
       include_dirs = [ "." ]
     }
   }
 } else if (zircon_toolchain != false) {
-  # The header is provided by //products/build/config/zircon:default_include_dirs,
+  # The header is provided by //vision/build/config/zircon:default_include_dirs,
   # the implementation is provided by //zircon/kernel/phys/panic.cc
   group("zircon-assert") {
   }
@@ -129,7 +129,7 @@ source_set("headers") {
   }
 
   metadata = {
-    # Used by //products/build/ninja_implicit_inputs:manifest
+    # Used by //vision/build/ninja_implicit_inputs:manifest
     # This is a special way to declare that both these headers are
     # implicitly provided by this target.
     ninja_implicit_cxx_headers = [

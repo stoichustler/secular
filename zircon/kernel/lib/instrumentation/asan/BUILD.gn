@@ -4,8 +4,8 @@
 # license that can be found in the LICENSE file or at
 # https://opensource.org/licenses/MIT
 
-import("//products/build/config/compiler_config.gni")
-import("//products/build/zircon/zircon_cpu.gni")
+import("//vision/build/config/compiler_config.gni")
+import("//vision/build/zircon/zircon_cpu.gni")
 
 # 1 shadow byte covers 2^3 bytes.
 asan_mapping_scale = 3
@@ -21,8 +21,8 @@ asan_mapping_scale = 3
 # shadow_addr = asan_mapping_offset + (address >> asan_mapping_scale)
 asan_mapping_offset = "0xdffffff000000000"
 
-_asan_config = [ "//products/build/config/sanitizers:asan" ]
-_sancov_config = [ "//products/build/config/sanitiziers:sancov" ]
+_asan_config = [ "//vision/build/config/sanitizers:asan" ]
+_sancov_config = [ "//vision/build/config/sanitiziers:sancov" ]
 _toolchain_configs = toolchain_variant.configs
 is_asan = _toolchain_configs + _asan_config - _asan_config != _toolchain_configs
 is_sancov =
@@ -61,7 +61,7 @@ if (is_asan) {
     visibility = [ ":*" ]
     configs -= [
       _asan_config,
-      "//products/build/config:frame_pointers",
+      "//vision/build/config:frame_pointers",
     ]
 
     if (is_sancov) {
@@ -71,7 +71,7 @@ if (is_asan) {
 
     configs += [
       ":kasan-defines",
-      "//products/build/config:frame_pointers",
+      "//vision/build/config:frame_pointers",
     ]
     sources = [
       "asan-init.cc",

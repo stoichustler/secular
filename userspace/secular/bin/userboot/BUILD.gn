@@ -4,9 +4,9 @@
 # license that can be found in the LICENSE file or at
 # https://opensource.org/licenses/MIT
 
-import("//products/build/components/fuchsia_unittest_package.gni")
-import("//products/build/rust/rustc_binary.gni")
-import("//products/build/test.gni")
+import("//vision/build/components/fuchsia_unittest_package.gni")
+import("//vision/build/rust/rustc_binary.gni")
+import("//vision/build/test.gni")
 
 # Boot-test helper string; the full boot_test.gni stack is not used here.
 boot_test_success_string = "SUCCESS"
@@ -49,7 +49,7 @@ template("rust_redirect") {
                              "visibility",
                            ])
     if (current_toolchain ==
-        "//products/build/toolchain/zircon:user.basic_${target_cpu}") {
+        "//vision/build/toolchain/zircon:user.basic_${target_cpu}") {
       _helper_label = "${invoker.binary_label}($default_toolchain)"
       _helper_out_dir = get_label_info(_helper_label, "root_out_dir")
       deps = [ _helper_label ]
@@ -67,7 +67,7 @@ template("rust_redirect") {
       }
     } else {
       public_deps =
-          [ ":$target_name(//products/build/toolchain/zircon:user.basic_${target_cpu})" ]
+          [ ":$target_name(//vision/build/toolchain/zircon:user.basic_${target_cpu})" ]
       not_needed(invoker,
                  [
                    "binary_label",
@@ -91,8 +91,8 @@ rust_redirect("userboot-test") {
 }
 
 static_remove_configs = [
-  "//products/build/config/fuchsia:fdio_config",
-  "//products/build/config/fuchsia:dynamic_rust_standard_library",
+  "//vision/build/config/fuchsia:fdio_config",
+  "//vision/build/config/fuchsia:dynamic_rust_standard_library",
 ]
 
 rustc_binary("userboot.executable") {

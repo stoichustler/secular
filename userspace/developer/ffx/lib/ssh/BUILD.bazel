@@ -3,8 +3,8 @@
 # found in the LICENSE file.
 
 load("@platforms//host:constraints.bzl", "HOST_CONSTRAINTS")
-load("//products/build/bazel/rules/host_tests:host_test_data.bzl", "host_test_data_files")
-load("//products/build/bazel/rules/rust:defs.bzl", "rustc_library")
+load("//vision/build/bazel/rules/host_tests:host_test_data.bzl", "host_test_data_files")
+load("//vision/build/bazel/rules/rust:defs.bzl", "rustc_library")
 
 package(default_applicable_licenses = ["//:license"])
 

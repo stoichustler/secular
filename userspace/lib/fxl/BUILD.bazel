@@ -75,7 +75,7 @@ cc_library(
     hdrs = [
         "third_party/icu/icu_utf.h",
     ],
-    # GN: configs += [ "//products/build/config:Wno-implicit-fallthrough" ]
+    # GN: configs += [ "//vision/build/config:Wno-implicit-fallthrough" ]
     copts = ["-Wno-implicit-fallthrough"],
     visibility = [":__pkg__"],  # GN: :strings
     alwayslink = True,

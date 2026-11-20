@@ -2,8 +2,8 @@
 # Use of this source code is governed by a BSD-style license that can be
 # found in the LICENSE file.
 
-import("//products/build/compiled_action.gni")
-import("//products/build/fidl/toolchain.gni")
+import("//vision/build/compiled_action.gni")
+import("//vision/build/fidl/toolchain.gni")
 
 # Declares a GIDL library.
 #
@@ -154,7 +154,7 @@ template("gidl_llcpp_conformance") {
 
     # TODO(https://fxbug.dev/42176699): This target uses mutable tables which are deprecated,
     # rather than builders.
-    configs = [ "//products/build/cpp:fidl-wire-deprecated-mutable-tables" ]
+    configs = [ "//vision/build/cpp:fidl-wire-deprecated-mutable-tables" ]
   }
 }
 
@@ -185,7 +185,7 @@ template("gidl_llcpp_benchmarks") {
 
     # TODO(https://fxbug.dev/42176699): This target uses mutable tables which are deprecated,
     # rather than builders.
-    configs = [ "//products/build/cpp:fidl-wire-deprecated-mutable-tables" ]
+    configs = [ "//vision/build/cpp:fidl-wire-deprecated-mutable-tables" ]
   }
 }
 
@@ -198,7 +198,7 @@ template("gidl_reference_benchmarks") {
 
     # TODO(https://fxbug.dev/42176699): This target uses mutable tables which are deprecated,
     # rather than builders.
-    configs = [ "//products/build/cpp:fidl-wire-deprecated-mutable-tables" ]
+    configs = [ "//vision/build/cpp:fidl-wire-deprecated-mutable-tables" ]
   }
 }
 
@@ -220,6 +220,6 @@ template("gidl_driver_llcpp_benchmarks") {
 
     # TODO(https://fxbug.dev/42176699): This target uses mutable tables which are deprecated,
     # rather than builders.
-    configs = [ "//products/build/cpp:fidl-wire-deprecated-mutable-tables" ]
+    configs = [ "//vision/build/cpp:fidl-wire-deprecated-mutable-tables" ]
   }
 }

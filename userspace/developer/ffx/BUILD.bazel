@@ -2,7 +2,7 @@
 # Use of this source code is governed by a BSD-style license that can be
 # found in the LICENSE file.
 
-load("//products/build/tools/json_merge:json_merge.bzl", "json_merge")
+load("//vision/build/tools/json_merge:json_merge.bzl", "json_merge")
 
 package(
     default_applicable_licenses = ["//:license"],

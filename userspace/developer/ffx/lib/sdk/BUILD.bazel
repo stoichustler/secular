@@ -3,7 +3,7 @@
 # found in the LICENSE file.
 
 load("@platforms//host:constraints.bzl", "HOST_CONSTRAINTS")
-load("//products/build/bazel/rules/rust:defs.bzl", "rustc_library")
+load("//vision/build/bazel/rules/rust:defs.bzl", "rustc_library")
 
 package(
     default_applicable_licenses = ["//:license"],
@@ -14,7 +14,7 @@ rustc_library(
     name = "lib",
     srcs = ["src/lib.rs"],
     compile_data = [
-        "//:products/integration/MILESTONE",  # @bazel2gn:path_overwrite://products/integration/MILESTONE
+        "//:vision/integration/MILESTONE",  # @bazel2gn:path_overwrite://vision/integration/MILESTONE
         "test_data/release-sdk-root/fidl/fuchsia.data/meta.json",
         "test_data/release-sdk-root/meta/manifest.json",
         "test_data/release-sdk-root/tools/ffx_tools/ffx-assembly-meta.json",
@@ -31,7 +31,7 @@ rustc_library(
     version = "0.1.0",
     with_host_unit_tests = True,
     deps = [
-        "//products/build/sdk/meta:rust",
+        "//vision/build/sdk/meta:rust",
         "//userspace/developer/ffx/lib/errors:lib",
         "//third_party/rust_crates/vendor:log",
         "//third_party/rust_crates/vendor:serde",

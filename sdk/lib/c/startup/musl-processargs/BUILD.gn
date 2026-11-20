@@ -2,8 +2,8 @@
 # Use of this source code is governed by a BSD-style license that can be
 # found in the LICENSE file.
 
-import("//products/build/cpp/library_headers.gni")
-import("//products/build/toolchain/hermetic_source_set.gni")
+import("//vision/build/cpp/library_headers.gni")
+import("//vision/build/toolchain/hermetic_source_set.gni")
 import("../../libc.gni")
 
 # This code used to be a general <lib/processargs/processargs.h> library.  But

@@ -2,8 +2,8 @@
 # Use of this source code is governed by a BSD-style license that can be
 # found in the LICENSE file.
 
-load("//products/build/bazel/platforms:constraints.bzl", "HOST_OS_CONSTRAINTS")
-load("//products/build/bazel/rules/rust:rustc_library.bzl", "rustc_library")
+load("//vision/build/bazel/platforms:constraints.bzl", "HOST_OS_CONSTRAINTS")
+load("//vision/build/bazel/rules/rust:rustc_library.bzl", "rustc_library")
 
 package(default_applicable_licenses = ["//:license"])
 
@@ -63,7 +63,7 @@ rustc_library(
     crate_name = "assembly_config_schema",
     data = ["//:fuchsia_build_generated/icu_build_config.json"],  # @bazel2gn:raw_overwrite:[ ":git_info_json" ]
     edition = "2024",
-    lint_config = "//products/build/config/rust/lints:clippy_warn_all",
+    lint_config = "//vision/build/config/rust/lints:clippy_warn_all",
     proc_macro_deps = [
         "//userspace/lib/include_str_from_working_dir",
         "//third_party/rust_crates/vendor:derivative",
@@ -76,7 +76,7 @@ rustc_library(
     },  # @bazel2gn:raw_overwrite:[ "ICU_GIT_INFO_JSON_FILE=" + rebase_path("$target_gen_dir/icu_git_info.json", root_build_dir) ]
     target_compatible_with = HOST_OS_CONSTRAINTS,
     visibility = [
-        "//products/build/assembly/tools:__subpackages__",
+        "//vision/build/assembly/tools:__subpackages__",
         "//userspace/developer/ffx/plugins/product_bundle:__subpackages__",
         "//userspace/lib/assembly:__subpackages__",
         "//userspace/starnix/lib/starnix_container:__pkg__",

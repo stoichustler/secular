@@ -2,8 +2,8 @@
 # Use of this source code is governed by a BSD-style license that can be
 # found in the LICENSE file.
 
-import("//products/build/components.gni")
-import("//products/build/rust/rustc_library.gni")
+import("//vision/build/components.gni")
+import("//vision/build/rust/rustc_library.gni")
 
 rustc_library("fuchsia_inspect_bench_utils") {
   edition = "2024"
@@ -35,7 +35,7 @@ rustc_library("fuchsia_inspect_bench_utils") {
     "//userspace/lib/fuchsia",
   ]
 
-  configs += [ "//products/build/config/rust/lints:clippy_warn_all" ]
+  configs += [ "//vision/build/config/rust/lints:clippy_warn_all" ]
 }
 
 fuchsia_unittest_package("inspect-bench-utils-unittests") {

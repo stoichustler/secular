@@ -81,5 +81,5 @@ source_set("pthread") {
     "//zircon/third_party/ulib/musl:musl_internal",
   ]
 
-  configs -= [ "//products/build/config:symbol_visibility_hidden" ]
+  configs -= [ "//vision/build/config:symbol_visibility_hidden" ]
 }

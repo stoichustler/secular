@@ -4,9 +4,9 @@
 # license that can be found in the LICENSE file or at
 # https://opensource.org/licenses/MIT
 
-import("//products/build/cpp/library_headers.gni")
-import("//products/build/toolchain/toolchain_environment.gni")
-import("//products/build/zircon/zircon_cpu.gni")
+import("//vision/build/cpp/library_headers.gni")
+import("//vision/build/toolchain/toolchain_environment.gni")
+import("//vision/build/zircon/zircon_cpu.gni")
 import("//zircon/kernel/kernel_bindgen_crate.gni")
 
 library_headers("headers") {

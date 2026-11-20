@@ -4,11 +4,11 @@
 # license that can be found in the LICENSE file or at
 # https://opensource.org/licenses/MIT
 
-import("//products/build/components.gni")
-import("//products/build/config/current_target_tuple.gni")
-import("//products/build/config/sysroot.gni")
-import("//products/build/rust/rustc_bindgen.gni")
-import("//products/build/rust/rustc_library.gni")
+import("//vision/build/components.gni")
+import("//vision/build/config/current_target_tuple.gni")
+import("//vision/build/config/sysroot.gni")
+import("//vision/build/rust/rustc_bindgen.gni")
+import("//vision/build/rust/rustc_library.gni")
 
 rustc_library("fbl") {
   edition = "2024"
@@ -63,7 +63,7 @@ rustc_library("fbl") {
 
 source_set("test_support") {
   testonly = true
-  public_configs = [ "//products/build/config/fuchsia:dynamic_cpp_standard_library" ]
+  public_configs = [ "//vision/build/config/fuchsia:dynamic_cpp_standard_library" ]
   sources = [
     "test/canary_test.cc",
     "test/doubly_linked_list_test.cc",

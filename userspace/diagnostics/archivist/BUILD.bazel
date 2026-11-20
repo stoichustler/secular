@@ -11,7 +11,7 @@ package(
 
 exports_files(
     ["meta/archivist.bootstrap_shard.cml"],
-    visibility = ["//products/bundles/assembly:__subpackages__"],
+    visibility = ["//vision/bundles/assembly:__subpackages__"],
 )
 
 fuchsia_prebuilt_package(

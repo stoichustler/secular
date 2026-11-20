@@ -2,8 +2,8 @@
 # Use of this source code is governed by a BSD-style license that can be
 # found in the LICENSE file.
 
-load("//products/build/bazel/platforms:constraints.bzl", "HOST_OS_CONSTRAINTS")
-load("//products/build/bazel/rules/rust:rustc_proc_macro.bzl", "rustc_proc_macro")
+load("//vision/build/bazel/platforms:constraints.bzl", "HOST_OS_CONSTRAINTS")
+load("//vision/build/bazel/rules/rust:rustc_proc_macro.bzl", "rustc_proc_macro")
 
 package(default_applicable_licenses = ["//:license"])
 

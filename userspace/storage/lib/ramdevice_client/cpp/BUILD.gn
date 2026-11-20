@@ -49,7 +49,7 @@ source_set("ramdevice-client") {
     "//zircon/system/ulib/fzl",
     "//zircon/system/ulib/zx",
   ]
-  configs += [ "//products/build/config/fuchsia:static_cpp_standard_library" ]
+  configs += [ "//vision/build/config/fuchsia:static_cpp_standard_library" ]
 }
 
 source_set("ramdevice-client-test") {

@@ -2,8 +2,8 @@
 # Use of this source code is governed by a BSD-style license that can be
 # found in the LICENSE file.
 
-import("//products/build/testing/host_test.gni")
-import("//products/build/testing/host_test_data.gni")
+import("//vision/build/testing/host_test.gni")
+import("//vision/build/testing/host_test_data.gni")
 
 # Defines a host-side test for a triage configuration
 #

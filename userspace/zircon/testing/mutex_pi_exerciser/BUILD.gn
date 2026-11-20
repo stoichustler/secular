@@ -2,8 +2,8 @@
 # Use of this source code is governed by a BSD-style license that can be
 # found in the LICENSE file.
 
-import("//products/build/assembly/bootfs_files_for_assembly.gni")
-import("//products/build/components.gni")
+import("//vision/build/assembly/bootfs_files_for_assembly.gni")
+import("//vision/build/components.gni")
 
 assert(!defined(zx) || zx != "/",
        "This file can only be used in the Fuchsia GN build.")
@@ -11,7 +11,7 @@ assert(!defined(zx) || zx != "/",
 executable("bin") {
   visibility = [ ":*" ]
   if (is_fuchsia) {
-    configs += [ "//products/build/config:all_source" ]
+    configs += [ "//vision/build/config:all_source" ]
   }
   output_name = "mutex_pi_exerciser"
   sources = [

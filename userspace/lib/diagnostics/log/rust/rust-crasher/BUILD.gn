@@ -2,8 +2,8 @@
 # Use of this source code is governed by a BSD-style license that can be
 # found in the LICENSE file.
 
-import("//products/build/components.gni")
-import("//products/build/rust/rustc_binary.gni")
+import("//vision/build/components.gni")
+import("//vision/build/rust/rustc_binary.gni")
 
 rustc_binary("rust-log-crasher") {
   edition = "2024"
@@ -18,7 +18,7 @@ rustc_binary("rust-log-crasher") {
     "//userspace/lib/fuchsia-component",
     "//third_party/rust_crates:futures",
   ]
-  configs += [ "//products/build/config/rust/lints:clippy_warn_all" ]
+  configs += [ "//vision/build/config/rust/lints:clippy_warn_all" ]
 }
 
 fuchsia_component("component") {

@@ -2,9 +2,9 @@
 # Use of this source code is governed by a BSD-style license that can be
 # found in the LICENSE file.
 
-import("//products/build/components.gni")
-import("//products/build/rust/rustc_binary.gni")
-import("//products/build/rust/rustc_library.gni")
+import("//vision/build/components.gni")
+import("//vision/build/rust/rustc_binary.gni")
+import("//vision/build/rust/rustc_library.gni")
 
 template("power_cli_lib") {
   rustc_library(target_name) {
@@ -86,7 +86,7 @@ rustc_binary("cli") {
     "//third_party/rust_crates:argh",
   ]
   sources = [ "src/main.rs" ]
-  configs += [ "//products/build/config/rust:bootfs" ]
+  configs += [ "//vision/build/config/rust:bootfs" ]
 }
 
 fuchsia_package("package") {

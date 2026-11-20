@@ -8,7 +8,7 @@
 # The core of the Rust support is part of //userspace/lib/fuchsia, which implements
 # the procedural macro attributes for DSO components.
 
-import("//products/build/rust/rustc_library.gni")
+import("//vision/build/rust/rustc_library.gni")
 
 rustc_library("rust") {
   edition = "2024"

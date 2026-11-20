@@ -3,8 +3,8 @@
 # found in the LICENSE file.
 
 load("@rules_cc//cc:cc_library.bzl", "cc_library")
-load("//products/build/bazel/rules/cc:fx_cc_library.bzl", "fx_cc_library")
-load("//products/build/bazel/rules/idk:idk_cc_prebuilt_library.bzl", "idk_cc_shared_library_zx")
+load("//vision/build/bazel/rules/cc:fx_cc_library.bzl", "fx_cc_library")
+load("//vision/build/bazel/rules/idk:idk_cc_prebuilt_library.bzl", "idk_cc_shared_library_zx")
 
 package(
     default_applicable_licenses = ["//:license"],

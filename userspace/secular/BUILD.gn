@@ -2,8 +2,8 @@
 # Use of this source code is governed by a BSD-style license that can be
 # found in the LICENSE file.
 
-import("//products/build/assembly/bootfs_files_for_assembly.gni")
-import("//products/build/dist/resource.gni")
+import("//vision/build/assembly/bootfs_files_for_assembly.gni")
+import("//vision/build/dist/resource.gni")
 
 group("tests") {
   testonly = true
@@ -37,12 +37,12 @@ if (secular_boot_build) {
 
   _clang_cipd = read_file("$_clang_dir/.versions/clang.cipd_version", "json")
   _rustc_cipd = read_file("$_rust_dir/.versions/rust.cipd_version", "json")
-  _milestone = read_file("//products/integration/MILESTONE", "trim string")
+  _milestone = read_file("//vision/integration/MILESTONE", "trim string")
   _commit_hash = read_file(
-          "//products/build/info/jiri_generated/integration_commit_hash.txt",
+          "//vision/build/info/jiri_generated/integration_commit_hash.txt",
           "trim string")
   _commit_stamp = read_file(
-          "//products/build/info/jiri_generated/integration_commit_stamp.txt",
+          "//vision/build/info/jiri_generated/integration_commit_stamp.txt",
           "trim string")
 
   # Match tools/secular-boot/configure.sh. The kernel arg is declared in

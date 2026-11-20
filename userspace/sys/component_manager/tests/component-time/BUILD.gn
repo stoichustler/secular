@@ -6,8 +6,8 @@
 # is located at `//tools/create/templates/component-v1/BUILD.gn.tmpl-rust`.
 # If you find something broken, we are eager to review fixes.
 
-import("//products/build/components.gni")
-import("//products/build/rust/rustc_binary.gni")
+import("//vision/build/components.gni")
+import("//vision/build/rust/rustc_binary.gni")
 
 group("component-time") {
   testonly = true
