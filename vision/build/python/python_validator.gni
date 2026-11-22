@@ -46,10 +46,12 @@ template("validate_python") {
                              "visibility",
                            ])
     inputs = [
-               "//pyproject.toml",
                "//vision/build/python/package_python_binary.py",
                _library_infos_file,
              ] + invoker.sources
+    if (!secular_boot_build) {
+      inputs += [ "//pyproject.toml" ]
+    }
 
     script = "//vision/build/python/mypy_checker.py"
     outputs = [ "${target_out_dir}/${target_name}.mypy_checked" ]

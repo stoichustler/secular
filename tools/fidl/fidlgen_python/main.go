@@ -29,8 +29,8 @@ var (
 		"the output file for the generated Python implementation")
 	blackPath = flag.String("black", "REQUIRED",
 		"path to black formatter")
-	pyprojectTomlPath = flag.String("pyproject-toml", "REQUIRED",
-		"path to pyproject.toml for black configuration")
+	pyprojectTomlPath = flag.String("pyproject-toml", "",
+		"optional path to pyproject.toml for black configuration")
 )
 
 func printUsage() {
@@ -63,17 +63,12 @@ func main() {
 		log.Fatal("Error: --black is required")
 	}
 	blackPath := *blackPath
-	if *pyprojectTomlPath == "REQUIRED" {
-		log.Fatal("Error: --pyprojectTomlPath is required")
-	}
-	pyprojectTomlPath := *pyprojectTomlPath
-
 	root, err := fidlgen.ReadJSONIr(fidlIrJson)
 	if err != nil {
 		log.Fatal(err)
 	}
 
-	generator := codegen.NewGenerator(blackPath, pyprojectTomlPath)
+	generator := codegen.NewGenerator(blackPath, *pyprojectTomlPath)
 	err = generator.GenerateFidl(root, outputFile)
 	if err != nil {
 		log.Fatalf("Error running generator: %v", err)

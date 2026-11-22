@@ -50,7 +50,12 @@ func IndentNonEmpty12(s string) string {
 }
 
 func NewGenerator(blackPath string, pyprojectTomlPath string) *Generator {
-	formatter := fidlgen.NewFormatter(blackPath, "--quiet", "--config", pyprojectTomlPath, "-")
+	blackArgs := []string{"--quiet"}
+	if pyprojectTomlPath != "" {
+		blackArgs = append(blackArgs, "--config", pyprojectTomlPath)
+	}
+	blackArgs = append(blackArgs, "-")
+	formatter := fidlgen.NewFormatter(blackPath, blackArgs...)
 
 	return &Generator{
 		Generator: fidlgen.NewGenerator("PythonTemplates", templates, formatter, template.FuncMap{

@@ -79,7 +79,6 @@ template("fidl_python") {
         fidl_ir_json,
         "${secular_prebuilt_root}/third_party/black/linux-x64/black",
         "//.gitignore",
-        "//pyproject.toml",
       ]
 
       output = "$fidl_gen_dir/$python_library_name/__init__.py"
@@ -93,9 +92,14 @@ template("fidl_python") {
         "--black",
         rebase_path("${secular_prebuilt_root}/third_party/black/linux-x64/black",
                     root_build_dir),
-        "--pyproject-toml",
-        rebase_path("//pyproject.toml", root_build_dir),
       ]
+      if (!secular_boot_build) {
+        inputs += [ "//pyproject.toml" ]
+        args += [
+          "--pyproject-toml",
+          rebase_path("//pyproject.toml", root_build_dir),
+        ]
+      }
 
       deps = [ fidl_ir_target ]
 

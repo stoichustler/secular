@@ -30,10 +30,10 @@ golden_files("fidlgen_python_golden_tests") {
       "--quiet",
       "-",
     ]
-    inputs = [
-      "//.gitignore",
-      "//pyproject.toml",
-    ]
+    inputs = [ "//.gitignore" ]
+    if (!secular_boot_build) {
+      inputs += [ "//pyproject.toml" ]
+    }
   }
 
   deps = []

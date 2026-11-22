@@ -79,8 +79,15 @@ import("//vision/build/python/python_validator.gni")
 template("python_binary") {
   assert(defined(invoker.main_source), "main_source is required")
 
-  # Enable mypy checks by default
-  if (!(defined(invoker.enable_mypy) && !invoker.enable_mypy)) {
+  # Enable mypy checks by default. Skip on secular_boot_build: it has
+  # no //pyproject.toml and does not run host type checking.
+  _enable_mypy = true
+  if (defined(invoker.enable_mypy)) {
+    _enable_mypy = invoker.enable_mypy
+  }
+  if (secular_boot_build) {
+    not_needed([ "_enable_mypy" ])
+  } else if (_enable_mypy) {
     mypy_checker = "${target_name}_mypy_checker"
   }
 
@@ -148,10 +155,6 @@ template("python_binary") {
       _main_callable = invoker.main_callable
     }
 
-    inputs += [
-      "//vision/build/python/mypy_checker.py",
-      "//pyproject.toml",
-    ]
     script = "//vision/build/python/package_python_binary.py"
     depfile = "${target_out_dir}/${target_name}.d"
     args = [ "--sources" ] + rebase_path(sources, root_build_dir) + [
@@ -182,7 +185,7 @@ template("python_binary") {
     if (defined(invoker.unbuffered_output) && invoker.unbuffered_output) {
       args += [ "--unbuffered" ]
     }
-    if (defined(mypy_checker) && !secular_boot_build) {
+    if (defined(mypy_checker)) {
       data_deps += [ ":${mypy_checker}" ]
     }
     metadata = {

@@ -220,24 +220,26 @@ template("python_library") {
     }
   }
 
-  validate_python_library(_labels.mypy_checker) {
-    forward_variables_from(invoker,
-                           [
-                             "assert_no_deps",
-                             "testonly",
-                           ])
-    visibility = [ ":${_labels.main_target}" ]
+  if (_enable_mypy && !secular_boot_build) {
+    validate_python_library(_labels.mypy_checker) {
+      forward_variables_from(invoker,
+                             [
+                               "assert_no_deps",
+                               "testonly",
+                             ])
+      visibility = [ ":${_labels.main_target}" ]
 
-    library_infos = ":${_labels.library_infos}"
+      library_infos = ":${_labels.library_infos}"
 
-    # This source list includes only direct library sources and stubs, excluding
-    # any dependencies.
-    sources = _full_source_paths + _full_stub_paths
+      # This source list includes only direct library sources and stubs, excluding
+      # any dependencies.
+      sources = _full_source_paths + _full_stub_paths
 
-    # Required for generated sources like C extension wrappers.
-    deps = library_deps
-    if (defined(invoker.deps)) {
-      deps += invoker.deps
+      # Required for generated sources like C extension wrappers.
+      deps = library_deps
+      if (defined(invoker.deps)) {
+        deps += invoker.deps
+      }
     }
   }
 
