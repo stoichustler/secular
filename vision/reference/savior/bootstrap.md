@@ -1,25 +1,32 @@
 # Bootstrap
 
-Crook is a type-1 hypervisor on `qemu-system-aarch64` (virt, arm64). ATF
-is EL3 firmware. Crook itself is the **HEE** image: a Zircon kernel that
-drops to EL1, then re-enters EL2 only to run guests. This note is the
-map of that path: exception-level and MMU switches from reset to SOS
-and tbox, and the **physical** layouts the linker scripts publish so a
+Savior is a type-1 hypervisor on `qemu-system-aarch64` (virt, arm64). ATF
+is EL3 firmware. Savior itself is the **HEE** image: a Zircon kernel that
+stays at EL2 in **VHE** (`HCR.E2H|TGE`) so host code looks like EL1,
+then clears `TGE` only to run guests. This note is the map of that
+path: exception-level and MMU switches from reset to SOS and tbox,
+and the **physical** layouts the linker scripts publish so a
 bootloader can place the images.
 
 The product stays:
 
 ```text
-ATF (BL1/BL2/BL31) + Crook HEE (boot-shim + Zircon)
+ATF (BL1/BL2/BL31) + Savior HEE (boot-shim + Zircon)
   + guest_manager + SOS (Linux) + tbox (Linux)
 ```
 
-Read [`memory.md`](memory.md) for TTBR / physmap / stage-2,
-[`cpu.md`](cpu.md) for VCPU / idle / SMP,
+This is chapter 2 of the handbook ([`README.md`](README.md) learning
+path). End-to-end picture: [`flows.md`](flows.md) F1. Read
+[`README.md`](README.md) for the product map,
+[`memory.md`](memory.md) for TTBR / physmap / stage-2,
+[`cpu.md`](cpu.md) for VCPU / idle / SMP / VHE,
 [`interrupt.md`](interrupt.md) for GICv3 / VGIC.
 This note stops when SOS and tbox have taken their first `eret` into
 guest EL1. The host kernel → userspace switch (`lk_main` → first
 `eret` EL0t → `sysmgr`) is (9)–(11).
+
+Start with **Diagrams** (B1–B10), then **Switch nodes** for the
+prose. End-to-end one-pager: [`flows.md`](flows.md) F1.
 
 ## Bootstrap
 
@@ -40,14 +47,14 @@ before any of them runs.
  └────────────────────────────┬───────────────────────────────────┘
                               ▼
  ┌────────────────────────────────────────────────────────────────┐
- │ Crook boot-shim   Linux Image header, MMU off                  │
+ │ Savior boot-shim   Linux Image header, MMU off                  │
  │  DTB → BOOTDATA (RAM, GIC, UART, vcpu-phyp, cmdline)           │
  │  br kernel _start                                              │
  │    x0 = BOOTDATA  x1 = bootargs  x2 = dram_range               │
  └────────────────────────────┬───────────────────────────────────┘
                               ▼
  ┌────────────────────────────────────────────────────────────────┐
- │ Crook kernel   EL2 → EL1h, MMU on at KERNEL_BASE, eret EL0t    │
+ │ Savior kernel   VHE EL2 (E2H|TGE), MMU on at KERNEL_BASE, eret EL0t │
  │  lk_main → userboot → devmgr → appmgr → sysmgr                 │
  └────────────────────────────┬───────────────────────────────────┘
                               ▼
@@ -65,7 +72,7 @@ of them (sometimes two at once).
 
 | Dimension | Starts as | Ends as |
 | --- | --- | --- |
-| Exception level | EL3 (ATF) | host EL1 + host EL0 + guest EL1h under EL2 |
+| Exception level | EL3 (ATF) | host VHE EL2 (looks like EL1) + host EL0 + guest EL1h |
 | MMU | off | TTBR1 host kernel, TTBR0 per process, then VTTBR stage-2 |
 | Address space | physical | host high VA + per-process user VA, then per-guest IPA |
 
@@ -90,14 +97,14 @@ changes here.
          ▼  (4) SPD → TEE  EL3 → S-EL1 → EL3
  ERET BL32, wait for first SMC, restore NS context
          │
-         ▼  (5) EL3 exit → Crook shim
+         ▼  (5) EL3 exit → Savior shim
  SPSR EL2h (AHYP). x0 = DTB at hee-region base
          │
          ▼  (6) Linux Image header → boot_shim
  MZ / "ARM\\x64", DTB → BOOTDATA, KERNEL_ALIGN combo
          │
-         ▼  (7) kernel _start  EL2 → EL1h
- arm64_elX_to_el1: HCR, VBAR_EL2, VTTBR=0, eret EL1h
+         ▼  (7) kernel _start  stay EL2 (VHE)
+ arm64_elX_to_el2: HCR.E2H|TGE, VTTBR=0, ret
          │
          ▼  (8) MMU on
  identity 1 GiB trampoline (TTBR0) + kernel + physmap (TTBR1)
@@ -133,7 +140,7 @@ changes here.
  reserved RAM identity-mapped, own DTB + Image
          │
          ▼
- SOS and tbox running under Crook EL2
+ SOS and tbox running under Savior EL2
 ```
 
 | Node | EL | MMU | Who runs |
@@ -142,13 +149,13 @@ changes here.
 | (2) BL2 | EL3 | ATF SRAM tables | loader |
 | (3)–(4) BL31 + SPD | EL3 ↔ S-EL1 | ATF EL3 tables | BL31, then TEE |
 | (5)–(6) shim | EL2 | off | PIC phys |
-| (7) `_start` | EL2 → EL1h | still off | kernel phys |
-| (8) MMU on | EL1 | identity TTBR0, then TTBR1 | still phys-executable until `br` |
-| (9) `lk_main` | EL1 | TTBR1; TTBR0 `EPD0` | kernel (bootstrap, then idle) |
-| (10) userboot | EL1h → EL0t | TTBR0 walks on (`MMU_TCR_FLAGS_USER`) | first user process |
-| (11) devmgr … sysmgr | EL0 (syscall round-trips EL1) | that process's TTBR0 | each launched by the previous |
+| (7) `_start` | EL2 VHE (`E2H\|TGE`) | still off | kernel phys |
+| (8) MMU on | VHE EL2 | identity TTBR0, then TTBR1 | still phys-executable until `br` |
+| (9) `lk_main` | VHE EL2 (EL1 names) | TTBR1; TTBR0 `EPD0` | kernel (bootstrap, then idle) |
+| (10) userboot | VHE EL2 → EL0t | TTBR0 walks on (`MMU_TCR_FLAGS_USER`) | first user process |
+| (11) devmgr … sysmgr | EL0 (syscall round-trips host) | that process's TTBR0 | each launched by the previous |
 | (12) guest_manager | EL0 | its TTBR0 | sysmgr singleton |
-| (13)–(15) VCPU | host EL1 ↔ EL2 ↔ guest EL1h | host TTBR1 + guest VTTBR | VMM thread / guest |
+| (13)–(15) VCPU | host VHE ↔ guest EL1h | host TTBR1 + guest VTTBR | VMM thread / guest |
 
 How each node is **loaded** and **switched**. Load is who copies or maps the image. Switch is the instruction or syscall that changes EL, MMU, or aspace.
 
@@ -160,17 +167,402 @@ How each node is **loaded** and **switched**. Load is who copies or maps the ima
 | (4) TEE | FDT `tee-region` | BL2 copy, SPD `ERET` | EL3 → S-EL1 → EL3 |
 | (5) shim | FDT `hee-region` | BL2 copy, EL3 `ERET` | EL3 → EL2h |
 | (6) `boot_shim` | combo file | PIC, MMU off | same EL2 |
-| (7) kernel `_start` | combo + `KERNEL_ALIGN` | shim `br` | EL2 → EL1h |
-| (8) MMU on | `kernel.ld` high VA | `br KERNEL_BASE` | EL1, TTBR1 |
-| (9) `lk_main` | already at `KERNEL_BASE` | C `bl` | still EL1, TTBR0 off |
-| (10) userboot | RODSO in kernel `.rodata` | kernel maps, `eret` | EL1h → EL0t, TTBR0 on |
+| (7) kernel `_start` | combo + `KERNEL_ALIGN` | shim `br` | stay EL2 VHE |
+| (8) MMU on | `kernel.ld` high VA | `br KERNEL_BASE` | VHE EL2, TTBR1 |
+| (9) `lk_main` | already at `KERNEL_BASE` | C `bl` | still VHE EL2, TTBR0 off |
+| (10) userboot | RODSO in kernel `.rodata` | kernel maps, `eret` | VHE EL2 → EL0t, TTBR0 on |
 | (11a) devmgr | BOOTFS `bin/devmgr` | userboot ELF + `zx_process_start` | EL0 → EL1 syscall → EL0 |
 | (11b) appmgr | `/system/bin/appmgr` | `launchpad` from devmgr | same |
 | (11c) sysmgr | ApplicationLoader `"sysmgr"` | appmgr `CreateApplication` | same |
 | (12) guest_manager | `services.config` | sysmgr `LaunchService` | EL0 |
-| (13)–(15) guests | reserved RAM + payloads | VMM `HVC` + `eret` | host EL1 ↔ EL2 ↔ guest EL1h |
+| (13)–(15) guests | reserved RAM + payloads | VMM `zx_vcpu_resume` + `eret` | host VHE ↔ guest EL1h |
 
 From (10) onward every process uses the same EL1 → EL0 machinery (`ThreadDispatcher::Start` → `arch_enter_uspace` → `eret`). Only userboot is special: the kernel maps it. Everyone else is loaded in EL0 via VMO + ELF.
+
+### Diagrams
+
+Numbered swimlanes for (1)–(15). Each box is a real function or
+instruction. EL / MMU is in the left gutter.
+
+| # | Covers | Nodes |
+| --- | --- | --- |
+| B1 | ATF: reset → BL33 | (1)–(5) |
+| B2 | boot-shim: DTB → BOOTDATA → kernel `br` | (6) |
+| B3 | `_start` VHE + MMU trampoline | (7)–(8) |
+| B4 | `lk_main` / `bootstrap2` / idle / secondaries | (9) |
+| B5 | first `eret` EL0t (userboot) | (10) |
+| B6 | userboot → `devmgr` | (10)–(11a) |
+| B7 | `devmgr` → `sysmgr` → GuestManager | (11)–(12) |
+| B8 | SOS VMM → first guest `eret` | (13)–(14) |
+| B9 | tbox (same path, four substitutions) | (15) |
+| B10 | register handoff at each `ERET`/`br`/`eret` | (5)(6)(10)(14) |
+
+#### B1  ATF: reset → Savior shim
+
+```text
+ CPU reset  PC = 0x0  EL3  MMU off
+   │
+   ▼
+[1] bl1_entrypoint                    BL1_RO in flash
+      copy .data → SRAM (BL1_RW)
+      early GIC / UART
+      load BL2 just below BL31
+      ERET  still EL3
+   │
+   ▼
+[2] bl2_main                          SRAM
+      walk image descriptors from FIP
+      for each: FDT /reserved-memory  overrides compile-time base
+        BL32        tee-region
+        BL33        hee-region          Savior combo
+        BL33 extra1 ree1-region         SOS DTB+Image
+        BL33 extra2 ree2-region         SOS rootfs
+      copy DTB into each region base; x0 will be that DTB
+      ERET  BL31  still EL3
+   │
+   ▼
+[3] bl31_main                         top of SRAM
+      console, GIC, runtime_svc_init (PSCI + SPD)
+   │
+   ▼
+[4] SPD trusty_init  (bl32_init)
+      save NS EL1 sysregs + FP
+      SPSR = EL1h DAIF  x0 = TEE DTB
+      ERET  S-EL1  BL32
+      TEE  first SMC
+      restore NS  →  bl31_main continues
+   │
+   ▼
+[5] bl31_prepare_next_image_entry     AHYP: BL33, not extra1
+      ELR_EL3  = hee-region + offset
+      SPSR_EL3 = EL2h DAIF
+      x0       = HEE DTB  (region base, not QEMU 0x40000000)
+      x3       = bootmode
+      ERET  EL3 → EL2h  MMU off
+```
+
+No Savior instruction has run yet. Next is B2.
+
+#### B2  boot-shim: Image header → kernel `br`
+
+Combo file: `boot-shim.bin` + pad to `KERNEL_ALIGN=64KiB` +
+kernel BOOTDATA. PIC, link address 0, MMU still off.
+
+```text
+ EL2h  PC = hee-region  (Linux Image header in .text.boot0)
+   │
+   ▼
+[1] MZ / "ARM\x64"  b header_end
+[2] x1 = _start + KERNEL_ALIGN          kernel BOOTDATA
+    4 KiB shim stack
+    save x3 as bootmode
+[3] bl boot_shim(dtb=x0, kernel=x1)
+      check BOOTDATA + KERNEL item
+      walk HEE DTB, append:
+        MEM_CONFIG RAM          hee-region.reg
+        MEM_CONFIG reserved     kernel image + DTB 64KiB
+        CMDLINE                 /chosen bootargs
+        CPU_CONFIG              /cpus
+        KDRV_VCPU_PHYP          ree1-region  (SOS window hint)
+        UART / VGIC / timer …
+      bootmode → arch_bootargs → kernel.bootmode=ahyp
+      TEE mode: skip cache-all invalidate
+      return PC of kernel _start in x0
+[4] x0 = bootdata
+    x1 = arch_bootargs
+    x2 = &dram_range {start,size}
+    br  kernel _start                   still EL2, still phys
+```
+
+`KDRV_VCPU_PHYP` is a hint only. Real SOS guest is B8.
+
+#### B3  `_start` VHE + MMU trampoline
+
+```text
+ EL2  MMU off  phys _start
+   │
+   ▼
+[1] CPU0: save x0 BOOTDATA, x1 bootargs, x2 dram, CurrentEL, phys _start
+    secondaries: wait page_tables_not_ready
+[2] bl arm64_elX_to_el2                 HEE / WITH_VHE_SUPPORT
+      must already be EL2
+      init_el2_state
+      HCR_EL2 |= E2H | TGE              host uses EL1 names
+      VTTBR_EL2 = 0
+      ret                               still EL2
+    (TEE / mt8678: arm64_elX_to_el1, eret EL1h)
+[3] SCTLR_EL1.I/C = 1                   VHE EL2&0 view of caches
+    zero .bss at current phys
+    boot_alloc_init
+    kernel_base_phys = __code_start
+   │
+   ▼
+[4] CPU0 builds two tables
+      TTBR1  arm64_kernel_translation_table
+        physmap  KERNEL_ASPACE_BASE+dram → DRAM
+        kernel   KERNEL_BASE → __code_start … _end  RWX
+      TTBR0  tt_trampoline
+        one 1 GiB identity block holding _start
+[5] MAIR / TCR = MMU_TCR_FLAGS_IDENT    TTBR0 walk on
+    msr ttbr0, ttbr1
+    SCTLR.M = 1
+    isb
+[6] br .Lmmu_on_vaddr                   absolute KERNEL_BASE + offset
+      now executing at high VA
+[7] TCR = MMU_TCR_FLAGS_KERNEL          EPD0: trampoline gone
+    tlbi vmalle1
+[8] SP / TPIDR_EL1 / x18 = percpu
+    bl lk_main                          still VHE EL2, TTBR1 only
+```
+
+`paddr_to_physmap(PA) = 0xffff000000000000 + PA` after [6].
+
+#### B4  `lk_main` → `bootstrap2` → idle
+
+Still VHE EL2, TTBR1, no EL0. Single-threaded on CPU0 until idle.
+
+```text
+ bl lk_main                            zircon/kernel/top/main.cpp
+   │
+   ▼
+[1] thread_init_early                   current = "bootstrap"
+    call_constructors
+    ARCH_EARLY → arch_early_init
+    PLATFORM_EARLY → platform_early_init
+    TARGET_EARLY → target_early_init
+    "welcome to Savior"  CurrentEL
+[2] VM_PREHEAP → vm_init_preheap
+    HEAP → heap_init
+    VM → vm_init                        lock kernel RX/RO/RW later
+    KERNEL → kernel_init                mp / threads / timers
+[3] thread_create "bootstrap2"  CPU0
+    thread_resume
+    resume_phy_addr = vaddr_to_paddr(el2_cpu_resume)
+    thread_become_idle                  ints on, this CPU's idle
+   │
+   ▼  scheduler
+ bootstrap2
+   [4] THREADING → ARCH → arch_init
+         lk_init_secondary_cpus
+         PSCI CPU_ON → each secondary:
+           same B3 MMU sequence
+           bl arm64_secondary_entry
+           lk_secondary_cpu_entry → idle
+   [5] ARCH → PLATFORM → platform_init
+       PLATFORM → TARGET → target_init
+       TARGET → LAST
+         includes LK_INIT_LEVEL_USER (0xc0000)
+         LK_INIT_HOOK(userboot, userboot_init, USER)
+   │
+   ▼
+[6] userboot_init                       B5
+    bootstrap2 returns; CPU0 idle runs until first user thread
+```
+
+No user aspace, no TTBR0 walk, no EL0 until B5.
+
+#### B5  first `eret` EL0t (userboot)
+
+Three objects, then one `eret`. Later processes reuse this path.
+
+```text
+ userboot_init
+   │
+   ▼
+[1] ProcessDispatcher::Create(root_job, "userboot")
+      TYPE_USER aspace  [0x1000000, +0xfffffe000000)
+      ArmArchVmAspace::Init
+        alloc ASID
+        alloc+zero TTBR0 top table
+        TTBR1 untouched
+[2] UserbootImage::Map
+      RODSO libuserboot.so in .rodata
+      VMAR = userboot.size + vdso.size
+      map userboot RO/RX at 0, entry = vmar.base + USERBOOT_ENTRY
+      map vDSO immediately after (vdso-syms.ld)
+      paged stack VMO RW
+[3] ThreadDispatcher::Create
+      kernel stack in TTBR1
+      AttachToThread → LK thread owns user aspace
+[4] processargs on a channel
+      PA_VMO_VDSO / BOOTDATA / RESOURCE / STACK
+      PA_PROC_SELF / THREAD_SELF / VMAR_ROOT / JOB_DEFAULT
+      environ = kernel cmdline  (kernel.bootmode=ahyp)
+[5] thread->Start(entry, sp, hv, vdso_base)
+      thread_resume
+   │
+   ▼  idle reschedules onto userboot LK thread
+[6] sched.c  aspace changed
+      vmm_context_switch
+      TCR = MMU_TCR_FLAGS_USER          TTBR0 walks on
+      TTBR0_EL1 = (ASID<<48) | tt_phys
+[7] StartRoutine → arch_enter_uspace
+      spsr = EL0t, SError masked, IRQ/FIQ on
+[8] uspace_entry.S
+      SP_EL1 = kstack
+      SP_EL0 = user sp
+      ELR_EL1 = userboot _start
+      SPSR_EL1 M=EL0t
+      x0 = bootstrap handle, x1 = vdso_base
+      zero x2–x30
+      eret
+   │
+   ▼
+ EL0t  PC = userboot _start
+   user VA → TTBR0    kernel VA → TTBR1 (next svc/IRQ)
+```
+
+Steady-state: `svc` → `VBAR_EL1` → syscall wrapper → `eret` EL0t.
+
+#### B6  userboot → `devmgr`
+
+```text
+ EL0t  userboot _start(start_arg)
+   │  no libc, RODSO, vDSO direct
+   ▼
+[1] zxr_processargs_read(bootstrap)
+    parse_options   userboot= / userboot.shutdown
+[2] bootdata_get_bootfs     first BOOTDATA_BOOTFS_BOOT, LZ4
+    bootfs_mount
+[3] zx_process_create(job, "bin/devmgr")
+    zx_thread_create
+[4] elf_load_bootfs bin/devmgr
+      ET_DYN  PT_INTERP = lib/ld.so.1
+    elf_load_bootfs ld.so.1           that is the entry
+    map child stack
+[5] zx_channel_write
+      loader processargs  PA_VMO_EXECUTABLE, PA_SVC_LOADER
+      main processargs    PA_VMO_BOOTFS + forwarded handles
+[6] zx_process_start(proc, thread, ld.so.1, sp, child_channel, vdso)
+      same ThreadDispatcher::Start as B5
+      child's first insn: ld.so.1 _start EL0t
+[7] loader_service loop until child closes PA_SVC_LOADER
+    zx_process_exit(0)                userboot dies
+```
+
+Kernel never parses BOOTFS. Userboot does. `ld.so.1` maps `devmgr`
+and `DT_NEEDED` from `lib/` in BOOTFS.
+
+#### B7  `devmgr` → `sysmgr` → GuestManager
+
+Every step is B5's `eret` machinery via `launchpad` / `zx_process_start`.
+
+```text
+ EL0  ld.so.1 → bin/devmgr
+   │
+   ▼
+[1] devmgr
+      root job + driver jobs
+      fshost  mount /boot (BOOTFS) + /system
+      launchpad /system/bin/appmgr
+   │
+   ▼
+[2] appmgr
+      CreateApplication("sysmgr")
+   │
+   ▼
+[3] sysmgr  (garnet/bin/sysmgr/app.cc)
+      zx_system_get_bootmode
+        AHYP → LaunchService("fuchsia.virtualization.GuestManager")
+        TEE  → LaunchService("nebula.GpManager")   stop here
+      services.config  → binary "guest_manager"
+   │
+   ▼
+[4] GuestManagerImpl
+      BuildFromFile /system/data/guest_manager.pb.txt
+      LaunchGuests
+        SOS   auto_start true   ScheduleAutoLaunch now
+        tbox  auto_start false  wait Launch(1) / delay
+```
+
+AHYP-only from [3]. TEE never reaches B8.
+
+#### B8  SOS VMM → first guest `eret`
+
+```text
+ Guest::Launch(vmid=-1)
+   │
+   ▼
+[1] CreateApplication("file://sos")
+      PA_USER0 = GuestLifecycle channel
+      VmmController Bind
+      state = STARTING
+      ArmWatchdogStartupGrace  +60 s
+[2] lifecycle.Create(config)
+      Vmm::Initialize
+        product.lua + sos.lua
+        ioctl_get_system_memory          leftover DRAM
+        VmemSpec ram kCached identity    GPA = HPA
+        setVmem "IO" 0 + 1GiB kDevice
+        zx_guest_create_new              Guest + guest VMAR  (S2)
+        map each spec  ZX_VM_FLAG_SPECIFIC
+        TeeVmCreate
+        SetCpuAffinity
+        VGIC traps + passthrough bind
+        virtio / vsock / vSMMU / VHM …
+        bootloader Setup
+          payloads into guest RAM
+          guest_ip = DTB + 64KiB
+          x0 will be DTB
+[3] lifecycle.Run → StartPrimaryVcpu
+      RegisterVcpuFactory
+      thrd_create "vcpu-0"
+      zx_vcpu_create  pin bind_cpus[0]
+        ELR_EL2 = guest_ip
+        SPSR    = EL1h | DAIF
+        HCR     = VM|PTW|FMO|IMO|FB|BSU_IS|TWI|TSC|RW|…
+        SMC_FC_NBL_SOS_STATE  TEE sees GPRs
+      WriteState  x0 = DTB GPA
+      GICR BindVcpu
+      loop zx_vcpu_resume               [`flows.md`](flows.md) F2
+        first: tlbi vmalle1
+        bic TGE, msr vttbr, eret EL1h
+   │
+   ▼
+ SOS Linux  EL1h  PC = Image  x0 = DTB  DAIF masked
+```
+
+That `eret` is the host→guest switch. Further intercepts: F2–F14.
+
+#### B9  tbox (same Create/Run, four substitutions)
+
+```text
+ Launch(1)  or delayed auto_start
+   │  same B8 [1]–[3]
+   │
+   ├─ RAM     ioctl_get_guest_memory("grt,tbox-reserved")
+   │          no SOS 0–1GiB IO window
+   ├─ Image   tbox_bootloader.pb.txt
+   │          DTB @ reserved+0, Image +64KiB, rootfs +0x4000000
+   ├─ IRQs    same VGIC base, no SOS SPI range
+   │          virtio-console hvc0
+   └─ when    QEMU auto_start=false; boards delay 2 s
+```
+
+#### B10  register handoff
+
+What the next image sees. Unused GPRs are not listed.
+
+```text
+ [5] EL3 → shim          x0=HEE DTB   x3=bootmode   PC=hee-region
+                         SPSR=EL2h DAIF   MMU off
+
+ [6] shim → kernel       x0=BOOTDATA  x1=bootargs   x2=&dram_range
+                         PC=kernel _start          MMU off
+
+ [8] br KERNEL_BASE      same GPRs, now high VA     TTBR1 on
+
+ [10] eret EL0t          x0=bootstrap handle  x1=vdso_base
+                         PC=userboot _start   SP=user stack
+                         SPSR=EL0t            TTBR0 on
+
+ [11] zx_process_start   x0=child channel     x1=vdso_base
+                         PC=ld.so.1 / entry   same eret path
+
+ [14] eret guest EL1h    x0=DTB GPA
+                         PC=Image (DTB+64KiB)
+                         SPSR=EL1h DAIF       VTTBR on  TGE=0
+```
 
 ### Switch nodes
 
@@ -190,10 +582,10 @@ just below BL31, and `ERET`s to BL2 still in EL3.
 #### (2) BL2: load the four payload images
 
 BL2 walks a descriptor table. Each node is one image plus the next
-handoff. With the Crook SPD the chain is:
+handoff. With the Savior SPD the chain is:
 
 ```text
-BL31  →  BL32 (TEE)  →  BL33 (HEE / Crook)  →  BL33 extra1 (REE kernel)
+BL31  →  BL32 (TEE)  →  BL33 (HEE / Savior)  →  BL33 extra1 (REE kernel)
                                               →  BL33 extra2 (REE rootfs)
 ```
 
@@ -202,7 +594,7 @@ the compile-time base:
 
 ```text
 BL32        /reserved-memory/tee-region     TEE
-BL33        /reserved-memory/hee-region     Crook HEE
+BL33        /reserved-memory/hee-region     Savior HEE
 BL33 extra1 /reserved-memory/ree1-region    SOS kernel + DTB
 BL33 extra2 /reserved-memory/ree2-region    SOS rootfs
 ```
@@ -213,7 +605,7 @@ into each region's base, sets `/memory.reg` to that region, and leaves
 `/chosen linux,initrd-{start,end}` and strips HEE/TEE-only nodes from
 the REE tree (and REE-only nodes from the HEE/TEE trees).
 
-Fallback when the FDT nodes are absent (QEMU Crook SPD defaults):
+Fallback when the FDT nodes are absent (QEMU Savior SPD defaults):
 
 ```text
 TEE   BL32_BASE        = 0x40010000    window 0x40000000 + 1 GiB
@@ -227,7 +619,7 @@ The SOS bootloader later consumes the same numbers as GPA offsets
 
 BL33 SPSR is EL2h when EL2 is implemented (AHYP). If the firmware is
 told to boot TEE-only, SPSR is EL1h and BL31 hands off to **extra1**
-instead of Crook — no guest_manager, no SOS/tbox split.
+instead of Savior — no guest_manager, no SOS/tbox split.
 
 #### (3) BL31: EL3 runtime
 
@@ -241,9 +633,9 @@ BL31_LIMIT = 0x0e050000               SEC_SRAM 0x0e000000 + 0x50000
 ```
 
 `cm_init_my_context(next_image_info)` + `cm_prepare_el3_exit` program
-`ELR_EL3` / `SPSR_EL3` / the NS or S GPRs. The CPU `ERET`s. Crook
-does **not** run at EL3 (`arm64_elX_to_el1` would have to drop from
-EL3; the AHYP path never does).
+`ELR_EL3` / `SPSR_EL3` / the NS or S GPRs. The CPU `ERET`s. Savior
+does **not** run at EL3. AHYP enters Savior at EL2h; HEE keeps
+that EL (`arm64_elX_to_el2`).
 
 #### (4) SPD → TEE, then back
 
@@ -258,7 +650,7 @@ The SPD registers `trusty_init` as `bl32_init`. On the primary CPU:
 Secondary CPUs take the same path on `CPU_ON` (`svc_on_finish`). After
 this point BL31 stays resident: PSCI, SMC to TEE, FIQ forwarding.
 
-#### (5) EL3 exit → Crook boot-shim
+#### (5) EL3 exit → Savior boot-shim
 
 `bl31_prepare_next_image_entry` picks the NS image. For AHYP that is
 BL33 (HEE), not extra1. `arg0` is already the HEE DTB — it is **not**
@@ -273,7 +665,7 @@ overwritten with the QEMU DTB at `0x40000000`.
 | MMU / caches | EL3 tables left behind; NS starts MMU-off |
 
 Linux ARM64 protocol: Image anywhere 2 MiB-aligned, `x1`–`x2` unused
-by the shim (Crook reuses `x1`/`x2` after `boot_shim` returns).
+by the shim (Savior reuses `x1`/`x2` after `boot_shim` returns).
 
 #### (6) Linux Image header → `boot_shim`
 
@@ -321,41 +713,37 @@ AHYP vs TEE is encoded in `arch_bootargs` and becomes
 **skipped** in TEE mode so BL31's stack is not dropped from a dirty
 line.
 
-#### (7) kernel `_start`: EL2 → EL1h
+#### (7) kernel `_start`: stay EL2 (VHE)
 
 The kernel is still at a physical address. `_start` in `.text.boot`:
 
 1. CPU0 only: save `x0` (BOOTDATA), `x1` (bootargs), `x2` (dram
    `{start,size}`), `CurrentEL`, physical `_start`.
-2. `bl arm64_elX_to_el1`.
-3. Enable I/D cache (`SCTLR_EL1.I/C`). Secondary CPUs wait on
-   `page_tables_not_ready`.
+2. `bl arm64_elX_to_el2` (HEE, `WITH_VHE_SUPPORT`). TEE builds
+   call `arm64_elX_to_el1` instead — see [`cpu.md`](cpu.md).
+3. Enable I/D cache (`SCTLR_EL1.I/C` — VHE EL2&0 view). Secondary
+   CPUs wait on `page_tables_not_ready`.
 4. Zero `.bss` at the current physical location.
 5. `boot_alloc_init`, record `kernel_base_phys = __code_start`.
 
-`arm64_elX_to_el1` is the first real EL switch on the Crook CPU:
+`arm64_elX_to_el2` does **not** drop exception level:
 
 ```text
-already EL1  → ret
-
-in EL2:
+must already be EL2  (ATF SPSR EL2h)
   init_el2_state
-  VBAR_EL2     = arm64_el2_init_table     (HVC vectors, not yet guest)
-  CNTHCTL_EL2 |= EL1PCTEN | EL1PCEN       (EL1 may touch timers)
-  CNTVOFF_EL2  = 0
-  VTTBR_EL2    = 0                        (no stage-2 yet)
-  CPTR_EL2     = 0x33ff                   (no coprocessor traps)
-  HCR_EL2      = RW | API | APK | ATA     (EL1 is AArch64, pointer auth)
-  CPACR_EL1    = FPEN                     (no EL1 FP trap)
-  SP_EL1       = current SP
-  ELR_EL2      = .Ltarget
-  SPSR_EL2     = DAIF | EL1h              (0b1111<<6 | 0b0101)
-  eret
+  HCR_EL2 |= E2H | TGE            host looks like EL1
+  VTTBR_EL2 = 0                   no stage-2 yet
+  ret                             still EL2
 ```
 
-After `eret` the CPU is EL1h, MMU still off, `VBAR_EL2` live. Crook
-is a host at EL1 that will `HVC` into those EL2 vectors to create
-guests. `HCR.VM` is **not** set yet — that bit is per-VCPU.
+Kernel code keeps using EL1 names (`TTBR1_EL1`, `VBAR_EL1`,
+`SCTLR_EL1`). Under VHE those are the EL2&0 aliases. `HCR.VM` is
+**not** set yet — that bit is per-VCPU on guest enter
+([`cpu.md`](cpu.md)).
+
+Non-VHE (`venus-tee.mk`) is the older picture: `VBAR_EL2` init
+table, `eret` EL1h, later `HVC` into `el2.S`. HEE does not take
+that path.
 
 #### (8) MMU on, jump to `KERNEL_BASE`
 
@@ -389,7 +777,8 @@ Secondaries take the same MMU sequence and `bl arm64_secondary_entry`.
 
 #### (9) `lk_main` → `userboot_init`
 
-`start.S` has already jumped to `KERNEL_BASE`. CPU0 is EL1h, MMU on,
+`start.S` has already jumped to `KERNEL_BASE`. CPU0 is VHE EL2
+(EL1 names), MMU on,
 TTBR1 walking the kernel + physmap, TTBR0 **disabled** (`TCR.EPD0`).
 `bl lk_main` (`zircon/kernel/top/main.cpp`) is still a kernel C call —
 no EL change.
@@ -407,7 +796,7 @@ LK_INIT_LEVEL_ARCH_EARLY … PLATFORM_EARLY
 platform_early_init
 LK_INIT_LEVEL_PLATFORM_EARLY … TARGET_EARLY
 target_early_init
-"welcome to Crook"
+"welcome to Savior"
 LK_INIT_LEVEL_TARGET_EARLY … VM_PREHEAP
 vm_init_preheap
 LK_INIT_LEVEL_VM_PREHEAP … HEAP
@@ -421,7 +810,7 @@ Thread "bootstrap2"  affinity CPU0
 thread_become_idle                        this CPU's idle; ints on; reschedule
 ```
 
-Crook also records `el2_cpu_resume` as a physical address for later
+Savior also records `el2_cpu_resume` as a physical address for later
 PSCI suspend (`resume_phy_addr = vaddr_to_paddr(el2_cpu_resume)`).
 
 `lk_main` does **not** run userboot itself. It creates `bootstrap2`
@@ -699,9 +1088,9 @@ the environment directory so it can create a nested env.
 
 ```text
 zx_system_get_bootmode(&bootmode)          // from kernel.bootmode
-AHYP  LaunchService("crook.LogService", true)
+AHYP  LaunchService("savior.LogService", true)
       LaunchService("fuchsia.virtualization.GuestManager", true)
-TEE   LaunchService("crook.GpManager")
+TEE   LaunchService("savior.GpManager")
 ```
 
 `LaunchService` is a `ConnectToService` that forces the singleton
@@ -803,11 +1192,13 @@ HCR_EL2  = VM|PTW|FMO|IMO|FB|BSU_IS|TWI|TSC|RW|APK|API|ATA|TID3
 VMPIDR   = vpid-derived
 ```
 
-The VCPU thread is pinned. `zx_vcpu_resume` `HVC`s into EL2, which
-loads guest sysregs, `msr vttbr_el2, stage2_root`, and `eret`s.
-That `eret` is the host→guest switch: EL2 → guest EL1h, stage-2 on,
-DAIF still masked. First intercept (SMC, WFI, VGIC, MMIO trap)
-saves guest state and `eret`s back to the VMM thread.
+The VCPU thread is pinned. `zx_vcpu_resume` calls
+`arm64_el2_resume` (VHE: a branch, not `HVC`), which loads guest
+sysregs, `msr vttbr_el2, stage2_root`, clears `HCR.TGE`, and
+`eret`s. That `eret` is the host→guest switch: VHE host → guest
+EL1h, stage-2 on, DAIF still masked. First intercept (SMC, WFI,
+VGIC, MMIO trap) saves guest state and `br lr` back into
+`Vcpu::Resume` on the same thread.
 
 SOS also registers its `El2State` with TEE via
 `SMC_FC_NBL_SOS_STATE` so the secure world can find SOS GPRs.
@@ -886,7 +1277,7 @@ Boards that set `auto_start` wait `delayed_launch_ms` (2 s) so SOS
 block backends and vsock are up. `vmctl` / FIDL `Launch(1)` is the
 same `Create` + `Run`.
 
-After (15) both guests are EL1h under Crook EL2. Further switches
+After (15) both guests are EL1h under Savior EL2. Further switches
 are intercepts (`cpu.md`, `interrupt.md`), not boot.
 
 ### Physical memory
@@ -900,24 +1291,24 @@ PA
 0x08000000  GICv3 GICD                64 KiB
 0x08010000  GICC                      (v2 path)
 0x080A0000  GICR                      128 KiB × NCPU
-0x09000000  PL011 UART0               HEE / Crook
+0x09000000  PL011 UART0               HEE / Savior
 0x09040000  PL011 UART1               ATF console
 0x0e000000  trusted SRAM              320 KiB
               0x0e000000  shared / mailbox  4 KiB
               0x0e001000  BL_RAM
               ≈0x0e003000  BL2
               ≈0x0e020000  BL31   (top 192 KiB)
-0x0e100000  trusted DRAM              15 MiB (non-Crook BL32 fallback)
+0x0e100000  trusted DRAM              15 MiB (non-Savior BL32 fallback)
 0x40000000  NS DRAM                   3 GiB window
               tee-region   BL32 TEE
-              hee-region   Crook combo (shim + kernel + BOOTFS)
+              hee-region   Savior combo (shim + kernel + BOOTFS)
               ree1-region  SOS DTB + Image
               ree2-region  SOS rootfs
               tbox-reserved  tbox RAM (if the DTB publishes it)
               leftover     SOS system RAM (allocator)
 ```
 
-`paddr_to_physmap(0x40000000) = 0xffff000040000000` once Crook TTBR1
+`paddr_to_physmap(0x40000000) = 0xffff000040000000` once Savior TTBR1
 is on.
 
 #### Trusted SRAM — BL1 / BL2 / BL31
@@ -936,7 +1327,7 @@ BL31_LIMIT = SEC_SRAM end
 BL1 RO stays in flash. BL32/BL33 are **not** in SRAM; they are DRAM
 windows from the FDT.
 
-#### Crook HEE window (`hee-region`)
+#### Savior HEE window (`hee-region`)
 
 Combo image the shim described in (6):
 
@@ -979,9 +1370,9 @@ bootloader rewrites `/memory.reg` to the real reserved base/size.
 ### Linker scripts
 
 Five families. ATF scripts describe **absolute physical** SRAM.
-Phys images (shim) are PIC, link address 0. The Crook kernel is
+Phys images (shim) are PIC, link address 0. The Savior kernel is
 linked at a fixed high VA. Guest Linux Images use the ARM64 header
-and are not linked by Crook.
+and are not linked by Savior.
 
 #### BL1 — ROM + SRAM
 
@@ -1036,7 +1427,7 @@ PHDRS  load  PT_LOAD  PF_R|PF_W|PF_X
 `KERNEL_ALIGN` is **not** in this script; the image builder pads the
 shim file to 64 KiB before appending the kernel.
 
-#### Crook kernel — `kernel.ld`
+#### Savior kernel — `kernel.ld`
 
 Linked at a fixed VA; loaded wherever BL2 put `hee-region + offset`.
 `_start` runs at the physical address, then (8) jumps here.
@@ -1077,16 +1468,16 @@ container: the shim treats `_start + KERNEL_ALIGN` as
 `KERNEL_BASE = 0xffffffff00000000` (−4 GiB). User space is
 `[0x0000000001000000, +0xfffffe000000)`.
 
-#### Guest Linux Image (not a Crook script)
+#### Guest Linux Image (not a Savior script)
 
-SOS and tbox kernels are ordinary ARM64 Images. Crook never
+SOS and tbox kernels are ordinary ARM64 Images. Savior never
 relocates them. The VMM only:
 
 - copies the file into guest RAM at the proto `offset`
 - points `ELR_EL2` at `offset + 64 KiB`
 - leaves `x0` at `offset` (DTB)
 
-The Image header inside those blobs is Linux's, not Crook's.
+The Image header inside those blobs is Linux's, not Savior's.
 
 ### Terminology
 
@@ -1094,8 +1485,8 @@ The Image header inside those blobs is Linux's, not Crook's.
 | --- | --- |
 | ATF | ARM Trusted Firmware. BL1/BL2/BL31. EL3, then PSCI/SMC resident. |
 | FIP | Firmware Image Package in flash. BL31 + BL32 + BL33 + extras. |
-| BL32 / TEE | Secure EL1 payload. SPD `ERET`s into it before Crook. |
-| HEE / Crook | BL33. Zircon hypervisor host. AHYP enters it at EL2. |
+| BL32 / TEE | Secure EL1 payload. SPD `ERET`s into it before Savior. |
+| HEE / Savior | BL33. Zircon hypervisor host. AHYP enters it at EL2. |
 | REE | SOS Linux. Loaded as BL33 extra1/extra2; **run** by guest_manager, not by BL31 (AHYP). |
 | boot-shim | PIC Linux Image in front of the kernel. DTB → BOOTDATA. |
 | Combo image | shim + 64 KiB pad + kernel BOOTDATA. One BL33 file. |
@@ -1117,6 +1508,11 @@ The Image header inside those blobs is Linux's, not Crook's.
 
 | Step | File |
 | --- | --- |
+| BL1 / BL2 / BL31 | `arm-trusted-firmware/bl1/`, `bl2/`, `bl31/` |
+| SPD → TEE | BL31 SPD `trusty_init` |
+| boot-shim | `zircon/kernel/target/arm64/boot-shim/` |
+| `_start` / MMU trampoline | `zircon/kernel/arch/arm64/start.S` |
+| VHE stay EL2 | `zircon/kernel/arch/arm64/asm.S` `arm64_elX_to_el2` |
 | `bl lk_main` | `zircon/kernel/arch/arm64/start.S` |
 | init levels, `bootstrap2`, idle | `zircon/kernel/top/main.cpp` |
 | `userboot_init` / map RODSO | `zircon/kernel/lib/userboot/userboot.cpp` |
@@ -1131,6 +1527,8 @@ The Image header inside those blobs is Linux's, not Crook's.
 | `launchpad_go` | `zircon/system/ulib/launchpad/launchpad.c` |
 | appmgr → `sysmgr` | `garnet/bin/appmgr/main.cc` |
 | `LaunchService` GuestManager | `garnet/bin/sysmgr/app.cc` |
+| catalog / Launch | `garnet/bin/guest_manager/` |
+| Vmm init / VCPU 0 | `garnet/bin/guest/vmm.cc` |
 
 ---
 

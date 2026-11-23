@@ -1,15 +1,19 @@
 # Memory
 
-Crook is a type-1 hypervisor. The host MMU is EL1 stage-1 (`TTBR0` /
+Savior is a type-1 hypervisor. The host MMU is EL1 stage-1 (`TTBR0` /
 `TTBR1`). Each guest has a **stage-2** table (`VTTBR_EL2`) that maps
 IPA (guest PA) to host PA. Device MMIO is either identity-mapped in
 that table or **unmapped** so a guest access traps to the VMM.
 
-Read [`bootstrap.md`](bootstrap.md) for the EL / MMU-on sequence,
+Read [`README.md`](README.md) for the product map,
+[`bootstrap.md`](bootstrap.md) for the EL / MMU-on sequence,
+[`cpu.md`](cpu.md) for `VTTBR` on/off at guest enter,
 [`interrupt.md`](interrupt.md) for VGIC traps on GICD/GICR,
 [`scheduler.md`](scheduler.md) for VCPU pin,
 [`gpu.md`](gpu.md) for `MapDevice` / SWA grant,
-[`vmm.md`](vmm.md) for guest lifecycle.
+[`vmm.md`](vmm.md) for guest lifecycle,
+[`devices.md`](devices.md) for lua maps,
+[`security.md`](security.md) for S2 / SMPU isolation.
 
 This note is the map of that path: how Zircon **organizes pages**
 (arena `vm_page_t` array, VMO page list, VMAR mappings), the VM
@@ -141,7 +145,7 @@ sees a page table root and a PTE.
 | Device DMA | SMMU STE → S2 TTB (same as `VTTBR`) | IOVA or IPA | `ArmSmmuv3` + vSMMU |
 
 Host never walks `VTTBR`. Guest stage-1 is the guest kernel's problem.
-Crook only owns stage-2.
+Savior only owns stage-2.
 
 ## Layout
 
@@ -191,7 +195,7 @@ Guest IPA is **not** a VA. It is the input of stage-2:
 
 AHYP identity: SOS/tbox/UOS IPA **equals** HPA for every
 `kCached` / `kDevice` window. The 64 GiB IPA space is large enough
-to cover the SoC PA map Crook hands out.
+to cover the SoC PA map Savior hands out.
 
 ## Diagrams
 
@@ -202,7 +206,7 @@ of a passthrough device, then PMM, faults, S2 walk, and GPU
 
 ### 1. Two walks to the same PA
 
-CPU: guest S1 then Crook S2. DMA: SMMU, same S2 TTB as `VTTBR`.
+CPU: guest S1 then Savior S2. DMA: SMMU, same S2 TTB as `VTTBR`.
 
 ```text
   guest VA                    device IOVA
@@ -530,7 +534,7 @@ at once.
 `VmAddressRegionOrMapping` is the tagged union. VMARs nest; mappings
 are leaves. Children do not overlap. `WAVLTree` keyed by `base()`.
 
-`TYPE_LOW_KERNEL` exists only for SMP bootstrap of very low PA; Crook
+`TYPE_LOW_KERNEL` exists only for SMP bootstrap of very low PA; Savior
 AHYP does not use it for guests.
 
 | Object | Owns | Notes |
@@ -644,7 +648,7 @@ RAM via `phys_mem_.as<T>(gpa - phys_base)` without a hypercall.
                        Pin VMO  →  PinnedMemoryTokenDispatcher (PMT)
 ```
 
-For passthrough, Crook rarely pins host VMOs into the SMMU (that is
+For passthrough, Savior rarely pins host VMOs into the SMMU (that is
 the dummy-IOMMU / host-driver path). Guest DMA uses the STE's S2 TTB
 instead of a PMT. PMT still exists for host devices that DMA into
 kernel/user VMOs.
@@ -1410,7 +1414,7 @@ AHYP QEMU path: VMM maps each `VmemSpec` into the guest VMAR
 the stage-2 fill.
 
 PHyp leftover (`setup_stage2_mapping`): identity 1 GiB peripherals
-at IPA 0 plus a DRAM window, both `VmObjectPhysical`. Crook AHYP
+at IPA 0 plus a DRAM window, both `VmObjectPhysical`. Savior AHYP
 does not use that helper; lua `setVmem` does the same job.
 
 ### Walk
@@ -1592,7 +1596,7 @@ vmem_spec_.push_back(spec)
 
 #### Principle
 
-Crook AHYP is **identity stage-2**. The guest is given real host
+Savior AHYP is **identity stage-2**. The guest is given real host
 physical ranges, not a shadow GPA. `setVmem` is how the VMM names
 those ranges.
 
@@ -1702,7 +1706,7 @@ Same `VmemSpec`, different parsers:
 
 `guest_memory_allocator` is a platform-bus device
 (`/dev/sys/platform/00:00:f/guest_memory_allocator`). It does **not**
-allocate. It **reads the host FDT** that ATF left in Crook's boot
+allocate. It **reads the host FDT** that ATF left in Savior's boot
 data and returns `{addr, size}` for the VMM to wrap in a `VmemSpec`.
 
 ```text
@@ -1862,7 +1866,7 @@ the host, or DMA works but IRQs never arrive.
      (InterruptEventDispatcher, ICH_LR HW=1)
 ```
 
-| Leg | What Crook does | If skipped |
+| Leg | What Savior does | If skipped |
 | --- | --- | --- |
 | CPU MMIO | `VmemSpec` identity S2, **no** trap on that window | guest abort, or VMM emulates |
 | IRQ | `ZX_INTERRUPT_PASSTHROUGH` + `bind_vcpu` ([`interrupt.md`](interrupt.md)) | host eats the SPI |
@@ -1914,7 +1918,7 @@ ARM SMMUv3 sits on the DMA path. Stream ID (SID) selects a Stream
 Table Entry (STE). The STE says abort, bypass, S1, S2, or nested
 S1+S2.
 
-Crook splits it in two:
+Savior splits it in two:
 
 | Plane | Object | Role |
 | --- | --- | --- |
@@ -2009,7 +2013,7 @@ host STE[2..3] unchanged   (S2VMID, S2TTB)
     │
     ├─ S1  guest CD at S1CTXPTR (IOVA → IPA)     guest-owned
     │
-    └─ S2  S2TTB + S2VMID + STE VTCR             Crook-owned
+    └─ S2  S2TTB + S2VMID + STE VTCR             Savior-owned
            IPA → PA   (same tables as VTTBR)
     │
     ▼
@@ -2050,11 +2054,11 @@ path. Guest passthrough DMA does **not**.
 ## SMPU
 
 SMPU is a **secure memory protection unit** on the interconnect
-(SoC firewall, programmed by TEE / ATF, not by Crook EL1). It
+(SoC firewall, programmed by TEE / ATF, not by Savior EL1). It
 decides which masters may hit which PA ranges, independent of CPU
 stage-2 and SMMU.
 
-Crook's job is to **not map** those PAs into a guest, so a guest
+Savior's job is to **not map** those PAs into a guest, so a guest
 load does not even reach the firewall.
 
 ```text
@@ -2133,15 +2137,15 @@ resurrect zeros as dirty.
           for each committed page:
              va = paddr_to_physmap(pa)
              dc cvac / ivac / civac
-  ContextSwitch  if AUTO: PoisonCache  (Nebula extra)
+  ContextSwitch  if AUTO: PoisonCache  (Savior extra)
 ```
 
-`ArmArchVmAspace::PoisonCache` is a Nebula extra: if
+`ArmArchVmAspace::PoisonCache` is a Savior extra: if
 `ARCH_CACHE_PROT_FLAG_AUTO` is set, context-switch poisons the
 outgoing user aspace so stale lines cannot be speculated.
 
 S2 MemAttr and S1 AttrIndx combining: if either stage says Device,
-the result is Device. Inner-shareable is what Crook programs for
+the result is Device. Inner-shareable is what Savior programs for
 Normal so all CPUs snoop.
 
 ## ZX_VM flags
@@ -2225,7 +2229,7 @@ only the trapped vSMMU window.
 ## TLB
 
 There is **no software TLB**. The CPU TLBs cache S1, S2, and combined
-walks. Crook only **invalidates**.
+walks. Savior only **invalidates**.
 
 ```text
   CPU TLB entry tagged by
@@ -2320,6 +2324,8 @@ RWX in the current `Guest::Init` flags.
 (Device) is a programming error; lua `kDevice` vs `kCached` is how
 the VMM picks one.
 
+Swimlanes: [`flows.md`](flows.md) F4 (abort), F13 (`setVmem` → PTE).
+
 ## Flows
 
 Timing versions of **Diagrams** 4–13. Same events, more timestamps.
@@ -2328,7 +2334,7 @@ Timing versions of **Diagrams** 4–13. Same events, more timestamps.
 
 ```text
  phys  _start
-   arm64_elX_to_el1     VTTBR=0
+   arm64_elX_to_el2     VHE: HCR.E2H|TGE, VTTBR=0
    boot_alloc_init
    TTBR1 = kernel table, TTBR0 = 1 GiB identity
    SCTLR.M=1
@@ -2465,7 +2471,7 @@ sit in the 1 GiB window.
 | Physmap | `KERNEL_ASPACE_BASE + PA`. Host kernel's linear map of DRAM. |
 | IPA / GPA | Guest physical address. Stage-2 input. Identity for SOS/tbox. |
 | Stage-1 | EL1 `TTBR0/1`. Host user/kernel, or the **guest's** own tables. |
-| Stage-2 | EL2 `VTTBR`. IPA → PA. Crook-owned. |
+| Stage-2 | EL2 `VTTBR`. IPA → PA. Savior-owned. |
 | VMID | 8 bits in `VTTBR[63:48]`. Tags S2 TLB. Stored in `asid_` of the guest aspace. Kernel: SOS=1, ALPS=2, TBOX=3. |
 | ASID | Host user TTBR0, 16-bit allocator. Not used for guests. |
 | `VmemSpec` | Lua mapping: name, GPA/HPA, size, `MemoryPolicy`. |

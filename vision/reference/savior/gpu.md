@@ -1,6 +1,6 @@
 # GPU
 
-Crook shares one physical **Mali GPU** between SOS (Yocto) and UOS
+Savior shares one physical **Mali GPU** between SOS (Yocto) and UOS
 (Android / ALPS). The product path is Arm **SWA**: software
 virtualization, no Mali Access Window / Resource Group, no hardware
 partition. The hypervisor is the **Arbiter**. Guests talk to it
@@ -8,26 +8,28 @@ through **SMC** (Comms) and four **notify IRQs** (GRANT / STOP / LOST
 / RCVR). Ownership is exclusive: only the granted VM has GPU MMIO in
 stage-2 and Mali IRQs dispatched onto its VCPUs.
 
-QEMU virt has a separate **virtio-gpu** 2D scanout. That is a display
-device, not SWA. SWA syscalls refuse `BOOTMODE_PHYP`,
-`BOOTMODE_QEMU_AHYP`, and `BOOTMODE_OKL4_AHYP`; they only run on
-`BOOTMODE_AHYP`.
+SWA syscalls refuse `BOOTMODE_PHYP`, `BOOTMODE_QEMU_AHYP`, and
+`BOOTMODE_OKL4_AHYP`; they only run on `BOOTMODE_AHYP`.
 
-Read [`vmm.md`](vmm.md) for SOS / UOS lifecycle,
+The same `GpuScheduler` lives in this tree and in the mt8678 3OS
+GPU SWA tree. SWA is **not** 8678-only. EL2/VHM differ; the
+arbiter does not. See [`README.md`](README.md) two trees.
+
+Read [`README.md`](README.md) for the product map,
+[`vmm.md`](vmm.md) for SOS / UOS lifecycle,
 [`memory.md`](memory.md) for `MapDevice` / stage-2,
 [`interrupt.md`](interrupt.md) for `PhysicalInterrupt` vs virtual
 inject, [`scheduler.md`](scheduler.md) for VCPU pin.
 
 Arm's model (Access Manager, access window, arbiter, yield) is
 `Arm Mali GPU 5th Generation and Later Virtualization Guide`
-112001_0100_01_en. Crook implements the **software** time-slice
+112001_0100_01_en. Savior implements the **software** time-slice
 of that model: the hypervisor **is** the Arbiter, and stage-2
 map/unmap stands in for a hardware access window.
 
-This note is the map of SWA: Arm core concepts, how Crook maps
-them, objects, message protocol, state machine, grant / stop /
-recovery flows, IRQ dispatch, MMIO map, and the QEMU virtio-gpu
-path.
+This note is the map of SWA: why it exists, the three isolation
+planes, Arm core concepts, Savior objects, SMC/IRQ protocol,
+state machine, grant / stop / recovery, and MMIO map.
 
 ## Framework
 
@@ -41,7 +43,7 @@ path.
               │ x2=cmd  x3=arg0  x4=arg1
               ▼
  ┌────────────────────────────────────────────────────────────────┐
- │ Guest EL1  SMC  →  Crook EL2 vmexit  handle_smc_instruction    │
+ │ Guest EL1  SMC  →  Savior EL2 vmexit  handle_smc_instruction    │
  │  SMC_FC_NBL_VHM_REQ / FC_ID_GPU_ARBITER                        │
  │  GpuSchedulerAccessor::HandleSmc                               │
  └────────────────────────────┬───────────────────────────────────┘
@@ -78,14 +80,96 @@ the kernel:
 
 Kernel VMID vs FIDL user vmid is the same table as [`vmm.md`](vmm.md):
 SOS 1, ALPS 2, tbox 3. Debug dumps print `vmid=1` Yocto, `vmid=2`
-Android.
+Android. **tbox does not join SWA** (no `/arbiter`, no `mali_arb`).
+
+## Principle (SWA)
+
+The SoC has **one** Mali. SOS (IVI / Yocto) and UOS (Android) both
+need 2D/3D. There is no Mali Access Manager, no Access Window
+hardware, no Resource Group, no shader-core partition. Concurrent
+owners would mean two kernels programming the same MMIO and
+sharing the same IRQ wires. That is undefined.
+
+SWA's answer: **exclusive ownership over time**, enforced by the
+hypervisor.
+
+```text
+  what a guest needs to "have the GPU"
+     1. CPU MMIO   stage-2 PTE for GPU regs     AXI-subordinate
+     2. IRQs       Mali SPIs on its VCPUs       PHYSICAL, HW LR
+     3. DMA        SMMU STE → that guest's S2   AXI-manager
+```
+
+Savior punches (1) and retargets (2) on every GRANT / STOP.
+(3) is **not** retuned at GRANT: both VMs' StreamIDs must already
+be attached to **their own** stage-2. Isolation of GPU DMA is
+"the other guest's RAM is not in this S2", not "SID changes
+owner". A guest without MMIO cannot submit; a guest with MMIO
+but the other's SID would DMA into the wrong IPA — so STE setup
+at boot is part of SWA correctness ([`memory.md`](memory.md)).
+
+**Why the hypervisor is the arbiter.** Arm's reference
+(`panthor_arbitration.ko`) talks to an Access Manager through a
+Resource Group page mapped into a host VM. Savior has no such
+page. The only thing that can open or close the "window" is
+`MapDevice` / `UnMapDevice` and `register_int_handler`. Those
+are kernel operations, so `GpuScheduler` lives in Savior.
+
+**Cooperative, then forced.** The owner must STOP (drain or
+quiesce) before the next GRANT. That is Arm yield. If it
+ignores STOP until `yield_timeout`, Savior **does not** reset
+Mali in hardware (there is no Access Manager reset). It
+unmaps, injects Lost/RCVR, and hopes the next kbase init
+cleans the GPU. A badly behaved guest costs the other VM
+work. SWA **reduces** interference; it is not hard isolation.
+
+**What the guest thinks.** Each VM has a full `mali_kbase` plus
+`mali_arb`. The VMM injects `/arbiter` (`compatible =
+"mali,sw-arbiter"`) into that guest's DTB. From the driver, the
+GPU appears, disappears, and comes back: GRANT ≈ power-on /
+window-open, STOP ≈ must idle, LOST ≈ device-lost. There is no
+second GPU and no shared kbase context.
+
+**Who may request.** SOS and UOS. tbox is a third VM on the
+same cores; it has no Mali path. SIMPLE mode (`ASSIGN`) is SOS
+only: force grant, no GRANT IRQ — a bring-up / single-owner
+bypass of the handshake.
+
+**Three IRQ planes, one owner.**
+
+| Plane | Type | Who receives |
+| --- | --- | --- |
+| Notify GRANT/STOP/LOST/RCVR | virtual | the VM being told to start/stop/recover |
+| Mali JOB/MMU/GPU/EVT/PWR | physical, HW bit | **current owner only** |
+| Host GIC | remaining SoC | not SWA |
+
+While VM A is Granted, VM B's `mali_kbase` must not see Mali
+SPIs. `EnableGpuIrq` overwrites the dispatch set; `DisableGpuIrq`
+installs a dummy that EOIs without injecting.
+
+**Switch cost.** Unmap PTEs + TLBI + remap + GRANT IRQ + guest
+kbase re-program. HWA keeps the guest map stable and only
+flips the Access Manager; SWA pays the remap every time. That
+is why slices are milliseconds (`request_timeout` / SCHEDULE),
+not microseconds.
+
+**NORMAL vs SIMPLE.**
+
+```text
+ NORMAL   REQUEST → GRANT IRQ → ACTIVE → (slice) STOP → STOPPED → …
+ SIMPLE   SOS ASSIGN → EnableGpu, Granted, no IRQ
+          no UOS handshake; one owner
+```
+
+Product 3OS is NORMAL. SIMPLE is for a board that has not
+brought up `mali_arb` on the second VM yet.
 
 ## Core concepts (Arm)
 
 From 112001_0100_01_en ch. 2–4. The basic product is a **shared
 single-partition GPU**: one execution domain, several guests,
 time-sliced. AE parts add **partitions** (hardware-isolated
-domains). Crook is the first family.
+domains). Savior is the first family.
 
 ```text
  Arm HWA (Access Manager in the GPU)
@@ -101,17 +185,17 @@ domains). Crook is the first family.
                               GPU
 ```
 
-Crook has **no** Access Manager, no access-window aperture, no
+Savior has **no** Access Manager, no access-window aperture, no
 Resource Group. The hypervisor both isolates and arbitrates:
 
 ```text
- Crook SWA
+ Savior SWA
  ┌──────── SOS ────────┐   ┌──────── UOS ────────┐
  │ mali_kbase+mali_arb │   │ mali_kbase+mali_arb │
  └──────────┬──────────┘   └──────────┬──────────┘
             │ SMC REQUEST/IDLE/STOPPED│
             ▼                         ▼
-      Crook EL1  GpuScheduler  (Arbiter + isolation)
+      Savior EL1  GpuScheduler  (Arbiter + isolation)
             │ GRANT/STOP/RCVR  virtual IRQ
             │ MapGpu / UnmapGpu  stage-2
             ▼
@@ -122,7 +206,7 @@ Resource Group. The hypervisor both isolates and arbitrates:
 
 The software domain that gets the GPU is a **VM / guest**. Each
 guest that uses the GPU has its **own driver instance**
-(`mali_kbase` + `mali_arb` in Crook). That instance:
+(`mali_kbase` + `mali_arb` in Savior). That instance:
 
 - programs the GPU control interface the guest can see
 - loads firmware into the GPU subinstance (when the SoC has it)
@@ -154,7 +238,7 @@ The window is an ownership boundary, not just an address range.
 HWA keeps the guest map stable across switches; the Access
 Manager flips which window is connected.
 
-Crook SWA has no such hardware. **Open** = `EnableGpu` (stage-2
+Savior SWA has no such hardware. **Open** = `EnableGpu` (stage-2
 PTE present, Mali IRQs routed). **Closed** = `DisableGpu`
 (unmap, dummy IRQ). Each GRANT remaps.
 
@@ -204,7 +288,7 @@ current queues first. Yields are **cooperative**. If they fail,
 the platform forces recovery → lost work / device-lost.
 
 Arm also keeps a **legacy software stop**: `ARB_VM_GPU_STOP` →
-guest `VM_ARB_GPU_STOPPED` → arbiter closes the window. Crook's
+guest `VM_ARB_GPU_STOPPED` → arbiter closes the window. Savior's
 STOP IRQ + SMC `STOPPED` is this family, not the CSF
 `YIELD_DONE` path.
 
@@ -213,7 +297,7 @@ STOP IRQ + SMC `STOPPED` is this family, not the CSF
 Part of the **current** execution environment, not a shared
 service. It schedules, quiesces, yields; it is booted or
 warm-resumed when a window opens. Different guests may use
-different images. Crook's guest kbase still talks to Mali
+different images. Savior's guest kbase still talks to Mali
 firmware **while granted**; the hypervisor does not run it.
 
 ### Arbiter
@@ -231,7 +315,7 @@ Placement (Arm): host kernel module, a dedicated VM, the
 hypervisor, or a safety island. Reference is
 `panthor_arbitration.ko` in the host / a VM, round-robin,
 `request_timeout` / `yield_timeout`. Policy is replaceable
-(priority, VSync, safety). Crook puts the arbiter **in the
+(priority, VSync, safety). Savior puts the arbiter **in the
 hypervisor** (`GpuScheduler`) because there is no Access
 Manager messaging page to map into a host VM.
 
@@ -248,12 +332,12 @@ time-sharing the same shaders.
 | Hypervisor | stage-2 of guest-visible regs, SMMU for GPU DMA, IRQ routing, security |
 
 Arm: arbiter **can** sit outside the hypervisor; isolation stays
-with EL2 / SMMU. Crook: one object does both, because SWA has
+with EL2 / SMMU. Savior: one object does both, because SWA has
 nothing else to open a window with except `MapDevice`.
 
 AXI-subordinate = CPU MMIO into GPU regs (stage-2). AXI-manager
 = GPU DMA out (SMMU StreamID). Arm encodes StreamID as access-
-window index + protected bit. Crook uses the SID table in
+window index + protected bit. Savior uses the SID table in
 [`memory.md`](memory.md); grant does not retune STE, so **both**
 VMs' SIDs must already be attached to **their** stage-2, and
 only the granted VM has CPU MMIO.
@@ -266,14 +350,14 @@ Independent knobs:
 | --- | --- | --- |
 | What | share one subinstance over time | concurrent isolated domains |
 | Isolation | policy + reset | hardware |
-| Crook | yes (SWA) | no |
+| Savior | yes (SWA) | no |
 
-Hybrid (Arm, not Crook): one partition for a safety guest, IVI
+Hybrid (Arm, not Savior): one partition for a safety guest, IVI
 guests time-slice another.
 
 ## Virt methods
 
-| Method | Hardware | Who owns the GPU | Crook |
+| Method | Hardware | Who owns the GPU | Savior |
 | --- | --- | --- | --- |
 | **SWA** | none | one VM at a time; hypervisor maps MMIO + IRQs | **yes** |
 | **HWA** | Access Window + Resource Group + Access Manager | Arbiter picks the window; map stays | no |
@@ -283,12 +367,12 @@ SWA cost is **context switch**: unmap previous guest, map next,
 inject GRANT. Mali itself is not partitioned. That is the remap
 HWA's access window is designed to avoid.
 
-### Arm protocol vs Crook SMC
+### Arm protocol vs Savior SMC
 
 Arm arbiter↔VM (v3) sits on the access-window message path.
-Crook has no that path; SMC + virtual IRQ is the whole channel.
+Savior has no that path; SMC + virtual IRQ is the whole channel.
 
-| Arm | Crook |
+| Arm | Savior |
 | --- | --- |
 | `VM_ARB_GPU_REQUEST` | SMC `REQUEST` |
 | window open / `WINDOW_OPENED` | `EnableGpu` + GRANT IRQ |
@@ -302,7 +386,7 @@ Crook has no that path; SMC + virtual IRQ is the whole channel.
 | `ARB_VM_INIT` / `VM_ARB_INIT` | `zx_gpu_scheduler_add_vcpu` + DTS `/arbiter` |
 
 Guest-side Arm AW states INIT / READY / GPU_REQUEST /
-GPU_GRANTED / GPU_STOP / GPU_STOPPED line up with Crook
+GPU_GRANTED / GPU_STOP / GPU_STOPPED line up with Savior
 Undefined / Idle / Pending / Granted / Stopping / Idle.
 
 ### Principle: one owner
@@ -513,9 +597,11 @@ runs after a successful STOP.
 `ScheduleTimerPeriod` is `min(owner.schedule_period, requester.deadline)`.
 Deadline comes from `REQUEST` `arg1` when timeset is set.
 
+Swimlane: [`flows.md`](flows.md) F9.
+
 ## Flows
 
-Arm time-slice examples (guide 4.3.7) in Crook terms.
+Arm time-slice examples (guide 4.3.7) in Savior terms.
 
 ```text
  no other requester (Arm "No Yield")
@@ -537,7 +623,7 @@ Arm time-slice examples (guide 4.3.7) in Crook terms.
 ```
 
 ```text
- SOS mali_arb          Crook GpuScheduler           UOS mali_arb
+ SOS mali_arb          Savior GpuScheduler           UOS mali_arb
       │                      │                           │
       │ Granted, ACTIVE      │                           │
       │                      │◄──── SMC REQUEST ─────────┤
@@ -672,7 +758,7 @@ goes Lost; if Android was owner, SOS can recover.
 
 ```text
  Mali  JOB/MMU/GPU/EVT/PWR  physical SPI
-   Crook GIC  registered handler dispatch_irq
+   Savior GIC  registered handler dispatch_irq
    GpuSchedIntrHandler::DispatchIrq
      pick_running_vcpu  STATE_INIT | RUNNING | SUSPEND
      PhysicalInterrupt(vector)   HW bit in ICH_LR
@@ -749,25 +835,12 @@ zx_gpu_scheduler_set_mode
 zx_gpu_scheduler_destroy_vm     (RevokeGpu)
 ```
 
-## QEMU virtio-gpu (not SWA)
-
-QEMU guests get `machina::VirtioGpu`: virtio id GPU, queues
-CONTROLQ + CURSORQ, 2D only. Commands:
-`GET_DISPLAY_INFO`, `RESOURCE_CREATE_2D`, `RESOURCE_UNREF`,
-`SET_SCANOUT`, `RESOURCE_ATTACH_BACKING`, `TRANSFER_TO_HOST_2D`,
-`RESOURCE_FLUSH`, cursor update/move.
-
-UOS DTS can add `nbl,virtio_gpu_irq` / vsock nodes for a **paravirt
-display** path. That does not time-share Mali. `virtgpu_dbg` in the
-hypervisor is a debug hook on `FC_ID_INJECT_HW_IRQ`, not the
-arbiter.
-
 ## Terminology
 
-Arm names from 112001_0100_01_en. Crook column is what this tree
+Arm names from 112001_0100_01_en. Savior column is what this tree
 actually has.
 
-| Term | Arm meaning | Crook |
+| Term | Arm meaning | Savior |
 | --- | --- | --- |
 | VM / guest | software domain that gets the GPU | SOS (VMID 1), UOS/ALPS (2), tbox (3) |
 | Driver instance | per-guest GPU kernel driver | `mali_kbase` + `mali_arb` |
@@ -777,8 +850,8 @@ actually has.
 | Resource Group | arbiter↔guest message / partition config pages | **none**; SMC + notify IRQs |
 | Partition | hardware-isolated execution domain (AE) | **none** |
 | Time slicing | share one subinstance over time | SWA; exclusive GRANT |
-| Arbiter | who runs next, when to yield | `GpuScheduler` in Crook EL1 |
-| Hypervisor | S2, SMMU, IRQ routing, security | Crook; same object as arbiter |
+| Arbiter | who runs next, when to yield | `GpuScheduler` in Savior EL1 |
+| Hypervisor | S2, SMMU, IRQ routing, security | Savior; same object as arbiter |
 | Yield | owner stops so another guest can run | STOP IRQ; guest `STOPPED` / `IDLE` |
 | `YIELD_NOW` / `YIELD_IDLE` | firmware stop now / after drain | STOP is now; IDLE is guest-voluntary |
 | `YIELD_DONE` | firmware finished yield (async) | not used |
@@ -793,8 +866,8 @@ actually has.
 | SWA | software virtualization, remap each grant | **this product** |
 | HWA | Access Window hardware | not in this SoC path |
 | CSF | command stream frontend (5th gen) | guest firmware while granted |
-| panthor | Arm reference Linux driver/arbiter | analogue: kbase + Crook `GpuScheduler` |
-| GRANT / STOP / LOST / RCVR | Crook notify IRQs | virtual inject to owner VM |
+| panthor | Arm reference Linux driver/arbiter | analogue: kbase + Savior `GpuScheduler` |
+| GRANT / STOP / LOST / RCVR | Savior notify IRQs | virtual inject to owner VM |
 | `PhysMem` / cmdbuf | — | IPA `0x88000b000`, not an AW message page |
 
 ## Tests
@@ -821,7 +894,6 @@ cases must PASS.
 | FIDL / client | `garnet/lib/machina/fidl/gpu_scheduler.fidl` `gpu_scheduler.cc` |
 | Config | `garnet/bin/guest/guest_config.h` `ArbiterGpuSpec` |
 | VCPU pick | `garnet/lib/machina/gpu_scheduler_vcpu_selection.h` |
-| QEMU 2D GPU | `garnet/lib/machina/virtio_gpu.cc` |
 | Arm model | `Arm Mali GPU 5th Generation and Later Virtualization Guide` 112001_0100_01_en |
 
 ---

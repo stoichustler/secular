@@ -1,14 +1,21 @@
 # Interrupt
 
-Crook is a type-1 hypervisor. The host GIC is GICv3. Guests see a
+Savior is a type-1 hypervisor. The host GIC is GICv3. Guests see a
 **VGIC**: emulated GICD/GICR MMIO plus the GICv3 virtual CPU interface
 (`ICH_*_EL2`). Physical IRQs can be **passed through** into a VCPU, or
 the VMM can **inject** a virtual IRQ / MSI / LPI that never existed on
-the wire.
+the wire. `gicv2.cpp` exists in the tree; QEMU virt and SoC Savior
+program GICv3 (`arm_gicv3`). Do not follow the v2 path.
+
+`zx_guest_set_smc_irq` is a **virtual** IRQ the VMM injects when a
+forwarded SMC (TEE) returns, so the guest can leave WFI. Not a
+host SPI.
 
 Read [`bootstrap.md`](bootstrap.md) for the EL2 / VCPU `eret`,
+[`cpu.md`](cpu.md) for the VCPU thread / intercept,
 [`memory.md`](memory.md) for stage-2, [`scheduler.md`](scheduler.md)
-for VCPU pin / IPI wakeup.
+for VCPU pin / IPI wakeup, [`vhm.md`](vhm.md) for the kick SPI,
+[`devices.md`](devices.md) for which SPIs lua forwards.
 
 This note is the map of that path: how a SPI/PPI/SGI/MSI is configured,
 how it reaches a VCPU bitmap, how `ICH_LR<n>_EL2` is filled, and which
@@ -32,7 +39,7 @@ Three planes share one GICv3.
  └────────────────────────────┬───────────────────────────────────┘
                               ▼
  ┌────────────────────────────────────────────────────────────────┐
- │ Crook kernel EL1 / EL2                                         │
+ │ Savior kernel EL1 / EL2                                         │
  │  arm_gicv3  IRQ handler                                        │
  │  InterruptEventDispatcher  (passthrough)                       │
  │  Vcpu::Interrupt → GichState bitmap  PHYSICAL | VIRTUAL        │
@@ -96,7 +103,7 @@ the HW-bit rule that causes storms.
   │                          (HCR.IMO / FMO)                      │
   └────────────────────────────┬──────────────────────────────────┘
                                ▼
-  ┌─ Crook EL1 / EL2 ─────────────────────────────────────────────┐
+  ┌─ Savior EL1 / EL2 ─────────────────────────────────────────────┐
   │  VcpuIrqHandler  →  bitmap PHYSICAL | VIRTUAL                 │
   │  gich_maybe_interrupt  →  ICH_LR  →  eret guest               │
   └────────────────────────────┬──────────────────────────────────┘
@@ -134,6 +141,8 @@ Wrong bit = lost IRQ or storm. See **Pitfalls**.
 4096───5119  eSPI    same passthrough as SPI
     ≥8192    LPI     emulated ITS; no physical GIC pending
 ```
+
+Swimlanes: [`flows.md`](flows.md) F5 (passthrough), F6 (virtual).
 
 ### 4. Passthrough SPI (HW=1)
 
@@ -393,7 +402,7 @@ SGI through the host GIC.
 ## MSI / ITS / LPI
 
 GICv3 MSI is a memory write the ITS translates to an LPI (≥ 8192).
-Crook emulates the ITS; there is no host LPI for virtio.
+Savior emulates the ITS; there is no host LPI for virtio.
 
 ```text
  Guest programs ITS (MAPD/MAPC/MAPTI) + unmasks LPI in PROP table
@@ -420,6 +429,25 @@ Virtio PCI MSI-X (`msix_config.cc`) calls `TriggerMsixInterrupt` →
 
 `GicIts::InjectMsi` refuses a disabled LPI (`LPI_PROP_ENABLE` in the
 guest PROP table). Target VCPU comes from the collection mapping.
+
+### Kernel `MsiRouter` (this tree, `WITH_MSI_IN_KERNEL`)
+
+Software ITS cache on `Guest`: `(device_id, event_id) → (vector,
+target_vcpu)`. Sorted vector, binary search.
+
+```text
+ zx_guest_add_msi_mapping     MsiRouter::AddMapping
+ guest  SMC HC_INJECT_MSI
+    handle_inject_msi_hypercall
+       msi_data == -1   SPI  →  ZX_ERR_NOT_SUPPORTED  (EL0 / GicDistributor)
+       else             MsiRouter::Inject
+                          FindMapping(msi_addr, msi_data)
+                          VcpuDispatcher::Interrupt  VIRTUAL
+```
+
+`vector` must be ≤ `kInterruptMax` or MAPTI fails before Track
+cannot store it. mt8678 has no `msi_router.cpp`: every
+`HC_INJECT_MSI` is the EL0 path above (diagram).
 
 ## VHM FE ↔ BE
 
@@ -585,6 +613,7 @@ interrupt_dump_regs(vector)
 | Lua VGIC | `garnet/bin/guest/sos/qemu/sos.lua` |
 | GICD/GICR emulate + passthrough | `garnet/lib/machina/arch/arm64/gic_distributor.cc` |
 | ITS / MSI | `garnet/lib/machina/arch/arm64/gic_its.cc` |
+| Kernel MSI cache | `zircon/kernel/arch/arm64/hypervisor/msi_router.cpp` |
 | VHM MSI | `garnet/lib/machina/vhm_service_impl.cc` `inject_msi` |
 | VHM device inject | `garnet/lib/machina/vhm_device.cc` `VHM_INTR_INJECT` |
 | irq_monitor | `zircon/kernel/dev/interrupt/arm_gic/common/irq_monitor.cpp` |

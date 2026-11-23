@@ -1,15 +1,18 @@
 # VMM
 
-Crook's userspace hypervisor is **guest_manager** plus one **Vmm**
+Savior's userspace hypervisor is **guest_manager** plus one **Vmm**
 process per guest. SOS, UOS (ALPS / Android), and tbox are those
 guests. This note is their lifecycle: launch, run, reboot, shutdown,
 STR (suspend-to-RAM / s2idle), and the two watchdog layers that
 restart a silent hang.
 
 Read [`bootstrap.md`](bootstrap.md) for first `eret` into guest EL1,
+[`cpu.md`](cpu.md) for `zx_vcpu_resume` / PSCI intercepts,
 [`scheduler.md`](scheduler.md) for VCPU pin / occupancy,
 [`interrupt.md`](interrupt.md) for wakeup IRQs,
-[`memory.md`](memory.md) for stage-2.
+[`memory.md`](memory.md) for stage-2,
+[`vhm.md`](vhm.md) for SOS spawning UOS,
+[`devices.md`](devices.md) for lua maps.
 
 ## Framework
 
@@ -56,6 +59,24 @@ flips it. UOS is usually spawned from SOS, not this file.
     guest.StartVcpu(0)                  pin, eret guest
     BootstrapGuestWatchdog
 ```
+
+## Principle
+
+1. **One Vmm process per guest.** GuestManager is a catalog and
+   supervisor. Create/Run/Stop talk FIDL `GuestLifecycle` into
+   that process. Kernel objects (`Guest`, `Vcpu`) die with it.
+
+2. **Userspace owns policy, kernel owns the `eret`.** Lua maps,
+   traps, virtio, and watchdog live in machina. Stage-2, ICH_LR,
+   PSCI, and the resume loop body live in the kernel
+   ([`cpu.md`](cpu.md)). `zx_vcpu_resume` returning
+   `ZX_ERR_CANCELED` / a STOP packet is how PSCI RESET becomes a
+   relaunch.
+
+3. **Relaunch is the default.** Manual `ForceShutdown` and a
+   guest `SYSTEM_OFF` that maps to `SHUTDOWN` do not come back.
+   Probe hang, watchdog miss, `REBOOT_REQUIRED`, and unexpected
+   Vmm death do.
 
 ## GuestManager state machine
 
@@ -185,7 +206,9 @@ Secondary VCPUs: guest `PSCI CPU_ON` →
 ## STR (suspend / resume)
 
 Two guest idle depths, plus a host-wide suspend when **every** VM is
-idle.
+idle. Host device freeze / idle-gate / ATF is [`pm.md`](pm.md)
+(`HyperPmManager` on this tree, legacy DDK+pdev if no
+`/features/pm`).
 
 ### s2idle (`PSCI CPU_SUSPEND`, `PSCI_IDLE_STATE_S2IDLE`)
 
@@ -276,6 +299,9 @@ reporter stops kicking the **hardware** WDT → SoC reset.
 
 Silent hang (probe) and VCPU watchdog both funnel to relaunch; the
 reporter covers “Vmm never came back”.
+
+Swimlanes: [`flows.md`](flows.md) F1 (catalog → first `eret`),
+F12 (RESET vs RESET2).
 
 ## Flows
 
@@ -541,6 +567,8 @@ Last VCPU (typically pCPU 0) system suspend:
 | PSCI / STR | `zircon/kernel/arch/arm64/hypervisor/vmexit.cpp` |
 | PM aggregate | `zircon/kernel/arch/arm64/hypervisor/guest.cpp` `PmState` |
 | Host device suspend | `garnet/bin/suspend/device_suspend.cc` |
+| SMC complete IRQ | `zx_guest_set_smc_irq` |
+| Cross-VM lock | `zx_guest_set_cvm_lock_*` [`guest.md`](guest.md) |
 
 ---
 

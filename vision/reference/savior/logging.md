@@ -1,5 +1,7 @@
 # Logging
 
+Read [`README.md`](README.md) for the product map.
+
 **`SYS_NEBULA_RAMCONSOLE_DUMP_T` is a whole-SoC dump.** It is
 written only when **BL2** kedump runs. A SOS-only abnormal reboot
 that restarts the VM and never comes back through BL2 does **not**
@@ -26,7 +28,7 @@ a whole-SoC reset and **does** generate the file. That is HWT, not
          │                            BL2 never runs
          │                            no SYS_NEBULA_RAMCONSOLE_DUMP_T
          ▼
- Crook panic / SoC WDT / HWT
+ Savior panic / SoC WDT / HWT
     PSCI WDT_REBOOT (NEBULA_PANIC) / RGU
          │
          ▼
@@ -38,13 +40,13 @@ a whole-SoC reset and **does** generate the file. That is HWT, not
                  → expdb → later DB zip
 ```
 
-Two Nebula logs survive a **whole-SoC** crash. They are **not**
+Two Savior logs survive a **whole-SoC** crash. They are **not**
 the same buffer, and they do not share a compile gate.
 
 | Dump name in the db | What it is | Who writes it in life | Who copies it after KE |
 | --- | --- | --- | --- |
-| `SYS_NEBULA_LOG_DUMP_T` | hypervisor printk ring (`nebulalog_reserved`, 33 pages) | Crook / SOS `nebulalog` | BL2/BL33 kedump, **unless** standalone |
-| `SYS_NEBULA_RAMCONSOLE_DUMP_T` | first 128 KB of `gz_nebula` (hypervisor load region) | Crook ramconsole, just below `bootdata` | **BL2** kedump only |
+| `SYS_NEBULA_LOG_DUMP_T` | hypervisor printk ring (`nebulalog_reserved`, 33 pages) | Savior / SOS `nebulalog` | BL2/BL33 kedump, **unless** standalone |
+| `SYS_NEBULA_RAMCONSOLE_DUMP_T` | first 128 KB of `gz_nebula` (hypervisor load region) | Savior ramconsole, just below `bootdata` | **BL2** kedump only |
 
 `MTK_HYP_UOS_TBOX_STANDALONE_RUN` does **not** turn the ramconsole
 dump on. It turns the **fwlog** dump **off**. Ramconsole dump is
@@ -56,7 +58,7 @@ the next **whole-SoC** abnormal boot into BL2.
 ## Framework
 
 ```text
- Crook  (gz_nebula, hypervisor image)
+ Savior  (gz_nebula, hypervisor image)
     ramconsole ring     64 KB just below bootdata
     printk → ramconsole_write  (wrap)
 
@@ -130,7 +132,7 @@ it copies the raw 128 KB window from the start of `gz_nebula`.
 ```
 
 Product KE db (BL2, flag off) therefore contains **both** files.
-Standalone only changes SOS BL33: no Nebula hook, `yocto-expdb`
+Standalone only changes SOS BL33: no Savior hook, `yocto-expdb`
 has no `SYS_NEBULA_*`.
 
 ### 3. From hook to db file
@@ -202,7 +204,7 @@ First exception wins. A later panic does not overwrite
     4 KB just below bootdata
     first word = bytes written
 
-  Crook kernel
+  Savior kernel
     64 KB − 4 KB  further below bootdata
     every dprintf / print_callback  →  wrap store
     ramconsole_curr_pos is the wrap index
@@ -274,7 +276,7 @@ already compile `nebulalog_expdb.c` (mt8678 LK).
         PSCI RESET / RESET2
         │
         ▼
-  Crook  (before VCPU_STOP)
+  Savior  (before VCPU_STOP)
         snapshot[vmid]  ←  128 KB ramconsole  (frozen)
         guest-visible reserved mblock, RO
         SOS = slot 1, tbox = slot 3
