@@ -1,6 +1,34 @@
 # Logging
 
+**After this:** you can say why `SYS_NEBULA_RAMCONSOLE_DUMP_T` is
+missing. **First read:** the dump table. **Next:** [`glossary.md`](glossary.md).
+
 Read [`README.md`](README.md) for the product map.
+
+## Principle
+
+1. **Two rings, two dump files.** Ramconsole lives in `gz_nebula`
+   (hypervisor image). Fwlog lives in `nebulalog_reserved`.
+   BL2 kedump copies them under different `SYS_*` names.
+
+2. **Ramconsole dump is BL2-only.** `SYS_NEBULA_RAMCONSOLE_DUMP_T`
+   appears only on a **whole-SoC** abnormal boot into BL2.
+   SOS VM relaunch never runs BL2.
+
+3. **Standalone hides fwlog, not ramconsole.**
+   `MTK_HYP_UOS_TBOX_STANDALONE_RUN` turns `SYS_NEBULA_LOG_DUMP_T`
+   off. Ramconsole dump is gated by `LK_AS_BL2`.
+
+4. **Guest RESET snapshot is a different slot.**
+   `ramconsole_snapshot_take` copies 4 KiB into the **tail** of
+   `gz_nebula`. BL2 still dumps the **first 128 KiB**.
+
+5. **Dump does not unwrap because kedump is a byte copy.**
+   BL2 `dev_write`s a window of `gz_nebula`. It does not know
+   `curr_pos` / `log_rb.put`. Reconstructing the ring is a
+   **host-side** job (this handbook’s unwrap recipe). Putting
+   unwrap in BL2 would couple kedump to Savior’s ring format
+   across every bootloader branch.
 
 **`SYS_NEBULA_RAMCONSOLE_DUMP_T` is a whole-SoC dump.** It is
 written only when **BL2** kedump runs. A SOS-only abnormal reboot
@@ -110,6 +138,28 @@ Ramconsole is a circular byte log. Position lives in the first
 word (boot-shim) / wrap index (kernel). Dump does **not** unwrap:
 it copies the raw 128 KB window from the start of `gz_nebula`.
 
+**How to unwrap a dump** (`ramconsole.c`):
+
+```text
+ gz_nebula + 0
+   bootshim  4 KiB   word0 = bootshim_write_chars  (chars written, not wrap)
+             rest    boot-shim bytes
+   kernel    60 KiB  ramconsole_curr_pos wraps at ramconsole_sz (0xF000)
+             write_chars = curr_pos after last byte
+ BL2 copies 128 KiB from gz_nebula start  (includes both rings + slack)
+
+ reconstruct kernel ring:
+   if write_chars never wrapped (curr_pos never hit sz then 0)
+      linear [0, curr_pos)
+   else
+      [curr_pos, sz) then [0, curr_pos)     oldest → newest
+```
+
+`ramconsole_snapshot_take`: memcpy **min(64 KiB, 4 KiB)** of the
+**live kernel ring** (not unwrapped) into
+`gz_nebula_end - 4 KiB`. Last RESET wins. BL2 kedump still uses
+the **head** 128 KiB, not this tail.
+
 ### 2. Compile gates
 
 ```text
@@ -130,6 +180,23 @@ it copies the raw 128 KB window from the start of `gz_nebula`.
   RAMC = SYS_NEBULA_RAMCONSOLE_DUMP_T
   LOG  = SYS_NEBULA_LOG_DUMP_T
 ```
+
+**fwlog wrap** (`memlog.cpp` / `trusty-log.h`), not ramconsole:
+
+```text
+ struct log_rb { alloc, put, sz, data[0] }   sz power-of-two
+ producer  (Savior print_callback)
+    log_offset = alloc;  alloc += len
+    data[(log_offset+i) & (rb_sz-1)] = byte
+    put += len
+ consumer  (Linux / kedump)
+    read [put, alloc) around the ring
+    put == alloc  →  empty
+```
+
+`nebulalog_reserved` (33 pages) holds this rb. Standalone skips
+`SYS_NEBULA_LOG_DUMP_T`; the ring still runs. Dump is the raw
+buffer, same as ramconsole: kedump does **not** unwrap.
 
 Product KE db (BL2, flag off) therefore contains **both** files.
 Standalone only changes SOS BL33: no Savior hook, `yocto-expdb`
@@ -251,8 +318,10 @@ It is a BL2 whole-SoC dump file.
 ## Pitfalls
 
 - Standalone ≠ ramconsole dump. Standalone hides **fwlog**.
-- BL33 never registers the ramconsole hook. SOS VM restart
-  never runs BL2 kedump.
+- SOS VM restart never runs BL2 kedump. BL33 may register the
+  ramconsole hook when standalone / tbox / android hypervisor
+  configs are set (`nebulalog_expdb.c`). The dump is still the
+  head of `gz_nebula`, not the 4 KiB tail snapshot.
 - Physical WDT from SOS (passthrough HWT) **is** whole-SoC
   and **does** generate the file. Guest PSCI reboot does not.
 
@@ -261,45 +330,30 @@ It is a BL2 whole-SoC dump file.
 - Missing `gz_nebula` reserved-info → silent skip, no file.
 - First exception in expdb is sticky until something erases it.
 
-## Guest restart (proposal)
+## Guest restart snapshot (shipped)
 
-Scope: **SOS and tbox only.** Android is out. Do **not** map
-`gz_nebula` into guests. Do **not** turn a guest panic into a
-whole-SoC reset.
-
-Today the file is BL2-only. To also get it on SOS / tbox **VM**
-abnormal reboot: hypervisor snapshot + BL33 hook. Both guests
-already compile `nebulalog_expdb.c` (mt8678 LK).
+`ramconsole_snapshot_take(vmid)` already runs on `PSCI SYSTEM_RESET`
+and `SYSTEM_RESET2` for SOS, ALPS, and tbox. It is **not** a
+proposal.
 
 ```text
-  SOS / tbox  panic
-        PSCI RESET / RESET2
+  any of SOS / ALPS / tbox  PSCI RESET / RESET2
         │
         ▼
-  Savior  (before VCPU_STOP)
-        snapshot[vmid]  ←  128 KB ramconsole  (frozen)
-        guest-visible reserved mblock, RO
-        SOS = slot 1, tbox = slot 3
-        │
-        ▼
-  that VM's BL33 kedump
-        SYS_NEBULA_RAMCONSOLE_DUMP_T
-        reads snapshot[vmid], not gz_nebula
-        →  SOS: yocto-expdb
-           tbox: expdb_uos_tbox
+  Savior  ramconsole_snapshot_take
+        copy min(live ring, 4 KiB) into the **tail** of gz_nebula
+        one shared slot; last reset wins
+        then ZX_ERR_CANCELED (RESET) or GUEST_VCPU_STOP (RESET2)
 ```
 
-Whole-SoC BL2 path stays as it is (still dumps `gz_nebula`).
+BL2/BL33 kedump still copies the **first 128 KiB of `gz_nebula`**,
+not this tail snapshot. Indep lua maps `gz_nebula` into Android/tbox
+(outside their RAM mblock); SOS must **not** `setVmemAuto("gz_nebula")`
+(overlaps the RAM identity map). See
+`patches-kedump-nebula-ramconsole/patches/README.md`.
 
-Work:
+---
 
-1. Hypervisor: reserved snap[SOS]+snap[tbox], fill on RESET/RESET2
-   before VCPU_STOP; stage-2 RO map into those two guests.
-2. Yocto LK hook: BL2 **or** BL33. BL2 dumps `gz_nebula`. BL33
-   dumps `snapshot[VM_ID]`. Independent of standalone (that flag
-   only hides fwlog).
-3. Timing: snapshot before Stop; guest `mboot_params` must still
-   look abnormal so BL33 `kedump_mini` runs. If VMM skips BL33,
-   add the same dump to that guest's kernel aee.
+Prev: [`security.md`](security.md) · Next: [`glossary.md`](glossary.md) · [`README.md`](README.md)
 
-Not in scope: ALPS / Android LK, Android `expdb`.
+Everyday's a Hustle.

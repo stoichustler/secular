@@ -1,5 +1,9 @@
 # GPU
 
+**After this:** you can say why GRANT, STOP, or a timeout happened.
+**First read:** Principle, state machine, Config (product numbers).
+**Next:** [`tee.md`](tee.md).
+
 Savior shares one physical **Mali GPU** between SOS (Yocto) and UOS
 (Android / ALPS). The product path is Arm **SWA**: software
 virtualization, no Mali Access Window / Resource Group, no hardware
@@ -8,12 +12,13 @@ through **SMC** (Comms) and four **notify IRQs** (GRANT / STOP / LOST
 / RCVR). Ownership is exclusive: only the granted VM has GPU MMIO in
 stage-2 and Mali IRQs dispatched onto its VCPUs.
 
-SWA syscalls refuse `BOOTMODE_PHYP`, `BOOTMODE_QEMU_AHYP`, and
-`BOOTMODE_OKL4_AHYP`; they only run on `BOOTMODE_AHYP`.
+`zx_gpu_scheduler_create` refuses `BOOTMODE_PHYP`,
+`BOOTMODE_QEMU_AHYP`, and `BOOTMODE_OKL4_AHYP`. Later `zx_gpu_*`
+require `BOOTMODE_AHYP`.
 
-The same `GpuScheduler` lives in this tree and in the mt8678 3OS
-GPU SWA tree. SWA is **not** 8678-only. EL2/VHM differ; the
-arbiter does not. See [`README.md`](README.md) two trees.
+This tree **is** the mt8678 3OS GPU SWA product. QEMU lua does
+not enable SWA; product numbers live in
+`yocto/prebuilt/hypervisor/grt/auto8678p1_64_sos_indep/sos_mt8678.lua`.
 
 Read [`README.md`](README.md) for the product map,
 [`vmm.md`](vmm.md) for SOS / UOS lifecycle,
@@ -43,7 +48,7 @@ state machine, grant / stop / recovery, and MMIO map.
               │ x2=cmd  x3=arg0  x4=arg1
               ▼
  ┌────────────────────────────────────────────────────────────────┐
- │ Guest EL1  SMC  →  Savior EL2 vmexit  handle_smc_instruction    │
+ │ Guest EL1  SMC  →  Savior EL2 vmexit  handle_smc_instruction   │
  │  SMC_FC_NBL_VHM_REQ / FC_ID_GPU_ARBITER                        │
  │  GpuSchedulerAccessor::HandleSmc                               │
  └────────────────────────────┬───────────────────────────────────┘
@@ -428,11 +433,14 @@ That is Arm "only one access window open" in software.
 `(paddr, size, flag)` triples. Flag `ARB_GPU_REGION_PIN` (0x1) keeps
 the region mapped even after `DisableGpu`.
 
-Command buffer: 4 KiB VMO mapped into the guest at IPA
-`0x88000b000` (`kShareMemBase`) and into the kernel as
-`GpuSchedCmdType*`. Guest DTS node `/arbiter` `reg` points at that
-IPA. The SMC payload is the command id in `x2`; the buffer holds
-trace / AEE side data, not the command itself.
+Command buffer: `zx::vmo::create(4K)` (paged), `SPECIFIC` into the
+guest at IPA `0x88000b000` (`kShareMemBase`, default **CACHED**),
+then `zx_gpu_scheduler_set_vmo` maps the **same VMO** into the
+kernel **UNCACHED** (`GpuSchedCmdType*`). That split is alias B
+([`shm.md`](shm.md)). Guest DTS `/arbiter` `reg` points at the IPA.
+SMC command id is in `x2`; the buffer is trace / AEE, not the
+command. IPA sits inside SOS identity `ram`; SPECIFIC succeeds
+only if that 4K is already a hole.
 
 ## Message protocol
 
@@ -450,10 +458,13 @@ owner**.
 | `STOPPED` | 0x04 | VM → Arbiter | finished STOP; switch is legal |
 | `RECOVERED` | 0x05 | VM → Arbiter | recovery done; grant Pending |
 | `TRACE` | 0x06 | VM → Arbiter | debug (internal) |
-| `DESTROY` | 0x07 | sys / revoke | drop VM (UOS reboot uses this path) |
+| `DESTROY` | 0x07 | **not an SMC** | `zx_gpu_scheduler_destroy_vm`; `HandleSmc` has no DESTROY case |
 | `DUMP` | 0x08 | VM → Arbiter | dump history |
 | `TIMERSET` | 0x09 | VM → Arbiter | reset a timer period (internal) |
 | `ASSIGN` | 0x11 | SOS only | SIMPLE mode: force grant |
+
+`WITH_GPU_SCHEDULER_OPTIONS` is **false** on this HEE, so REQUEST/STOPPED
+option bits and `TIMERSET`/`TRACE` SMC are compiled out.
 
 `REQUEST` / `STOPPED` `arg0` bits (when `WITH_GPU_SCHEDULER_OPTIONS`):
 
@@ -491,20 +502,20 @@ same pattern.
 
 | index | name | Typical SPI (debug) | Meaning |
 | --- | --- | --- | --- |
-| 0 | GRANT | 4320 | you may use the GPU; MMIO is mapped |
-| 1 | STOP | 4321 | stop using the GPU; reply `STOPPED` |
-| 2 | LOST | — | GPU was taken; current code injects a VCPU **exception** `0xABCE1235` instead of the LOST IRQ (`#if 0` around the IRQ inject) |
-| 3 | RCVR | 4323 | run GPU recovery; reply `RECOVERED`. Registered as a **fast interrupt** on add-vcpu |
+| 0 | GRANT | 4316 (product) | you may use the GPU; MMIO is mapped |
+| 1 | STOP | 4317 | stop using the GPU; reply `STOPPED` |
+| 2 | LOST | 4318 listed; IRQ unused | GPU was taken; current code injects a VCPU **exception** `0xABCE1235` instead of the LOST IRQ (`#if 0` around the IRQ inject) |
+| 3 | RCVR | 4319 | run GPU recovery; reply `RECOVERED`. Registered as a **fast interrupt** on add-vcpu |
 
 ### Mali IRQs  (physical, `VcpuDispatcher::PhysicalInterrupt`, HW LR)
 
 | index | name | DTS interrupt-names |
 | --- | --- | --- |
-| 0 | JOB | `MALI-JOB` |
-| 1 | MMU | `MALI-MMU` |
-| 2 | GPU | `MALI-GPU` |
-| 3 | EVT | `MALI-EVT` / config `MALI-EVENT` |
-| 4 | PWR | `MALI-PWR` |
+| 0 | JOB | `MALI-JOB` (product SPI 638) |
+| 1 | MMU | `MALI-MMU` (637) |
+| 2 | GPU | `MALI-GPU` (636) |
+| 3 | EVT | `MALI-EVT` / config `MALI-EVENT` (639) |
+| 4 | PWR | `MALI-PWR` (640) |
 
 `DispatchIrq` always uses `force_physical = true` so the ICH_LR HW
 bit stays tied to the physical GIC lifecycle. See
@@ -647,10 +658,10 @@ Arm time-slice examples (guide 4.3.7) in Savior terms.
     GET_SOS_TIMER_TIMEOUT / GET_UOS_TIMER_TIMEOUT
     gpu_regions  (paddr, size, flag)*
  GpuSchedulerServiceImpl::createGpuSched
-    VMO 4K  map guest IPA 0x88000b000
+    paged VMO 4K  SPECIFIC guest IPA 0x88000b000  (CACHED)
     optional physical AEE VMO
     zx_gpu_scheduler_create          GpuSchedDispatcher
-    zx_gpu_scheduler_set_vmo         kernel maps cmdbuf
+    zx_gpu_scheduler_set_vmo         kernel UNCACHED map of same VMO
     zx_gpu_scheduler_set_aee_vmo
     zx_gpu_scheduler_set_mode
     zx_gpu_scheduler_set_timeslice   SOS timers
@@ -661,7 +672,8 @@ Arm time-slice examples (guide 4.3.7) in Savior terms.
  StartVcpu
     addVcpu(vcpu, affinity)
       affinity = id in arbiter-gpu-vcpus
-      empty list → VCPU 4 is the affinity VCPU (legacy)
+      empty list → VCPU 0
+      product lua sets VCPU 4 (`setArbiterGpuSchedVcpu(4)`)
       RegisterFastInterrupt(RCVR)
       first VCPU  InitVmInfo: stage-2 GPU regions + AddVm
 ```
@@ -672,7 +684,8 @@ UOS:
  GpuSchedulerClient::prepareGpuSched
     FIDL GetSchedHandle / Irq / Reg / Time / Rsv / AeeInfo
     map same IPA 0x88000b000, set_vmo, set_timeslice (UOS timers)
-    tbox (user vmid 1) skips AEE VMO
+    tbox never calls this client (SOS VMM only creates the
+    scheduler if user vmid == SOS)
  add_arbiter_dts   same mali,sw-arbiter node
  addVcpu
 ```
@@ -760,7 +773,7 @@ goes Lost; if Android was owner, SOS can recover.
  Mali  JOB/MMU/GPU/EVT/PWR  physical SPI
    Savior GIC  registered handler dispatch_irq
    GpuSchedIntrHandler::DispatchIrq
-     pick_running_vcpu  STATE_INIT | RUNNING | SUSPEND
+     pick_running_vcpu  STATE_INIT | RUNNING
      PhysicalInterrupt(vector)   HW bit in ICH_LR
    guest mali_kbase
  DisableGpuIrq  (on ReleaseCurrent)
@@ -788,9 +801,18 @@ around the aspace walk (`ints_enabled_before_lock_`).
 
 | Buffer | Where | Use |
 | --- | --- | --- |
-| cmdbuf | IPA `0x88000b000`, 4 KiB, uncached | `GpuSchedCmdType`; debug latency stamps |
+| cmdbuf | IPA `0x88000b000`, 4 KiB | guest map CACHED; kernel `SetVmo` UNCACHED ([`shm.md`](shm.md)) |
 | AEE | DTS `mediatek,sw-arbiter-aee` / `mali,sw-arbiter-aee` | KE/HWT dump `SYS_SWA_AEE_RAW` |
-| GPUEB | `mediatek,me_GPUEB_SHARED` | Android ready magic, written on first ACTIVE |
+| GPUEB | `mediatek,me_GPUEB_SHARED` | Android ready magic, written on first ALPS ACTIVE |
+
+GPUEB (`gpu_sched_shm.h`): VMO from DTS `reg`, mapped cached.
+Magic at **byte offset `0x3FC0`** (`SWA_GPUEB_BASE_ADDR =
+0x4000-0x40`), 8 bytes `0x4147414D454D4E4F`.
+`NotifyVmReady` writes it **only for ALPS** (`USER_VMID_ALPS`),
+on the first successful ACTIVE after grant. SOS ACTIVE does not
+write. Idle ATF while a guest still runs can power-gate GPUEB
+and lose this page — that is why `is_all_vm_suspend()` is in
+the idle loop ([`pm.md`](pm.md)).
 
 AEE layout: 64-byte header, then two VM blocks (SOS index 0, ALPS
 index 1). Header words `[offset, size]` per VM. Each block is a
@@ -818,9 +840,22 @@ vector; SMC EventValue is the command name.
 | `vcpus` | which VCPU ids are GPU-affinity (`arbiter-gpu-vcpus`) |
 | `is_reserved_mem` | also publish `mali,arbiter_res_mem` in DTS |
 
-Empty `vcpus` falls back to VCPU 4 as the affinity CPU. Affinity
-VCPUs are inserted at the **front** of `VmInfo::vcpus`, so IRQ
-inject prefers them (`pick_running_vcpu` walks in order).
+Empty `vcpus` falls back to **VCPU 0**. Product lua sets
+`setArbiterGpuSchedVcpu(4)` so affinity is 4. Affinity VCPUs are
+inserted at the **front** of `VmInfo::vcpus`, so IRQ inject prefers
+them (`pick_running_vcpu` walks INIT|RUNNING in order).
+
+Product (`sos_mt8678.lua`):
+
+```text
+ enable           true
+ region           paddr 0x48000000  size 0x480000  flag 0
+ GRANT/STOP/LOST/RCVR    4316 / 4317 / 4318 / 4319
+ MALI-GPU/MMU/JOB/EVENT/PWR   636 / 637 / 638 / 639 / 640
+ affinity VCPU    4
+```
+
+QEMU lua does **not** call `setArbiterGpuEnable`.
 
 Syscalls (AHYP only):
 
@@ -843,14 +878,14 @@ actually has.
 | Term | Arm meaning | Savior |
 | --- | --- | --- |
 | VM / guest | software domain that gets the GPU | SOS (VMID 1), UOS/ALPS (2), tbox (3) |
-| Driver instance | per-guest GPU kernel driver | `mali_kbase` + `mali_arb` |
+| Driver instance | per-guest GPU kernel driver | `mali_kbase` + `mali_kbase_arbiter_swa.c` |
 | GPU subinstance | execution HW the current owner drives | the one Mali |
 | Access window | guest-visible MMIO + IRQ; open/closed | **emulated**: stage-2 map = open |
 | Access Manager | GPU HW that opens/closes windows, reset | **none**; `GpuSchedBackend` |
 | Resource Group | arbiter↔guest message / partition config pages | **none**; SMC + notify IRQs |
 | Partition | hardware-isolated execution domain (AE) | **none** |
 | Time slicing | share one subinstance over time | SWA; exclusive GRANT |
-| Arbiter | who runs next, when to yield | `GpuScheduler` in Savior EL1 |
+| Arbiter | who runs next, when to yield | `GpuScheduler` in the host kernel (EL1h) |
 | Hypervisor | S2, SMMU, IRQ routing, security | Savior; same object as arbiter |
 | Yield | owner stops so another guest can run | STOP IRQ; guest `STOPPED` / `IDLE` |
 | `YIELD_NOW` / `YIELD_IDLE` | firmware stop now / after drain | STOP is now; IDLE is guest-voluntary |
@@ -868,7 +903,7 @@ actually has.
 | CSF | command stream frontend (5th gen) | guest firmware while granted |
 | panthor | Arm reference Linux driver/arbiter | analogue: kbase + Savior `GpuScheduler` |
 | GRANT / STOP / LOST / RCVR | Savior notify IRQs | virtual inject to owner VM |
-| `PhysMem` / cmdbuf | — | IPA `0x88000b000`, not an AW message page |
+| `PhysMem` / cmdbuf | IPA `0x88000b000` | paged VMO; guest CACHED, kernel UNCACHED; not an AW page |
 
 ## Tests
 
@@ -891,11 +926,15 @@ cases must PASS.
 | Dispatcher / syscalls | `zircon/kernel/object/gpu_sched_dispatcher.cpp` `zircon/kernel/syscalls/gpu_scheduler.cpp` |
 | VMM SOS create | `garnet/bin/guest/vmm.cc` `prepareGpuSchedService` |
 | VMM UOS DTS | `garnet/bin/guest/main_uos.cc` `add_arbiter_dts` |
+| Product lua | `yocto/prebuilt/hypervisor/grt/auto8678p1_64_sos_indep/sos_mt8678.lua` |
+| Syscalls | `zircon/kernel/syscalls/gpu_scheduler.cpp` (not `hypervisor.cpp`) |
 | FIDL / client | `garnet/lib/machina/fidl/gpu_scheduler.fidl` `gpu_scheduler.cc` |
 | Config | `garnet/bin/guest/guest_config.h` `ArbiterGpuSpec` |
 | VCPU pick | `garnet/lib/machina/gpu_scheduler_vcpu_selection.h` |
 | Arm model | `Arm Mali GPU 5th Generation and Later Virtualization Guide` 112001_0100_01_en |
 
 ---
+
+Prev: [`vhm.md`](vhm.md) · Next: [`tee.md`](tee.md) · [`README.md`](README.md)
 
 Everyday's a Hustle.

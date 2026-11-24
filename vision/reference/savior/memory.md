@@ -1,5 +1,9 @@
 # Memory
 
+**After this:** you can draw guest VA → PA and say why a DABT
+happened. **First read:** Layout + Diagrams 1–6. Skip Pages/PMM
+until a page-allocator bug. **Next:** [`interrupt.md`](interrupt.md).
+
 Savior is a type-1 hypervisor. The host MMU is EL1 stage-1 (`TTBR0` /
 `TTBR1`). Each guest has a **stage-2** table (`VTTBR_EL2`) that maps
 IPA (guest PA) to host PA. Device MMIO is either identity-mapped in
@@ -33,32 +37,27 @@ has its own ASCII figure next to the implementation.
 
 ## Contents
 
+**First read**
+
 - [Framework](#framework)
 - [Layout](#layout)
-- [Diagrams](#diagrams)
-- [Objects](#objects)
-- [Pages](#pages)
-- [PMM](#pmm)
-- [Bootalloc, reserve, heap](#bootalloc-reserve-heap)
-- [Host MMU](#host-mmu)
-- [VMO](#vmo)
-- [Page fault](#page-fault)
+- [Diagrams](#diagrams) 1–6
 - [Stage-2](#stage-2)
-- [Device memory](#device-memory)
-- [Allocator](#allocator)
-- [MapDevice](#mapdevice)
 - [Traps vs maps](#traps-vs-maps)
 - [Device passthrough](#device-passthrough)
-- [SMMU (IOMMU)](#smmu-iommu)
-- [SMPU](#smpu)
-- [Cache](#cache)
-- [ZX_VM flags](#zx_vm-flags)
-- [Registers](#registers)
-- [TLB](#tlb)
-- [Protection](#protection)
-- [Flows](#flows)
-- [Terminology](#terminology)
-- [Code](#code)
+- [MapDevice](#mapdevice)
+
+**When you need it**
+
+- [Objects](#objects)
+- [Pages](#pages) / [PMM](#pmm) / [VMO](#vmo) — allocator bugs
+- [Host MMU](#host-mmu) / [Bootalloc, reserve, heap](#bootalloc-reserve-heap)
+- [Page fault](#page-fault)
+- [SMMU (IOMMU)](#smmu-iommu) / [SMPU](#smpu)
+- [Cache](#cache) / [TLB](#tlb) / [Registers](#registers)
+- Shared DRAM / barriers / memory stomping: [`shm.md`](shm.md)
+- [ZX_VM flags](#zx_vm-flags) / [Protection](#protection)
+- [Flows](#flows) / [Terminology](#terminology) / [Code](#code)
 
 ## Framework
 
@@ -1774,9 +1773,17 @@ ProtectDevice(mapping, enable)
   arch_aspace.Protect(base, size/PAGE_SIZE, flags)
 ```
 
+`ProtectDevice` is defined in
+`guest_physical_address_space.cpp` and is **never called**.
+SWA grant/stop uses `MapDevice` / `UnMapDevice` only.
+
 `GpuScheduler::MapGpu` / `UnmapGpu` walk `VmInfo.mapping_regions`.
-Already-mapped regions are skipped. `ARB_GPU_REGION_PIN` regions
-are never unmapped (shared command buffers). See [`gpu.md`](gpu.md).
+InitVmInfo unmaps any pre-existing passthrough covering the GPU
+window, then remaps if passthrough or PIN. `ARB_GPU_REGION_PIN`
+regions are never unmapped (shared command buffers). See
+[`gpu.md`](gpu.md). `MapDevice` lives in
+`zircon/kernel/lib/hypervisor/guest_physical_address_space.cpp`,
+not `guest.cpp`.
 
 This is the same S2 table `setVmem` filled. Grant does not retune
 STE, so **both** CPU S2 and SMMU S2 see the new PTEs (SMMU still
@@ -1929,14 +1936,16 @@ Savior splits it in two:
 Four SoC instances, selected by MMIO base (`GetSmmuType`):
 
 ```text
-MM_SMMU   0x30800000
-APU_SMMU  0x4C000000
-SOC_SMMU  0x14900000
-GPU_SMMU  0x48600000
+MM_SMMU   0x30800000   commented out in sos_mt8678.lua
+APU_SMMU  0x4C000000   commented out
+SOC_SMMU  0x14900000   live (IRQ 863)
+GPU_SMMU  0x48600000   commented out
 ```
 
-SOS `vmm.cc` builds one `Smmuv3` per `VsmmuSpec`. UOS has the same
-path behind `#if 0` in `main_uos.cc` (not on by default).
+Product lua only calls `addVsmmu(0x14900000, 863)` plus SOC SIDs
+(1–98, 100–254; SID 99 is the host UFS controller). SOS `vmm.cc`
+builds one `Smmuv3` per `VsmmuSpec`. UOS has the same path behind
+`#if 0` in `main_uos.cc` (not on by default).
 
 ### Host attach (S2 only)
 
@@ -2091,7 +2100,7 @@ no-op (`MPU memory region not found … ignore unmap`).
 ```text
  Guest CPU                 Device DMA
     │                         │
-    ▼ S2                       ▼ SMMU S2
+    ▼ S2                      ▼ SMMU S2
    hole (kMpu unmapped)      IPA→PA  (if SID attached)
     │                         │
     ▼ abort to EL2            ▼
@@ -2334,7 +2343,7 @@ Timing versions of **Diagrams** 4–13. Same events, more timestamps.
 
 ```text
  phys  _start
-   arm64_elX_to_el2     VHE: HCR.E2H|TGE, VTTBR=0
+   arm64_elX_to_el1     HCR=RW|APK|API|ATA, VTTBR=0, eret EL1h
    boot_alloc_init
    TTBR1 = kernel table, TTBR0 = 1 GiB identity
    SCTLR.M=1
@@ -2566,5 +2575,7 @@ sit in the 1 GiB window.
 | `ZX_VM_FLAG_*` / cache policy | `zircon/system/public/zircon/types.h` |
 
 ---
+
+Prev: [`cpu.md`](cpu.md) · Next: [`interrupt.md`](interrupt.md) · [`README.md`](README.md)
 
 Everyday's a Hustle.

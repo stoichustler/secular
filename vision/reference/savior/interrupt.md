@@ -1,5 +1,8 @@
 # Interrupt
 
+**After this:** you can say why the HW bit is on or off.
+**First read:** Diagrams 1–5. **Next:** [`scheduler.md`](scheduler.md).
+
 Savior is a type-1 hypervisor. The host GIC is GICv3. Guests see a
 **VGIC**: emulated GICD/GICR MMIO plus the GICv3 virtual CPU interface
 (`ICH_*_EL2`). Physical IRQs can be **passed through** into a VCPU, or
@@ -24,6 +27,25 @@ policy (passthrough vs virtual, exclusive vs broadcast, HW bit) applies.
 Start with **Diagrams** (eight posters), then the sections they
 index.
 
+## Principle
+
+1. **One GICv3, two owners of pending.** The host Distributor
+   holds physical SPIs. The VCPU `GichState` bitmap + `ICH_LR`
+   hold what the **guest** will see. Filling an LR is how a
+   host pending becomes a guest IRQ.
+
+2. **The HW bit is the contract with EOI.** `ICH_LR_HARDWARE`
+   (bit 61): guest EOI/DIR deactivates the **physical** INTID.
+   Virtual injects omit it. Wrong bit → storm or a stuck Active.
+
+3. **Lua lists passthrough; traps emulate GICD/GICR.** Identity
+   MMIO of the host GIC is not enough. `GicDistributor::Init`
+   punches MEM traps so guest register writes become `unmask` /
+   `configure` / `BindVcpu`.
+
+4. **Exclusive SPI runs on the VCPU’s pCPU.** Broadcast indexes
+   `arch_curr_cpu_num() % n`. PPI is always exclusive.
+
 ## Framework
 
 Three planes share one GICv3.
@@ -39,7 +61,7 @@ Three planes share one GICv3.
  └────────────────────────────┬───────────────────────────────────┘
                               ▼
  ┌────────────────────────────────────────────────────────────────┐
- │ Savior kernel EL1 / EL2                                         │
+ │ Savior kernel EL1 / EL2                                        │
  │  arm_gicv3  IRQ handler                                        │
  │  InterruptEventDispatcher  (passthrough)                       │
  │  Vcpu::Interrupt → GichState bitmap  PHYSICAL | VIRTUAL        │
@@ -103,7 +125,7 @@ the HW-bit rule that causes storms.
   │                          (HCR.IMO / FMO)                      │
   └────────────────────────────┬──────────────────────────────────┘
                                ▼
-  ┌─ Savior EL1 / EL2 ─────────────────────────────────────────────┐
+  ┌─ Savior EL1 / EL2 ────────────────────────────────────────────┐
   │  VcpuIrqHandler  →  bitmap PHYSICAL | VIRTUAL                 │
   │  gich_maybe_interrupt  →  ICH_LR  →  eret guest               │
   └────────────────────────────┬──────────────────────────────────┘
@@ -192,7 +214,25 @@ Same tail, no host GIC.
 
 ### 6. Common tail: `ICH_LR` and UIE
 
-Max 16 LRs. Burst leftover waits for maintenance.
+Max 16 LRs (`ICH_VTR`). One 64-bit LR per in-flight guest IRQ
+(`gicv3.h`):
+
+```text
+ 63     ACTIVE
+ 62     PENDING
+ 61     HARDWARE          1 = guest EOI DIRs physical INTID
+ 60     GROUP1
+ 55:48  priority          INTID<32 → 0; else 0x10
+ 41:32  physical INTID    only if HARDWARE  (10 bits)
+ 31:0   virtual INTID     VID  (this tree: VID == PID for PT)
+```
+
+PHYSICAL fill: `VID | PID | GROUP1 | PENDING | HARDWARE`.
+VIRTUAL fill: `VID | GROUP1 | PENDING` (no HW, no PID).
+Host handler of a passthrough SPI returns
+`IRQ_EOI_PRIORITY_DROP` (must **not** DIR; guest EOI will).
+
+Burst leftover waits for maintenance.
 
 ```text
   Resume  virq_lock
@@ -242,20 +282,25 @@ Max 16 LRs. Burst leftover waits for maintenance.
 `VgicSpec` (`main_uos.cc` `vgic_build_from`):
 
 ```text
-sos_config:setVgicPaddr(0x8000000, 0x80a0000)   GICD, GICR
-sos_config:setVgicPercpuIrq(15)                 PPI passthrough
-sos_config:setVgicIrq(i)                        SPI passthrough  (36–251, 253–512)
-sos_config:setVhmIrq(254)
-sos_config:setVsockIrqs(...)
-sos_config:setVteeNotifierIrq(513)
+QEMU  setVgicPaddr(0x8000000, 0x80a0000)   GICD, GICR
+      setVgicIrq  36–251, 253–512
+      setVhmIrq(254)  setVteeNotifierIrq(513)
+
+SoC   setVgicPaddr(0xc400000, 0xc440000)
+      long SPI list + eSPI 4096–4315
+      setVhmIrq(287)  setTipcVqNotifierIrq(286)  setVteeNotifierIrq(174)
 ```
+
+QEMU vs SoC table: [`README.md`](README.md) **Two configs**.
 
 `GicDistributor::Init` then:
 
 1. `PassThroughInterrupts(irqs)` for every listed SPI.
 2. Map guest GICD/GICR at those GPAs (`TrapType::MMIO_SYNC`) so guest
    GIC register access is emulated, not a raw stage-2 map of the host
-   GIC (the 0–1 GiB IO window is identity, but GICD/GICR traps win).
+   GIC (QEMU 0–1 GiB IO is identity; GICD/GICR traps still win.
+   SoC has no 1 GiB window — GIC is a `product_config:setVmem`
+   plus the trap).
 3. One `GicRedistributor` per VCPU, each with the PPI list.
 4. Optional `GicIts::Init` if `vgic.has_its`.
 
@@ -286,6 +331,52 @@ interrupt.bind(0, resource, vector, ZX_INTERRUPT_PASSTHROUGH)
 
 Guest writes to GICD IENABLE / ICFG / IROUTE are emulated and turn
 into `unmask_interrupt` / `configure_interrupt` / `BindVcpuExclusively`.
+
+Emulated GICD (`gic_distributor.cc`) is a **trap**, not a copy of
+the host Distributor. Reads of `GICD_TYPER` / `IIDR` / `TYPER2`
+are synthetic. `ISENABLE0..31` / `ICFG*` / `IROUTE32..1019` /
+eSPI `IROUTEE*` are the live path.
+
+### GICR (per VCPU)
+
+One trap per VCPU: `gicr_paddr + id × 0x20000`, size
+`0x10000 (RD) + 0x10000 (SGI)` contiguous.
+
+| Offset | Register | Emulation |
+| --- | --- | --- |
+| `0x000` | CTL | enable |
+| `0x008` | TYPE | processor number, Last bit on last VCPU, affinity from `zx_system_get_cpu_hwid` |
+| `0x014` | WAKE | RAZ/WI |
+| `0x070` / `078` | PROPBASER / PENDBASER | LPI config/pending (ITS) |
+| `0x0a0` | INVLPIR | invalidate one LPI |
+| `0x0c0` | SYNCR | RAZ |
+| `0xffe8` | PID2_V3 | GICv3 ident |
+| `0x10100` / `180` | ISENABLE0 / ICENABLE0 | PPI/SGI mask → `Unmask`/`Mask` |
+| `0x10c00` | ICFG0/1 | PPI config |
+| `0x10400..4fc` | IPRIORITY | RAZ/WI |
+
+SGI inject is **not** a GICR write: guest `ICC_SGI1R` is a
+sysreg trap ([`cpu.md`](cpu.md)).
+
+### ITS (MSI → LPI)
+
+Trap `kGicItsSize = 0x10000` at lua ITS GPA if `vgic.has_its`.
+Guest writes `CWRITER`; Vmm walks the command ring
+(`ProcessCmdsLocked`) while `CTLR.Enable`.
+
+| CMD | Effect |
+| --- | --- |
+| `MAPD` | device → ITT |
+| `MAPC` | collection → target VCPU |
+| `MAPI` / `MAPTI` | event → LPI |
+| `MOVI` / `MOVALL` | retarget |
+| `DISCARD` / `CLEAR` | drop LPI |
+| `INT` | inject that LPI now |
+| `INV` / `INVALL` | refresh LPI config from PROPBASER |
+| `SYNC` | nop |
+
+LPI inject is VIRTUAL (no host GIC pending). `InjectMsi` from
+VHM `HC_INJECT_MSI` hits the same `GicIts` table.
 
 ### VCPU ICH state
 
@@ -430,24 +521,13 @@ Virtio PCI MSI-X (`msix_config.cc`) calls `TriggerMsixInterrupt` →
 `GicIts::InjectMsi` refuses a disabled LPI (`LPI_PROP_ENABLE` in the
 guest PROP table). Target VCPU comes from the collection mapping.
 
-### Kernel `MsiRouter` (this tree, `WITH_MSI_IN_KERNEL`)
+### No kernel `MsiRouter`
 
-Software ITS cache on `Guest`: `(device_id, event_id) → (vector,
-target_vcpu)`. Sorted vector, binary search.
-
-```text
- zx_guest_add_msi_mapping     MsiRouter::AddMapping
- guest  SMC HC_INJECT_MSI
-    handle_inject_msi_hypercall
-       msi_data == -1   SPI  →  ZX_ERR_NOT_SUPPORTED  (EL0 / GicDistributor)
-       else             MsiRouter::Inject
-                          FindMapping(msi_addr, msi_data)
-                          VcpuDispatcher::Interrupt  VIRTUAL
-```
-
-`vector` must be ≤ `kInterruptMax` or MAPTI fails before Track
-cannot store it. mt8678 has no `msi_router.cpp`: every
-`HC_INJECT_MSI` is the EL0 path above (diagram).
+This tree has no `WITH_MSI_IN_KERNEL`, no `msi_router.cpp`, and
+no `zx_guest_add_msi_mapping`. Every `HC_INJECT_MSI` is the EL0
+path above (diagram): SOS `VhmServiceImpl::inject_msi` → channel
+`VHM_INTR_INJECT` → UOS `GicDistributor` (SPI, `evt_id==-1`) or
+`GicIts::InjectMsi` (LPI).
 
 ## VHM FE ↔ BE
 
@@ -613,11 +693,12 @@ interrupt_dump_regs(vector)
 | Lua VGIC | `garnet/bin/guest/sos/qemu/sos.lua` |
 | GICD/GICR emulate + passthrough | `garnet/lib/machina/arch/arm64/gic_distributor.cc` |
 | ITS / MSI | `garnet/lib/machina/arch/arm64/gic_its.cc` |
-| Kernel MSI cache | `zircon/kernel/arch/arm64/hypervisor/msi_router.cpp` |
 | VHM MSI | `garnet/lib/machina/vhm_service_impl.cc` `inject_msi` |
 | VHM device inject | `garnet/lib/machina/vhm_device.cc` `VHM_INTR_INJECT` |
 | irq_monitor | `zircon/kernel/dev/interrupt/arm_gic/common/irq_monitor.cpp` |
 
 ---
+
+Prev: [`memory.md`](memory.md) · Next: [`scheduler.md`](scheduler.md) · [`README.md`](README.md)
 
 Everyday's a Hustle.

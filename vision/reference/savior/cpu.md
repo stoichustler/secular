@@ -1,14 +1,20 @@
 # CPU
 
-Savior's host CPU is a Zircon / LK kernel. Product HEE is **VHE**
-(`venus-hee.mk` `WITH_VHE_SUPPORT`): the kernel stays at EL2 with
-`HCR.E2H|TGE`, so it uses EL1 register names. A guest CPU is a
-**VCPU**: a pinned host `thread_t` that calls `arm64_el2_resume`
-(a `b`, not an `HVC`), loads guest state, and `eret`s to guest
-EL1h. The guest never owns the physical core. Returning from the
-guest is an intercept on **that same thread**, not a thread switch.
+**After this:** you can explain one `zx_vcpu_resume` and one
+guest `SMC`. **First read:** Diagrams 1–5, then EL2.
+**Next:** [`exceptions.md`](exceptions.md) · [`memory.md`](memory.md).
 
-Read [`README.md`](README.md) for VHE vs mt8678 `HVC`,
+Savior's host CPU is a Zircon / LK kernel. Product HEE **drops to
+EL1h** at `_start` (`arm64_elX_to_el1`). EL2 is a trampoline
+(`el2.S`) with its own `VBAR_EL2`, identity `TTBR0_EL2`, and
+per-CPU stack, turned on at first `Guest::Create` via `HVC #2`.
+A guest CPU is a **VCPU**: a pinned host `thread_t` that calls
+`arm64_el2_resume` (`HVC #4`, not a `b`), loads guest state, and
+`eret`s to guest EL1h. The guest never owns the physical core.
+Returning from the guest is an intercept that **`eret`s back to
+host EL1 on that same thread**, not a thread switch.
+
+Read [`README.md`](README.md) for the `HVC` trampoline,
 [`bootstrap.md`](bootstrap.md) for the first `eret` into
 guest EL1, [`scheduler.md`](scheduler.md) for how that thread is
 picked against other VCPUs, [`interrupt.md`](interrupt.md) for
@@ -17,9 +23,11 @@ picked against other VCPUs, [`interrupt.md`](interrupt.md) for
 [`pm.md`](pm.md) for host suspend after all VMs park,
 [`vhm.md`](vhm.md) / [`tee.md`](tee.md) for SMC classes.
 
-This note is the map of that path: host EL0 `svc` vs guest EL2
-exit, the VCPU object, EL2 enter/exit, the `Resume` loop, every
-intercept class, PSCI (ON/OFF/SUSPEND/RESET), idle, and SMP.
+Host `svc` is a Zircon syscall ([`microkernel.md`](microkernel.md)).
+Guest `smc` is not. This note is the map of that path: host EL0
+`svc` vs guest EL2 exit, the VCPU object, EL2 enter/exit, the
+`Resume` loop, every intercept class, PSCI (ON/OFF/SUSPEND/RESET),
+idle, and SMP.
 
 Start with **Diagrams**, then the sections they index.
 
@@ -32,16 +40,15 @@ table.
  Host EL0 thread                         Guest EL1h  (this VCPU thread)
       │ svc / IRQ                              │  HCR.TSC / TWI / IMO
       ▼                                        ▼
- VBAR_EL1  exceptions.S                  same VBAR_EL1 (VHE) if VTTBR≠0
-      iframe  x0–x30, ELR, SPSR                el2_guest_exit  (el2_vhe.S)
+ VBAR_EL1  exceptions.S                  VBAR_EL2  arm64_el2_exec_table
+      iframe  x0–x30, ELR, SPSR                el2_guest_exit  (el2.S)
       │                                        save GuestState into El2State
-      ▼                                        HCR = RW|TGE|E2H, VTTBR=0
- arm64_syscall / platform_irq                  br lr  →  host
-      eret EL0t                                │
-                                               ▼
+      ▼                                        HCR = RW, VTTBR=0, eret host EL1
+ arm64_syscall / platform_irq                  │
+      eret EL0t                                ▼
                                          Vcpu::Resume
                                            vmexit_handler   or  physical IRQ
-                                           loop: arm64_el2_resume
+                                           loop: arm64_el2_resume  (hvc #4)
                                            or return packet / error to VMM
 ```
 
@@ -59,14 +66,14 @@ table.
  zx_vcpu_resume   (VMM thread, already pinned)
     Vcpu::Resume
        gich_maybe_interrupt → ICH_LR
-       arm64_el2_resume          VHE: b el2_hvc_resume  (not HVC)
-          msr vttbr, hcr (E2H, TGE=0), tpidr_el2
+       arm64_el2_resume          hvc #4  →  el2_hvc_resume
+          msr vttbr, hcr (guest mask), tpidr_el2
           load guest GPRs + sysregs
           eret guest EL1h
               │  intercept
               ▼
        el2_guest_exit
-          save GPRs, HCR=RW|TGE|E2H, br lr
+          save GPRs, HCR=RW, vttbr=0, eret host EL1
        ZX_ERR_NEXT  physical IRQ  →  loop (unless KILL)
        ZX_OK        vmexit_handler
 ```
@@ -78,7 +85,7 @@ switch.
 | --- | --- | --- |
 | Host user ↔ kernel | `svc` / `eret` EL0t | EL, `TTBR0` already this process |
 | Host thread ↔ thread | `arch_context_switch` | `x19–x30`, `TTBR0`, current `thread_t` |
-| Host ↔ guest | VHE `eret` / `br lr` | `TGE`, `VTTBR`, `HCR.VM`, guest GPRs. **Same** `thread_t` |
+| Host ↔ guest | `HVC #4` / `eret` | `VTTBR`, `HCR.VM`, guest GPRs. **Same** `thread_t` |
 
 SOS → UOS on one pCPU is: SOS intercept → SOS thread scheduled
 out → UOS thread scheduled in → UOS `eret`. There is no
@@ -91,14 +98,15 @@ guest→guest `eret`.
    as `SchedParams` sampled for [`scheduler.md`](scheduler.md).
    Power, idle, and ON/OFF are states of this host thread.
 
-2. **VHE host is EL2 that looks like EL1.** `_start` calls
-   `arm64_elX_to_el2`: `HCR.E2H|TGE`, `VTTBR=0`, stay at EL2.
-   Kernel `TTBR1` / `VBAR_EL1` are the VHE EL2&0 views. Guest
-   entry is `arm64_el2_resume` → `el2_hvc_resume` (`b`, not
-   `HVC`): clear `TGE`, keep `E2H`, set `VM`/`IMO`/…, `eret`
-   EL1h. Exit restores `TGE|E2H|RW`, `VTTBR=0`, `br lr`.
-   Non-VHE (`venus-tee.mk`) is the other story: `eret` host EL1h
-   and `HVC #4` into `el2.S`.
+2. **Host is EL1h; EL2 is a trampoline.** `_start` calls
+   `arm64_elX_to_el1`: `HCR.RW|APK|API|ATA`, `VTTBR=0`, `eret`
+   EL1h. Kernel `TTBR1` / `VBAR_EL1` are real EL1. Guest entry is
+   `arm64_el2_resume` → `HVC #4` → `el2_hvc_resume`: set
+   `VM`/`IMO`/…, `eret` EL1h. Exit writes `HCR=RW`, `VTTBR=0`,
+   `eret` host EL1. First `Guest::Create` turns EL2 MMU on
+   (`HVC #2`: identity `TTBR0_EL2`, per-CPU `SP_EL2`,
+   `VBAR_EL2 = arm64_el2_exec_table`). `venus-tee.mk` uses the
+   same trampoline without `WITH_CROSS_VM_SCHED` / `WITH_VIRT_SERROR`.
 
 3. **Kernel-handled vs VMM-handled.** `vmexit_handler` returns
    `ZX_OK` to **resume** (WFI, most SMC/PSCI, SGI, stage-2 fault
@@ -119,29 +127,30 @@ guest→guest `eret`.
    `CPU_ON` for a vCPU that does not exist yet is a
    `ZX_PKT_GUEST_VCPU_STARTUP` packet; the VMM creates the VCPU.
    Later `CPU_ON` of `STATE_PWROFF` is in-kernel
-   (`handle_vcpu_on` + `ResumeThread`). Last VCPU off a non-zero
-   pCPU may take that pCPU down (`pcpu_hp`).
+   (`handle_vcpu_on` + `ResumeThread`). Last VCPU `CPU_OFF` does
+   **not** take the pCPU down (`#if 0` in `handle_vcpu_off`).
 
 ## Diagrams
 
-### 1. Two vector tables (VHE shares `VBAR_EL1`)
+### 1. Two vector tables (host `VBAR_EL1`, guest `VBAR_EL2`)
 
 ```text
- Host and guest both hit VBAR_EL1 = arm64_el1_exception_base
- exceptions.S  (WITH_VHE_SUPPORT)
+ Host hits VBAR_EL1 = arm64_el1_exception_base  (exceptions.S)
+ Guest hits VBAR_EL2 = arm64_el2_exec_table     (el2.S)
 
- EL0t  svc ──► VTTBR==0 ──► arm64_syscall_dispatcher
- EL0t  IRQ ──► VTTBR==0 ──► platform_irq
+ EL0t  svc ──► arm64_syscall_dispatcher
+ EL0t  IRQ ──► platform_irq
  guest SMC / WFI / abort / IRQ
                VTTBR≠0  ──► el2_guest_exit / el2_guest_exit_or_fp_resume
-                            (el2_vhe.S)
+ host HVC from EL1 (resume / on / tlbi / …)
+               VTTBR==0 ──► hvc jump table  (index 4 = el2_hvc_resume)
  guest phys IRQ (HCR.IMO)
                ──► el2_guest_exit   return ZX_ERR_NEXT
 ```
 
-`VTTBR_EL2 != 0` means “this exception is from the guest”.
-Non-VHE uses a separate `VBAR_EL2` (`arm64_el2_exec_table` in
-`el2.S`) and host `HVC` immediates; HEE does not take that path.
+`VTTBR_EL2 != 0` means “this exception is from the guest”. Host
+`HVC` immediates: 0 PSCI, 1 mexec, 2 on/off, 3 TLBI, **4 resume**,
+5 sysreg, 6/7 CPU suspend/resume (`WITH_LIB_SM`).
 
 ### 2. Two nested switches (no guest→guest `eret`)
 
@@ -162,7 +171,7 @@ Non-VHE uses a separate `VBAR_EL2` (`arm64_el2_exec_table` in
                                               then THAT VCPU eret
 
   SOS guest ──exit── SOS thread ──CS── UOS thread ──enter── UOS guest
-                    (EL2)              (EL1)              (EL2)
+                    (EL1 host)         (EL1 host)         (EL2 trampoline)
 ```
 
 ### 3. VCPU object
@@ -216,13 +225,13 @@ Guest timer is `CNTV_*_EL0`. EL2 disables it on exit
  zx_vcpu_resume
     Vcpu::Resume
        do
-          timer_maybe_interrupt          CNTV expired? inject PPI 27
-          SchedVcpuResumePre             priority / slice  (scheduler.md)
+          timer_maybe_interrupt          CNTV expired? inject PPI 27 PHYSICAL
+          OnVcpuResumePre / ApplyVcpuPolicy  priority / slice  (scheduler.md)
           IRQs off
           gich_maybe_interrupt           bitmap → ICH_LR, maybe UIE
           arm64_el2_resume
-             VHE: b el2_hvc_resume
-             msr vttbr_el2, hcr_el2 (E2H, TGE=0)
+             hvc #4 → el2_hvc_resume
+             msr vttbr_el2, hcr_el2 (guest mask)
              load guest, eret EL1h
                   │
                   ├─ guest IRQ / FIQ   status = ZX_ERR_NEXT
@@ -267,17 +276,16 @@ Physical IRQ is **not** an EC in `vmexit_handler`. EL2 returns
  PSCI64_CPU_SUSPEND
     pending LR / bitmap?  SUCCESS without sleep
     entry==0              STATE_STANDBY, WaitForSuspend
-    S2IDLE                STATE_SUSPEND, last VCPU may hyper_pm_suspend
+    S2IDLE                STATE_SUSPEND, last VM may arm host idle ATF
 
- PSCI64_SYSTEM_RESET      (non-platform)  ZX_ERR_CANCELED  →  VMM relaunch
- PSCI64_SYSTEM_RESET2     (non-platform)  packet STOP      →  VMM teardown
- PSCI64_SYSTEM_OFF        SOS → ATF; other VMs ZX_ERR_CANCELED
+ PSCI64_SYSTEM_RESET      snapshot + ZX_ERR_CANCELED  →  VMM relaunch
+ PSCI64_SYSTEM_RESET2     snapshot + packet STOP      →  VMM teardown
+ PSCI64_SYSTEM_OFF        all VMs ZX_ERR_UNAVAILABLE  →  VMM SHUTDOWN
  PSCI64_SYSTEM_SUSPEND    handle_system_suspend  (STR)
 ```
 
-“Platform reset” is SOS **and** `ARM64_WDT_PROFILE_NOSINK`. That
-path really calls ATF. QEMU / unspecified profile keeps RESET
-guest-local.
+There is no SOS→ATF platform RESET. The old `do_psci_call` sits
+after `return ZX_ERR_CANCELED` and is dead.
 
 ### 8. Idle depths
 
@@ -310,7 +318,7 @@ list while s2idle (`CheckSkipWakeup`).
 
 | Object | Role |
 | --- | --- |
-| `Guest` | One VM. Stage-2 aspace, trap map, VCPU table, PM aggregate, optional in-kernel VHM |
+| `Guest` | One VM. Stage-2 aspace, trap map, VCPU table, PM aggregate |
 | `Vcpu` | One guest CPU. Pinned `thread_t`, `El2State`, `GichState`, `hcr_`, power `state_` |
 | `VcpuDispatcher` | Zircon handle over `Vcpu`. Table `[vmid][vcpuid]` for IRQ routing |
 | `GuestDispatcher` | Zircon handle over `Guest`. `zx_guest_create_new` also returns the guest VMAR |
@@ -377,31 +385,31 @@ Host userspace never sees EL2. `VBAR_EL1` is
 
 `zx_vcpu_resume` is an ordinary syscall on the VMM's VCPU thread.
 The guest round-trip happens **inside** that syscall, with
-interrupts off. On HEE (VHE) that is a direct branch into
-`el2_hvc_resume`, still at EL2. On TEE (non-VHE) it is `HVC #4`.
+interrupts off. HEE (and TEE) enter EL2 with `HVC #4`.
 
-VHE: host and guest share `VBAR_EL1`. Lower-EL sync/IRQ first
-inspect `VTTBR_EL2` and branch to `el2_guest_exit` if it is
-non-zero. Non-VHE: guest exits always hit `VBAR_EL2`.
+Host `svc`/IRQ stay on `VBAR_EL1`. Guest exits always hit
+`VBAR_EL2`.
 
 ## EL2
 
-Product HEE is VHE. `el2_vhe.S` is the live file. `el2.S` is the
-non-VHE TEE path (two vector tables, host `HVC` immediates). The
-rest of this section is HEE unless marked otherwise.
+Product HEE is non-VHE. `el2.S` is the live file: two vector
+tables (init vs exec), host `HVC` immediates, guest `eret`.
 
-Boot (`arm64_elX_to_el2`):
+Boot (`arm64_elX_to_el1`):
 
 ```text
  already EL2  (ATF SPSR)
  init_el2_state
- HCR_EL2 |= E2H | TGE
+ VBAR_EL2 = arm64_el2_init_table
+ HCR_EL2 = RW | APK | API | ATA
  VTTBR_EL2 = 0
- ret                         still EL2, kernel uses EL1 names
+ eret EL1h                   kernel uses real EL1 names
 ```
 
-First `Guest::Create` still calls `arm64_el2_on(0,0)` per CPU:
-VHE only programs `VTCR_EL2`. No EL2 stack, no second `VBAR`.
+First `Guest::Create` calls `arm64_el2_on(table.Base(), stack.Top())`
+per CPU (`HVC #2`): identity `El2TranslationTable` (L0/L1/L2 of
+Zircon DRAM) becomes `TTBR0_EL2`, per-CPU `El2Stack` becomes
+`SP_EL2`, `VBAR_EL2 = arm64_el2_exec_table`, EL2 MMU on.
 
 `El2CpuState` is a singleton, refcounted by `num_guests`:
 
@@ -414,35 +422,27 @@ VHE only programs `VTCR_EL2`. No EL2 stack, no second `VBAR`.
     num_guests==0 → arm64_el2_off per CPU
 ```
 
-Non-VHE also allocates an identity `El2TranslationTable` (L0/L1/L2
-block map of Zircon DRAM) and a per-CPU `El2Stack` page; those
-become `TTBR0_EL2` / `SP_EL2`. VHE passes `(0,0)` and uses the
-host tables.
-
-`WITH_SVE_SUPPORT` is **false** on this HEE. When true, each
-`El2State` grows contiguous guest/host SVE buffers (EL2 identity
-PA==VA on non-VHE; physmap VA on VHE). `el2_sve_resume` is the
-lazy trap, same idea as FP.
+`WITH_SVE_SUPPORT` is not compiled. `el2.S` sets `CPTR_EL2_RES1
+= 0x32ff` so the SVE trap is off; there is no `el2_sve_resume`.
 
 `WITH_VIRT_SERROR` (this HEE **true**) adds `HCR.AMO` so physical
-SError is taken at EL2 while the guest runs.
+SError is taken at EL2 while the guest runs. SOS
+`MaybeInjectVabt` sets `HCR.VSE`; other VMs `MaskVabt`.
 
 ### Guest enter (`el2_hvc_resume`)
 
-`arm64_el2_resume` is `b el2_hvc_resume`. Arguments: `x0=VTTBR`,
-`x1=El2State` (VA on VHE, PA on non-VHE), `x2=hcr_`.
+`arm64_el2_resume` is `hvc 4`. Arguments: `x0=VTTBR`,
+`x1=El2State` **PA**, `x2=hcr_`.
 
 ```text
  switch_to_guest                 msr vttbr_el2, x0
  tpidr_el2 = El2State
  first resume?  tlbi vmalle1
- bic x2, TGE
- orr x2, E2H
- msr hcr_el2, x2                 VM|IMO|TWI|TSC|…, TGE off
+ msr hcr_el2, x2                 VM|IMO|TWI|TSC|…  (no TGE/E2H)
  CNTHCTL_EL2 = EL1PCTEN          (guest may read CNTPCT, not CNTP)
  CPTR_EL2    traps FP (lazy)
- save host x18–x29 + sysregs
- load guest sysregs via *_EL12
+ save host x18–x30 + sysregs
+ load guest sysregs via EL1 names (sctlr_el1 / ttbr0_el1 / …)
  load guest GPRs
  eret                            ELR_EL2 / SPSR_EL2 = EL1h | DAIF
 ```
@@ -471,15 +471,13 @@ and resume.
 
 ```text
  save guest GPRs + sysregs + ESR/FAR/HPFAR
- maybe swap FP / SVE
- CNTV_CTL_EL02 = 0
- CNTHCTL_EL2 = EL0PCTEN|EL0VCTEN|EL1PCTEN|EL1PCEN
- HCR_EL2 = RW | TGE | E2H        (stage-2 off, host VHE on)
+ maybe swap FP
+ CNTV_CTL_EL0 = 0
+ CNTHCTL_EL2 = EL1PCTEN|EL1PCEN
+ HCR_EL2 = RW                    (stage-2 off)
  switch_to_host                  vttbr = 0
- br lr                           x0 = return_code
+ eret host EL1                   x0 = return_code
 ```
-
-Non-VHE writes `HCR_EL2 = RW` only and `eret`s to host EL1.
 
 Return codes into `Vcpu::Resume`:
 
@@ -498,7 +496,7 @@ calling thread **must** be the pinned one
 Before `HVC`:
 
 1. `timer_maybe_interrupt` — if guest `CNTV` expired, track PPI 27.
-2. `VcpuGroup::SchedVcpuResumePre` — may raise priority / cut slice
+2. `VcpuGroup::OnVcpuResumePre` / `ApplyVcpuPolicy` — may raise priority / cut slice
    ([`scheduler.md`](scheduler.md)).
 3. Interrupts off.
 4. `gich_maybe_interrupt` — pop bitmap into free `ICH_LR`. If the
@@ -561,34 +559,82 @@ control plane above.
 
 Always `next_pc` first. Then:
 
-**Savior hypercalls** (`SMC_ENTITY_NEBULA` and
-`SMC_HYP_SECURE_ID`):
+**FID layout** (`hvcall.h`):
 
-| FID / `x1` | Action |
-| --- | --- |
-| `SMC_SC_NBL_VHM_REQ` | in-kernel VHM, or packet `VHM_REQ` |
-| `SMC_FC_NBL_VHM_REQ` / `FC_ID_INJECT_HW_IRQ` | `inject_hw_irq` |
-| `FC_ID_INJECT_VIRT_IRQ` | inject virtual IRQ into a VM |
-| `FC_ID_NOTIFY_VMLOG` / `_SINK` | kick Trusty log / vqueue |
-| `FC_ID_GPU_ARBITER` | [`gpu.md`](gpu.md) `HandleSmc` |
-| other Savior | `sm_handle_smc_call` (TEE / Trusty) |
+```text
+ x0  bit 31     fastcall (1 = FC, 0 = SC)
+     bit 30     SMC64
+     29:24      entity   SMC_ENTITY_NEBULA = 52
+     15:0       function
+ x7  31:16      SMC_SECURE_ID   0 = TEE, 1 = HYP
+```
+
+`SMC_SC_NBL_VHM_REQ` = stdcall entity 52 fn 256 → `0x34000100`.
+`SMC_FC_NBL_VHM_REQ` = fastcall same → `0xB4000100`.
+`validate_hypervcall`: those two FIDs **require** `x7` HYP id;
+mismatch injects IABT (`VBAR_EL1+0x200`, ESR EC=0x21). HYP id on
+a non-Nebula entity is a warning and still proceeds (SMCCC 1.1
+`r7` unknown → treat as TEE passthrough later).
+
+**Savior hypercalls** (`SMC_ENTITY_NEBULA` and
+`SMC_HYP_SECURE_ID` in `x7`). Test `x1 == 0xB1000003` dumps GIC
+in-kernel and does **not** post a packet.
+
+| `x0` | `x1` | Kernel |
+| --- | --- | --- |
+| `SMC_SC_NBL_VHM_REQ` | ACRN / IPC / guest-call | packet `VHM_REQ`, `ZX_ERR_NEXT` |
+| `SMC_FC_NBL_VHM_REQ` | `FC_ID_INJECT_HW_IRQ` (0) | `interrupt_set_pending(x2)` on **host GIC** |
+| | `FC_ID_INJECT_VIRT_IRQ` (1) | `inject_virt_irq(x2=vmid, x3=vec)` |
+| | `FC_ID_NOTIFY_VMLOG` (2) | `trusty::vcpu_kick(0)` |
+| | `FC_ID_GPU_ARBITER` (3) | `handle_gpu_arbiter_cmd(x2,x3,x4)` |
+| | `FC_ID_NOTIFY_VMLOG_SINK` (4) | `trusty::vq_wakeup(x2)` |
+| | other | `x0 = ZX_ERR_INVALID_ARGS` |
+| other HYP stdcall | | `sm_handle_smc_call` (Trusty-in-HEE) |
 
 Illegal Savior parameters inject an instruction abort into the
 guest instead of forwarding.
 
-**PSCI and friends** — diagram 7. Unlisted FIDs fall through to
-TEE (`do_psci_call` / `sm_handle_smc_call`) or return an error in
-`x0`.
+**PSCI** (`dev/psci.h`) — diagram 7. Always `next_pc` first;
+`x0` on return is PSCI status unless noted.
 
-`HYPERVISER_GUEST_OS_RESUME` / `_PM_STATE` / `_CPUFREQ` are Savior
-SMCs that SOS uses to poke another VM's PM state.
+| `x0` | Name | Kernel |
+| --- | --- | --- |
+| `0x84000000` | `PSCI_VERSION` | `(1<<16)\|1` |
+| `0xC4000003` | `CPU_ON` | STARTUP packet or `handle_vcpu_on` |
+| `0x84000002` | `CPU_OFF` | `handle_vcpu_off`; KILLED packet if fail |
+| `0xC4000004` | `AFFINITY_INFO` | always `PSCI_0_2_AFFINITY_LEVEL_OFF` |
+| `0xC4000001` | `CPU_SUSPEND` | `handle_vcpu_suspend`; `x1`: S2IDLE=`0x020180ff`, STANDBY=`0x00010000` |
+| `0x8400000B` | `CPU_FREEZE` | `PSCI_NOT_SUPPORTED` |
+| `0xC400000E` | `SYSTEM_SUSPEND` | `handle_system_suspend` STR |
+| `0x84000009` | `SYSTEM_RESET` | snapshot + `ZX_ERR_CANCELED` (dead ATF call after return) |
+| `0xC4000012` | `SYSTEM_RESET2` | snapshot + packet `STOP` |
+| `0x84000008` | `SYSTEM_OFF` | `ZX_ERR_UNAVAILABLE` |
+
+**`HYPERVISER_GUEST_*`** (Savior, not PSCI). SOS pokes another
+VM. `x1` user vmid unless noted.
+
+| `x0` | Name | Action |
+| --- | --- | --- |
+| `0xF0000000` | `OS_RESUME` | `handle_wakeup_guest_os(vmid, x2)` |
+| `0xF0000001` | `OS_PM_STATE` | `get_pmstate_form_vmid`; retry 2×10 ms if still s2idle |
+| `0xF0000002` | `OS_CPUFREQ` | `handle_vm_cpufrq` |
+| `0xF0000003` | `OS_IRQ_EVENT` | `handle_irq_event(from, to, irq)` VCPU 0 VIRTUAL |
+| `0xF0000004` | `OS_READ` | own ring/notify buf → x0–x3 |
+| `0xF0000005` | `OS_WRITE` | other VM ring + `smc_irq`; `target=0xFF` → GuestManager |
+| `0xF0000006` | `OS_UNLOCK` | inject `cvm_lock_irq` all VMs |
+| `0xF0000100` | `TBOX_BOOT_COUNT` | `tbox_boot_count` |
+| `0xF0000101` | `VCPU_MODE_BUDGET` | `SetGroupBudget` |
+| `0xF0000102` | `VCPU_VM_PRIORITY` | hint mode/prio |
+| `0xF0000103` | `ECALL_END` | clear flags, restore budget/period |
+
+Unlisted FIDs fall through to TEE.
 
 ### System instruction  (`HCR.TID3` and friends)
 
 | Register | Action |
 | --- | --- |
 | `SCTLR_EL1` write, `M=1` | drop `HCR.DC`; if `C=1` also drop `HCR.TVM`; cache-clean S2 |
-| `TCR` / `TTBR0` / `TTBR1` | store into `GuestState` (or `*_EL12` if VHE) |
+| `TCR` / `TTBR0` / `TTBR1` | store into `GuestState` EL1 fields |
 | `ID_AA64*` / `ID_*` / `MVFR*` | `handle_tid3_reg` — sanitized feature IDs |
 | `ICC_SGI1R_EL1` write | `handle_sgi` — guest IPI, virtual inject |
 | unknown | `ZX_ERR_NOT_SUPPORTED` |
@@ -607,13 +653,12 @@ failing → inject a guest data abort (`VBAR_EL1 + 0x200`).
 
 | Kind | Kernel | Userspace |
 | --- | --- | --- |
-| `ZX_GUEST_TRAP_BELL` | queue `ZX_PKT_TYPE_GUEST_BELL` on the trap port, `ZX_OK` | waiter on that port |
-| `ZX_GUEST_TRAP_MEM` | fill `ZX_PKT_TYPE_GUEST_MEM`, `ZX_ERR_NEXT` | `HandleMem` emulates, writes Xt back |
-| `ZX_GUEST_TRAP_VHM_BELL` | in-kernel VHM doorbell | — |
-| `ZX_GUEST_TRAP_VHM_MEM` | in-kernel VHM MMIO read/write | — |
+| `ZX_GUEST_TRAP_BELL` | queue `ZX_PKT_TYPE_GUEST_BELL` on the trap port, `ZX_OK` | waiter on that port (VHM BELL uses this) |
+| `ZX_GUEST_TRAP_MEM` | fill `ZX_PKT_TYPE_GUEST_MEM`, `ZX_ERR_NEXT` | `HandleMem` emulates (VGIC, virtio, VHM SYNC) |
 
 Unhandled MEM in the VMM injects a guest DABT
 (`zx_vcpu_inject_exception`) rather than killing the VCPU thread.
+Fields and host exception ports: [`exceptions.md`](exceptions.md).
 
 ## PSCI, idle, SMP
 
@@ -630,15 +675,16 @@ are created from VCPU 0 ([`vmm.md`](vmm.md) Launch).
 
 If the VCPU exists and is `PWROFF`, `handle_vcpu_on`:
 
-- `pcpu_hp_request_up` — bring the pCPU online if it was off
+- if the pCPU is offline, `suspend_for_cpu_on` and wait
 - `ResumeThread` — the parked VCPU thread continues after
-  `SuspendThread`; `ResetEl2State(entry)` / `SetGuestEntry`
+  `SuspendThread`; `ResetEl2State(entry)` runs on the off
+  VCPU after `SuspendThread` returns
 
 ### `CPU_OFF`
 
 `handle_vcpu_off`: `STATE_PWROFF`, drop `vcpu_thread_active`,
-maybe schedule pCPU down (last VCPU, `cpu != 0`). Then
-`SuspendThread`. When someone `ResumeThread`s, the function
+cancel timers, `SuspendThread`. The pCPU-offline body is
+`#if 0`. When someone `ResumeThread`s, the function
 resets EL2/VCPU state and returns `ZX_OK` to the SMC handler,
 which writes `PSCI_SUCCESS` and the next `Resume` `eret`s at the
 saved entry.
@@ -677,13 +723,16 @@ and the new LR is picked up. That is the
 [`interrupt.md`](interrupt.md) wakeup path, not a guest SGI.
 
 Lua `cpus` / `SetCpuAffinity` fills `Guest::cpu_binding_table_`.
-`WITH_CROSS_VM_SCHED` can also slide VCPU 0 onto `bindlk_pcpu`
-(`LIMIT_CPU_NUM`, 0–7).
+Default pin is `(vpid-1) % ncpu`, or `cpu_binding_table_[cpu_of(vpid)]`
+if set. `VcpuGroup::Add` is a userspace ioctl after create, not
+inside `Vcpu::Create`.
 
 ## Syscalls
 
 All hypervisor syscalls in `syscalls/hypervisor.cpp` plus GPU.
 Rights are on the handle. `hcr` to `zx_vcpu_create` is **ignored**.
+Object lifetime, `El2State` / `GichState` / `TrapMap`:
+[`objects.md`](objects.md).
 
 | Call | Rights | Kernel |
 | --- | --- | --- |
@@ -696,9 +745,6 @@ Rights are on the handle. `hcr` to `zx_vcpu_create` is **ignored**.
 | `zx_guest_set_smc_irq` | WRITE | virtual IRQ when a forwarded SMC completes |
 | `zx_guest_set_cvm_lock_irq` / `_vmo` | WRITE | [`guest.md`](guest.md) cross-VM lock |
 | `zx_guest_tee_vm_create` / `_destroy` | WRITE | [`tee.md`](tee.md) |
-| `zx_guest_add/remove_msi_mapping` | WRITE | `MsiRouter`; `NOT_SUPPORTED` if no `MSI_IN_KERNEL` |
-| `zx_guest_vhm_setup` | WRITE | kick IRQ + ioreq VMO |
-| `zx_guest_add/remove_mmio_mapping` | WRITE | VHM SYNC/BELL traps |
 | `zx_vcpu_create` | guest WRITE | pin, `STATE_RUNNING` |
 | `zx_vcpu_resume` | EXECUTE | `Vcpu::Resume` |
 | `zx_vcpu_interrupt` | SIGNAL | VIRTUAL |
@@ -707,7 +753,7 @@ Rights are on the handle. `hcr` to `zx_vcpu_create` is **ignored**.
 | `zx_vcpu_read/write_state` | READ/WRITE | `El2State` |
 | `zx_vcpu_inject_exception` | WRITE | pending DABT, next enter |
 | `zx_vcpu_dump_state` | READ | proto dump for watchdog |
-| `zx_poweron_phy_cpu` / `zx_power_on_cpu` | — | pCPU hotplug |
+| `zx_poweron_phy_cpu` | — | pCPU hotplug (`power_on_cpu`) |
 | `zx_gpu_scheduler_*` | GPU rights | [`gpu.md`](gpu.md); AHYP only |
 
 `zx_interrupt_bind_vcpu` (passthrough) is
@@ -793,12 +839,14 @@ F2, F3, F10, F11.
 - **Fake `PSCI_SUCCESS` on S2IDLE.** If Wait is skipped while an
   IRQ is pending, Linux thinks suspend succeeded and loses the
   wake. The pending-LR check exists for this.
-- **RESET vs RESET2.** `SYSTEM_RESET` is `ZX_ERR_CANCELED`
-  (VMM `REBOOT_REQUIRED`, relaunch, no dump packet).
-  `SYSTEM_RESET2` is `GUEST_VCPU_STOP`. Neither enters BL2;
-  [`logging.md`](logging.md).
-- **Platform reset.** Only SOS + `WDT_PROFILE_NOSINK` forwards
-  RESET to ATF. QEMU stays guest-local.
+- **RESET vs RESET2.** Both call `ramconsole_snapshot_take`
+  first. `SYSTEM_RESET` is then `ZX_ERR_CANCELED`
+  (VMM `REBOOT_REQUIRED`, relaunch). `SYSTEM_RESET2` is
+  `GUEST_VCPU_STOP`. Neither enters BL2; [`logging.md`](logging.md).
+  There is no SOS→ATF platform RESET in this tree (that call is
+  dead code after the `return`).
+- **`SYSTEM_OFF`.** All VMs `ZX_ERR_UNAVAILABLE` (VMM `SHUTDOWN`),
+  not SOS→ATF.
 - **Pin invariant.** `zx_vcpu_resume` from the wrong pCPU returns
   `ZX_ERR_BAD_STATE`. Do not `thread_set_cpu_affinity` after
   create. `zx_vcpu_create`'s `hcr` argument is accepted and
@@ -822,18 +870,17 @@ F2, F3, F10, F11.
 | S2IDLE | All VCPUs `STATE_SUSPEND`. `GUEST_PM_SUSPEND_TO_IDLE` |
 | STR | `GUEST_PM_SUSPEND_TO_RAM`. May `CPU_OFF` secondary pCPUs |
 | STARTUP packet | First `CPU_ON` of a VCPU the kernel does not have yet |
-| VHE | `WITH_VHE_SUPPORT`. Host stays EL2 with `E2H\|TGE`. Guest exits share `VBAR_EL1` |
+| EL2 trampoline | Host EL1h; guest enter/exit via `el2.S` `HVC #4` / `eret` |
 
 ## Code
 
 | Step | File |
 | --- | --- |
-| Host vectors / `svc` / VHE guest branch | `zircon/kernel/arch/arm64/exceptions.S` |
-| VHE resume / exit (HEE) | `zircon/kernel/arch/arm64/hypervisor/el2_vhe.S` |
-| Non-VHE vectors (TEE) | `el2.S` |
-| First/last guest EL2 on | `el2_cpu_state.cpp` |
+| Host vectors / `svc` | `zircon/kernel/arch/arm64/exceptions.S` |
+| Guest enter / exit / HVC table | `zircon/kernel/arch/arm64/hypervisor/el2.S` |
+| First/last guest EL2 on (`HVC #2`) | `el2_cpu_state.cpp` |
 | Syscall table | `zircon/kernel/syscalls/hypervisor.cpp` |
-| VHE boot (`E2H\|TGE`) | `zircon/kernel/arch/arm64/asm.S` `arm64_elX_to_el2` |
+| Boot drop to EL1h | `zircon/kernel/arch/arm64/asm.S` `arm64_elX_to_el1` |
 | HEE flags | `zircon/kernel/project/venus-hee.mk` |
 | `El2State` layout / HCR bits | `zircon/kernel/arch/arm64/include/arch/arm64/el2_state.h` |
 | `Guest` / `Vcpu` / PM | `zircon/kernel/arch/arm64/include/arch/hypervisor.h` |
@@ -850,5 +897,7 @@ F2, F3, F10, F11.
 | VCPU 0 factory | `garnet/bin/guest/vmm.cc` `StartPrimaryVcpu` |
 
 ---
+
+Prev: [`bootstrap.md`](bootstrap.md) · Next: [`memory.md`](memory.md) · [`README.md`](README.md)
 
 Everyday's a Hustle.

@@ -1,5 +1,10 @@
 # Scheduler
 
+**After this:** you can say why SOS stole a SHARE core.
+**First read:** Principle, then Diagrams 1–6, then Current scheme. Skip
+nebula_sched posters until occupancy is the bug.
+**Next:** [`vmm.md`](vmm.md).
+
 Savior's CPU time is one LK scheduler. A VCPU is a **pinned host
 thread** on that scheduler. Jobs and processes do not have run
 queues; they group capabilities. Cross-VM policy (`VcpuGroup`) then
@@ -8,9 +13,14 @@ bits when a guest is busy, in IRQ, or starving.
 
 Occupancy bits live in shared DRAM. The host never suspends a
 VCPU thread. Guest **`nebula_sched`** parks the Linux CPU when
-the doorbell fires. Policy1 also needs that module: it shows
+the doorbell fires. Hint peek also needs that module: it shows
 Savior where guest `preempt_count` / `policy` live, so a FIFO
 or IRQ can raise the **host** VCPU.
+
+There is **no** selectable Policy0/1/2 in this tree. Every
+`Resume` runs `OnVcpuResumePre` → `AddSchedHint`. Lua
+`setSchedPolicy` is stored and never applied. Older comments
+that say “Policy1” mean this peek.
 
 **VCPU scheduling is the product path.** Two VMs share cores. The
 host never sees guest tasks — only a VCPU thread whose priority and
@@ -30,12 +40,45 @@ how ordinary threads are picked, **thread vs VCPU context switch**,
 against them, how RT and interrupt hints raise host priority, how
 lua / ioctl configure it, how VCPUs are bound to pCPUs, how
 **strategy switches** under burst IRQ and load, the **current
-optimization scheme** (dual timescale, dedicated-core skip,
-`8_8_DYNAMIC`), and how the guest **`nebula_sched`** module
-parks CPUs and feeds Policy1.
+optimization scheme** (dual timescale, `8_8_DYNAMIC`), and how
+the guest **`nebula_sched`** module parks CPUs and feeds hint
+peek.
 
 Start with **Diagrams** (eight posters + nebula_sched), then the
 sections they index. Product recipe: **Current scheme**.
+
+## Principle
+
+1. **Host cannot see guest tasks.** A VCPU is one `thread_t`.
+   CFS/FIFO/`handle_irq` live in guest RAM. Savior only samples
+   `preempt_count` / `policy` (hint peek) and writes occupancy
+   bits. Parking a Linux CPU is the **guest** module’s job so
+   the host never `thread_sleep`s a VCPU that still has a
+   pending virtual IRQ.
+
+2. **Two timescales on purpose.** Hint (`AddSchedHint`) runs
+   **every `Resume`** (µs): raise this VCPU’s host prio/slice
+   for IRQ / FIFO / spinlock. Occupancy (`ApplyVcpuPolicy`)
+   runs at most every **`kMinSchedInterval` = 8 ms**: who may
+   *sit* on a pCPU (RUN / PAUSE / SHARE / OFFLINE). Mixing them
+   would flap cores at IRQ rate. SHARE means both VMs RUN on
+   that pCPU; hint then decides who wins the next slice.
+
+3. **SHARE is preemption, not fairness.** Two READY VCPU
+   threads, LK CFS-like. Occupancy SHARE + hint is how SOS
+   steals a core for 100–200 µs without PAUSE’ing UOS (PAUSE
+   would need the guest to unpause before it can take the IRQ).
+   Static 3_5 splits are for idle; `8_8_DYNAMIC` moves PAUSE
+   only when util crosses 40% / 75%.
+
+4. **8 ms is a lock + watermark, not a timer.** `ApplyVcpuPolicy`
+   is called from `Resume` but returns immediately unless
+   `now - kLastSchedTime > 8 ms` and `kSchedLock` is free.
+   Doorbell is `sched_irq` VIRTUAL, not a host sleep.
+
+5. **Hint peek is RO CACHED of guest DRAM.** Same MemAttr as
+   guest RAM. Sampled on **this** VCPU thread after vmexit, so
+   it sees that guest’s stores. No DMA, no extra barrier.
 
 ## Framework
 
@@ -144,7 +187,7 @@ priority and slice. Guest tasks never enter the run queue.
                                                 then THAT VCPU eret
 
   SOS guest ──exit── SOS thread ──CS── UOS thread ──enter── UOS guest
-                    (EL2)              (EL1)              (EL2)
+                    (EL1 host)         (EL1 host)         (EL2 trampoline)
 ```
 
 ### 3. Hint mode ladder
@@ -176,16 +219,16 @@ Every strategy switch is **before** `eret`.
         ▼
   ┌─ loop ─────────────────────────────────────────────────────────┐
   │  1  period timer arm (5 ms)                                    │
-  │  2  SchedVcpuResumePre     GetSchedStatus + AddSchedHint       │
+  │  2  OnVcpuResumePre        GetSchedStatus + AddSchedHint       │
   │  3  ApplyVcpuPolicy        occupancy, ≥ 8 ms                   │
   │  4  need_sched_ ?  thread_reschedule / yield  ──► maybe CS     │
   │  5  gich_maybe_interrupt   bitmap → ICH_LR  (UIE if leftover)  │
-  │  6  arm64_el2_resume       VTTBR on, eret guest EL1h           │
+  │  6  arm64_el2_resume       HVC #4, VTTBR on, eret guest EL1h   │
   │                      ┌──── guest runs ────┐                    │
   │                      │  SPI  HCR.IMO      │                    │
   │                      │  trap / HVC / WFI  │                    │
   │                      └─────────┬──────────┘                    │
-  │  7  el2_guest_exit     VTTBR=0, El2State                       │
+  │  7  el2_guest_exit     HCR=RW, VTTBR=0, eret host EL1          │
   │  8  need_sched_ = true                                         │
   │     physical IRQ  →  loop (ZX_OK)                              │
   │     handled trap  →  loop                                      │
@@ -223,7 +266,7 @@ UOS is running. SPI belongs to SOS. SHARE core.
                                       ▼
                     VcpuIrqHandler → SOS bitmap + IPI
                     UOS HCR.IMO → EL2 exit (UOS still current thread)
-                    Policy1 walk group:
+                    AddSchedHint walk group:
                       UOS  RUNNING  → hysteresis, no extra boost
                       SOS  READY + IRQ_PENDING → raise 20 / 100 µs
                     thread_reschedule  CS UOS → SOS
@@ -585,7 +628,8 @@ migrate. Interrupt inject (`Vcpu::InterruptCpu`) IPIs that pCPU.
  thread  = pin_thread_to_cpu(cpu_num)    // affinity = 1<<cpu_num
  bind_cpu_num_ = cpu_num
  set_to_vcputhread(thread, vmid, pcpu)
- VcpuGroup::GetVcpuGroup(pcpu)->Add(vcpu)
+ // VcpuGroup::Add is NOT here: userspace ioctl after create
+ machina::Vcpu::SetGroup → SYS_PLATFORM_CONFIG_VCPU_GROUP
 ```
 
 One `VcpuGroup` per pCPU. All VCPUs bound to that pCPU sit on
@@ -596,33 +640,31 @@ Two knobs, applied at different rates:
 
 | Knob | Who | Rate | What |
 | --- | --- | --- | --- |
-| Hint policy 0/1/2 | `setSchedPolicy` | every VM-exit | host prio + slice from guest status |
+| Hint policy | `OnVcpuResumePre` + `AddSchedHint` | every VM-exit | host prio + slice from guest status |
 | Occupancy | `sched_control.policy` | ≥ 8 ms | RUN / PAUSE / SHARE / OFFLINE per `(VM, vcpu_id)` |
 
 ### Resume loop (the scheduling point)
 
-Every strategy switch happens here, **before** `eret`. Policy0 is
-a nop (`OnVcpuResumePreDefault`). Policy1/2 only run when the
-previous exit set `need_sched_`.
+Every strategy switch happens here, **before** `eret`. There is
+no Policy0/1/2 hook swap: `OnVcpuResumePre` always runs
+`AddSchedHint`. Occupancy (`ApplyVcpuPolicy`) is independent.
 
 ```text
  zx_vcpu_resume
     check_pinned_cpu_invariant
-    SchedResumePeriodTimer          // Policy1/2: arm 5 ms oneshot
     do {
         timer_maybe_interrupt
-        SchedVcpuResumePre          // Policy1/2: AddSchedHint*
-        ApplyVcpuPolicy             // occupancy, min 8 ms
+        OnVcpuResumePre / ApplyVcpuPolicy
         if need_sched_: continue    // resched already ran; retry
         ints off
         gich_maybe_interrupt        // Pop bitmap → ICH_LR
         ICH_HCR.En [| UIE]          // UIE if leftover pending
         running_ = true
-        arm64_el2_resume            // HVC → eret guest
+        arm64_el2_resume            // HVC #4 → eret guest
         running_ = false
         gic_read_gich_state
         TrackAllListRegisters
-        need_sched_ = true          // Policy1/2
+        need_sched_ = true
         ints on
         ZX_ERR_NEXT → if not KILL, status = ZX_OK   // physical IRQ
         ZX_OK       → vmexit_handler
@@ -630,10 +672,10 @@ previous exit set `need_sched_`.
     ZX_ERR_NEXT (packet) → SetVMCallMode (prio 24), return to VMM
 ```
 
-`period_tick` (5 ms, lua `setPeriods`) calls `RefillPeriod`:
-`ResetPeriodRuntime` on every VCPU in the group. Policy2 also
-restores `GetSchedPriority()` so a leftover IRQ boost does not
-leak across the period.
+`period_tick` (lua `setPeriods`; product 7 ms, QEMU default 5 ms)
+calls `RefillPeriod`: `ResetPeriodRuntime` on every VCPU in the
+group. It does **not** restore base priority. Leftover IRQ boost
+drops on the next `AddSchedHint` that sees no IRQ bits.
 
 ### Period / budget
 
@@ -662,15 +704,15 @@ catch up, **unless** the mode is IRQ / PREEMPT_DISABLE (see
 | `STATUS_IRQ_PENDING` | GICH bitmap non-empty |
 | `STATUS_IPI_HANDLING` | pending vector < 32 (SGI/PPI) |
 | `STATUS_IRQ_DISABLED` | guest `SPSR` I/F set (not WFI/WFE exit) |
-| `STATUS_IN_IRQ` | Policy1: guest `preempt_count` HARDIRQ/SOFTIRQ/NMI |
-| `STATUS_PREEMPT_DISABLED` | Policy1: guest `preempt_count` PREEMPT_MASK |
-| `STATUS_RT_RUNNING` | Policy1: guest `policy` FIFO/RR |
+| `STATUS_IN_IRQ` | hint peek: guest `preempt_count` HARDIRQ/SOFTIRQ/NMI |
+| `STATUS_PREEMPT_DISABLED` | hint peek: guest `preempt_count` PREEMPT_MASK |
+| `STATUS_RT_RUNNING` | hint peek: guest `policy` FIFO/RR |
 | `STATUS_RUNNING` / `READY` | host `thread_t` state |
 
-Policy1 peeks guest RAM via `SchedParams` (SOS/UOS export
+`AddSchedHint` peeks guest RAM via `SchedParams` (SOS/UOS export
 `preempt_count` and `policy` through shared DRAM: ioctl
-`DRAM_INFO` / `VM_MEM_INFO` / `VM_*_OFF`). Policy2 is the same
-budget math without that peek (`AddSchedHint2`).
+`DRAM_INFO` / `VM_MEM_INFO` / `VM_*_OFF`). There is no
+`AddSchedHint2` / Policy2 path in this tree.
 
 `AddSchedHint` maps status to a **host** mode, then writes the
 VCPU's `thread_t`:
@@ -807,7 +849,7 @@ prio 20 for a whole period.
     gich Pending           STATUS_IRQ_PENDING
     pending SGI/PPI < 32   STATUS_IPI_HANDLING
     guest SPSR I-bit       STATUS_IRQ_DISABLED
-    guest hardirq count    STATUS_IN_IRQ          (Policy1)
+    guest hardirq count    STATUS_IN_IRQ          (hint peek)
     vtimer in ICH_LR       force SCHED_MODE_IRQ
          │
     READY VCPU  →  raise IRQ  prio 20  slice 100 µs  RESCHEDULE
@@ -833,10 +875,9 @@ Burst handling, in order:
 | 10. Overload exempt | IRQ / PREEMPT never drop to 14 | latency beats fairness for 100 µs |
 | 11. Occupancy | SHARE still preempts; PAUSE does not help the paused VM | occupancy is slow (8 ms) |
 
-Do **not** hold `SCHED_MODE_IRQ` across a period refill: Policy2
-restores `GetSchedPriority()` on `period_tick`. Policy1 relies on
-the next `AddSchedHint` seeing no IRQ bits and dropping to
-NORMAL.
+Do **not** expect a period refill to drop IRQ boost: this tree
+does not restore base prio on `period_tick`. The next
+`AddSchedHint` that sees no IRQ bits drops to NORMAL.
 
 LR full (`elrs == 0`): `gich_maybe_interrupt` returns without
 Pop. If vtimer is pending it steals a PENDING slot
@@ -848,7 +889,7 @@ bug — see [`interrupt.md`](interrupt.md) Pitfalls. The scheduler
 still bounds them: 100 µs slice + hysteresis.
 
 Latency recipe: exclusive `bind_pcpus` + exclusive SPI +
-occupancy not SHARE + Policy1 so guest FIFO/IRQ is visible.
+occupancy not SHARE + hint peek so guest FIFO/IRQ is visible.
 
 ### Guest RT / spinlock
 
@@ -865,9 +906,8 @@ Host RT (`thread_set_real_time` / `thread_set_realtime_slice`):
 
 `thread_is_realtime` is `FLAG_REAL_TIME && base_priority > 16`.
 A VCPU thread is **not** permanently RT. `AddSchedHint` raises
-`base_priority` and may call `SetRealTimeSlice` (Policy2, while
-RUNNING and not period-start) for a short window. After the hint
-mode drops, it is a normal CFS-like thread again.
+`base_priority` for a short window (IRQ 100 µs / RT 200 µs).
+After the hint mode drops, it is a normal CFS-like thread again.
 
 Guest FIFO/RR → `STATUS_RT_RUNNING` → `SCHED_MODE_RT` (prio 18,
 200 µs). Guest CFS stays NORMAL (16). Guest spinlock /
@@ -926,23 +966,41 @@ other VCPUs.
 Next `zx_vcpu_resume`: hysteresis drops `VM_CALL` toward IRQ /
 PREEMPT / RT / NORMAL from the new status.
 
-### Hint policy 0 / 1 / 2
+### Hint path (no Policy 0/1/2 swap)
 
-`VcpuGroup::SetSchedPolicy` swaps the Resume hooks:
+There is **no** `VcpuGroup::SetSchedPolicy` / `AddSchedHint2` /
+`GetPopCountVcpuOnline` in this tree. Lua `setSchedPolicy` is
+stored and never ioctl'd. Every resume uses the same hooks:
 
-| Policy | Period timer | `SchedVcpuResumePre` | Guest peek |
-| --- | --- | --- | --- |
-| 0 DEFAULT | nop | nop | no |
-| 1 | 5 ms refill | `AddSchedHint` | `preempt_count` + `policy` |
-| 2 | 5 ms refill | `AddSchedHint2` | no; RT slice while RUNNING |
+```text
+ OnVcpuResumePre
+    GetSchedStatus
+    optional guest peek (preempt_count / policy)
+    AddSchedHint
+ ApplyVcpuPolicy          occupancy, independent of hints
+```
 
 Occupancy (`NONE` / `3_5_0` / `8_8_DYNAMIC` / …) is independent.
-Both apply.
+Both apply. `RefillPeriod` only `ResetPeriodRuntime`; it does
+not restore base priority.
 
 ## Current scheme
 
 What this tree actually ships for 3OS (SOS + UOS, optional tbox)
 on 8 pCPUs. Not a second scheduler: the knobs above, composed.
+
+Product lua (`sos_mt8678.lua`):
+
+```text
+ 8 VCPUs  bind 0..7
+ setPeriods  7000 µs × 8
+ setBudgets  2000 µs × 8
+ setSchedIrq(283)  setSchedId(1)
+ occupancy policy is guest shm (default NONE until a guest writes it)
+```
+
+tbox product: 8 CPUs, bind `{3,1,2,0,4,5,6,7}`, `setSchedId(3)`.
+QEMU lua has **no** bind/period/budget/sched_irq.
 
 ### Problem
 
@@ -972,17 +1030,9 @@ how a modem SPI beats Android CFS on pCPU 0.
 
 ### Dedicated-core skip
 
-`OnVcpuResumePrePolicy1/2`, if `GetPopCountVcpuOnline() <= 1`
-on this `VcpuGroup`:
-
-```text
- SetPriority(16)  SetTimeSlice(period)
- skip guest peek, skip budget math, skip AddSchedHint
-```
-
-Exclusive occupancy (only one VM RUN on that pCPU) must not pay
-Policy1. Slice = whole period so the VCPU is not deboosted by a
-2 ms budget that nobody contends.
+**Not implemented** in this tree (`GetPopCountVcpuOnline` is
+absent). Exclusive occupancy still runs `AddSchedHint` on every
+exit.
 
 ### Fast-path optimizations (hint)
 
@@ -995,8 +1045,8 @@ Policy1. Slice = whole period so the VCPU is not deboosted by a
 | IRQ/lock vs fairness | `mode ≥ PREEMPT` → overload ignored | 200 µs RT/spinlock |
 | Leftover budget | `ex_remain ≥ 50 µs` → do not drop to 14 | core had spare |
 | VMM mutex | packet → prio 24 `VM_CALL` | comment: GIC/VHM locks |
-| Period refill | 5 ms zeros runtime; Policy2 restores base prio | lua `setPeriods` |
-| Short RT window | Policy2 `SetRealTimeSlice` while RUNNING | not permanent `THREAD_FLAG_REAL_TIME` |
+| Period refill | zeros runtime only (`ResetPeriodRuntime`) | lua `setPeriods` (product 7 ms) |
+| Short RT window | hint prio 18 / 200 µs | not permanent `THREAD_FLAG_REAL_TIME` |
 
 Lua `setSchedPriority` / `setSchedTimeslice` override 18/20 and
 200/100 µs. Do not raise IRQ above host DPC (31) or the host
@@ -1061,37 +1111,35 @@ module must actually park.
 
 ### bindlk_pcpu
 
-`SYS_PLATFORM_SET_BINDLK_PCPU`: VCPU 0 of a VM may sit on a
-chosen pCPU (`LIMIT_CPU_NUM` 0–7) instead of `cpu_of(0)`. For
-a lock-holder / IPC CPU that must not migrate. Pin invariant
-still holds after the slide (`cpu.md`).
+**Not in this tree.** There is no `SYS_PLATFORM_SET_BINDLK_PCPU`.
+Pin is `GetBindPCpuNum` / `cpu_of(vpid)` at create.
 
 ### Which knobs for which board
 
 | Goal | Hint | Occupancy | Bind |
 | --- | --- | --- | --- |
-| Product 3OS latency | Policy **1** (guest FIFO/IRQ visible) | `3_5_0` static | exclusive SPI on exclusive pCPU |
-| Load follows Android | Policy 1 | `8_8_DYNAMIC` | same |
-| Bring-up / debug | Policy **0** (nop) | `NONE` (all RUN) | default `vpid % n` |
-| No guest module yet | Policy **2** (no RAM peek) | static | — |
-| GPU SWA | Policy 1 | exclusive that affinity VCPU | `arbiter-gpu-vcpus` first in vector |
+| Product 3OS latency | `AddSchedHint` (guest FIFO/IRQ visible) | `3_5_0` static | exclusive SPI on exclusive pCPU |
+| Load follows Android | same hint path | `8_8_DYNAMIC` | same |
+| Bring-up / debug | occupancy `NONE` (all RUN) | `NONE` | default `(vpid-1) % n` |
+| GPU SWA | hint peek | exclusive that affinity VCPU | `arbiter-gpu-vcpus` first in vector |
 | tbox modem | — | `5_5_2` gives tbox pCPU 0 + SHARE 4 | exclusive SPI |
 
-Policy0 on a SHARE core: both VCPUs stay 16, round-robin by
-budget only — IRQ steal does not happen. That is why product
-AHYP is Policy1.
+Without hint peek (`SchedParams` unset), both VCPUs stay NORMAL
+16 on a SHARE core and round-robin by budget — IRQ steal from
+guest `preempt_count` does not happen. Product lua still does
+not call `setSchedPolicy`; peek works when the guest module
+publishes `DRAM_INFO` / `VM_*_OFF`.
 
 ### Decision tree (one Resume)
 
 ```text
  pin invariant fail?          BAD_STATE
- popcount on this pCPU ≤ 1?   prio 16, slice=period, eret
  need_sched_ == 0?            skip hint (already applied)
-    GetSchedStatus + peek (Policy1)
+    GetSchedStatus + optional guest peek
     AddSchedHint  hysteresis
     overload?  unless IRQ/PREEMPT
     RESCHEDULE if mode changed
- occupancy 8 ms elapsed?
+ occupancy interval elapsed?  (kMinSchedInterval, ~8 ms)
     8_8_DYNAMIC / static table → shm + sched_irq
  need_sched_ after hint?      yield/resched, retry loop
  gich_maybe_interrupt; eret
@@ -1103,8 +1151,8 @@ Guest Linux module. Savior never parks a VCPU thread. It writes
 who *may* sit on a core into shared DRAM and rings a doorbell
 (`sched_irq`). **`nebula_sched` is the actuator**: it pauses
 that guest CPU. The same page also carries util, a recipe so
-Policy1 can peek guest `current`, and a per-pCPU RT bit so two
-FIFO tasks do not land on one SHARE core.
+`AddSchedHint` can peek guest `current`, and a per-pCPU RT bit so
+two FIFO tasks do not land on one SHARE core.
 
 SOS = VM 1, UOS = VM 2, tbox = VM 3. One layout, three readers.
 Guest module map: [`guest.md`](guest.md). Cross-VM
@@ -1123,7 +1171,7 @@ CFS.
      guest pauses the Linux CPU
      host VCPU thread stays READY — it just has nothing to run
 
-  2. Hint feed     every VM-exit (Policy1)
+  2. Hint feed     every VM-exit (`AddSchedHint`)
      guest once shows Savior where current->policy and
      preempt_count live in guest RAM
      Savior peeks, then raises the **host** VCPU thread
@@ -1179,7 +1227,7 @@ RT. Shared DRAM is the only wire.
               └──────────────────▲──────────────────┘
                                  │
               ┌──────────────────┴──────────────────┐
-              │  Savior                              │
+              │  Savior                             │
               │  occupancy table  (≥ 8 ms)          │
               │  hint prio / slice  (every exit)    │
               └─────────────────────────────────────┘
@@ -1206,6 +1254,11 @@ RT. Shared DRAM is the only wire.
   guest → layout enum, RT bit, suspend
   doorbell → guest re-reads occupancy[this VM]
 ```
+
+C layout (`nebula-sched.h` `struct nebula_sched_info`):
+`pcpu_utils[8]`, `alps_vcpu_stats[8]`, `yocto_vcpu_stats[8]`,
+`vcpu_policies[6][8]`, `sched_ctrl` (policy + `vm_suspend[6]`),
+`rt_info` (bind + RT bits). Guest apply: [`guest.md`](guest.md).
 
 #### N3. Occupancy apply
 
@@ -1244,7 +1297,7 @@ Park keeps at least two CPUs of a VM. Occupancy tables are
 built so a VM is never emptied. tbox is not the idle side of
 `8_8_DYNAMIC`.
 
-#### N4. Policy1 peek
+#### N4. Hint peek (`AddSchedHint`)
 
 Without this, Savior cannot see guest FIFO or a held spinlock.
 Guest tells the map once; Savior peeks on every later exit.
@@ -1267,8 +1320,8 @@ Guest tells the map once; Savior peeks on every later exit.
     (hysteresis: READY only raises, RUNNING only drops)
 ```
 
-Wrong map → Savior reads `-1` → Policy1 behaves like Policy2
-(budget only, no guest FIFO / lock).
+Wrong map → Savior reads `-1` → hint peek is a no-op
+(budget + host thread state only, no guest FIFO / lock).
 
 #### N5. Cross-VM RT mask
 
@@ -1382,11 +1435,11 @@ Timing versions of **Diagrams** 4–7. Same events, more timestamps.
          period 5 ms         budget 2 ms     budget 2 ms
 
  t0  SOS Resume
-     Policy1: both NORMAL, SOS remaining slice
+     hint: both NORMAL, SOS remaining slice
      eret SOS ──────────────────────────────── SOS guest EL1h
  t1  quantum / WFI / trap
      EL2 exit, need_sched_
- t2  Policy1: SOS runtime 2.1 ms, no spare
+ t2  hint: SOS runtime 2.1 ms, no spare
      SOS OVERLOAD 14, UOS 16  RESCHEDULE
      thread CS  SOS → UOS
  t3  UOS Resume  eret UOS ──────────────────── UOS guest EL1h
@@ -1410,7 +1463,7 @@ SHARE core, UOS running, SOS owns the SPI.
                                            bitmap + IPI pCPU 0
                                            UOS HCR.IMO → EL2
                                            UOS Resume need_sched_
-                                           Policy1 walk group:
+                                           AddSchedHint walk group:
                                              UOS RUNNING + (maybe no SOS IRQ bits)
                                              SOS READY  + IRQ_PENDING
                                                AddSchedHint: raise IRQ 20 / 100 µs
@@ -1464,7 +1517,7 @@ LR full + vtimer:
  SOS guest  preempt_count != 0     PREEMPT_DISABLE 18 / 200 µs
  UOS        SPI pending            READY → IRQ 20 / 100 µs
             20 > 18  →  SOS preempted mid-lock
- Policy1 exists so Savior can see the lock; it still loses to IRQ.
+ Hint peek exists so Savior can see the lock; it still loses to IRQ.
  Exclusive occupancy (not SHARE) is the way to keep the lock.
 ```
 
@@ -1531,11 +1584,7 @@ Then `SYS_PLATFORM_SET_SCHED_PARAM` ioctls:
 | `BUDGET` | `Vcpu::SetBudget` |
 | `PRIORITY` / `TIMESLICE` | per guest-status host prio/slice |
 | `VCPU_PRIORITY` | `SetPriority` on that handle |
-| `POLICY` | `VcpuGroup::SetSchedPolicy` → Policy0/1/2 resume hook |
-| `DRAM_INFO` / `VM_MEM_INFO` / `VM_*_OFF` | `SchedParams` so Policy1 can read guest `preempt_count` |
-| `EXCLUSIVE_VCPU` | `vcpu_mask` skipped by occupancy steal |
-| `ONLINE_VCPU` | online mask for `GetPopCountVcpuOnline` |
-| `VCPU_TYPE` | little / middle / big (occupancy prefer masks) |
+| `DRAM_INFO` / `VM_MEM_INFO` / `VM_*_OFF` | `SchedParams` so `AddSchedHint` can read guest `preempt_count` |
 
 Runtime occupancy (`NONE`, `3_5_0`, `8_8_DYNAMIC`, …) lives in
 `sched_control` shared memory, not lua. Userspace writes `ctl->policy`;
@@ -1557,11 +1606,12 @@ is the **who may run on this pCPU** table. Both apply.
  machina::Vcpu::SetGroup(pcpu)         userspace side of the same pin
 ```
 
-If `bind_pcpus` is omitted, `hypervisor::cpu_of(vpid)` (usually
-`vpid % ncpu`) is the default pin. UOS `main_uos.cc` may
-`zx_poweron_phy_cpu` before bind. `SYS_PLATFORM_SET_BINDLK_PCPU`
-slides **VCPU 0** onto `bindlk_pcpu` (0–7) after create
-(**Current scheme**).
+If `bind_pcpus` is omitted, `hypervisor::cpu_of(vpid)` is
+`(vpid - 1) % ncpu`. UOS `main_uos.cc` may
+`zx_poweron_phy_cpu` before bind. There is no
+`SYS_PLATFORM_SET_BINDLK_PCPU` / `EXCLUSIVE_VCPU` /
+`ONLINE_VCPU` ioctl in this tree. Lua `setSchedPolicy` is stored
+and never applied (`vmm.cc` has no `sched_policy()`).
 
 Pin is **hard**: `check_pinned_cpu_invariant` on Resume. Inject and
 `DumpState` IPI that pCPU. SPI exclusive bind
@@ -1596,12 +1646,12 @@ bind + that pCPU not SHARE. Same advice as interrupt.md.
 | `VcpuGroup` | Per-pCPU list of VCPUs sharing that core. |
 | Budget | CPU time a VCPU may consume per group period. |
 | Occupancy policy | RUN / PAUSE / SHARE / OFFLINE per `(VM, vcpu_id)`. |
-| `nebula_sched` | Guest module: parks CPUs, feeds Policy1, publishes RT. |
+| `nebula_sched` | Guest module: parks CPUs, feeds hint peek, publishes RT. |
 | occupancy shm | Shared DRAM: util, RUN/PAUSE/SHARE/OFFLINE, RT bits. |
 | `sched_irq` | Doorbell into VCPU 0: guest, re-read occupancy. |
-| Hint policy | Policy0/1/2: how Resume maps guest status → host prio. |
+| Hint | `AddSchedHint`: guest status → host prio / slice. Always on. |
 | Mode hysteresis | RUNNING: only drop; READY: only raise. Burst-IRQ contract. |
-| `need_sched_` | Previous VM-exit asked Policy1/2 to recompute hints. |
+| `need_sched_` | Previous VM-exit asked Resume to recompute hints. |
 | `ex_remain` | Group leftover after budgets and overruns. |
 | `bind_pcpus` | Lua array: VCPU index → pCPU. |
 | PI | Kernel mutex donates waiter `effec` to holder. Not futex. |
@@ -1632,10 +1682,8 @@ bind + that pCPU not SHARE. Same advice as interrupt.md.
 | `SetVMCallMode` | same, on `ZX_ERR_NEXT` packet |
 | Occupancy shm | `zircon/kernel/kernel/pelt.c` `update_vm_policy` |
 | PELT util | `pelt.c` `updata_vcpu_util` / `cpu_util_map` |
-| Dedicated-core skip | `vcpu_group.cpp` `GetPopCountVcpuOnline() <= 1` |
 | `8_8_DYNAMIC` | `vcpu_group.cpp` `DoPolicy_8_8_Dynamic` |
-| `VcpuGroup` / Policy1/2 | `zircon/third_party/lib/thyper/vcpu_group.cpp` |
-| bindlk / exclusive | `board_mtk_comm.cpp` `BINDLK_PCPU` / `EXCLUSIVE_VCPU` |
+| `VcpuGroup` / hints | `zircon/third_party/lib/thyper/vcpu_group.cpp` |
 | Policy enums | `zircon/kernel/include/kernel/sched.h` |
 | Bind table | `zircon/kernel/arch/arm64/hypervisor/guest.cpp` `SetCpuAffinity` |
 | Lua knobs | `garnet/bin/guest/guest_config.h` |
@@ -1643,5 +1691,7 @@ bind + that pCPU not SHARE. Same advice as interrupt.md.
 | Set period/budget/prio | `zircon/third_party/lib/thyper/board_mtk_comm.cpp` |
 
 ---
+
+Prev: [`interrupt.md`](interrupt.md) · Next: [`vmm.md`](vmm.md) · [`README.md`](README.md)
 
 Everyday's a Hustle.

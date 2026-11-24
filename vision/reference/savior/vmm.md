@@ -1,12 +1,18 @@
 # VMM
 
+**After this:** you can say why a guest relaunched or did not.
+**First read:** lifecycle + RESET vs RESET2. **Next:** [`pm.md`](pm.md).
+
 Savior's userspace hypervisor is **guest_manager** plus one **Vmm**
 process per guest. SOS, UOS (ALPS / Android), and tbox are those
 guests. This note is their lifecycle: launch, run, reboot, shutdown,
 STR (suspend-to-RAM / s2idle), and the two watchdog layers that
 restart a silent hang.
 
-Read [`bootstrap.md`](bootstrap.md) for first `eret` into guest EL1,
+FIDL Create/Run/Stop: [`fidl.md`](fidl.md). Kernel Guest/Vcpu:
+[`objects.md`](objects.md).
+Read [`system.md`](system.md) for the process tree,
+[`bootstrap.md`](bootstrap.md) for first `eret` into guest EL1,
 [`cpu.md`](cpu.md) for `zx_vcpu_resume` / PSCI intercepts,
 [`scheduler.md`](scheduler.md) for VCPU pin / occupancy,
 [`interrupt.md`](interrupt.md) for wakeup IRQs,
@@ -77,6 +83,96 @@ flips it. UOS is usually spawned from SOS, not this file.
    guest `SYSTEM_OFF` that maps to `SHUTDOWN` do not come back.
    Probe hang, watchdog miss, `REBOOT_REQUIRED`, and unexpected
    Vmm death do.
+
+## Diagrams
+
+### 1. Catalog (`guest_manager.pb.txt`)
+
+`guest_manager::Config` proto. Product indep image:
+
+```text
+ guest_configs {
+   vmid: -1   name: SOS    default_cfg: sos.lua
+   bootloader: sos_bootloader.pb.txt
+   auto_start: true
+ }
+ guest_configs {
+   vmid: 1    name: tbox   default_cfg: uos_tbox_pv8678.lua
+   bootloader: tbox_bootloader.pb.txt
+   auto_start: true
+   delayed_launch_ms: 55000
+   memory_path: /reserved-memory//acrn_guest_memory_info/mem1
+ }
+```
+
+UOS is **not** in this file. SOS `HC_START_VM` launches
+`file://uos`. Fields: `vmid`, `name`, `default_cfg`, `bootloader`,
+`memory` / `memory_path`, `auto_start`, `log_level`,
+`delayed_launch_ms`.
+
+### 2. `Vmm::Initialize` order
+
+```text
+ product.lua + sos.lua / tbox.lua / uos lua
+ ioctl guest_memory_allocator
+ guest_.Init(vmem)                 zx_guest_create_new + S2 maps
+ SetCpuAffinity
+ interrupt_controller.Init         VGIC traps + passthrough
+ virtio-* / vSMMU / vsock / …
+ VhmServiceImpl  (SOS)  /  VhmDevice (UOS)
+ GpuScheduler  (SoC, if arbiter)
+ occupancy shm + sched_irq
+ cvm-lock VMO + irq
+ bootloader Setup → guest_ip_ = Image + 64 KiB
+```
+
+A trap after `Init` always wins over an identity map for that
+IPA. [`devices.md`](devices.md) diagram 6.
+
+SoC-only after VGIC (`!is_qemu_platform()`): UFS VM IRQ
+notifier, PCI global IRQs, virtio-block, virtio-RPMB, RTC.
+Always (QEMU too): PCI bus, cluster+SPI, eint, virtio-console
+(`hvc0` socket), virtio-vsock + GzFS port 5022. GPU scheduler
+service is created only if `arbiter_gpu_enable` **and** this
+Vmm is SOS. `TeeVmCreate` runs **before** bootloader `Setup`.
+
+### Bootloader proto
+
+`nbl_vmm.BootloaderRecord` (`proto/bootloader.proto`).
+`Bootloader::BuildFromProto` → `linux` or `lk2`.
+
+QEMU `sos_bootloader.pb.txt`:
+
+```text
+ protocol: "linux"
+ payload { name: "kernel"  filepath: ramdisk-1  offset: 0x80000000 }
+ payload { name: "rootfs"  filepath: ramdisk-0  offset: 0x84000000 }
+```
+
+`BootloaderLinux::Setup`:
+
+```text
+ find kernel + rootfs LoadedImage
+ dtb_start = kernel.phys_base
+ dtb_size  = 0x10000
+ guest_ip_ = dtb_end                 (Image + 64 KiB)
+ extra_params[0] = dtb_start         (VCPU x0)
+ fdt_open_into
+   /memory  reg = guest RAM window
+   /chosen  linux,initrd-start/end
+            bootargs = lua cmdline
+ fdt_pack
+```
+
+Watchdog dump prints each VCPU pc/lr/sp_el1/cpsr/cntvoff.
+
+**`lk2`** (ALPS `uos_alps_bootloader_lk2.pb.txt`): A/B slots
+`lk2_a` / `lk2_b` from `bl2-an_{a,b}`, GPA `0x10200d00`,
+`header_size 0x1300`. `Setup` sets `guest_ip_ = lk2.phys_base`,
+cache-cleans the image; optional `dtb` payload. Dump writes
+mrdump `crash_record` at a fixed offset in guest RAM
+(`0x8082000+0x20000000`). QEMU tbox is still `protocol: linux`
+(kernel @0, rootfs @0x4000000, separate dtb pkg).
 
 ## GuestManager state machine
 
@@ -207,8 +303,8 @@ Secondary VCPUs: guest `PSCI CPU_ON` →
 
 Two guest idle depths, plus a host-wide suspend when **every** VM is
 idle. Host device freeze / idle-gate / ATF is [`pm.md`](pm.md)
-(`HyperPmManager` on this tree, legacy DDK+pdev if no
-`/features/pm`).
+(2-state `hyper_suspend_state` + `SuspendDispatcher`; no
+`HyperPmManager`).
 
 ### s2idle (`PSCI CPU_SUSPEND`, `PSCI_IDLE_STATE_S2IDLE`)
 
@@ -286,9 +382,55 @@ Two independent loops. Both must see the guest as alive.
 | timeout | dump VCPU state, `ioctl set_rst_status`, `guest.Stop(CANCELED)` |
 
 +2 s `wakeup_delay_tolerance` once per miss (host scheduling slack).
-Does not extend without a new kick.
+Does not extend without a new kick. Constants:
+`kVmControlWdtCheckInterval = 30000` ms. Worker waits on
+`ZX_USER_SIGNAL_0`. Stale deadline / inactive / `now < deadline`
+/ guest `SUSPENDED` (`ShouldSkipTimeoutCheckLocked`) are ignored.
+Real miss: dump reason 1, `stop_callback` → `Stop(CANCELED)`.
+
+`ZX_PKT_GUEST_VCPU_STOP` (RESET2) also `DumpState(1)` then
+`Stop(CANCELED)`.
 
 PowerState: RUNNING / SUSPENDING / SUSPENDED / RESUMING.
+
+### `HandleVcpu` packets (EL0)
+
+`machina::Vcpu::HandleVcpu` on the **primary** VCPU thread
+(except BELL, which is the trap port):
+
+| `packet.guest_vcpu.type` | Action |
+| --- | --- |
+| `VHM_REQ` (2) | `ReadState` → `HandleNebulaHyperCall` → `WriteState` |
+| `INTERRUPT` (0) | `SignalInterrupt(mask, vector)` |
+| `STARTUP` (1) | must be VCPU 0; `StartVcpu(entry, id)` |
+| `STOP` (6) | watchdog dump + `Stop(CANCELED)` |
+| `ON` / `OFF` / `KILLED` | kernel also posts; Vmm treats unknown as `NOT_SUPPORTED` |
+
+Secondary `STARTUP` from a non-zero VCPU id is `ZX_ERR_BAD_STATE`.
+
+### `Vcpu::Loop` (EL0)
+
+```text
+ while
+    zx_vcpu_resume → packet
+    status != ZX_OK
+       STOP / CANCELED / UNAVAILABLE  →  return ZX_OK (deferred guest_->Stop)
+       else  error, Stop
+    HandlePacket
+       GUEST_VCPU  HandleVcpu
+       GUEST_MEM   HandleMem
+          trap_key = IoMapping*
+          ARM: HandleMmioArm  Read/Write IoHandler
+          ZX_ERR_PCI_BAR_REALLOC → remove old/new traps, CreateMapping
+          fail MEM → inject DABT, **do not** exit the thread
+ GUEST_BELL never here
+```
+
+`is_qemu_platform()`: `SYS_PLATFORM_GET_PRODUCT_ID == BOARD_VID_QEMU`.
+Not `BOOTMODE_QEMU_AHYP`.
+
+Reporter constants: heartbeat **10 s**, miss **×3**, boot grace
+**30 s** (`guest_manager_reporter.cc`).
 
 ### GuestManager reporter
 
@@ -571,5 +713,7 @@ Last VCPU (typically pCPU 0) system suspend:
 | Cross-VM lock | `zx_guest_set_cvm_lock_*` [`guest.md`](guest.md) |
 
 ---
+
+Prev: [`scheduler.md`](scheduler.md) · Next: [`pm.md`](pm.md) · [`README.md`](README.md)
 
 Everyday's a Hustle.

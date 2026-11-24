@@ -1,5 +1,9 @@
 # Flows
 
+**After this:** you can walk a log from reset to GPU grant using
+only F1–F18. **First read:** F1, F2, F5, F9, then the log table.
+**Next:** [`bootstrap.md`](bootstrap.md). Prev: [`system.md`](system.md).
+
 End-to-end pictures. Each flow is **who → numbered steps →
 decision → return**. Detail of objects lives in the plane notes;
 this page is the map you walk with a log.
@@ -8,29 +12,33 @@ Actors:
 
 ```text
  ATF        EL3
- Savior      host kernel (VHE EL2 looking like EL1)
- EL2        el2_vhe.S trampoline  (mt8678: el2.S HVC)
+ Savior      host kernel (EL1h)
+ EL2        el2.S trampoline  (HVC #4 resume)
  VMM        guest_manager / machina in EL0
  Guest      SOS / UOS / tbox EL1h
  TEE        S-EL1
 ```
 
-| # | Flow | Plane |
-| --- | --- | --- |
-| F1 | Cold boot → SOS first instruction | [`bootstrap.md`](bootstrap.md) |
-| F2 | One `zx_vcpu_resume` trip | [`cpu.md`](cpu.md) |
-| F3 | Guest `SMC` dispatch | [`cpu.md`](cpu.md) [`vhm.md`](vhm.md) [`tee.md`](tee.md) |
-| F4 | Data abort (map / trap / VHM / DABT) | [`memory.md`](memory.md) |
-| F5 | Passthrough SPI, HW=1, guest EOI | [`interrupt.md`](interrupt.md) |
-| F6 | Virtual inject (virtio / SGI / MSI) | [`interrupt.md`](interrupt.md) |
-| F7 | VHM SYNC MMIO (UOS waits, SOS completes) | [`vhm.md`](vhm.md) |
-| F8 | SOS creates UOS | [`vhm.md`](vhm.md) [`vmm.md`](vmm.md) |
-| F9 | GPU REQUEST → GRANT / preempt | [`gpu.md`](gpu.md) |
-| F10 | `PSCI CPU_ON` first vs already-off | [`cpu.md`](cpu.md) |
-| F11 | s2idle → host PM → wake | [`pm.md`](pm.md) |
-| F12 | Guest reboot `RESET` vs `RESET2` | [`vmm.md`](vmm.md) |
-| F13 | lua `setVmem` → stage-2 PTE | [`memory.md`](memory.md) [`devices.md`](devices.md) |
-| F14 | Guest SMC → TEE / FF-A | [`tee.md`](tee.md) |
+| # | Flow | When you need it | Plane |
+| --- | --- | --- | --- |
+| F1 | Cold boot → SOS first instruction | never reaches guest | [`bootstrap.md`](bootstrap.md) |
+| F2 | One `zx_vcpu_resume` trip | every later flow’s inner loop | [`cpu.md`](cpu.md) |
+| F3 | Guest `SMC` dispatch | VHM / GPU / PSCI / TEE | [`cpu.md`](cpu.md) |
+| F4 | Data abort (map / trap / DABT) | guest load/store fault | [`memory.md`](memory.md) |
+| F5 | Passthrough SPI, HW=1, guest EOI | IRQ storm / lost SPI | [`interrupt.md`](interrupt.md) |
+| F6 | Virtual inject (virtio / SGI / MSI) | virtio IRQ, MSI | [`interrupt.md`](interrupt.md) |
+| F7 | VHM SYNC MMIO (UOS waits, SOS completes) | UOS hung on a BAR | [`vhm.md`](vhm.md) |
+| F8 | SOS creates UOS | UOS never appears | [`vhm.md`](vhm.md) |
+| F9 | GPU REQUEST → GRANT / preempt | black screen / grant timeout | [`gpu.md`](gpu.md) |
+| F10 | `PSCI CPU_ON` first vs already-off | secondary CPU missing | [`cpu.md`](cpu.md) |
+| F11 | s2idle → host PM → wake | GPUEB off / no wake | [`pm.md`](pm.md) |
+| F12 | Guest reboot `RESET` vs `RESET2` | reboot loop, no expdb | [`vmm.md`](vmm.md) |
+| F13 | lua `setVmem` → stage-2 PTE | device not visible | [`memory.md`](memory.md) |
+| F14 | Guest SMC → TEE / FF-A | TEE hang | [`tee.md`](tee.md) |
+| F15 | Occupancy doorbell | guest ignored PAUSE | [`scheduler.md`](scheduler.md) [`guest.md`](guest.md) |
+| F16 | Watchdog miss | VM relaunch / SoC reset | [`vmm.md`](vmm.md) |
+| F17 | Cross-VM lock destroy | lock stuck after VM death | [`guest.md`](guest.md) |
+| F18 | ipc-mbox doorbell | peer VM never sees TX | [`system.md`](system.md) |
 
 ---
 
@@ -54,8 +62,7 @@ Actors:
    │  br kernel _start
    ▼
 [5] _start
-      this tree: arm64_elX_to_el2   HCR.E2H|TGE, stay EL2
-      mt8678:    arm64_elX_to_el1   eret EL1h
+      arm64_elX_to_el1   HCR=RW|APK|API|ATA, eret EL1h
    │  MMU on, br KERNEL_BASE
    ▼
 [6] lk_main → userboot eret EL0t → devmgr → appmgr → sysmgr
@@ -87,14 +94,13 @@ VMM thread, already pinned. Interrupts off around the EL2 hop.
    │
    ▼
  Savior  Vcpu::Resume
-   [1] timer_maybe_interrupt          CNTV expired → PPI 27 VIRTUAL
-   [2] VcpuGroup::SchedVcpuResumePre  prio / slice   (scheduler.md)
+   [1] timer_maybe_interrupt          CNTV expired → PPI 27 PHYSICAL
+   [2] VcpuGroup::OnVcpuResumePre / ApplyVcpuPolicy  prio / slice / occupancy
    [3] IRQs off
    [4] gich_maybe_interrupt           bitmap → ICH_LR, maybe UIE
    [5] arm64_el2_resume
-         this:  b el2_hvc_resume
-         mt8678: hvc #4
-         bic TGE, orr E2H, msr hcr, vttbr
+         hvc #4  →  el2_hvc_resume
+         msr vttbr, msr hcr (guest mask, no TGE/E2H)
          load GPRs, eret EL1h
    │
    ├──────── guest runs ─────────────────────────────────┐
@@ -104,12 +110,12 @@ VMM thread, already pinned. Interrupts off around the EL2 hop.
    │     Resume swallows, loop unless THREAD_SIGNAL_KILL │
    │                                                     │
    │  sync trap (WFI, SMC, abort, sysreg, …)             │
-   │     EL2  save El2State, HCR=RW|TGE|E2H, br lr       │
+   │     EL2  save El2State, HCR=RW, vttbr=0, eret host  │
    │     x0 = ZX_OK                                      │
    │     vmexit_handler                                  │
    │        ┌─ ZX_OK ──────── kernel handled, loop       │
    │        ├─ ZX_ERR_NEXT ── packet filled, return ZX_OK│
-   │        │                 to syscall (VMM HandlePacket)
+   │        │               to syscall (VMM HandlePacket)│
    │        ├─ ZX_ERR_CANCELED  SYSTEM_RESET → VMM stop  │
    │        └─ other error      VMM Stop                 │
    └─────────────────────────────────────────────────────┘
@@ -124,6 +130,10 @@ error. `GUEST_BELL` never arrives here (queued on the trap port).
 
 Always `next_pc` first. `secure_id = x7[31:16]`.
 
+`x1` of `SMC_SC_NBL_VHM_REQ` is decoded in **that Vmm**, not
+the kernel: `HC_ID = (x1>>24)&0xff` → `0x80` ACRN / `0xA0` IPC
+/ `0xB0` guest-call. [`system.md`](system.md).
+
 ```text
  Guest  smc
    │  HCR.TSC
@@ -135,24 +145,24 @@ Always `next_pc` first. `secure_id = x7[31:16]`.
    │
    ├─ ENTITY_NEBULA && HYP_SECURE_ID
    │     │
-   │     ├─ SMC_SC_NBL_VHM_REQ          (stdcall, ACRN HC_*)
-   │     │     handle_hypercall_in_el1
-   │     │       MSI?     MsiRouter::Inject     ZX_OK
-   │     │       NOTIFY?  Vhm::SignalIoreqCompletion
-   │     │       else     packet VHM_REQ        ZX_ERR_NEXT  → SOS Vmm
+   │     ├─ SMC_SC_NBL_VHM_REQ          (stdcall)
+   │     │     x1==0xB1000003  dump GIC, ZX_OK  (test)
+   │     │     else packet VHM_REQ  ZX_ERR_NEXT  → that Vmm
+   │     │     Vmm HandleNebulaHyperCall: 0x80 ACRN / 0xA0 IPC / 0xB0 guest-call
    │     │
-   │     ├─ SMC_FC_NBL_VHM_REQ          (fast)
-   │     │     x1=0  INJECT_HW_IRQ      interrupt_set_pending
-   │     │     x1=1  INJECT_VIRT_IRQ    (CROSS_VM_SCHED)
+   │     ├─ SMC_FC_NBL_VHM_REQ          (fast, kernel)
+   │     │     x1=0  INJECT_HW_IRQ      interrupt_set_pending(x2)
+   │     │     x1=1  INJECT_VIRT_IRQ    inject_virt_irq(vmid, vec)
    │     │     x1=2  NOTIFY_VMLOG       vcpu_kick(0)
-   │     │     x1=3  GPU_ARBITER        GpuScheduler::HandleSmc
-   │     │     x1=4  NOTIFY_VMLOG_SINK  vq_wakeup
+   │     │     x1=3  GPU_ARBITER        HandleSmc(x2,x3,x4)
+   │     │     x1=4  NOTIFY_VMLOG_SINK  vq_wakeup(x2)
    │     │
    │     └─ else  sm_handle_smc_call    Trusty-in-HEE
    │
    ├─ PSCI64_* / HYPERVISER_GUEST_*
+   │     FIDs: [`cpu.md`](cpu.md) PSCI table
    │     CPU_ON / OFF / SUSPEND / RESET / RESET2 / OFF / SYSTEM_SUSPEND
-   │     GUEST_OS_RESUME / PM_STATE / CPUFREQ
+   │     GUEST_OS_RESUME / PM_STATE / CPUFREQ / IRQ_EVENT / READ / WRITE / UNLOCK
    │
    └─ else  TeeVendor::TeeSmcHandler    F14
 ```
@@ -190,11 +200,10 @@ IPA = `HPFAR_EL2` | (`FAR_EL2` page offset).
          │     VMM HandleMem  emulate (GICD, virtio, …)
          │     unhandled → zx_vcpu_inject_exception
          │
-         ├─ GUEST_TRAP_VHM_BELL     F7 BELL
-         └─ GUEST_TRAP_VHM_MEM      F7 SYNC
+         └─ (no VHM trap kinds in this tree; F7 uses MEM / BELL)
 ```
 
-ISV=0 on VHM_MEM: inject DABT, **do not** Kick SOS.
+ISV=0 on `GUEST_TRAP_MEM`: `ZX_ERR_IO_DATA_INTEGRITY`, not a Kick.
 
 ---
 
@@ -239,7 +248,7 @@ Wrong HW bit = storm or loss. [`interrupt.md`](interrupt.md).
  Source
    virtio BE     zx_vcpu_interrupt
    guest SGI     ICC_SGI1R trap  handle_sgi
-   MSI LPI       MsiRouter::Inject  or GicIts::InjectMsi
+   MSI LPI       HC_INJECT_MSI → GicIts::InjectMsi / GicDistributor
    GPU GRANT     VcpuDispatcher::Interrupt VIRTUAL
    │
    ▼
@@ -262,41 +271,43 @@ SGI never becomes a host SGI.
 
 ## F7  VHM SYNC MMIO
 
-This tree, `WITH_VHM_IN_KERNEL`. Slot `n` = UOS VCPU `n`.
+EL0 path. Slot `n` = UOS VCPU `n`. Kernel only posts the abort
+as `ZX_GUEST_TRAP_MEM`; UOS `VhmDevice` fills the ioreq slot.
 
 ```text
- UOS  ldr/str  IPA in VHM_MEM trap
+ UOS  ldr/str  IPA in MEM trap (VhmDevice mapping)
    │
    ▼
- [1] EL2 DABT  Vhm::Read / Write
- [2] AcquireSlot(vcpu_id)
-       FREE → PENDING
+ [1] EL2 DABT  packet GUEST_MEM  →  UOS Vcpu::HandleMem
+ [2] VhmDevice::Read / Write
+       slot[vcpu_id]  FREE → PENDING
        type=MMIO  dir, addr, size, value
- [3] Kick()  interrupt_set_pending(kick_irq=254)
- [4] Wait  IoreqEvent            UOS VCPU blocked
+ [3] channel.call VHM_IO_REQUEST     UOS VCPU blocked
+ [4] SOS vhm-sos-thread
+       Interrupt(kick_irq)           PHYSICAL SPI (QEMU 254 / SoC 287)
+       Wait(event[vcpu])
    │
    ▼
- [5] SOS  passthrough SPI 254  (HSM)
+ [5] SOS  HSM  (passthrough SPI)
        slot PROCESSING
        emulate device
        write result, processed=COMPLETE
  [6] SOS  SMC  HC_NOTIFY_REQUEST_FINISH
-       handle_vhm_hypercall  (kernel, SOS only)
-       SignalIoreqCompletion
+       packet VHM_REQ  →  signal_ioreq_completion
          require COMPLETE already
-         FREE + Event
-   │
-   ▼
- [7] UOS Wait returns
-       read: ApplyMmioLoad → Xt
-       next_pc, ZX_OK        F2 loops, no VMM packet
+         FREE + event.signal
+ [7] vhm-sos-thread Wait returns, channel response
+ [8] UOS call returns
+       read: copy slot value into IoValue
+       VMM completes MEM packet, F2 loops
 ```
 
-BELL: [1] `HandleBellTrap` enqueue, **next_pc immediately**.
-Worker uses slots 14/15, then Kick. Reads on BELL: not supported.
+BELL: `ZX_GUEST_TRAP_BELL` → trapbell-handler thread, not the
+UOS VCPU thread. Sideband slots 14/15 (`_VHM_USE_CHANNEL_`).
+Reads on BELL: not supported.
 
-CREATE/START still `ZX_ERR_NEXT` → SOS Vmm (F8). Only NOTIFY/MSI
-and the abort path are in-kernel.
+CREATE/START/NOTIFY/MSI are all EL0 (F8). Kernel only posts
+`ZX_PKT_GUEST_VCPU_VHM_REQ` for `SMC_SC_NBL_VHM_REQ`.
 
 ---
 
@@ -321,9 +332,8 @@ and the abort path are in-kernel.
  [4] UOS  main_uos
        FetchVmConfig, guest.Init(vmems)
        VhmDevice::Init
-         GetIoRequestVmo / GetKickIrq / GetMmioMappings
-         zx_guest_vhm_setup
-         zx_guest_add_mmio_mapping  SYNC or BELL
+         GetIoRequestVmo / RegisterInterruptListener
+         GetMmioMappings  →  guest_->CreateMapping (MEM or BELL)
        StartVcpu(0)  same factory as SOS
  [5] SOS  Wait returns 0
 ```
@@ -386,9 +396,9 @@ tbox does not get `/arbiter`. SWA is Mali time-slice only.
    │
    ├─ STATE_PWROFF
    │     handle_vcpu_on
-   │       pcpu_hp_request_up
+   │       if pCPU offline: suspend_for_cpu_on + wait
    │       ResumeThread
-   │       ResetEl2State(entry)
+   │     ResetEl2State(entry)  (on the off VCPU after SuspendThread)
    │
    └─ already RUNNING / INIT
          x0 = PSCI_SUCCESS, resume
@@ -408,22 +418,21 @@ First `CPU_ON` of a missing VCPU is **not** created in the kernel.
      last VCPU of this VM  GUEST_PM_SUSPEND_TO_IDLE
      tbox: notify_modem_suspend
      is_all_vm_suspend?
-        yes → hyper_pm_suspend          (pm.md)
-                /features/pm ? HyperPmManager
-                  WAIT_WAKELOCK → DDK → PDEV → NOIRQ → ARMED
-                  gate = SUSPEND
-                else legacy DDK+pdev+gate
+        yes → DeviceSuspendNotify + lk_init DEVICE_SUSPEND
+              hyper_suspend_state = HYPER_PM_SUSPEND
+              wakeup_all_other_cpus
      WaitForSuspend
    │
    ▼
  idle thread
-   hyper_pm_idle_may_enter_atf?
-     gate==SUSPEND && all VMs parked → _cpu_suspend ATF
+   HYPER_PM_SUSPEND && all VMs parked && no wakeup sources
+     → _cpu_suspend(PSCI64_CPU_SUSPEND, S2IDLE) ATF
    │
    ▼
  wake SPI / HYPERVISER_GUEST_OS_RESUME
-   hyper_pm_notify_wakeup_irq     IRQ context
-   worker CompleteResume          gate=RUNNING
+   first VCPU out of WaitForSuspend
+     DeviceResumeNotify + lk_init DEVICE_RESUME
+     hyper_suspend_state = HYPER_PM_RUNNING
    inject wakeup SPI, Signal
    SetVcpuState(RUNNING)
    SetGuestEntry(entry)           next eret = PSCI return
@@ -449,8 +458,8 @@ ALPS: `CheckSkipWakeup` drops SPIs not on the wakeup list.
    │     packet GUEST_VCPU_STOP
    │     same teardown / relaunch
    │
-   └─ platform RESET (SOS + WDT_PROFILE_NOSINK)
-         ATF  real reset  →  F1
+   └─ (no platform RESET in this tree: SOS RESET is also canceled
+         after ramconsole_snapshot_take; ATF only on whole-SoC WDT)
 ```
 
 Watchdog miss also `Stop(CANCELED)` → same relaunch.
@@ -460,7 +469,8 @@ Watchdog miss also `Stop(CANCELED)` → same relaunch.
 ## F13  lua `setVmem` → stage-2 PTE
 
 ```text
- sos.lua  setVmem("IO", 0, 0, 1GiB, kDevice, 0)
+ QEMU sos.lua  setVmem("IO", 0, 1GiB, kCached, 0)   (5-arg, GPA=HPA)
+ SoC product.lua  per-device 6-arg product_config:setVmem  (no 1GiB IO)
    │
    ▼
  Vmm::Initialize
@@ -512,8 +522,91 @@ SMMU STE S2TTB = same root as `VTTBR`.
 
 VM create: `TeeVmCreate` → `NotifyVmCreated` (FF-A
 `VM_CREATED` or vendor SMC) **before** UOS `eret`. SOS/ALPS
-VCPU 0 also `SMC_FC_NBL_SOS_STATE` / `UOS_STATE` with
-`&El2State.guest_state` PA.
+SOS VCPU 0 also `SMC_FC_NBL_SOS_STATE` with
+`&El2State.guest_state` PA. There is no `UOS_STATE` in this tree.
+
+---
+
+## F15  Occupancy doorbell
+
+Host writes who may sit; guest parks the Linux CPU. The host
+VCPU thread stays READY.
+
+```text
+ occupancy table changed  (Resume, ≥ 8 ms)
+    write shm occupancy[VM][vCPU]     (no dmb here; bound IPI `smp_mb` before SGI)
+    Interrupt(sched_irq)  that VM VCPU 0 VIRTUAL
+         │
+         ▼
+ guest  nebula_sched_irq_handler
+    apply RUN / PAUSE / SHARE / OFFLINE
+    PAUSE  →  Linux CPU parked, CFS skips it
+    host VCPU thread still READY
+```
+
+Missing module → doorbell ignored. [`guest.md`](guest.md)
+diagram 2, [`scheduler.md`](scheduler.md) N3.
+
+---
+
+## F16  Watchdog miss
+
+Two independent loops. Per-VM miss relaunches the Vmm. GRT miss
+resets the SoC.
+
+```text
+ Guest Linux  HC_GUEST_WDTK_KICK  every < 30 s
+    SOS Vmm  Watchdog.Heartbeat
+       miss  →  dump VCPU, Stop(CANCELED)
+               GuestManager relaunch  (1 s)
+
+ GuestManagerReporter
+    10 s ioctl GRT WDT
+    miss × 3  (and an auto_start guest not RUNNING / not in grace)
+       →  host hardware WDT  →  whole-SoC reset  →  BL2 kedump
+```
+
+Probe hang (`Bind` timeout × 2) also `Kill()`s the Vmm and
+relaunches. [`vmm.md`](vmm.md) Watchdog.
+
+---
+
+## F17  Cross-VM lock, VM dies holding it
+
+```text
+ guest A  ldaxr/stlxr  slot  cnt=LOCK current_vmid=A
+    VM A destroyed
+         │
+         ▼
+ Savior  cross_vm_lock_check(A)
+    holder == A  →  UNLOCK, drop A's bit
+    inject cvm_lock_irq  remaining creators  VCPU 0 VIRTUAL
+```
+
+Host does not take the lock on the live path. Missing VMO →
+cleanup is a no-op. [`guest.md`](guest.md) diagram 5.
+
+---
+
+## F18  ipc-mbox doorbell
+
+Not VHM ioreq. Channel GPA `0x800000000 + id × 8 KiB`
+(4 KiB TX + 4 KiB RX). Doorbells are `HC_IPC_*` on
+`SMC_SC_NBL_VHM_REQ`.
+
+```text
+ guest A  write 4 KiB TX          (no dmb; SMC ≠ dmb ish)
+    SMC  HC_IPC_SET_RX_READY / VM_WRITE
+       packet VHM_REQ → that Vmm IpcService
+       inject rx_ready  VIRTUAL into peer
+ guest B  IRQ  copy RX
+    SMC  HC_IPC_SET_TX_DONE
+       inject tx_done  VIRTUAL into A
+```
+
+DTS interrupt order is **tx_done then rx_ready**. UOS has no
+lua pairs: it is an `IpcClient` of SOS (user vmid 0 → way 0).
+[`system.md`](system.md) **IPC**.
 
 ---
 
@@ -530,7 +623,13 @@ VCPU 0 also `SMC_FC_NBL_SOS_STATE` / `UOS_STATE` with
 | `trying to get vcpudisp error` | F10 factory missing |
 | GPUEB off while guest runs | F11 idle ATF without all-VM park |
 | reboot loop, no expdb file | F12 RESET, [`logging.md`](logging.md) |
+| occupancy doorbell ignored | F15, [`guest.md`](guest.md) |
+| VM relaunch / SoC WDT | F16 |
+| lock stuck after VM death | F17 |
+| ipc-mbox peer silent | F18 |
 
 ---
+
+Prev: [`system.md`](system.md) · Next: [`bootstrap.md`](bootstrap.md)
 
 Everyday's a Hustle.
