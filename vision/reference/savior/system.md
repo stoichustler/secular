@@ -116,6 +116,7 @@ How one world reaches another. Numbers: QEMU vs SoC in
 | GRT WDT | GuestManager → SoC WDT | reporter 10 s / miss×3 | [`vmm.md`](vmm.md) |
 | TEE forward | guest SMC → BL32 | `TeeSmcHandler`, `x7 = vmid` | [`tee.md`](tee.md) |
 | Trusty-in-HEE | leftover HYP stdcall | `sm_handle_smc_call` | this page **SMC** |
+| virtio-rpmb | guest SG_IO → Vmm → host UFS LU | host virtio id 56, no HMAC in Savior | [`tee.md`](tee.md) F19 |
 
 SOS is the only `/dev/acrn_hsm` client. UOS never issues `HC_*`.
 

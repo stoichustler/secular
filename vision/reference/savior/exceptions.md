@@ -48,10 +48,15 @@ if S2 allows the IPA. [`cpu.md`](cpu.md) intercepts;
     handle_data_abort
        trap MEM?     packet, Vmm emulate or inject
        no trap?      vmm_guest_page_fault  or inject DABT
-       illegal SMC?  inject IABT
          │
-         ▼  inject_*_abort_exception
+         ▼  inject_data_abort_exception
     next eret  guest VBAR_EL1+0x200   (guest handler)
+
+ Guest EL1  smc  illegal VHM FID (wrong x7)
+    handle_smc_instruction  next_pc first
+    inject_instruction_abort_exception
+         │
+         ▼  FAR/ELR_EL1 = instruction **after** smc
 
  Host EL0  bad ptr
     VBAR_EL1  arm64_sync_exception
@@ -63,6 +68,7 @@ if S2 allows the IPA. [`cpu.md`](cpu.md) intercepts;
  Host EL1  bug in Savior
     exception_die
     PSCI WDT_REBOOT  ATF  BL2 kedump
+    then platform_halt (does not return)
 ```
 
 ## Diagrams
@@ -80,10 +86,10 @@ if S2 allows the IPA. [`cpu.md`](cpu.md) intercepts;
        ELR_EL2 = VBAR_EL1 + 0x200    same-EL offset
     eret  →  guest Linux sync handler
 
- guest smc  HYP FID, x7 secure_id wrong
-    inject IABT
+ guest smc  VHM/virtgpu-dbg FID, x7 secure_id != 1
+    next_pc first, then inject IABT
        ESR_EL1 = (0x21<<26)|0x10     EC=Instruction Abort
-       FAR_EL1 = elr_el2
+       FAR_EL1 = elr_el2             (already advanced past smc)
 ```
 
 `zx_vcpu_inject_exception(vcpu, far)` is the Vmm-callable DABT
@@ -156,8 +162,8 @@ virtualized.
 | --- | --- | --- |
 | Function | `inject_data_abort_exception` | `inject_instruction_abort_exception` |
 | `ESR_EL1.EC` | `0x25` | `0x21` |
-| ISS bit | `0x10` | `0x10` |
-| `FAR_EL1` | guest IPA | `elr_el2` |
+| ISS FSC | `0x10` (sync external abort) | same |
+| `FAR_EL1` | guest IPA (not next_pc) | `elr_el2` after `next_pc` (past `smc`) |
 | Vector | `VBAR_EL1+0x200` | same (current EL, SP0 unused: **same-EL** offset) |
 
 AArch64 same-EL sync offset is `+0x200` from `VBAR_EL1`. Guest

@@ -742,7 +742,7 @@ Object lifetime, `El2State` / `GichState` / `TrapMap`:
 | `zx_guest_set_cpu_affinity` | WRITE | `cpu_binding_table_` |
 | `zx_guest_set_wakeup_irqs` | WRITE | s2idle list; `0xdeadbeef` cut_point required |
 | `zx_guest_set_user_vmid` | WRITE | user vmid; tbox first time `init_mtk_spm_map` |
-| `zx_guest_set_smc_irq` | WRITE | virtual IRQ when a forwarded SMC completes |
+| `zx_guest_set_smc_irq` | WRITE | VIRTUAL doorbell for VM ringbuf/notifybuf; not TEE complete |
 | `zx_guest_set_cvm_lock_irq` / `_vmo` | WRITE | [`guest.md`](guest.md) cross-VM lock |
 | `zx_guest_tee_vm_create` / `_destroy` | WRITE | [`tee.md`](tee.md) |
 | `zx_vcpu_create` | guest WRITE | pin, `STATE_RUNNING` |
@@ -773,7 +773,7 @@ F2, F3, F10, F11.
        pin to bind_cpus[0]
        ELR_EL2 = Image (DTB+64 KiB)
        SPSR     = EL1h | DAIF
-       SOS/ALPS: SMC_FC_NBL_SOS_STATE / UOS_STATE  (TEE can see GPRs)
+       SOS only: SMC_FC_NBL_SOS_STATE  (TEE can see SOS GPRs; no UOS_STATE)
     WriteState  x0 = DTB, others 0
     GICR BindVcpu
     loop  zx_vcpu_resume

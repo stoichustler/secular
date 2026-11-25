@@ -709,7 +709,7 @@ Last VCPU (typically pCPU 0) system suspend:
 | PSCI / STR | `zircon/kernel/arch/arm64/hypervisor/vmexit.cpp` |
 | PM aggregate | `zircon/kernel/arch/arm64/hypervisor/guest.cpp` `PmState` |
 | Host device suspend | `garnet/bin/suspend/device_suspend.cc` |
-| SMC complete IRQ | `zx_guest_set_smc_irq` |
+| `smc_irq` (VM notify doorbell) | `zx_guest_set_smc_irq` [`tee.md`](tee.md) diagram 14 |
 | Cross-VM lock | `zx_guest_set_cvm_lock_*` [`guest.md`](guest.md) |
 
 ---

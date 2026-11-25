@@ -463,14 +463,16 @@ owner**.
 | `TIMERSET` | 0x09 | VM → Arbiter | reset a timer period (internal) |
 | `ASSIGN` | 0x11 | SOS only | SIMPLE mode: force grant |
 
-`WITH_GPU_SCHEDULER_OPTIONS` is **false** on this HEE, so REQUEST/STOPPED
-option bits and `TIMERSET`/`TRACE` SMC are compiled out.
+`WITH_GPU_SCHEDULER_OPTIONS` is **false** on this HEE (`venus-hee.mk`).
+`TRACE` / `TIMERSET` SMCs are `#if WITH_GPU_SCHEDULER_INTERNAL`
+(also false). `STOPPED_REQUIRE_ENABLE` (STOPPED bit 0) is **always**
+parsed.
 
-`REQUEST` / `STOPPED` `arg0` bits (when `WITH_GPU_SCHEDULER_OPTIONS`):
+`REQUEST` / `STOPPED` extra bits (only when OPTIONS is true):
 
 | bit | REQUEST | STOPPED |
 | --- | --- | --- |
-| 0 | — | `STOPPED_REQUIRE_ENABLE` request again after stop |
+| 0 | — | `STOPPED_REQUIRE_ENABLE` (always parsed) |
 | 1 | `REQUEST_TIMESET_ENABLE` use `arg1` as deadline | same for the follow-up request |
 | 2 | `REQUEST_SCHEDULE_DIRECT` skip waiting for ACTIVE | same |
 
@@ -857,7 +859,8 @@ Product (`sos_mt8678.lua`):
 
 QEMU lua does **not** call `setArbiterGpuEnable`.
 
-Syscalls (AHYP only):
+Syscalls: create refuses PHYP / QEMU_AHYP / OKL4_AHYP; later
+calls require `BOOTMODE_AHYP`.
 
 ```text
 zx_gpu_scheduler_create

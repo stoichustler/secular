@@ -145,7 +145,7 @@ changes here.
  reserved RAM identity-mapped, own DTB + Image
          │
          ▼
- SOS and tbox running under Savior EL2
+ SOS and tbox running under Savior (host EL1h, guest EL1h via EL2 trampoline)
 ```
 
 | Node | EL | MMU | Who runs |
@@ -616,12 +616,14 @@ Fallback when the FDT nodes are absent (QEMU Savior SPD defaults):
 ```text
 TEE   BL32_BASE        = 0x40010000    window 0x40000000 + 1 GiB
 HEE   NS_IMAGE_OFFSET  = 0x80010000
-REE   extra1           = 0x80000000 + 0x10000
-rootfs extra2          = 0x88000000    128 MiB
+REE   extra1           = 0x80000000 + 0x10000   (`BL33_EXTRA1_*`)
+rootfs extra2          = 0x88000000    128 MiB  (`BL33_EXTRA2_BASE/SIZE`)
 ```
 
-The SOS bootloader later consumes the same numbers as GPA offsets
-(`kernel @ 0x80000000`, `rootfs @ 0x84000000` on QEMU).
+FDT `/reserved-memory/ree*-region` overrides these. QEMU SOS
+payload GPAs in the Vmm lua path are often `kernel @ 0x80000000`,
+`rootfs @ 0x84000000` — **not** the same as ATF extra2 `0x88000000`.
+Use the DTB `reg` when both are present.
 
 BL33 SPSR is EL2h when EL2 is implemented (AHYP). If the firmware is
 told to boot TEE-only, SPSR is EL1h and BL31 hands off to **extra1**
@@ -1280,8 +1282,8 @@ Boards that set `auto_start` wait `delayed_launch_ms` (2 s) so SOS
 block backends and vsock are up. `vmctl` / FIDL `Launch(1)` is the
 same `Create` + `Run`.
 
-After (15) both guests are EL1h under Savior EL2. Further switches
-are intercepts (`cpu.md`, `interrupt.md`), not boot.
+After (15) both guests are EL1h; host is EL1h with the EL2 trampoline.
+Further switches are intercepts (`cpu.md`, `interrupt.md`), not boot.
 
 ### Physical memory
 
@@ -1292,10 +1294,11 @@ PA
 0x00000000  flash0 / BL1 ROM          128 KiB
 0x04000000  flash1 FIP                64 MiB
 0x08000000  GICv3 GICD                64 KiB
-0x08010000  GICC                      (v2 path)
-0x080A0000  GICR                      128 KiB × NCPU
+0x08010000  GICC                      (v2 CPU iface; Savior uses GICv3)
+0x080A0000  GICR                      window 0x00F60000 (128 KiB/CPU, QEMU up to 123)
 0x09000000  PL011 UART0               HEE / Savior
-0x09040000  PL011 UART1               ATF console
+0x09001000  PL011 UART1               QEMU virt UART1
+0x09040000  PL011 secure UART         ATF boot console (`UART1_BASE` in platform_def)
 0x0e000000  trusted SRAM              320 KiB
               0x0e000000  shared / mailbox  4 KiB
               0x0e001000  BL_RAM
@@ -1352,8 +1355,9 @@ kernel image itself is MEM_RANGE_RESERVED so PMM will not reuse it
 ```text
 ree1-region.reg[0]                 = SOS DTB GPA
 ree1-region.reg[0] + offset (64K)  = SOS Image entry
-ree2-region / ramdisk-0 @ 0x84000000
-                                   = initrd
+ree2-region.reg[0]                 = SOS initrd (FDT)
+ATF fallback extra2                = 0x88000000 (128 MiB)
+Vmm QEMU payload GPA               = 0x84000000 if lua/bootloader says so
 allocator system memory            = SOS RAM, identity
 0x00000000 + 1 GiB                 = SOS IO (lua setVmem)
 256 MiB (or DTB gz-guest-rk*)      = nbl,guest-memory hole SOS must not touch

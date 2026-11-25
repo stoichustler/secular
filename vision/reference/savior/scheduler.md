@@ -141,7 +141,7 @@ priority and slice. Guest tasks never enter the run queue.
 ```text
                     pCPU N  (VCPU threads are pinned here)
  ┌──────────────────────────────────────────────────────────────────┐
- │  Layer 2   VcpuGroup[N]     period 5 ms                          │
+ │  Layer 2   VcpuGroup[N]     period 7 ms product / 5 ms default   │
  │            vcpu_list_:  SOS.vcpu_k   UOS.vcpu_k   (tbox …)       │
  │            AddSchedHint  guest status ──► host prio / slice      │
  │            ApplyVcpuPolicy  RUN / PAUSE / SHARE / OFFLINE        │
@@ -238,7 +238,7 @@ Every strategy switch is **before** `eret`.
 
 ### 5. Shared core, one period (no IRQ)
 
-pCPU 0 SHARE. Period 5 ms. Each VCPU budget 2 ms.
+pCPU 0 SHARE. Period 7 ms product / 5 ms default. Budget 2 ms.
 
 ```text
   time  0          2 ms        4 ms        5 ms
@@ -283,7 +283,9 @@ Same-VM storm: RUNNING + IRQ stays; fill up to 16 `ICH_LR`, leftover
 
 ### 7. Occupancy `3_5_0` (who may sit on the core)
 
-`R` = RUN, `.` = PAUSE/OFFLINE. Only pCPU 0 is shared.
+`R` = RUN, `.` = **OFFLINE** (static recipes; steal uses PAUSE).
+pCPU 0 is RUN+RUN (both VMs may sit); occupancy value is **not**
+`SHARE`.
 
 ```text
             little              mid / big
@@ -292,10 +294,10 @@ Same-VM storm: RUNNING + IRQ stays; fill up to 16 `ICH_LR`, leftover
          ├─────────────────┼──────────────────┤
    SOS   │ R    R    .    .│  R    .    .    .│   3 cores
    UOS   │ R    .    .    R│  .    R    R    R│   5 cores
-   tbox  │ .    .    .    .│  .    .    .    .│
+   tbox  │ .    .    .    .│  .    .    .    .│   OFFLINE
          └─────────────────┴──────────────────┘
               ▲
-              SHARE fight: hint prio decides
+              both RUN: hint prio decides
               all other R are exclusive
 
   8_8_DYNAMIC (slow, ≥ 8 ms): compare SOS/UOS util to 40% / 75%,
@@ -790,7 +792,8 @@ bug. Indices: SOS=1, Android UOS=2, tbox=3.
 | `OFFLINE` | treated as not in the VM |
 | `SHARE` | counts as half a pCPU in util math; both VMs may RUN here |
 
-Named layouts (`sched.h`). `R` = RUN, `S` = SHARE, `.` = PAUSE/OFFLINE:
+Named layouts (`sched.h`). `R` = RUN, `S` = SHARE, `.` = OFFLINE
+(static `ApplyVcpuPolicy`; `8_8_DYNAMIC` steal writes PAUSE):
 
 ```text
  policy     pCPU   0  1  2  3  4  5  6  7
@@ -804,11 +807,13 @@ Named layouts (`sched.h`). `R` = RUN, `S` = SHARE, `.` = PAUSE/OFFLINE:
 
  5_6_0      SOS    R  S  .  .  R  S  S  .
             UOS    R  S  .  R  .  S  S  R
+            tbox   .  .  .  .  .  .  .  .
 
  5_5_0      SOS    R  R  .  .  R  S  S  .
             UOS    R  .  .  R  .  S  S  R
+            tbox   .  .  .  .  .  .  .  .
 
- 5_5_2      SOS    R  .  S  .  S  S  S  .     // mt8676
+ 5_5_2      SOS    R  .  S  .  S  S  S  .     // source comment: mt8676
             UOS    R  .  .  R  .  S  S  R
             tbox   R  .  .  .  S  .  .  .
 ```
@@ -922,7 +927,7 @@ IRQ, not RT.
 ### Overload
 
 ```text
- period 5 ms, this VCPU budget 2 ms
+ period 7 ms product / 5 ms default, this VCPU budget 2 ms
  runtime 2.1 ms, ex_remain < 50 µs
     mode ≤ NORMAL  →  OVERLOAD  prio 14  slice = budget  RESCHEDULE
     other VM at 16  →  wins the core
@@ -1010,7 +1015,7 @@ Needs:
 | Need | If missing |
 | --- | --- |
 | IRQ / FIFO latency on a SHARE core | other VM's NORMAL 16 holds the pCPU |
-| Fairness over 5 ms | one VM burns the period |
+| Fairness over one period | one VM burns the period |
 | Utilization | idle VM keeps a RUN bit, busy VM starves |
 | Cost | peeking guest RAM every exit on exclusive cores |
 
@@ -1079,6 +1084,7 @@ split and **moves one pCPU at a time**.
  one ≥ 75%, other < 75%   same steal, watermark 75%
 
  both ≥ 75% and |sos_max − uos_max| > 204
+    (PELT `cpu_util_map` units, not percent)
     FindFitUtilVCPU toward the poorer VM
     remember kLastSysLoad / kLastCpuMaxLoad
     next round only if sys_load moved by > 70% of that core
@@ -1093,9 +1099,9 @@ Skip mask `0x9d` = pCPU 0,2,3,4,7 **not** stolen (cluster /
 little-0 / big-7 stay in the static recipe). Little prefer `0xf`
 = 0–3; big prefer `0x70` = 4–6.
 
-`EXCLUSIVE_VCPU` ioctl (`vcpu_mask` per VM) takes those VCPUs
-out of steal. GPU affinity VCPUs ([`gpu.md`](gpu.md)) should be
-exclusive or the arbiter's `pick_running_vcpu` fights occupancy.
+There is no `EXCLUSIVE_VCPU` ioctl. GPU affinity VCPUs
+([`gpu.md`](gpu.md)) still sit in occupancy steal unless the
+guest recipe keeps them RUN.
 
 Hysteresis on sys_load (`kLastSysLoad`) stops the table
 flapping every 8 ms.
@@ -1352,7 +1358,7 @@ lands on pCPU 0, a false SHARE collision.
 Occupancy says both may sit. Hint says who sits *now*.
 
 ```text
-  pCPU 0  SHARE     period 5 ms      occupancy ≥ 8 ms
+  pCPU 0  SHARE     period 7/5 ms    occupancy ≥ 8 ms
 
   occupancy     R  R  R  R  R  R  R  R     both RUN, no park
   hint          16 16 16 20 20 16 16 16    IRQ steal, then drop
@@ -1406,7 +1412,7 @@ Two knobs, two owners. Both apply.
 ```text
   boot (VMM / lua)
     period, budget, hint prio/slice
-    hint algorithm  0 / 1 / 2
+    hint path always AddSchedHint (lua setSchedPolicy unused)
     doorbell SPI, VCPU → pCPU pin
 
   runtime (guest)
@@ -1432,7 +1438,7 @@ Timing versions of **Diagrams** 4–7. Same events, more timestamps.
 
 ```text
  pCPU 0  occupancy SHARE     SOS VCPU 16     UOS VCPU 16
-         period 5 ms         budget 2 ms     budget 2 ms
+         period 7/5 ms       budget 2 ms     budget 2 ms
 
  t0  SOS Resume
      hint: both NORMAL, SOS remaining slice
@@ -1566,12 +1572,12 @@ Lua / proto (consumed in `vmm.cc`):
 
 ```text
 setBindcpus(pcpu)            // one per VCPU, length == num_cpus
-setPeriods(ns)               // VcpuGroup period, one per group/pCPU
-setBudgets(ns)               // per-VCPU budget
+setPeriods(us)               // VcpuGroup period, one per group/pCPU (ioctl ZX_USEC)
+setBudgets(us)               // per-VCPU budget
 setSchedPriority(prio)       // host priority table by mode
-setSchedTimeslice(ns)        // slice table: RT, spinlock, IRQ, …
+setSchedTimeslice(us)        // slice table: RT, spinlock, IRQ, …
 setVcpuPriority(prio)
-setSchedPolicy(policy)       // VcpuGroup SCHED_POLICY_DEFAULT/1/2
+setSchedPolicy(policy)       // stored; never ioctl'd in this tree
 setSchedIrq(spi)
 setSchedId(id)
 ```
@@ -1590,8 +1596,9 @@ Runtime occupancy (`NONE`, `3_5_0`, `8_8_DYNAMIC`, …) lives in
 `sched_control` shared memory, not lua. Userspace writes `ctl->policy`;
 `ApplyVcpuPolicy` on the next Resume (if 8 ms elapsed).
 
-`setSchedPolicy` (0/1/2) is the **hint algorithm**. Occupancy policy
-is the **who may run on this pCPU** table. Both apply.
+Lua `setSchedPolicy` is **not** applied. Occupancy policy
+(`ctl->policy` in shm: `NONE` / `3_5_0` / `8_8_DYNAMIC`) is the
+**who may run on this pCPU** table. Hint is always `AddSchedHint`.
 
 ## VCPU bind (pCPU)
 
@@ -1602,8 +1609,8 @@ is the **who may run on this pCPU** table. Both apply.
  Vcpu::Create
    GetBindPCpuNum(vpid) or cpu_of(vpid)
    pin_thread_to_cpu(pcpu)             affinity mask = that bit only
-   VcpuGroup::GetVcpuGroup(pcpu)->Add
- machina::Vcpu::SetGroup(pcpu)         userspace side of the same pin
+ machina::Vcpu::SetGroup(pcpu)         ioctl SYS_PLATFORM_CONFIG_VCPU_GROUP
+   VcpuGroup::Add                      not inside Create
 ```
 
 If `bind_pcpus` is omitted, `hypervisor::cpu_of(vpid)` is
@@ -1627,9 +1634,9 @@ Typical SoC picture (8 cores, policy `3_5_0`):
  tbox   .  .  .  .  .  .  .  .
 ```
 
-`R` = RUN. Empty = PAUSE/OFFLINE. Shared cores (pCPU 0 here) run
-SOS and UOS VCPU threads back-to-back; IRQ/RT hints decide who
-preempts. Exclusive cores skip that fight.
+`R` = RUN. `.` = OFFLINE. pCPU 0 is RUN+RUN (not occupancy `SHARE`):
+both VCPU threads sit there; IRQ/RT hints decide who preempts.
+Exclusive cores skip that fight.
 
 Latency-sensitive passthrough: exclusive VCPU bind + exclusive SPI
 bind + that pCPU not SHARE. Same advice as interrupt.md.

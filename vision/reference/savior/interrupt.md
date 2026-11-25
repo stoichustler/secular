@@ -10,9 +10,11 @@ the VMM can **inject** a virtual IRQ / MSI / LPI that never existed on
 the wire. `gicv2.cpp` exists in the tree; QEMU virt and SoC Savior
 program GICv3 (`arm_gicv3`). Do not follow the v2 path.
 
-`zx_guest_set_smc_irq` is a **virtual** IRQ the VMM injects when a
-forwarded SMC (TEE) returns, so the guest can leave WFI. Not a
-host SPI.
+`zx_guest_set_smc_irq` is a **virtual** IRQ injected when one VM
+writes the other’s ringbuf/notifybuf (`OS_WRITE` /
+`NotifyVmMessage`). It is **not** “TEE SMC completed”. Forwarded
+TEE SMCs return in `x0–x3` on the same `zx_vcpu_resume`.
+[`tee.md`](tee.md) diagram 14.
 
 Read [`bootstrap.md`](bootstrap.md) for the EL2 / VCPU `eret`,
 [`cpu.md`](cpu.md) for the VCPU thread / intercept,

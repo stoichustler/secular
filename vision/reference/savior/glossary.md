@@ -52,8 +52,13 @@ word. Open it when a term is new; do not start here.
 | ipc-mbox | Guest mailbox; `HC_IPC_*` on `VHM_REQ`, lua `setIpcMbox` | [`system.md`](system.md) |
 | guest-call | `HC_GUEST_*` (WDT kick, sched param, ktrace) on the same SMC | [`system.md`](system.md) [`vmm.md`](vmm.md) |
 | Trusty-in-HEE | TAs inside Savior; `sm_handle_smc_call`. Not BL32 | [`system.md`](system.md) [`tee.md`](tee.md) |
+| `SMC_TEE_SECURE_ID` | `x7` high 16 bits = 0 → `TeeSmcHandler` / BL32 | [`tee.md`](tee.md) |
+| `SMC_HYP_SECURE_ID` | `x7` high 16 bits = 1 → VHM/GPU or HEE Trusty | [`tee.md`](tee.md) |
+| `smc_irq` | VIRTUAL doorbell for VM ringbuf; not TEE SMC complete | [`tee.md`](tee.md) |
 | rproc | UOS host / SOS remote virtio; kick `INJECT_HW_IRQ` | [`system.md`](system.md) |
 | GzFS vsock | SOS fuse ↔ SOS Vmm CID 10→2 port 5022, host `/data` | [`system.md`](system.md) |
+| RPMB | UFS replay-protected LU; HMAC + write counter | [`tee.md`](tee.md) |
+| virtio-rpmb | Guest FE + Vmm pipe to host `vrpmb`; host virtio id 56 | [`tee.md`](tee.md) |
 | s2idle | Guest `PSCI CPU_SUSPEND` S2IDLE; host gate may then ATF | [`pm.md`](pm.md) |
 | STR | Guest `PSCI SYSTEM_SUSPEND`; pCPU0 ATF `SYSTEM_SUSPEND` | [`pm.md`](pm.md) |
 | FF-A | Optional TEE transport; Direct VM→SP under one lock | [`tee.md`](tee.md) |

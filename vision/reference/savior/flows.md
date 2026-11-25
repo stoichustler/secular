@@ -1,7 +1,7 @@
 # Flows
 
 **After this:** you can walk a log from reset to GPU grant using
-only F1–F18. **First read:** F1, F2, F5, F9, then the log table.
+only F1–F19. **First read:** F1, F2, F5, F9, then the log table.
 **Next:** [`bootstrap.md`](bootstrap.md). Prev: [`system.md`](system.md).
 
 End-to-end pictures. Each flow is **who → numbered steps →
@@ -39,6 +39,7 @@ Actors:
 | F16 | Watchdog miss | VM relaunch / SoC reset | [`vmm.md`](vmm.md) |
 | F17 | Cross-VM lock destroy | lock stuck after VM death | [`guest.md`](guest.md) |
 | F18 | ipc-mbox doorbell | peer VM never sees TX | [`system.md`](system.md) |
+| F19 | Guest RPMB SG_IO → UFS LU | virtio-rpmb timeout / MAC fail | [`tee.md`](tee.md) |
 
 ---
 
@@ -502,10 +503,13 @@ SMMU STE S2TTB = same root as `VTTBR`.
 ## F14  Guest SMC → TEE / FF-A
 
 ```text
- Guest  smc  (not HYP, not PSCI)
-   │
-   ▼
- TeeSmcHandler(guest_state, vmid)
+ Guest  smc
+    x7.secure_id == 1 && ENTITY_NEBULA  →  F3 (HYP / HEE Trusty)
+    PSCI / HYPERVISER_GUEST_*           →  cpu.md
+    else
+         │
+         ▼
+ TeeSmcHandler(guest_state, tee_vmid)
    │
    ├─ FF-A enabled
    │     is_ffa_call(x0)?
@@ -518,12 +522,13 @@ SMMU STE S2TTB = same root as `VTTBR`.
          x7 = vmid                  cannot forge client id
          Savior / OP-TEE / Trustonic / default
            arm_smccc_smc → EL3 → SPD → S-EL1
+         copy x0–x3, x6 back; same VCPU thread resumes
 ```
 
-VM create: `TeeVmCreate` → `NotifyVmCreated` (FF-A
-`VM_CREATED` or vendor SMC) **before** UOS `eret`. SOS/ALPS
-SOS VCPU 0 also `SMC_FC_NBL_SOS_STATE` with
-`&El2State.guest_state` PA. There is no `UOS_STATE` in this tree.
+No `smc_irq` on this path. VM create: `TeeVmCreate` →
+`NotifyVmCreated` **before** UOS `eret`. SOS VCPU 0 also
+`SMC_FC_NBL_SOS_STATE` with `&El2State.guest_state` PA.
+Detail: [`tee.md`](tee.md) diagrams 11–16.
 
 ---
 
@@ -610,6 +615,36 @@ lua pairs: it is an `IpcClient` of SOS (user vmid 0 → way 0).
 
 ---
 
+## F19  Guest RPMB → UFS LU
+
+QEMU skips virtio-rpmb. SoC SOS Vmm starts the backend in
+`InitializeVirtioRpmb`. HMAC is **not** computed in Savior.
+
+```text
+ Guest  /dev/virtio-rpmb  ioctl SG_IO
+    frames  512 B JEDEC  (data + nonce + wr_cnt + key_mac)
+    virtqueue  desc0 req  desc1 rsp
+    BAR1 notify
+         │
+         ▼
+ Vmm  VirtioRpmb::HandleCommand
+    copy → shm packet_  magic VRPM
+    eventpair  →  host vrpmb worker  (pCPU 5)
+         │
+         ▼
+ Host  ufs_rpmb_request
+    SECURITY PROTOCOL OUT / IN   UFS RPMB WLUN
+    device checks HMAC + counter
+         │
+         ▼
+ copy rsp_frame  VIRTUAL IRQ  guest complete
+```
+
+Key-program / write: OUT + RESULT_RD + IN. Read / counter: OUT +
+IN. Detail: [`tee.md`](tee.md) **RPMB**.
+
+---
+
 ## How to read a log against these
 
 | You see | Jump |
@@ -627,6 +662,7 @@ lua pairs: it is an `IpcClient` of SOS (user vmid 0 → way 0).
 | VM relaunch / SoC WDT | F16 |
 | lock stuck after VM death | F17 |
 | ipc-mbox peer silent | F18 |
+| `RPMB request` / virtio-rpmb timeout | F19, [`tee.md`](tee.md) |
 
 ---
 

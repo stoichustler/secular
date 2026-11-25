@@ -198,7 +198,10 @@ connects (same component namespace / environment).
     AddService<VhmService>           machina.VhmService
     AddService<GpuScheduleService>   machina.GpuScheduleService
     AddService<IpcService>           machina.IpcService
-    AddService<CrossVMLockSOSService>
+    AddService<IpcMessageService>    machina.IpcMessageService
+    AddService<SharedIrqService>     machina.SharedIrqService
+    AddService<AudioIrqService>      machina.AudioIrqService
+    AddService<CrossVMLockSOSService> / CrossVMLockGMService
     AddService<RprocService>         fuchsia.virtualization.RprocService
     AddService<InspectService>
          │  ConnectToService

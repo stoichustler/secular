@@ -68,7 +68,7 @@ lua turns into maps and traps, and virtio vs passthrough.
 ```text
  Guest IPA
    ┌─ mapped, kCached ── RAM  (allocator or reserved)
-   ├─ mapped, kDevice ── passthrough MMIO  (SOS 0–1 GiB)
+   ├─ mapped, kDevice ── passthrough MMIO  (SoC product_config; QEMU 1 GiB IO is kCached)
    ├─ unmapped trap ──── VMM / VHM / VGIC / virtio
    └─ unmapped hole ──── SMPU kMpu, GPU ungrant, missing lua
 ```
@@ -291,7 +291,7 @@ block, RPMB, virtio-rtc. tbox typically console + VGIC only.
 | virtio-vsock | `VirtioVsock` + `GzFsVsockService` | SOS; lua 380/382 |
 | MMIO/PCI virtio-block | `VirtioBlock` | SoC; not QEMU |
 | PVBlock | UFS LUNs 0/1/2 | per-guest visibility |
-| virtio-rpmb | `VirtioRpmb` | `ufs_enabled` |
+| virtio-rpmb | `VirtioRpmb` | SoC only; pipe to UFS LU. [`tee.md`](tee.md) **RPMB**, F19 |
 | virtio-cluster / eint / rtc / spi / i2c | SoC BEs | eint/rtc need PCI |
 | vSMMU | `machina::Smmuv3` per `VsmmuSpec` | SOS; UOS `#if 0` |
 | monitor-virtio | DTB carve-out | IPC debug |

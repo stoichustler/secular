@@ -440,9 +440,10 @@ only the S2 PTE is written or cleared.
   GpuScheduler::UnmapGpu
      skip ARB_GPU_REGION_PIN
      GPAS::UnMapDevice  →  arch_aspace.Unmap  →  S2 hole
-
-  ProtectDevice(enable=false)  drops S2AP write without unmap.
 ```
+
+`ProtectDevice` exists in GPAS and is **never called**. SWA does
+not drop S2AP write; it unmaps.
 
 ### 13. Boot MMU (trampoline)
 
@@ -1745,7 +1746,7 @@ host PMM also tracks — allowed only because AHYP skips
 Lua `setVmem` is the **static** fill. GPU SWA needs to **toggle**
 Mali MMIO in a guest's S2 at grant / stop time without tearing down
 the `VmMapping`. That is `GuestPhysicalAddressSpace::MapDevice` /
-`UnMapDevice` / `ProtectDevice`.
+`UnMapDevice`. `ProtectDevice` is unused.
 
 ```text
   setVmem (once)              MapDevice (grant / stop)
@@ -1939,13 +1940,56 @@ Four SoC instances, selected by MMIO base (`GetSmmuType`):
 MM_SMMU   0x30800000   commented out in sos_mt8678.lua
 APU_SMMU  0x4C000000   commented out
 SOC_SMMU  0x14900000   live (IRQ 863)
-GPU_SMMU  0x48600000   commented out
+GPU_SMMU  0x48600000   in host GetSmmuType / boot-shim; **not** in product lua
 ```
 
 Product lua only calls `addVsmmu(0x14900000, 863)` plus SOC SIDs
 (1–98, 100–254; SID 99 is the host UFS controller). SOS `vmm.cc`
 builds one `Smmuv3` per `VsmmuSpec`. UOS has the same path behind
 `#if 0` in `main_uos.cc` (not on by default).
+
+### Host STRTAB and STE layout
+
+Hardware STRTAB is **2-level** (`STRTAB_BASE_CFG_FMT_2LVL`). SID
+indexes an L1 descriptor; the leaf is 8×64-bit STE dwords
+(`STRTAB_STE_DWORDS`). `smmu_get_ste_ptr` allocates an empty L2
+page on first attach of that SID range.
+
+ARM SMMUv3 STE (host `u64 dst[8]`, little-endian). Attach only
+fills dwords 0–3; 4–7 stay 0.
+
+| Dword | Fields this tree writes |
+| --- | --- |
+| STE[0] | `V` (bit 0), `CFG` (bits 3:1) |
+| STE[1] | `SHCFG=INCOMING` (bits 45:44), `MEV` (bit 19) |
+| STE[2] | `S2VMID` (15:0), STE-`VTCR` (50:32), `S2AA64` (51), `S2R` record (58) |
+| STE[3] | `S2TTB` bits 51:4 = guest stage-2 root PA |
+| STE[4..7] | 0 |
+
+`CFG` encodings (`STRTAB_STE_0_CFG_*`):
+
+| CFG | Value | Walk |
+| --- | --- | --- |
+| ABORT | 0 | fault |
+| BYPASS | 4 | no translation |
+| S1_TRANS | 5 | guest CD only (not used as host attach) |
+| S2_TRANS | 6 | IPA → PA via `S2TTB` |
+| S12_TRANS | 7 | IOVA → IPA (CD) then IPA → PA (`S2TTB`) |
+
+Guest `STE_CFG_S1_ENABLED` is `CFG & 1`: true for S1_TRANS and
+S12_TRANS only.
+
+STE-`VTCR` (`get_default_s2_cfg`): `T0SZ=28` (64−36), `SL0=1`
+(start L1), `TG=4K` (`MMU_TG0(12)=0`), inner shareable, WBWA
+(`IR0/OR0=1`). Plus `S2AA64` and `S2R` (**record** S2 events, not
+“read”). `S2VMID` is the guest aspace `asid_` (SOS 1 / ALPS 2 /
+tbox 3). `S2TTB` is `gpas_` root, the same PA as `VTTBR.BADDR`.
+`S2PS` is a 3-bit ARM code (1 = 36-bit); this helper stores
+`pa_bits=36` into that field (`FIELD_PREP` keeps 3 bits). IPA
+size for the walk is `T0SZ`.
+
+`smmu_sync_ste` is CMDQ `CFGI_STE` (leaf) then `CMD_SYNC` (via
+`smmu_send_cmd`).
 
 ### Host attach (S2 only)
 
@@ -1957,28 +2001,39 @@ zx_iommu_set_guest
 
 zx_bti_create(iommu, sid)
   ArmSmmuv3::AttachBti(sid)
+    already attached?  ZX_ERR_ALREADY_EXISTS
     smmu_attach_dev(smmu, vmid, s2_pt_phys, sid)
 ```
 
-`smmu_attach_dev` writes the hardware STE (8×64-bit), then
-`smmu_sync_ste` (CMDQ `CFGI_STE` + `CMD_SYNC`):
+`smmu_attach_dev` **two-phase enable** (SMMU may cache a disabled
+STE):
 
 ```text
-STE[0]  V | CFG = S2_TRANS
-STE[1]  SHCFG = INCOMING
-STE[2]  VTCR (PS, TG 4K, T0SZ=28, SL0=1, WBWA, inner SH)
-        | S2VMID | S2R | S2AA64
-STE[3]  S2TTB = guest stage-2 root  (same PA as VTTBR.BADDR)
+  write STE[1..7]     (CFG still 0 / V still 0)
+  smmu_sync_ste
+  WRITE_ONCE STE[0]   V | CFG=S2_TRANS
+  smmu_sync_ste
 ```
 
-SMMU S2 parameters match CPU `VTCR_EL2` (`get_default_s2_cfg`: 36-bit
-IPA, 4K, SL0=1). DMA IPA then walks the **same** tables as the CPU.
+After that, DMA on this SID walks **the same S2 tables as the CPU**.
+Identity DMA (guest programs IPA=HPA) needs no guest CD.
+
+Detach (`smmu_detach_dev`): `STE[0]=0`, sync, then zero STE[1..7],
+sync. `AttachedDevice` destructor currently `#if 0`s detach — BTI
+close does **not** clear the STE.
+
+SID **99** is the host UFS controller; product lua skips it in
+`addSidToVsmmu`.
 
 ### vSMMU (guest programs IOMMU)
 
 Guest SMMU registers are **not** the real ones. `Smmuv3::Init` traps
 `spec.paddr` (`kSmmuv3Size = 0x80000`). Guest CMDQ lives in guest
 RAM; the VMM reads it on doorbell / MMIO cons/prod updates.
+
+Guest STE in RAM is 16×32-bit words (`struct STE`). Host STE is
+8×64-bit. `config_ste` packs guest `word[0]|word[1]<<32` into
+host dword 0, `word[2]|word[3]<<32` into dword 1.
 
 ```text
  Guest  STRTAB / CD in guest RAM
@@ -1987,37 +2042,61 @@ RAM; the VMM reads it on doorbell / MMIO cons/prod updates.
          ▼  MMIO trap  Smmuv3::Write
          ▼  cmdq_consume
               CFGI_STE       config_ste  →  nest or unnest
-              CFGI_CD        queue to host HwptInvalidate
-              TLBI_NH_*      zx_iommu_hwpt_invalidate  (host CMDQ)
-              CMD_SYNC       inject vSMMU IRQ
+              CFGI_STE_RANGE config_ste for SIDs already in this
+                             vSMMU device map and in the range
+              CFGI_CD        batch, then zx_iommu_hwpt_invalidate
+              TLBI_NH_*      same host invalidate
+              CMD_SYNC       vSMMU IRQ only if SIG_IRQ bit set
          │
  Host EVTQ  →  OnNewEvent  →  guest EVTQ + SignalInterrupt
 ```
 
-`config_ste` reads the **guest** STE at that SID:
+`config_ste` (`smmu_v3.cc`):
 
-- not valid, or S1 disabled → `uninstall_nested_ste` → host STE back
-  to `S2_TRANS` only
-- S1 enabled → copy allowed fields (`V, S1Fmt, S1CTXPTR, S1CDMax`,
-  `S1DSS/CIR/COR/CSH, S1STALLD`) into `iommu_hwpt_arm_smmuv3`,
-  `install_nested_ste` → `AllocHwpt` + `AttachHwpt`
+```text
+ find_ste(sid) in guest STRTAB
+ STE_VALID && (CFG & 1) ?     // S1_TRANS or S12_TRANS
+    copy allowed bits into iommu_hwpt_arm_smmuv3
+    install_nested_ste → AllocHwpt + AttachHwpt
+                        → smmu_install_nested_hwpt
+ else
+    uninstall_nested_ste → host STE[0] = V|S2_TRANS
+                           STE[1] = SHCFG_INCOMING
+                           STE[2..3] untouched
+```
 
-Guest cannot set host `S2TTB` / `S2VMID`; those stay hypervisor-owned.
+Allowed guest bits (masks in both VMM and `smmu_install_nested_hwpt`):
+
+| Host dword | Mask | Kept |
+| --- | --- | --- |
+| STE[0] | `0xf80ffffffffffff1` | `V`, `S1FMT`, `S1CTXPTR`, `S1CDMAX` (CFG forced below) |
+| STE[1] | `0xc80000ff` | `S1DSS`, `S1CIR/COR/CSH`, `S1STALLD`, `STRW` |
+
+Guest **cannot** set host `S2TTB` / `S2VMID` / STE-`VTCR`. Those
+stay hypervisor-owned from attach.
 
 ### Nested walk (S12)
 
-`smmu_install_nested_hwpt`:
+`smmu_install_nested_hwpt` **ORs** S1 fields onto the existing S2
+STE:
 
 ```text
-host STE[0]  = guest STE[0] (S1 ptr) | CFG = S12_TRANS   (or S2_TRANS if guest asked BYPASS)
-host STE[1] |= guest STE[1] (S1 cache / stall)
-host STE[2..3] unchanged   (S2VMID, S2TTB)
+ guest CFG == BYPASS ?
+    host STE[0] = (masked guest STE[0]) | CFG=S2_TRANS
+ :  host STE[0] = (masked guest STE[0]) | CFG=S12_TRANS
+ host STE[1] |= masked guest STE[1]
+ host STE[2..3] unchanged   (S2VMID, VTCR, S2TTB)
+ smmu_sync_ste
 ```
+
+From vSMMU, BYPASS never reaches install (`config_ste` unnests
+instead). Install’s BYPASS branch is for a guest STE that still
+had S1-enable with CFG BYPASS after the mask — not the lua path.
 
 ```text
  Device  SID
     │
-    ▼  host STRTAB STE
+    ▼  host STRTAB  (2-level, 8 dwords)
  CFG S12_TRANS
     │
     ├─ S1  guest CD at S1CTXPTR (IOVA → IPA)     guest-owned
@@ -2029,7 +2108,8 @@ host STE[2..3] unchanged   (S2VMID, S2TTB)
  PA   then SMPU / DRAM
 ```
 
-`CFG = S2_TRANS` skips the guest CD: IOVA is treated as IPA.
+`CFG = S2_TRANS` skips the guest CD: the address on the bus is
+treated as IPA.
 
 SMMU TLB is tagged by SID / ASID / VMID, not the CPU ASID. Guest
 `TLBI_NH_VA` is forwarded (`zx_iommu_hwpt_invalidate`) so the host
@@ -2039,6 +2119,16 @@ CMDQ issues the real `TLBI`. S2 PTE changes use host
 Event queue: a real SMMU fault (bad SID, S2 permission, etc.) is
 packaged as `zx_packet_iommu_event_t`; the vSMMU writes it into the
 guest EVTQ and injects `combined_irq_`.
+
+STE pitfalls:
+
+- Guest `CFGI_STE` never overwrites host `S2TTB` / `S2VMID`. A guest
+  that writes those fields in its own STRTAB is ignored.
+- Unnest restores `CFG=S2_TRANS` and `SHCFG=INCOMING`; it does **not**
+  restore `MEV`. Attach had `MEV`; unnest drops it.
+- `~AttachedDevice` has `smmu_detach_dev` under `#if 0`. Closing the
+  BTI does not abort that SID.
+- SID 99 is host UFS; do not `addSidToVsmmu(99)`.
 
 ### Dummy IOMMU
 
@@ -2225,9 +2315,10 @@ Who programs what. EL2 regs are HVC-only from EL1.
 | `HPFAR_EL2` | IPA[47:12] of the abort (shift left 8 in EL2 asm) |
 | `ESR_EL2` | EC = data/instruction abort, ISS = S1 vs S2, WnR, ISV |
 | SMMU `STRTAB_BASE` / `CMDQ_BASE` / `EVTQ_BASE` | Host SMMU queues and stream table |
-| STE `CFG` | 0 abort, 4 bypass, 5 S1, 6 S2, 7 S1+S2 |
+| STE `CFG` | 0 abort, 4 bypass, 5 S1, 6 S2, 7 S1+S2 (`STE_CFG_S1_ENABLED` = CFG&1) |
 | STE `S2TTB` / `S2VMID` / STE-`VTCR` | DMA stage-2; same TTB/VMID as CPU `VTTBR` |
-| STE `S1CTXPTR` | Guest CD for nested S1 (IOVA→IPA) |
+| STE `S1CTXPTR` / `S1FMT` / `S1CDMAX` | Guest CD for nested S1 (IOVA→IPA); host copies only these + S1 cache/stall |
+| STE `SHCFG` / `MEV` | Host attach: incoming shareability, event on translation |
 | `SMMU_CR0` | SMMUEN, CMDQEN, EVTQEN |
 
 `VTTBR` / `VTCR` are EL2-only. Host EL1 reaches them through HVC
@@ -2492,7 +2583,8 @@ sit in the 1 GiB window.
 | S2AP | Stage-2 access perm: RO or RW. No separate user/priv bit. |
 | `HCR.PTW` | S2 fault on a table-walk IPA traps to EL2. |
 | SID | SMMU Stream ID. Selects the STE. `zx_bti_create(..., sid)`. |
-| STE | Stream Table Entry. Abort / bypass / S1 / S2 / S12. |
+| STE | Stream Table Entry, 8×64-bit. Abort / bypass / S1 / S2 / S12. |
+| STRTAB | Host 2-level stream table. SID → L1 desc → leaf STE. |
 | vSMMU | Emulated SMMU MMIO in the guest. Real STRTAB stays in the host. |
 | Nested S12 | Guest S1 CD then host S2 TTB. IOVA → IPA → PA. |
 | SMPU | SoC interconnect firewall. `kMpu` windows stay out of stage-2. |
@@ -2559,7 +2651,10 @@ sit in the 1 GiB window.
 | SOS IO window | `garnet/bin/guest/sos/qemu/sos.lua` |
 | Host SMMU / STE | `zircon/kernel/dev/iommu/arm_smmuv3/smmuv3.cpp` |
 | Dummy IOMMU | `zircon/kernel/dev/iommu/dummy/dummy_iommu.cpp` |
-| `smmu_attach_dev` / nested STE | `smmuv3.cpp` `smmu_install_nested_hwpt` |
+| `smmu_attach_dev` / STE write | `smmuv3.cpp` `smmu_attach_dev` / `smmu_sync_ste` |
+| Nested STE merge | `smmuv3.cpp` `smmu_install_nested_hwpt` |
+| STE field macros | `smmuv3-internal.h` `STRTAB_STE_*` |
+| Guest STE parse | `garnet/lib/machina/arch/arm64/smmu_v3.cc` `config_ste` |
 | vSMMU | `garnet/lib/machina/arch/arm64/smmu_v3.cc` |
 | Lua `setVsmmu` | `garnet/bin/guest/guest_config.h` |
 | SOS vSMMU create | `garnet/bin/guest/vmm.cc` |

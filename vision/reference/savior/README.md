@@ -146,7 +146,7 @@ are independent.
 | 3 | [`objects.md`](objects.md) | Name Guest / Vcpu / trap / rights and the creating syscall | Principle, Guest + Vcpu tables |
 | 4 | [`fidl.md`](fidl.md) | Say why launch is FIDL and list every machina interface | Principle, diagrams 1–5, GuestLifecycle |
 | 5 | [`system.md`](system.md) | Point at every process, shm, doorbell, SMC class | runtime picture, comms table, SMC |
-| 6 | [`flows.md`](flows.md) | Walk a log F1–F18 without opening another file | F1, F2, F5, F9, log table |
+| 6 | [`flows.md`](flows.md) | Walk a log F1–F19 without opening another file | F1, F2, F5, F9, log table |
 | 7 | [`bootstrap.md`](bootstrap.md) | Name the EL/MMU switch that failed | B1–B3, nodes (7)–(13) |
 | 8 | [`cpu.md`](cpu.md) | Explain one `zx_vcpu_resume` and one guest `SMC` | Diagrams 1–5, EL2 |
 | 8b | [`exceptions.md`](exceptions.md) | Say guest inject vs host exception port vs kernel die | Principle, diagrams 1–4 |
@@ -159,7 +159,7 @@ are independent.
 | 14 | [`devices.md`](devices.md) | Classify an IPA as map / trap / hole | Diagrams 1–7 |
 | 15 | [`vhm.md`](vhm.md) | Say why UOS hung on a BAR | Principle + diagrams 1–6 |
 | 16 | [`gpu.md`](gpu.md) | Say why GRANT, STOP, or timeout | state machine, F9, Config |
-| 17 | [`tee.md`](tee.md) | Say why an SMC never reached TEE | Diagrams 1–5 |
+| 17 | [`tee.md`](tee.md) | Name the Savior↔TEE wire; draw F14 / RPMB | Interaction map, diagrams 11–14, RPMB 8–10 |
 | 18 | [`guest.md`](guest.md) | Name the Linux module that is the actuator | occupancy + diagrams 1–5 |
 | 19 | [`security.md`](security.md) | Name what S2 actually stops | Principle + diagrams 1–4 |
 | 20 | [`logging.md`](logging.md) | Say why `SYS_NEBULA_RAMCONSOLE_DUMP_T` is missing | dump table |
@@ -212,12 +212,14 @@ scheduler. **No** `WITH_VHE_SUPPORT`, `WITH_VHM_IN_KERNEL`,
 | Guest reboot loops | [`vmm.md`](vmm.md) RESET vs RESET2 |
 | UOS never appears | [`vhm.md`](vhm.md) `HC_START_VM` |
 | GPU black / grant timeout | [`gpu.md`](gpu.md), F9 |
-| Guest SMC to TEE hangs | [`tee.md`](tee.md) |
+| Guest SMC to TEE hangs | [`tee.md`](tee.md) F14, diagrams 11–12 |
+| vtee vs TIPC mixed IRQs | [`tee.md`](tee.md) diagram 11 |
 | Host sleep / idle ATF / GPUEB off | [`pm.md`](pm.md) |
 | Occupancy doorbell ignored | F15, [`guest.md`](guest.md), [`scheduler.md`](scheduler.md) |
 | Watchdog relaunch / SoC WDT | F16, [`vmm.md`](vmm.md) |
 | Lock stuck after VM death | F17, [`guest.md`](guest.md) |
 | ipc-mbox peer silent | F18, [`system.md`](system.md) |
+| virtio-rpmb timeout / MAC fail | F19, [`tee.md`](tee.md) RPMB |
 | Stage-2 hole / SMPU | [`security.md`](security.md), [`memory.md`](memory.md) |
 | Memory stomping / cache / shm stale | [`shm.md`](shm.md) |
 | `map guest physical memory -4` | [`shm.md`](shm.md) overlap, `gz_nebula` |

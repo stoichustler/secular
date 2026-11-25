@@ -39,9 +39,10 @@ lifetime.
    table” that outlives the Vmm process. `~GuestDispatcher`
    drops `Guest` → VTTBR, traps, VCPUs gone.
 
-5. **AHYP-only create.** `zx_guest_create_new` refuses PHYP /
-   QEMU_AHYP / OKL4_AHYP. `zx_guest_create` is the PHYP path
-   (physmem VMO + `SetupPHyp`). Product is AHYP.
+5. **Product create is `zx_guest_create_new` on AHYP.** It
+   refuses PHYP / QEMU_AHYP / OKL4_AHYP (not TEE).
+   `zx_guest_create` is the PHYP path (physmem VMO + `SetupPHyp`);
+   it does **not** refuse AHYP.
 
 ## Framework
 
@@ -96,7 +97,7 @@ lifetime.
  SOS Vmm process
     Guest            WRITE          S2 + traps + VMID 1
     VMAR             BASIC          guest physical maps
-    Vcpu[0..n]       EXECUTE/SIGNAL/IO/READ
+    Vcpu[0..n]       BASIC|IO|EXECUTE|SIGNAL  (no READ)
     Port             WRITE          BELL waiter
     Interrupt[]      IO             passthrough SPI
     VMO[]            MAP/RW         RAM, occupancy, ioreq, cvm-lock
@@ -169,7 +170,7 @@ User vmid → kernel VMID: `user + 2` (SOS −1→1).
 | `zx_guest_set_cpu_affinity` | bind table |
 | `zx_guest_set_user_vmid` | −1/0/1; tbox first time `init_mtk_spm_map` |
 | `zx_guest_set_wakeup_irqs` | s2idle list; `0xdeadbeef` cut_point required |
-| `zx_guest_set_smc_irq` | virtual IRQ when a forwarded SMC completes |
+| `zx_guest_set_smc_irq` | VIRTUAL doorbell for VM ringbuf; not TEE complete |
 | `zx_guest_set_cvm_lock_irq` / `_vmo` | [`guest.md`](guest.md) |
 | `zx_guest_tee_vm_create` / `_destroy` | [`tee.md`](tee.md) |
 | `zx_guest_set_sched_id` | occupancy row (lua `setSchedId`) |
